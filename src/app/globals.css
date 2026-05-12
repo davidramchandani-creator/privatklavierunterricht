@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+@import "tailwindcss";
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 224 71% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 224 71% 15%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 224 71% 15%;
+  --primary: 229 46% 20%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 45 57% 54%;
+  --secondary-foreground: 224 71% 15%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 9% 46%;
+  --accent: 220 14% 96%;
+  --accent-foreground: 224 71% 15%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 229 46% 20%;
+  --radius: 0.75rem;
+  --sidebar-background: 224 71% 15%;
+  --sidebar-foreground: 0 0% 98%;
+  --sidebar-primary: 45 57% 54%;
+  --sidebar-primary-foreground: 224 71% 20%;
+  --sidebar-accent: 224 71% 22%;
+  --sidebar-accent-foreground: 0 0% 98%;
+  --sidebar-border: 224 71% 25%;
+  --sidebar-ring: 45 57% 54%;
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  border-color: hsl(var(--border));
+}
+
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: "Plus Jakarta Sans", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 700;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(-16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in  { animation: fade-in 0.5s ease-out forwards; }
+.animate-slide-in { animation: slide-in 0.4s ease-out forwards; }
+.animate-scale-in { animation: scale-in 0.3s ease-out forwards; }
+.opacity-0        { opacity: 0; }
+
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
