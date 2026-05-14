@@ -61,18 +61,18 @@ export default function Navbar() {
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "bg-white/95 backdrop-blur-md shadow-sm"
-          : "bg-transparent"
+          ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100"
+          : "bg-white/80 backdrop-blur-sm"
       }`}
     >
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link
           href="/"
-          className="flex items-center gap-2 font-800 text-[#1C244B] text-lg hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 font-800 text-[#3730A3] text-lg hover:opacity-80 transition-opacity"
           onClick={handleAdminSecret}
         >
-          <span className="w-8 h-8 rounded-lg bg-[#1C244B] flex items-center justify-center">
+          <span className="w-8 h-8 rounded-lg bg-[#3730A3] flex items-center justify-center">
             <Music className="w-4 h-4 text-white" />
           </span>
           <span className="hidden sm:block">David</span>
@@ -84,7 +84,7 @@ export default function Navbar() {
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-500 text-gray-600 hover:text-[#1C244B] transition-colors"
+              className="text-sm font-500 text-gray-600 hover:text-[#3730A3] transition-colors"
             >
               {link.label}
             </Link>
@@ -125,9 +125,9 @@ export default function Navbar() {
           aria-label="Menü"
         >
           {menuOpen ? (
-            <X className="w-5 h-5 text-[#1C244B]" />
+            <X className="w-5 h-5 text-[#3730A3]" />
           ) : (
-            <Menu className="w-5 h-5 text-[#1C244B]" />
+            <Menu className="w-5 h-5 text-[#3730A3]" />
           )}
         </button>
       </nav>
@@ -139,7 +139,7 @@ export default function Navbar() {
             <Link
               key={link.href}
               href={link.href}
-              className="block text-sm font-500 text-gray-700 py-2 hover:text-[#1C244B] transition-colors"
+              className="block text-sm font-500 text-gray-700 py-2 hover:text-[#3730A3] transition-colors"
               onClick={() => setMenuOpen(false)}
             >
               {link.label}
