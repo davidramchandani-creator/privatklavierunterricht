@@ -2,15 +2,29 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, X, LucideIcon } from "lucide-react";
+import {
+  Menu,
+  X,
+  LayoutDashboard,
+  Users,
+  Calendar,
+  Clock,
+  Tag,
+  Star,
+  CreditCard,
+} from "lucide-react";
 
-type NavItem = {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-};
+const navItems = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/schueler", label: "Schüler", icon: Users },
+  { href: "/admin/kalender", label: "Kalender", icon: Calendar },
+  { href: "/admin/verfuegbarkeit", label: "Verfügbarkeit", icon: Clock },
+  { href: "/admin/preise", label: "Preise", icon: Tag },
+  { href: "/admin/bewertungen", label: "Bewertungen", icon: Star },
+  { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
+];
 
-export default function AdminMobileMenu({ navItems }: { navItems: NavItem[] }) {
+export default function AdminMobileMenu() {
   const [open, setOpen] = useState(false);
 
   return (

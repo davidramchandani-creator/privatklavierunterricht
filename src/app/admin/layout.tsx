@@ -92,7 +92,7 @@ export default async function AdminLayout({
             </span>
             <span className="font-700 text-[#3730A3] text-sm">Admin</span>
           </div>
-          <AdminMobileMenu navItems={navItems} />
+          <AdminMobileMenu />
         </header>
 
         {/* Desktop top bar */}
