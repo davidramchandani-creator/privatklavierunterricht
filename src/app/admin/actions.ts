@@ -357,3 +357,16 @@ export async function updatePreise(formData: FormData) {
   revalidatePath("/admin/preise");
   return { success: true };
 }
+
+// ── Anfragen ─────────────────────────────────────────────────────────────────
+
+export async function updateAnfrageStatus(id: string, status: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("anfragen")
+    .update({ status })
+    .eq("id", id);
+  if (error) return { error: "Status konnte nicht aktualisiert werden." };
+  revalidatePath("/admin/anfragen");
+  return { success: true };
+}

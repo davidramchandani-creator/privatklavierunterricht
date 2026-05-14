@@ -12,10 +12,12 @@ import {
   Tag,
   Star,
   CreditCard,
+  Inbox,
 } from "lucide-react";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/anfragen", label: "Anfragen", icon: Inbox },
   { href: "/admin/schueler", label: "Schüler", icon: Users },
   { href: "/admin/kalender", label: "Kalender", icon: Calendar },
   { href: "/admin/verfuegbarkeit", label: "Verfügbarkeit", icon: Clock },

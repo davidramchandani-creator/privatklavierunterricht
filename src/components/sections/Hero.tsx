@@ -44,7 +44,7 @@ export default function Hero() {
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-3 opacity-0 animate-fade-in delay-200">
-              <Link href="/#probelektion">
+              <Link href="/probelektion">
                 <Button size="lg" variant="gold" className="gap-2 shadow-lg shadow-[#C9A84C]/20 w-full sm:w-auto">
                   <CalendarCheck className="w-5 h-5" />
                   Jetzt Probelektion buchen

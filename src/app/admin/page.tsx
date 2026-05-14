@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { Users, Calendar, CreditCard, Star } from "lucide-react";
+import { Users, Calendar, CreditCard, Star, Inbox } from "lucide-react";
 import { formatCHF, formatDateTime } from "@/lib/utils";
+import Link from "next/link";
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
@@ -18,6 +19,7 @@ export default async function AdminDashboardPage() {
     { data: upcomingThisWeek },
     { data: openPayments },
     { count: pendingReviews },
+    { count: newAnfragen },
     { data: nextLessons },
   ] = await Promise.all([
     supabase
@@ -38,6 +40,10 @@ export default async function AdminDashboardPage() {
       .from("bewertungen")
       .select("*", { count: "exact", head: true })
       .eq("anzeigen", false),
+    supabase
+      .from("anfragen")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "neu"),
     supabase
       .from("termine")
       .select("id, beginn, ende, status, schueler(vorname, nachname)")
@@ -65,28 +71,39 @@ export default async function AdminDashboardPage() {
 
   const stats = [
     {
+      label: "Neue Anfragen",
+      value: newAnfragen ?? 0,
+      icon: Inbox,
+      color: "bg-amber-50 text-amber-600",
+      href: "/admin/anfragen",
+    },
+    {
       label: "Aktive Schüler",
       value: activeStudents ?? 0,
       icon: Users,
       color: "bg-[#3730A3]/10 text-[#3730A3]",
+      href: "/admin/schueler",
     },
     {
       label: "Lektionen diese Woche",
       value: upcomingThisWeek?.length ?? 0,
       icon: Calendar,
       color: "bg-blue-50 text-blue-600",
+      href: "/admin/kalender",
     },
     {
       label: "Offene Zahlungen",
       value: `${openPayments?.length ?? 0} · ${formatCHF(openPaymentsTotal)}`,
       icon: CreditCard,
       color: "bg-amber-50 text-amber-600",
+      href: "/admin/zahlungen",
     },
     {
       label: "Neue Bewertungen",
       value: pendingReviews ?? 0,
       icon: Star,
       color: "bg-purple-50 text-purple-600",
+      href: "/admin/bewertungen",
     },
   ];
 
@@ -95,18 +112,19 @@ export default async function AdminDashboardPage() {
       <h1 className="text-2xl font-800 text-[#3730A3]">Dashboard</h1>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map(({ label, value, icon: Icon, color }) => (
-          <div
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {stats.map(({ label, value, icon: Icon, color, href }) => (
+          <Link
             key={label}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5"
+            href={href ?? "#"}
+            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:border-[#3730A3]/30 transition-colors block"
           >
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${color}`}>
               <Icon className="w-5 h-5" />
             </div>
             <p className="text-2xl font-800 text-gray-900">{value}</p>
             <p className="text-xs text-gray-500 mt-0.5">{label}</p>
-          </div>
+          </Link>
         ))}
       </div>
 

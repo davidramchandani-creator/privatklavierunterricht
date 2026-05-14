@@ -30,12 +30,12 @@ export default function ProbelektionCTA() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <a href="mailto:david@privatklavierunterricht.ch?subject=Probelektion anfragen">
+          <Link href="/probelektion">
             <Button size="lg" variant="gold" className="gap-2 shadow-lg shadow-black/20 w-full sm:w-auto">
               <CalendarCheck className="w-5 h-5" />
               Probelektion anfragen
             </Button>
-          </a>
+          </Link>
           <Link href="/#angebote">
             <Button
               size="lg"
