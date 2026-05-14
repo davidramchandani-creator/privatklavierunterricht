@@ -111,7 +111,7 @@ export default function Navbar() {
                   Anmelden
                 </Button>
               </Link>
-              <Link href="/#probelektion">
+              <Link href="/probelektion">
                 <Button size="sm">Probelektion buchen</Button>
               </Link>
             </>
@@ -159,7 +159,7 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <Link href="/#probelektion" onClick={() => setMenuOpen(false)}>
+                <Link href="/probelektion" onClick={() => setMenuOpen(false)}>
                   <Button className="w-full">Probelektion buchen</Button>
                 </Link>
                 <Link href="/auth/login" onClick={() => setMenuOpen(false)}>

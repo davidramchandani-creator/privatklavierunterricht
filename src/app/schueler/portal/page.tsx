@@ -50,6 +50,31 @@ export default async function SchuelerPortalPage() {
 
   const vorname = schueler?.vorname ?? user.email?.split("@")[0] ?? "Schüler";
 
+  // No schueler record yet – admin hasn't created the profile
+  if (!schueler) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white rounded-3xl border border-gray-200 shadow-sm p-8 text-center space-y-4">
+          <div className="w-14 h-14 bg-indigo-50 rounded-full flex items-center justify-center mx-auto">
+            <Music className="w-7 h-7 text-[#3730A3]" />
+          </div>
+          <h1 className="text-xl font-800 text-gray-900">Willkommen, {vorname}!</h1>
+          <p className="text-gray-500 text-sm leading-relaxed">
+            Dein Schülerprofil wird noch von David eingerichtet. Das dauert
+            normalerweise nur kurz – schreib ihm eine kurze Nachricht wenn es
+            dringend ist.
+          </p>
+          <a
+            href="mailto:david.privatklavierunterricht@gmail.com"
+            className="inline-block text-sm text-[#3730A3] font-600 hover:underline"
+          >
+            david.privatklavierunterricht@gmail.com
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
