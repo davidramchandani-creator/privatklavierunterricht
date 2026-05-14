@@ -1,16 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { CalendarPlus, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { useState, useTransition, useEffect } from "react";
+import { CalendarPlus, ChevronLeft, ChevronRight, Loader2, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { buchTermin } from "../actions";
-
-const SLOT_DURATION = 60; // minutes
-
-type Slot = {
-  beginn: string;
-  ende: string;
-};
+import { buchTermin, getVerfuegbareSlots, type AvailableSlot } from "../actions";
 
 export default function TerminBuchen({
   schueler_id,
@@ -21,25 +14,56 @@ export default function TerminBuchen({
 }) {
   const [open, setOpen] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0);
-  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // Minimal demo: show Mon–Fri, 14:00–18:00 as available slots
-  // In production, fetch available slots from admin_verfuegbarkeit filtered against booked termine
-  const weekStart = getMonday(weekOffset);
-  const slots = generateDemoSlots(weekStart);
+  const [slots, setSlots] = useState<AvailableSlot[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
-  const weekLabel = `${weekStart.toLocaleDateString("de-CH", { day: "numeric", month: "long" })} – ${
-    new Date(weekStart.getTime() + 4 * 86400000).toLocaleDateString("de-CH", { day: "numeric", month: "long", year: "numeric" })
-  }`;
+  // Fetch real slots when week changes
+  useEffect(() => {
+    if (!open) return;
+    setLoadingSlots(true);
+    setSelectedSlot(null);
+    startTransition(async () => {
+      const result = await getVerfuegbareSlots(weekOffset);
+      setSlots(result);
+      setLoadingSlots(false);
+    });
+  }, [open, weekOffset]);
+
+  // Group slots by day-of-week index (0=Mon, ..., 6=Sun)
+  const slotsByDay = groupSlotsByDay(slots);
+
+  // Determine which days have slots
+  const daysWithSlots = getDaysInWeek(weekOffset).filter(
+    (d) => (slotsByDay.get(d.dateStr)?.length ?? 0) > 0
+  );
+  const displayDays = getDaysInWeek(weekOffset);
+
+  const monday = getMonday(weekOffset);
+  const friday = new Date(monday.getTime() + 4 * 86400000);
+  const weekLabel = `${monday.toLocaleDateString("de-CH", {
+    day: "numeric",
+    month: "long",
+  })} – ${friday.toLocaleDateString("de-CH", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })}`;
 
   async function handleBuchen() {
     if (!selectedSlot) return;
     setError(null);
     startTransition(async () => {
-      const result = await buchTermin(schueler_id, paket_id, selectedSlot.beginn, selectedSlot.ende);
+      const result = await buchTermin(
+        schueler_id,
+        paket_id,
+        selectedSlot.beginn,
+        selectedSlot.ende
+      );
       if (result?.error) setError(result.error);
       else {
         setSuccess(true);
@@ -71,7 +95,12 @@ export default function TerminBuchen({
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-600 text-gray-900 text-sm">Lektion buchen</h3>
-            <button onClick={() => setOpen(false)} className="text-xs text-gray-400 hover:text-gray-600">Abbrechen</button>
+            <button
+              onClick={() => setOpen(false)}
+              className="text-xs text-gray-400 hover:text-gray-600"
+            >
+              Abbrechen
+            </button>
           </div>
 
           {/* Week nav */}
@@ -93,49 +122,80 @@ export default function TerminBuchen({
           </div>
 
           {/* Slots grid */}
-          <div className="grid grid-cols-5 gap-2">
-            {slots.map((daySlots, di) => {
-              const dayDate = new Date(weekStart.getTime() + di * 86400000);
-              return (
-                <div key={di} className="space-y-1.5">
-                  <p className="text-[10px] font-600 text-gray-400 text-center uppercase tracking-wide">
-                    {dayDate.toLocaleDateString("de-CH", { weekday: "short" })}
-                  </p>
-                  {daySlots.map((slot) => {
-                    const isSelected = selectedSlot?.beginn === slot.beginn;
-                    const time = new Date(slot.beginn).toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" });
-                    return (
-                      <button
-                        key={slot.beginn}
-                        onClick={() => setSelectedSlot(isSelected ? null : slot)}
-                        className={`w-full text-xs py-1.5 rounded-lg font-500 transition-colors ${
-                          isSelected
-                            ? "bg-[#3730A3] text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-[#3730A3]/10"
-                        }`}
-                      >
-                        {time}
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
+          {loadingSlots ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-[#3730A3]" />
+            </div>
+          ) : slots.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <Calendar className="w-6 h-6 mx-auto mb-2 opacity-40" />
+              <p className="text-xs">Keine freien Slots diese Woche</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-5 gap-2">
+              {displayDays.slice(0, 5).map((d) => {
+                const daySlots = slotsByDay.get(d.dateStr) ?? [];
+                return (
+                  <div key={d.dateStr} className="space-y-1.5">
+                    <p className="text-[10px] font-600 text-gray-400 text-center uppercase tracking-wide">
+                      {d.label}
+                    </p>
+                    {daySlots.length === 0 ? (
+                      <p className="text-[10px] text-gray-300 text-center mt-2">—</p>
+                    ) : (
+                      daySlots.map((slot) => {
+                        const isSelected = selectedSlot?.beginn === slot.beginn;
+                        const time = new Date(slot.beginn).toLocaleTimeString(
+                          "de-CH",
+                          { hour: "2-digit", minute: "2-digit" }
+                        );
+                        return (
+                          <button
+                            key={slot.beginn}
+                            onClick={() =>
+                              setSelectedSlot(isSelected ? null : slot)
+                            }
+                            className={`w-full text-xs py-1.5 rounded-lg font-500 transition-colors ${
+                              isSelected
+                                ? "bg-[#3730A3] text-white"
+                                : "bg-gray-100 text-gray-700 hover:bg-[#3730A3]/10"
+                            }`}
+                          >
+                            {time}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {error && (
-            <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+            <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
+              {error}
+            </p>
           )}
 
           <Button
             onClick={handleBuchen}
-            disabled={!selectedSlot || isPending}
+            disabled={!selectedSlot || isPending || loadingSlots}
             className="w-full"
           >
-            {isPending ? (
-              <><Loader2 className="w-4 h-4 animate-spin" />Buchen…</>
+            {isPending && !loadingSlots ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Buchen…
+              </>
             ) : selectedSlot ? (
-              `Buchen – ${new Date(selectedSlot.beginn).toLocaleDateString("de-CH", { weekday: "short", day: "numeric", month: "short" })} ${new Date(selectedSlot.beginn).toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" })} Uhr`
+              `Buchen – ${new Date(selectedSlot.beginn).toLocaleDateString(
+                "de-CH",
+                { weekday: "short", day: "numeric", month: "short" }
+              )} ${new Date(selectedSlot.beginn).toLocaleTimeString("de-CH", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })} Uhr`
             ) : (
               "Zeitfenster wählen"
             )}
@@ -156,19 +216,27 @@ function getMonday(weekOffset: number): Date {
   return monday;
 }
 
-function generateDemoSlots(weekStart: Date): Slot[][] {
-  const result: Slot[][] = [];
-  const now = new Date();
-  for (let d = 0; d < 5; d++) {
-    const daySlots: Slot[] = [];
-    for (let h = 14; h < 18; h++) {
-      const beginn = new Date(weekStart.getTime() + d * 86400000);
-      beginn.setHours(h, 0, 0, 0);
-      if (beginn <= now) continue;
-      const ende = new Date(beginn.getTime() + SLOT_DURATION * 60000);
-      daySlots.push({ beginn: beginn.toISOString(), ende: ende.toISOString() });
-    }
-    result.push(daySlots);
+type DayInfo = { dateStr: string; label: string };
+
+function getDaysInWeek(weekOffset: number): DayInfo[] {
+  const monday = getMonday(weekOffset);
+  const days: DayInfo[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday.getTime() + i * 86400000);
+    days.push({
+      dateStr: d.toISOString().split("T")[0],
+      label: d.toLocaleDateString("de-CH", { weekday: "short" }),
+    });
   }
-  return result;
+  return days;
+}
+
+function groupSlotsByDay(slots: AvailableSlot[]): Map<string, AvailableSlot[]> {
+  const map = new Map<string, AvailableSlot[]>();
+  for (const slot of slots) {
+    const dateStr = slot.beginn.split("T")[0];
+    if (!map.has(dateStr)) map.set(dateStr, []);
+    map.get(dateStr)!.push(slot);
+  }
+  return map;
 }

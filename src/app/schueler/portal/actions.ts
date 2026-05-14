@@ -3,6 +3,91 @@
 import { createClient } from "@/lib/supabase/server";
 import { isWithin24Hours } from "@/lib/utils";
 
+export type AvailableSlot = {
+  beginn: string;
+  ende: string;
+};
+
+export async function getVerfuegbareSlots(
+  weekOffset: number
+): Promise<AvailableSlot[]> {
+  const supabase = await createClient();
+
+  // 1. Get active availability slots
+  const { data: verfuegbarkeit } = await supabase
+    .from("admin_verfuegbarkeit")
+    .select("*")
+    .eq("aktiv", true);
+
+  if (!verfuegbarkeit || verfuegbarkeit.length === 0) return [];
+
+  // 2. Calculate week boundaries
+  const now = new Date();
+  const monday = getMonday(now, weekOffset);
+  const sunday = new Date(monday.getTime() + 7 * 86400000);
+
+  // 3. Fetch existing non-cancelled termine for that week
+  const { data: booked } = await supabase
+    .from("termine")
+    .select("beginn, ende")
+    .neq("status", "storniert")
+    .gte("beginn", monday.toISOString())
+    .lt("beginn", sunday.toISOString());
+
+  const bookedSet = new Set(booked?.map((t) => t.beginn) ?? []);
+
+  // 4. Generate 60-min slots for each availability window in the week
+  const slots: AvailableSlot[] = [];
+
+  for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+    const date = new Date(monday.getTime() + dayIndex * 86400000);
+    // wochentag in DB: 1=Mon, ..., 6=Sat, 0=Sun
+    // date.getDay(): 0=Sun, 1=Mon, ..., 6=Sat
+    const jsDay = date.getDay();
+    const dbDay = jsDay; // same mapping in DB
+
+    const dayVerfuegbarkeit = verfuegbarkeit.filter(
+      (v) => v.wochentag === dbDay
+    );
+
+    for (const v of dayVerfuegbarkeit) {
+      const [beginH, beginM] = v.beginn_zeit.split(":").map(Number);
+      const [endH, endM] = v.ende_zeit.split(":").map(Number);
+
+      const windowStart = new Date(date);
+      windowStart.setHours(beginH, beginM, 0, 0);
+      const windowEnd = new Date(date);
+      windowEnd.setHours(endH, endM, 0, 0);
+
+      let slotStart = new Date(windowStart);
+      while (slotStart.getTime() + 60 * 60000 <= windowEnd.getTime()) {
+        const slotEnd = new Date(slotStart.getTime() + 60 * 60000);
+
+        // Only show future slots
+        if (slotStart > now && !bookedSet.has(slotStart.toISOString())) {
+          slots.push({
+            beginn: slotStart.toISOString(),
+            ende: slotEnd.toISOString(),
+          });
+        }
+
+        slotStart = slotEnd;
+      }
+    }
+  }
+
+  return slots;
+}
+
+function getMonday(date: Date, offset: number): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff + offset * 7);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 export async function storniereTermin(termin_id: string, schueler_id: string) {
   const supabase = await createClient();
 
