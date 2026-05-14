@@ -6,7 +6,7 @@ export async function updateSession(request: NextRequest) {
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() {
@@ -28,46 +28,38 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   const pathname = request.nextUrl.pathname;
 
-  // Protect admin routes
   if (pathname.startsWith("/admin")) {
-    if (!user) {
-      return NextResponse.redirect(new URL("/auth/login", request.url));
-    }
+    if (!user) return NextResponse.redirect(new URL("/auth/login", request.url));
     const { data: profile } = await supabase
       .from("profile_roles")
       .select("role")
       .eq("user_id", user.id)
       .single();
-
-    if (profile?.role !== "admin") {
+    if (profile?.role !== "admin")
       return NextResponse.redirect(new URL("/", request.url));
-    }
   }
 
-  // Protect schueler portal
-  if (pathname.startsWith("/schueler")) {
-    if (!user) {
-      return NextResponse.redirect(new URL("/auth/login", request.url));
-    }
-  }
+  if (pathname.startsWith("/schueler") && !user)
+    return NextResponse.redirect(new URL("/auth/login", request.url));
 
-  // Redirect logged-in users away from auth pages
-  if (pathname.startsWith("/auth/login") || pathname.startsWith("/auth/register")) {
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profile_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .single();
-
-      if (profile?.role === "admin") {
-        return NextResponse.redirect(new URL("/admin", request.url));
-      }
-      return NextResponse.redirect(new URL("/schueler/portal", request.url));
-    }
+  if (
+    (pathname.startsWith("/auth/login") ||
+      pathname.startsWith("/auth/register")) &&
+    user
+  ) {
+    const { data: profile } = await supabase
+      .from("profile_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+    return NextResponse.redirect(
+      new URL(
+        profile?.role === "admin" ? "/admin" : "/schueler/portal",
+        request.url
+      )
+    );
   }
 
   return supabaseResponse;

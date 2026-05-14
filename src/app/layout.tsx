@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 
 const jakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -22,7 +24,9 @@ export const metadata: Metadata = {
     description: "Individueller Klavierunterricht mit David, ganz ohne Schema F.",
     locale: "de_CH",
     type: "website",
+    url: "https://privatklavierunterricht.ch",
   },
+  metadataBase: new URL("https://privatklavierunterricht.ch"),
 };
 
 export default function RootLayout({
@@ -33,7 +37,9 @@ export default function RootLayout({
   return (
     <html lang="de" className={`${jakartaSans.variable} h-full`}>
       <body className="min-h-full flex flex-col font-sans antialiased">
-        {children}
+        <Navbar />
+        <div className="flex-1">{children}</div>
+        <Footer />
       </body>
     </html>
   );
