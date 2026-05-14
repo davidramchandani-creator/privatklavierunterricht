@@ -28,13 +28,13 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-[#1C244B] hover:opacity-80 transition-opacity">
-            <span className="w-10 h-10 rounded-xl bg-[#1C244B] flex items-center justify-center">
+          <Link href="/" className="inline-flex items-center gap-2 text-[#3730A3] hover:opacity-80 transition-opacity">
+            <span className="w-10 h-10 rounded-xl bg-[#3730A3] flex items-center justify-center">
               <Music className="w-5 h-5 text-white" />
             </span>
             <span className="font-800 text-xl">David</span>
           </Link>
-          <h1 className="mt-6 text-2xl font-800 text-[#1C244B]">Willkommen zurück</h1>
+          <h1 className="mt-6 text-2xl font-800 text-[#3730A3]">Willkommen zurück</h1>
           <p className="text-gray-500 text-sm mt-1">Melde dich mit deinem Schülerkonto an</p>
         </div>
 
@@ -58,7 +58,7 @@ export default function LoginPage() {
                 <Label htmlFor="password">Passwort</Label>
                 <Link
                   href="/auth/passwort-vergessen"
-                  className="text-xs text-[#1C244B] hover:underline"
+                  className="text-xs text-[#3730A3] hover:underline"
                 >
                   Passwort vergessen?
                 </Link>
@@ -105,7 +105,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Noch kein Konto?{" "}
-          <Link href="/#probelektion" className="text-[#1C244B] font-600 hover:underline">
+          <Link href="/#probelektion" className="text-[#3730A3] font-600 hover:underline">
             Probelektion anfragen
           </Link>
         </p>

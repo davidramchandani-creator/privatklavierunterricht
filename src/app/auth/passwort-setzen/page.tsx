@@ -62,13 +62,13 @@ export default function PasswortSetzenPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-[#1C244B] hover:opacity-80 transition-opacity">
-            <span className="w-10 h-10 rounded-xl bg-[#1C244B] flex items-center justify-center">
+          <Link href="/" className="inline-flex items-center gap-2 text-[#3730A3] hover:opacity-80 transition-opacity">
+            <span className="w-10 h-10 rounded-xl bg-[#3730A3] flex items-center justify-center">
               <Music className="w-5 h-5 text-white" />
             </span>
             <span className="font-800 text-xl">David</span>
           </Link>
-          <h1 className="mt-6 text-2xl font-800 text-[#1C244B]">Passwort festlegen</h1>
+          <h1 className="mt-6 text-2xl font-800 text-[#3730A3]">Passwort festlegen</h1>
           <p className="text-gray-500 text-sm mt-1">Wähle ein sicheres Passwort für dein Konto</p>
         </div>
 

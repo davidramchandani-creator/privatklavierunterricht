@@ -26,13 +26,13 @@ export default function PasswortVergessenPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-[#1C244B] hover:opacity-80 transition-opacity">
-            <span className="w-10 h-10 rounded-xl bg-[#1C244B] flex items-center justify-center">
+          <Link href="/" className="inline-flex items-center gap-2 text-[#3730A3] hover:opacity-80 transition-opacity">
+            <span className="w-10 h-10 rounded-xl bg-[#3730A3] flex items-center justify-center">
               <Music className="w-5 h-5 text-white" />
             </span>
             <span className="font-800 text-xl">David</span>
           </Link>
-          <h1 className="mt-6 text-2xl font-800 text-[#1C244B]">Passwort zurücksetzen</h1>
+          <h1 className="mt-6 text-2xl font-800 text-[#3730A3]">Passwort zurücksetzen</h1>
           <p className="text-gray-500 text-sm mt-1">Wir schicken dir einen Link per E-Mail</p>
         </div>
 
@@ -48,7 +48,7 @@ export default function PasswortVergessenPage() {
                   Falls ein Konto mit dieser Adresse existiert, erhältst du in wenigen Minuten einen Link zum Zurücksetzen.
                 </p>
               </div>
-              <Link href="/auth/login" className="block text-sm text-[#1C244B] hover:underline font-500 mt-2">
+              <Link href="/auth/login" className="block text-sm text-[#3730A3] hover:underline font-500 mt-2">
                 Zurück zur Anmeldung
               </Link>
             </div>
@@ -75,7 +75,7 @@ export default function PasswortVergessenPage() {
               </Button>
 
               <p className="text-center text-sm text-gray-500">
-                <Link href="/auth/login" className="text-[#1C244B] hover:underline">
+                <Link href="/auth/login" className="text-[#3730A3] hover:underline">
                   Zurück zur Anmeldung
                 </Link>
               </p>

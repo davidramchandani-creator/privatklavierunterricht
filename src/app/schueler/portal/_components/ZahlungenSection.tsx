@@ -42,7 +42,7 @@ export default function ZahlungenSection({ zahlungen }: { zahlungen: Zahlung[] }
               href={TWINT_LINK}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm font-600 text-white bg-[#1C244B] px-4 py-2.5 rounded-xl hover:bg-[#1C244B]/90 transition-colors"
+              className="inline-flex items-center gap-2 text-sm font-600 text-white bg-[#3730A3] px-4 py-2.5 rounded-xl hover:bg-[#3730A3]/90 transition-colors"
             >
               <ExternalLink className="w-4 h-4" />
               Via Twint bezahlen

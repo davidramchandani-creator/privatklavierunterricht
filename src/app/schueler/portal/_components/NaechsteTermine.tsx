@@ -99,7 +99,7 @@ function TerminRow({ termin, schueler_id }: { termin: Termin; schueler_id: strin
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#1C244B]/8 flex flex-col items-center justify-center flex-shrink-0 text-[#1C244B]">
+          <div className="w-10 h-10 rounded-xl bg-[#3730A3]/8 flex flex-col items-center justify-center flex-shrink-0 text-[#3730A3]">
             <span className="text-xs font-700 leading-none">{beginn.getDate()}</span>
             <span className="text-[10px] leading-none opacity-70">
               {beginn.toLocaleDateString("de-CH", { month: "short" })}
@@ -115,7 +115,7 @@ function TerminRow({ termin, schueler_id }: { termin: Termin; schueler_id: strin
         <div className="flex items-center gap-1 flex-shrink-0">
           <button
             onClick={downloadIcs}
-            className="p-1.5 text-gray-400 hover:text-[#1C244B] rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-1.5 text-gray-400 hover:text-[#3730A3] rounded-lg hover:bg-gray-100 transition-colors"
             title="Zum Kalender hinzufügen"
           >
             <Download className="w-4 h-4" />

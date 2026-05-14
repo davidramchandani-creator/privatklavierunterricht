@@ -62,7 +62,7 @@ export default function TerminBuchen({
       {!open ? (
         <button
           onClick={() => setOpen(true)}
-          className="flex items-center gap-2 text-sm font-600 text-[#1C244B] px-4 py-2.5 rounded-xl border border-[#1C244B]/20 hover:bg-[#1C244B]/5 transition-colors"
+          className="flex items-center gap-2 text-sm font-600 text-[#3730A3] px-4 py-2.5 rounded-xl border border-[#3730A3]/20 hover:bg-[#3730A3]/5 transition-colors"
         >
           <CalendarPlus className="w-4 h-4" />
           Neue Lektion buchen
@@ -110,8 +110,8 @@ export default function TerminBuchen({
                         onClick={() => setSelectedSlot(isSelected ? null : slot)}
                         className={`w-full text-xs py-1.5 rounded-lg font-500 transition-colors ${
                           isSelected
-                            ? "bg-[#1C244B] text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-[#1C244B]/10"
+                            ? "bg-[#3730A3] text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-[#3730A3]/10"
                         }`}
                       >
                         {time}

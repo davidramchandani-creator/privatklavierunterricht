@@ -43,8 +43,8 @@ export default function PaketCard({ paket }: { paket: Paket | null }) {
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#1C244B]/10 flex items-center justify-center flex-shrink-0">
-            <Package className="w-5 h-5 text-[#1C244B]" />
+          <div className="w-10 h-10 rounded-xl bg-[#3730A3]/10 flex items-center justify-center flex-shrink-0">
+            <Package className="w-5 h-5 text-[#3730A3]" />
           </div>
           <div>
             <p className="font-700 text-gray-900">{typLabels[paket.typ] ?? paket.typ}</p>
@@ -69,13 +69,13 @@ export default function PaketCard({ paket }: { paket: Paket | null }) {
         </div>
         <div className="w-full bg-gray-100 rounded-full h-2">
           <div
-            className="h-2 rounded-full bg-[#1C244B] transition-all duration-500"
+            className="h-2 rounded-full bg-[#3730A3] transition-all duration-500"
             style={{ width: `${Math.min(progress, 100)}%` }}
           />
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-500">Verbleibend</span>
-          <span className="font-700 text-[#1C244B]">{verbleibend} Lektion{verbleibend !== 1 ? "en" : ""}</span>
+          <span className="font-700 text-[#3730A3]">{verbleibend} Lektion{verbleibend !== 1 ? "en" : ""}</span>
         </div>
         {paket.gueltig_bis && (
           <div className="flex justify-between text-sm pt-1 border-t border-gray-100">
