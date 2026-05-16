@@ -290,10 +290,5 @@ function ZahlungAction({ zahlungId }: { zahlungId: string }) {
   );
 }
 
-const SchuelerDetailActions = Object.assign(SchuelerDetailActionsRoot, {
-  PaketForm,
-  TerminActions,
-  ZahlungAction,
-});
-
-export default SchuelerDetailActions;
+export { PaketForm, TerminActions, ZahlungAction };
+export default SchuelerDetailActionsRoot;

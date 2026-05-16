@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
-import SchuelerDetailActions from "./_components/SchuelerDetailActions";
+import SchuelerDetailActions, { PaketForm, TerminActions, ZahlungAction } from "./_components/SchuelerDetailActions";
 
 export default async function SchuelerDetailPage({
   params,
@@ -182,7 +182,7 @@ export default async function SchuelerDetailPage({
           <p className="text-sm text-gray-400 mb-4">Noch kein Paket vorhanden.</p>
         )}
 
-        <SchuelerDetailActions.PaketForm schueler_id={id} />
+        <PaketForm schueler_id={id} />
       </div>
 
       {/* Termine */}
@@ -217,7 +217,7 @@ export default async function SchuelerDetailPage({
                   </td>
                   <td className="py-3 text-sm text-gray-500">{t.notiz ?? "—"}</td>
                   <td className="py-3">
-                    <SchuelerDetailActions.TerminActions terminId={t.id} status={t.status} />
+                    <TerminActions terminId={t.id} status={t.status} />
                   </td>
                 </tr>
               ))}
@@ -261,7 +261,7 @@ export default async function SchuelerDetailPage({
                   </td>
                   <td className="py-3">
                     {z.status === "offen" && (
-                      <SchuelerDetailActions.ZahlungAction zahlungId={z.id} />
+                      <ZahlungAction zahlungId={z.id} />
                     )}
                   </td>
                 </tr>
