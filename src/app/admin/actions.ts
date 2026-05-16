@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { sendInviteEmail, sendPasswordResetEmail } from "@/lib/email";
 
 // ── Schüler ──────────────────────────────────────────────────────────────────
 
@@ -20,15 +21,28 @@ export async function inviteSchueler(formData: FormData) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
 
-  // Invite user via Auth – redirectTo sends user to password-set page after clicking link
-  const { data: inviteData, error: inviteError } =
-    await adminClient.auth.admin.inviteUserByEmail(email, {
-      data: { vorname, nachname },
-      redirectTo: `${appUrl}/auth/callback?next=/auth/passwort-setzen`,
+  // Generate invite link (bypasses PKCE — works across any browser/device)
+  const { data: linkData, error: inviteError } =
+    await adminClient.auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: {
+        data: { vorname, nachname },
+        redirectTo: `${appUrl}/auth/callback?next=/auth/passwort-setzen`,
+      },
     });
 
   if (inviteError) {
     return { error: inviteError.message };
+  }
+
+  const inviteData = { user: linkData.user };
+  const inviteLink = linkData.properties.action_link;
+
+  try {
+    await sendInviteEmail(email, vorname, inviteLink);
+  } catch (e) {
+    return { error: "Schüler erstellt, aber E-Mail konnte nicht gesendet werden: " + (e as Error).message };
   }
 
   const userId = inviteData.user.id;
@@ -133,7 +147,7 @@ export async function resendInvite(email: string) {
   const adminClient = await createAdminClient();
 
   // admin.generateLink bypasses PKCE – works across any browser/device
-  const { error } = await adminClient.auth.admin.generateLink({
+  const { data, error } = await adminClient.auth.admin.generateLink({
     type: "recovery",
     email,
     options: {
@@ -142,6 +156,13 @@ export async function resendInvite(email: string) {
   });
 
   if (error) return { error: error.message };
+
+  try {
+    await sendPasswordResetEmail(email, data.properties.action_link);
+  } catch (e) {
+    return { error: "Link generiert, aber E-Mail konnte nicht gesendet werden: " + (e as Error).message };
+  }
+
   return { success: true };
 }
 
