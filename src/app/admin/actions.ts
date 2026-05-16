@@ -18,10 +18,13 @@ export async function inviteSchueler(formData: FormData) {
 
   const adminClient = await createAdminClient();
 
-  // Invite user via Auth
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
+
+  // Invite user via Auth – redirectTo sends user to password-set page after clicking link
   const { data: inviteData, error: inviteError } =
     await adminClient.auth.admin.inviteUserByEmail(email, {
       data: { vorname, nachname },
+      redirectTo: `${appUrl}/auth/callback?next=/auth/passwort-setzen`,
     });
 
   if (inviteError) {
