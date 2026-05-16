@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   updateSchueler,
   deleteSchueler,
+  reactivateSchueler,
   hardDeleteSchueler,
   resendInvite,
   createPaket,
@@ -51,7 +52,15 @@ function SchuelerDetailActionsRoot({ schueler }: { schueler: Schueler }) {
     startTransition(async () => {
       const result = await deleteSchueler(schueler.id);
       if (result?.error) setError(result.error);
-      else router.push("/admin/schueler");
+      else router.refresh();
+    });
+  }
+
+  function handleReactivate() {
+    startTransition(async () => {
+      const result = await reactivateSchueler(schueler.id);
+      if (result?.error) setError(result.error);
+      else router.refresh();
     });
   }
 
@@ -150,7 +159,7 @@ function SchuelerDetailActionsRoot({ schueler }: { schueler: Schueler }) {
             {inviteSent ? "E-Mail gesendet ✓" : "Einladung erneut senden"}
           </Button>
         )}
-        {schueler.aktiv && (
+        {schueler.aktiv ? (
           <Button
             variant="ghost"
             size="sm"
@@ -160,6 +169,17 @@ function SchuelerDetailActionsRoot({ schueler }: { schueler: Schueler }) {
           >
             <Trash2 className="w-3.5 h-3.5" />
             Deaktivieren
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleReactivate}
+            disabled={isPending}
+            className="flex items-center gap-1.5 text-gray-500 hover:text-emerald-600"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Reaktivieren
           </Button>
         )}
         <Button

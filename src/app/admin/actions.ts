@@ -85,15 +85,19 @@ export async function updateSchueler(id: string, formData: FormData) {
 
 export async function deleteSchueler(id: string) {
   const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("schueler")
-    .update({ aktiv: false })
-    .eq("id", id);
-
+  const { error } = await supabase.from("schueler").update({ aktiv: false }).eq("id", id);
   if (error) return { error: error.message };
-
   revalidatePath("/admin/schueler");
+  revalidatePath(`/admin/schueler/${id}`);
+  return { success: true };
+}
+
+export async function reactivateSchueler(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("schueler").update({ aktiv: true }).eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/schueler");
+  revalidatePath(`/admin/schueler/${id}`);
   return { success: true };
 }
 
