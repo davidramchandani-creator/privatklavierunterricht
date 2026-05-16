@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import {
   updateSchueler,
   deleteSchueler,
+  hardDeleteSchueler,
+  resendInvite,
   createPaket,
   storniereTerminAdmin,
   abschliessenTermin,
@@ -12,7 +14,7 @@ import {
 } from "../../../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Pencil, Trash2, CheckCircle2, XCircle, Plus } from "lucide-react";
+import { Loader2, Pencil, Trash2, CheckCircle2, XCircle, Plus, Mail, AlertTriangle } from "lucide-react";
 
 type Schueler = {
   id: string;
@@ -23,6 +25,7 @@ type Schueler = {
   adresse: string | null;
   notizen: string | null;
   aktiv: boolean;
+  user_id: string | null;
 };
 
 function SchuelerDetailActionsRoot({ schueler }: { schueler: Schueler }) {
@@ -30,6 +33,7 @@ function SchuelerDetailActionsRoot({ schueler }: { schueler: Schueler }) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [inviteSent, setInviteSent] = useState(false);
 
   function handleUpdate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -48,6 +52,23 @@ function SchuelerDetailActionsRoot({ schueler }: { schueler: Schueler }) {
       const result = await deleteSchueler(schueler.id);
       if (result?.error) setError(result.error);
       else router.push("/admin/schueler");
+    });
+  }
+
+  function handleHardDelete() {
+    if (!confirm(`${schueler.vorname} ${schueler.nachname} wirklich permanent löschen? Alle Daten (Pakete, Termine, Zahlungen) werden unwiderruflich gelöscht.`)) return;
+    startTransition(async () => {
+      const result = await hardDeleteSchueler(schueler.id);
+      if (result?.error) setError(result.error);
+      else router.push("/admin/schueler");
+    });
+  }
+
+  function handleResendInvite() {
+    startTransition(async () => {
+      const result = await resendInvite(schueler.email);
+      if (result?.error) setError(result.error);
+      else setInviteSent(true);
     });
   }
 
@@ -106,27 +127,54 @@ function SchuelerDetailActionsRoot({ schueler }: { schueler: Schueler }) {
   }
 
   return (
-    <div className="mt-5 flex gap-2 border-t border-gray-100 pt-4">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setEditing(true)}
-        className="flex items-center gap-1.5"
-      >
-        <Pencil className="w-3.5 h-3.5" />
-        Bearbeiten
-      </Button>
-      {schueler.aktiv && (
+    <div className="mt-5 border-t border-gray-100 pt-4 space-y-3">
+      <div className="flex flex-wrap gap-2">
         <Button
-          variant="destructive"
+          variant="outline"
           size="sm"
-          onClick={handleDeactivate}
-          disabled={isPending}
+          onClick={() => setEditing(true)}
           className="flex items-center gap-1.5"
         >
-          <Trash2 className="w-3.5 h-3.5" />
-          Deaktivieren
+          <Pencil className="w-3.5 h-3.5" />
+          Bearbeiten
         </Button>
+        {schueler.user_id && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleResendInvite}
+            disabled={isPending || inviteSent}
+            className="flex items-center gap-1.5"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            {inviteSent ? "E-Mail gesendet ✓" : "Einladung erneut senden"}
+          </Button>
+        )}
+        {schueler.aktiv && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDeactivate}
+            disabled={isPending}
+            className="flex items-center gap-1.5 text-gray-500 hover:text-amber-600"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Deaktivieren
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleHardDelete}
+          disabled={isPending}
+          className="flex items-center gap-1.5 text-red-500 hover:text-red-700 hover:bg-red-50"
+        >
+          <AlertTriangle className="w-3.5 h-3.5" />
+          Permanent löschen
+        </Button>
+      </div>
+      {error && (
+        <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
       )}
     </div>
   );
