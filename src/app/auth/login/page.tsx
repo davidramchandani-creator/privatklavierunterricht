@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Music, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login } from "@/app/auth/actions";
 
+const urlErrorMessages: Record<string, string> = {
+  link_ungueltig: "Dieser Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.",
+  not_authenticated: "Du musst angemeldet sein, um diese Seite aufzurufen.",
+};
+
 export default function LoginPage() {
+  const searchParams = useSearchParams();
+  const urlError = searchParams.get("error");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -84,9 +92,9 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {error && (
+            {(urlError || error) && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
-                {error}
+                {error ?? urlErrorMessages[urlError!] ?? "Ein Fehler ist aufgetreten."}
               </div>
             )}
 
@@ -105,7 +113,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Noch kein Konto?{" "}
-          <Link href="/#probelektion" className="text-[#3730A3] font-600 hover:underline">
+          <Link href="/probelektion" className="text-[#3730A3] font-600 hover:underline">
             Probelektion anfragen
           </Link>
         </p>
