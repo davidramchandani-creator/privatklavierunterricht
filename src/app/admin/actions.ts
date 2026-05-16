@@ -97,6 +97,45 @@ export async function deleteSchueler(id: string) {
   return { success: true };
 }
 
+export async function hardDeleteSchueler(id: string) {
+  const adminClient = await createAdminClient();
+
+  // Get user_id before deleting
+  const { data: schueler } = await adminClient
+    .from("schueler")
+    .select("user_id")
+    .eq("id", id)
+    .single();
+
+  // Delete schueler record (cascades to pakete, termine, zahlungen, bewertungen)
+  const { error: schuelerError } = await adminClient
+    .from("schueler")
+    .delete()
+    .eq("id", id);
+
+  if (schuelerError) return { error: schuelerError.message };
+
+  // Delete auth user if linked
+  if (schueler?.user_id) {
+    await adminClient.auth.admin.deleteUser(schueler.user_id);
+  }
+
+  revalidatePath("/admin/schueler");
+  return { success: true };
+}
+
+export async function resendInvite(email: string) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${appUrl}/auth/callback?next=/auth/passwort-setzen`,
+  });
+
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
 // ── Pakete ────────────────────────────────────────────────────────────────────
 
 export async function createPaket(formData: FormData) {
