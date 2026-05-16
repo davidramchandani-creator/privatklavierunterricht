@@ -130,10 +130,15 @@ export async function hardDeleteSchueler(id: string) {
 
 export async function resendInvite(email: string) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
-  const supabase = await createClient();
+  const adminClient = await createAdminClient();
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${appUrl}/auth/callback?next=/auth/passwort-setzen`,
+  // admin.generateLink bypasses PKCE – works across any browser/device
+  const { error } = await adminClient.auth.admin.generateLink({
+    type: "recovery",
+    email,
+    options: {
+      redirectTo: `${appUrl}/auth/callback?next=/auth/passwort-setzen`,
+    },
   });
 
   if (error) return { error: error.message };
