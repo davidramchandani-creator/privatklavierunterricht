@@ -57,6 +57,21 @@ export async function inviteSchueler(formData: FormData) {
     return { error: "Schüler-Datensatz konnte nicht erstellt werden: " + schuelerError.message };
   }
 
+  // Create/upsert profiles row for the new student
+  const { error: profileError } = await adminClient.from("profiles").upsert({
+    id: userId,
+    role: "student",
+    vorname,
+    nachname,
+    email,
+    // price fields default to spec values (85/70/65/0)
+  }, { onConflict: "id" });
+
+  if (profileError) {
+    // Non-fatal: log but don't block invite success
+    console.error("Profile upsert failed:", profileError.message);
+  }
+
   revalidatePath("/admin/schueler");
   return { success: true };
 }
