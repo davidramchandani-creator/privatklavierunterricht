@@ -76,7 +76,7 @@ export default function TerminBuchen({
   if (success) {
     return (
       <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center text-sm text-emerald-700 font-500">
-        Lektion erfolgreich gebucht! Seite neu laden um sie zu sehen.
+        Anfrage gesendet! David wird sie in Kürze bestätigen.
       </div>
     );
   }

@@ -269,8 +269,36 @@ export async function createTermin(formData: FormData) {
   return { success: true };
 }
 
+export async function bestaetigeTermin(id: string) {
+  const supabase = await createClient();
+
+  const { data: termin } = await supabase
+    .from("termine")
+    .select("schueler_id")
+    .eq("id", id)
+    .single();
+
+  const { error } = await supabase
+    .from("termine")
+    .update({ status: "bestaetigt" })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/kalender");
+  revalidatePath("/admin");
+  if (termin?.schueler_id) revalidatePath(`/admin/schueler/${termin.schueler_id}`);
+  return { success: true };
+}
+
 export async function storniereTerminAdmin(id: string) {
   const supabase = await createClient();
+
+  const { data: termin } = await supabase
+    .from("termine")
+    .select("schueler_id")
+    .eq("id", id)
+    .single();
 
   const { error } = await supabase
     .from("termine")
@@ -281,6 +309,7 @@ export async function storniereTerminAdmin(id: string) {
 
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
+  if (termin?.schueler_id) revalidatePath(`/admin/schueler/${termin.schueler_id}`);
   return { success: true };
 }
 
@@ -289,7 +318,7 @@ export async function abschliessenTermin(id: string) {
 
   const { data: termin, error: fetchError } = await supabase
     .from("termine")
-    .select("paket_id")
+    .select("paket_id, schueler_id")
     .eq("id", id)
     .single();
 
@@ -319,6 +348,7 @@ export async function abschliessenTermin(id: string) {
 
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
+  if (termin.schueler_id) revalidatePath(`/admin/schueler/${termin.schueler_id}`);
   return { success: true };
 }
 

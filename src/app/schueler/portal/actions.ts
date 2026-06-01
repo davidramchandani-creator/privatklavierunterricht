@@ -60,8 +60,8 @@ export async function getVerfuegbareSlots(
       windowEnd.setHours(endH, endM, 0, 0);
 
       let slotStart = new Date(windowStart);
-      while (slotStart.getTime() + 60 * 60000 <= windowEnd.getTime()) {
-        const slotEnd = new Date(slotStart.getTime() + 60 * 60000);
+      while (slotStart.getTime() + 45 * 60000 <= windowEnd.getTime()) {
+        const slotEnd = new Date(slotStart.getTime() + 45 * 60000);
 
         // Only show future slots
         if (slotStart > now && !bookedSet.has(slotStart.toISOString())) {
@@ -166,10 +166,10 @@ export async function buchTermin(
     paket_id,
     beginn,
     ende,
-    status: "bestaetigt",
+    status: "angefragt",
   });
 
-  if (error) return { error: "Buchung fehlgeschlagen. Bitte versuche es erneut." };
+  if (error) return { error: "Anfrage fehlgeschlagen. Bitte versuche es erneut." };
 
   return { success: true };
 }

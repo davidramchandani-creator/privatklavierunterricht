@@ -64,6 +64,7 @@ export default async function SchuelerDetailPage({
   };
 
   const terminStatusColors: Record<string, string> = {
+    angefragt: "bg-amber-50 text-amber-700",
     bestaetigt: "bg-blue-50 text-blue-700",
     abgeschlossen: "bg-emerald-50 text-emerald-700",
     storniert: "bg-red-50 text-red-600",

@@ -141,6 +141,8 @@ export default async function AdminKalenderPage({
                             className={`rounded-lg px-2 py-1.5 text-xs font-500 leading-tight ${
                               t.status === "abgeschlossen"
                                 ? "bg-emerald-100 text-emerald-800"
+                                : t.status === "angefragt"
+                                ? "bg-amber-100 text-amber-800"
                                 : "bg-[#3730A3]/10 text-[#3730A3]"
                             }`}
                           >
