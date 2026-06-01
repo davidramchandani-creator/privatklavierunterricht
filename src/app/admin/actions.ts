@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   DEFAULT_BUFFER_MIN,
   generateSeriesStarts,
@@ -12,9 +13,90 @@ import { loadAvailabilityContext } from "@/lib/booking-server";
 import { enqueueEmail } from "@/lib/emails-outbox";
 import {
   type Package as Paket,
+  PACKAGE_LABELS,
+  PACKAGE_LESSONS,
+  PACKAGE_VALIDITY_MONTHS,
   canBuyNewPackage,
   computePackageState,
 } from "@/lib/packages";
+import { addMonths } from "@/lib/utils";
+
+/**
+ * Bucht (ggf. als Serie) Termine für einen Schüler im neuen Schema.
+ * Validiert transaktional gegen die Buchungs-Engine; 24h-Vorlauf wird als
+ * Admin-Aktion übersprungen. Wird von Direktbuchung & Anfrage-Annahme genutzt.
+ */
+async function bookSeriesForStudent(
+  admin: SupabaseClient,
+  studentUserId: string,
+  startIso: string,
+  lessonsCount: number,
+  intervalDays: number,
+  source: "direct" | "public_request" | "admin_proposal" | "reschedule"
+): Promise<{ appointmentIds: string[] } | { error: string }> {
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("buffer_time_minutes")
+    .eq("id", studentUserId)
+    .single();
+  const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
+
+  const { data: pkgs } = await admin
+    .from("packages")
+    .select("*")
+    .eq("student_id", studentUserId)
+    .eq("status", "active");
+  const pkg = (pkgs as Paket[] | null)?.find((p) => !canBuyNewPackage(p)) ?? null;
+  if (!pkg) return { error: "Der Schüler hat kein aktives Paket." };
+
+  const state = computePackageState(pkg);
+  if (state.lessonsRemaining < lessonsCount) {
+    return {
+      error: `Das Paket hat nur noch ${state.lessonsRemaining} Lektion(en), benötigt werden ${lessonsCount}.`,
+    };
+  }
+
+  const desiredStart = new Date(startIso);
+  const now = new Date();
+  const starts = generateSeriesStarts(desiredStart, lessonsCount, intervalDays);
+  const seriesEnd = new Date(starts[starts.length - 1].getTime() + 3600000);
+
+  const ctx = await loadAvailabilityContext(
+    admin,
+    studentUserId,
+    bufferMin,
+    desiredStart,
+    seriesEnd,
+    now,
+    { skipLeadTime: true }
+  );
+  const validation = validateSeries(desiredStart, lessonsCount, intervalDays, ctx);
+  if (!validation.ok) {
+    return {
+      error:
+        "Mindestens ein Termin ist nicht verfügbar (Kollision/Abwesenheit/Zeitblock).",
+    };
+  }
+
+  const seriesId = lessonsCount > 1 ? crypto.randomUUID() : null;
+  const rows = slotsFromStarts(starts).map((s) => ({
+    student_id: studentUserId,
+    package_id: pkg.id,
+    start_at: s.start.toISOString(),
+    end_at: s.end.toISOString(),
+    status: "booked",
+    source,
+    series_id: seriesId,
+  }));
+
+  const { data: created, error } = await admin
+    .from("appointments")
+    .insert(rows)
+    .select("id");
+  if (error || !created) return { error: "Termine konnten nicht erstellt werden." };
+
+  return { appointmentIds: created.map((c) => c.id) };
+}
 
 // ── Schüler ──────────────────────────────────────────────────────────────────
 
@@ -585,6 +667,132 @@ export async function rejectBookingRequest(requestId: string, reason?: string) {
   });
 
   revalidatePath("/admin/terminanfragen");
+  return { success: true };
+}
+
+// ── Admin: Preise, Pakete, Direktbuchung, Termine (neues Schema) ─────────────
+
+/** Setzt die Preise & Pufferzeit eines Schülers (profiles). Spec §11.2. */
+export async function updateStudentPrices(
+  userId: string,
+  schuelerId: string,
+  formData: FormData
+) {
+  const admin = await createAdminClient();
+
+  const update: Record<string, number> = {};
+  const fields = ["price_single", "price_10er", "price_20er", "travel_surcharge"] as const;
+  for (const f of fields) {
+    const v = parseFloat(formData.get(f) as string);
+    if (!isNaN(v) && v >= 0) update[f] = v;
+  }
+  const buffer = parseInt(formData.get("buffer_time_minutes") as string);
+  if (buffer === 15 || buffer === 30) update.buffer_time_minutes = buffer;
+
+  if (Object.keys(update).length === 0) return { success: true };
+
+  const { error } = await admin.from("profiles").update(update).eq("id", userId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/schueler/${schuelerId}`);
+  return { success: true };
+}
+
+/** Admin legt einem Schüler ein Paket an (neues Schema). */
+export async function createPackageAdmin(formData: FormData) {
+  const admin = await createAdminClient();
+
+  const userId = formData.get("student_user_id") as string;
+  const schuelerId = formData.get("schueler_id") as string;
+  const type = formData.get("type") as string; // single|10er|20er
+  const paymentMethod = (formData.get("payment_method") as string) || null;
+  const pricePerLesson = parseFloat(formData.get("price_per_lesson") as string);
+
+  if (!userId || !["single", "10er", "20er"].includes(type)) {
+    return { error: "Ungültige Paketdaten." };
+  }
+  if (isNaN(pricePerLesson) || pricePerLesson < 0) {
+    return { error: "Ungültiger Preis." };
+  }
+
+  const lessonsTotal = PACKAGE_LESSONS[type];
+  const validityMonths = PACKAGE_VALIDITY_MONTHS[type];
+  const startsAt = new Date();
+  const expiresAt = validityMonths != null ? addMonths(startsAt, validityMonths) : null;
+
+  const { error } = await admin.from("packages").insert({
+    student_id: userId,
+    type,
+    lessons_total: lessonsTotal,
+    lessons_used: 0,
+    name: PACKAGE_LABELS[type],
+    price_per_lesson: pricePerLesson,
+    total_price: pricePerLesson * lessonsTotal,
+    payment_method: paymentMethod,
+    starts_at: startsAt.toISOString(),
+    expires_at: expiresAt ? expiresAt.toISOString() : null,
+    status: "active",
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/schueler/${schuelerId}`);
+  return { success: true };
+}
+
+/** Admin bucht direkt (ohne Anfrage) – sofort bestätigt. Spec §4.3. */
+export async function createDirectBooking(formData: FormData) {
+  const admin = await createAdminClient();
+
+  const userId = formData.get("student_user_id") as string;
+  const schuelerId = formData.get("schueler_id") as string;
+  const startIso = formData.get("start") as string;
+  const lessonsCount = parseInt(formData.get("lessons_count") as string) || 1;
+  const intervalDays = parseInt(formData.get("interval_days") as string) || 7;
+
+  if (!userId || !startIso) return { error: "Schüler und Startzeit erforderlich." };
+
+  const result = await bookSeriesForStudent(
+    admin,
+    userId,
+    new Date(startIso).toISOString(),
+    lessonsCount,
+    intervalDays,
+    "direct"
+  );
+  if ("error" in result) return result;
+
+  revalidatePath(`/admin/schueler/${schuelerId}`);
+  revalidatePath("/admin/kalender");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+/** Termin als abgeschlossen markieren (neues Schema). */
+export async function completeAppointmentNew(id: string, schuelerId: string) {
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("appointments")
+    .update({ status: "completed" })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath(`/admin/schueler/${schuelerId}`);
+  revalidatePath("/admin/kalender");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+/** Termin stornieren (neues Schema). Gibt die Lektion wieder frei. */
+export async function cancelAppointmentNew(id: string, schuelerId: string) {
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("appointments")
+    .update({ status: "cancelled" })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath(`/admin/schueler/${schuelerId}`);
+  revalidatePath("/admin/kalender");
+  revalidatePath("/admin");
   return { success: true };
 }
 

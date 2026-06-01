@@ -20,13 +20,47 @@ export default async function AdminKalenderPage({
 
   const supabase = await createClient();
 
-  const { data: termine } = await supabase
-    .from("termine")
-    .select("id, beginn, ende, status, schueler(vorname, nachname)")
-    .neq("status", "storniert")
-    .gte("beginn", monday.toISOString())
-    .lte("beginn", sunday.toISOString())
-    .order("beginn", { ascending: true });
+  // Neues Schema: bestätigte Termine + offene Terminanfragen
+  const [{ data: appointments }, { data: requests }] = await Promise.all([
+    supabase
+      .from("appointments")
+      .select("id, start_at, end_at, status, profiles(vorname, nachname)")
+      .in("status", ["booked", "completed"])
+      .gte("start_at", monday.toISOString())
+      .lte("start_at", sunday.toISOString())
+      .order("start_at", { ascending: true }),
+    supabase
+      .from("booking_requests")
+      .select("id, desired_start, profiles(vorname, nachname)")
+      .eq("status", "open")
+      .gte("desired_start", monday.toISOString())
+      .lte("desired_start", sunday.toISOString()),
+  ]);
+
+  type Eintrag = {
+    id: string;
+    beginn: string;
+    ende: string;
+    status: string;
+    schueler: { vorname: string; nachname: string } | null;
+  };
+
+  const eintraege: Eintrag[] = [
+    ...((appointments ?? []).map((a) => ({
+      id: a.id,
+      beginn: a.start_at,
+      ende: a.end_at,
+      status: a.status,
+      schueler: (a.profiles as unknown) as { vorname: string; nachname: string } | null,
+    }))),
+    ...((requests ?? []).map((r) => ({
+      id: r.id,
+      beginn: r.desired_start,
+      ende: new Date(new Date(r.desired_start).getTime() + 45 * 60000).toISOString(),
+      status: "angefragt",
+      schueler: (r.profiles as unknown) as { vorname: string; nachname: string } | null,
+    }))),
+  ];
 
   const weekLabel = `${monday.toLocaleDateString("de-CH", {
     day: "numeric",
@@ -37,11 +71,11 @@ export default async function AdminKalenderPage({
     year: "numeric",
   })}`;
 
-  // Group termine by day (0=Mon, ..., 6=Sun) and hour
-  const terminsByDay: Map<number, typeof termine> = new Map();
+  // Group entries by day (0=Mon, ..., 6=Sun)
+  const terminsByDay: Map<number, Eintrag[]> = new Map();
   for (let d = 0; d < 7; d++) terminsByDay.set(d, []);
 
-  for (const t of termine ?? []) {
+  for (const t of eintraege) {
     const date = new Date(t.beginn);
     const dow = date.getDay(); // 0=Sun
     const dayIndex = dow === 0 ? 6 : dow - 1; // 0=Mon
@@ -139,8 +173,10 @@ export default async function AdminKalenderPage({
                           <div
                             key={t.id}
                             className={`rounded-lg px-2 py-1.5 text-xs font-500 leading-tight ${
-                              t.status === "abgeschlossen"
+                              t.status === "completed"
                                 ? "bg-emerald-100 text-emerald-800"
+                                : t.status === "angefragt"
+                                ? "bg-amber-100 text-amber-800"
                                 : "bg-[#3730A3]/10 text-[#3730A3]"
                             }`}
                           >
