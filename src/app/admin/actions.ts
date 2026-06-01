@@ -36,16 +36,31 @@ export async function inviteSchueler(formData: FormData) {
     return { error: inviteError.message };
   }
 
-  const inviteData = { user: linkData.user };
+  const userId = linkData.user.id;
   const inviteLink = linkData.properties.action_link;
+
+  // If schueler record already exists, just resend the invite email
+  const { data: existing } = await adminClient
+    .from("schueler")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existing) {
+    try {
+      await sendInviteEmail(email, vorname, inviteLink);
+    } catch (e) {
+      return { error: "E-Mail konnte nicht gesendet werden: " + (e as Error).message };
+    }
+    revalidatePath("/admin/schueler");
+    return { success: true };
+  }
 
   try {
     await sendInviteEmail(email, vorname, inviteLink);
   } catch (e) {
     return { error: "Schüler erstellt, aber E-Mail konnte nicht gesendet werden: " + (e as Error).message };
   }
-
-  const userId = inviteData.user.id;
 
   // Set role
   const { error: roleError } = await adminClient.from("profile_roles").upsert({
@@ -57,7 +72,7 @@ export async function inviteSchueler(formData: FormData) {
   }
 
   // Create schueler record
-  const { error: schuelerError } = await adminClient.from("schueler").upsert({
+  const { error: schuelerError } = await adminClient.from("schueler").insert({
     user_id: userId,
     vorname,
     nachname,
@@ -65,7 +80,7 @@ export async function inviteSchueler(formData: FormData) {
     telefon,
     adresse,
     aktiv: true,
-  }, { onConflict: "user_id" });
+  });
 
   if (schuelerError) {
     return { error: "Schüler-Datensatz konnte nicht erstellt werden: " + schuelerError.message };
