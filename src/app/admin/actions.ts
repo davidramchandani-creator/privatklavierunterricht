@@ -21,34 +21,48 @@ export async function inviteSchueler(formData: FormData) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
 
-  // Generate invite link (bypasses PKCE — works across any browser/device)
-  const { data: linkData, error: inviteError } =
-    await adminClient.auth.admin.generateLink({
-      type: "invite",
-      email,
-      options: {
-        data: { vorname, nachname },
-        redirectTo: `${appUrl}/auth/callback?next=/auth/passwort-setzen`,
-      },
-    });
+  // Step 1: Create user in Supabase Auth (email confirmed so recovery link works)
+  const { data: userData, error: createError } = await adminClient.auth.admin.createUser({
+    email,
+    user_metadata: { vorname, nachname },
+    email_confirm: true,
+  });
 
-  if (inviteError) {
-    return { error: inviteError.message };
+  let userId: string;
+
+  if (createError) {
+    // User might already exist — look up by email
+    const { data: { users }, error: listError } = await adminClient.auth.admin.listUsers();
+    if (listError) return { error: createError.message };
+    const existing = users.find((u) => u.email === email);
+    if (!existing) return { error: createError.message };
+    userId = existing.id;
+  } else {
+    userId = userData.user.id;
   }
 
-  const userId = linkData.user.id;
-  const inviteLink = linkData.properties.action_link;
+  // Step 2: Generate a recovery (password-reset) link — this redirects via token_hash
+  // which our callback handles correctly without PKCE
+  const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+    type: "recovery",
+    email,
+    options: {
+      redirectTo: `${appUrl}/auth/callback?next=/auth/passwort-setzen`,
+    },
+  });
 
-  // If schueler record already exists, just resend the invite email
-  const { data: existing } = await adminClient
+  if (linkError) return { error: linkError.message };
+
+  // If schueler record already exists, just resend the email
+  const { data: existingSchueler } = await adminClient
     .from("schueler")
     .select("id")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (existing) {
+  if (existingSchueler) {
     try {
-      await sendInviteEmail(email, vorname, inviteLink);
+      await sendInviteEmail(email, vorname, linkData.properties.action_link);
     } catch (e) {
       return { error: "E-Mail konnte nicht gesendet werden: " + (e as Error).message };
     }
@@ -57,7 +71,7 @@ export async function inviteSchueler(formData: FormData) {
   }
 
   try {
-    await sendInviteEmail(email, vorname, inviteLink);
+    await sendInviteEmail(email, vorname, linkData.properties.action_link);
   } catch (e) {
     return { error: "Schüler erstellt, aber E-Mail konnte nicht gesendet werden: " + (e as Error).message };
   }
