@@ -2,7 +2,7 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM = "David Ramchandani <onboarding@resend.dev>";
+const FROM = "David Ramchandani <noreply@privatklavierunterricht.ch>";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
 
 export async function sendInviteEmail(to: string, vorname: string, inviteLink: string) {
