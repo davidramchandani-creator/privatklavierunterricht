@@ -41,8 +41,10 @@ export async function inviteSchueler(formData: FormData) {
     userId = userData.user.id;
   }
 
-  // Step 2: Generate a recovery (password-reset) link — this redirects via token_hash
-  // which our callback handles correctly without PKCE
+  // Step 2: Generate recovery link — use hashed_token to build our own callback URL
+  // This bypasses Supabase's verify endpoint (which redirects with hash fragment
+  // that server-side routes can't read). Instead we go directly to our callback
+  // with token_hash as a query param so verifyOtp works.
   const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
     type: "recovery",
     email,
@@ -53,6 +55,8 @@ export async function inviteSchueler(formData: FormData) {
 
   if (linkError) return { error: linkError.message };
 
+  const passwordSetLink = `${appUrl}/auth/callback?token_hash=${linkData.properties.hashed_token}&type=recovery&next=/auth/passwort-setzen`;
+
   // If schueler record already exists, just resend the email
   const { data: existingSchueler } = await adminClient
     .from("schueler")
@@ -62,7 +66,7 @@ export async function inviteSchueler(formData: FormData) {
 
   if (existingSchueler) {
     try {
-      await sendInviteEmail(email, vorname, linkData.properties.action_link);
+      await sendInviteEmail(email, vorname, passwordSetLink);
     } catch (e) {
       return { error: "E-Mail konnte nicht gesendet werden: " + (e as Error).message };
     }
@@ -71,7 +75,7 @@ export async function inviteSchueler(formData: FormData) {
   }
 
   try {
-    await sendInviteEmail(email, vorname, linkData.properties.action_link);
+    await sendInviteEmail(email, vorname, passwordSetLink);
   } catch (e) {
     return { error: "Schüler erstellt, aber E-Mail konnte nicht gesendet werden: " + (e as Error).message };
   }
@@ -186,8 +190,10 @@ export async function resendInvite(email: string) {
 
   if (error) return { error: error.message };
 
+  const passwordSetLink = `${appUrl}/auth/callback?token_hash=${data.properties.hashed_token}&type=recovery&next=/auth/passwort-setzen`;
+
   try {
-    await sendPasswordResetEmail(email, data.properties.action_link);
+    await sendPasswordResetEmail(email, passwordSetLink);
   } catch (e) {
     return { error: "Link generiert, aber E-Mail konnte nicht gesendet werden: " + (e as Error).message };
   }
