@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Users,
   Calendar,
+  CalendarClock,
   Clock,
   Tag,
   Star,
@@ -19,6 +20,7 @@ import AdminMobileMenu from "./_components/AdminMobileMenu";
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/anfragen", label: "Anfragen", icon: Inbox },
+  { href: "/admin/terminanfragen", label: "Terminanfragen", icon: CalendarClock },
   { href: "/admin/schueler", label: "Schüler", icon: Users },
   { href: "/admin/kalender", label: "Kalender", icon: Calendar },
   { href: "/admin/verfuegbarkeit", label: "Verfügbarkeit", icon: Clock },

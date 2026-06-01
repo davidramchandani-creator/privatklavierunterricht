@@ -2,6 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import {
+  DEFAULT_BUFFER_MIN,
+  generateSeriesStarts,
+  slotsFromStarts,
+  validateSeries,
+} from "@/lib/booking";
+import { loadAvailabilityContext } from "@/lib/booking-server";
+import { enqueueEmail } from "@/lib/emails-outbox";
+import {
+  type Package as Paket,
+  canBuyNewPackage,
+  computePackageState,
+} from "@/lib/packages";
 
 // ── Schüler ──────────────────────────────────────────────────────────────────
 
@@ -421,6 +434,157 @@ export async function updatePreise(formData: FormData) {
   }
 
   revalidatePath("/admin/preise");
+  return { success: true };
+}
+
+// ── Terminanfragen (booking_requests) ───────────────────────────────────────
+
+/**
+ * Admin nimmt eine offene Terminanfrage an (Spec §4.1). Erstellt – bei Serien
+ * transaktional (alle oder keiner) – die Termine im neuen Schema. Validiert
+ * vorher mit der Buchungs-Engine (Kollisionen/Abwesenheiten/Zeitblöcke), die
+ * 24h-Vorlaufregel wird als Admin-Aktion übersprungen.
+ */
+export async function acceptBookingRequest(requestId: string) {
+  const admin = await createAdminClient();
+
+  const { data: req } = await admin
+    .from("booking_requests")
+    .select("*")
+    .eq("id", requestId)
+    .single();
+
+  if (!req) return { error: "Anfrage nicht gefunden." };
+  if (req.status !== "open") {
+    return { error: "Diese Anfrage wurde bereits bearbeitet." };
+  }
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("buffer_time_minutes, vorname, nachname, email")
+    .eq("id", req.student_id)
+    .single();
+  const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
+
+  // Aktives, nutzbares Paket des Schülers
+  const { data: pkgs } = await admin
+    .from("packages")
+    .select("*")
+    .eq("student_id", req.student_id)
+    .eq("status", "active");
+  const pkg = (pkgs as Paket[] | null)?.find((p) => !canBuyNewPackage(p)) ?? null;
+  if (!pkg) return { error: "Der Schüler hat kein aktives Paket." };
+
+  const state = computePackageState(pkg);
+  if (state.lessonsRemaining < req.lessons_count) {
+    return {
+      error: `Das Paket hat nur noch ${state.lessonsRemaining} Lektion(en), benötigt werden ${req.lessons_count}.`,
+    };
+  }
+
+  const desiredStart = new Date(req.desired_start);
+  const now = new Date();
+  const starts = generateSeriesStarts(
+    desiredStart,
+    req.lessons_count,
+    req.interval_days
+  );
+  const seriesEnd = new Date(starts[starts.length - 1].getTime() + 3600000);
+
+  const ctx = await loadAvailabilityContext(
+    admin,
+    req.student_id,
+    bufferMin,
+    desiredStart,
+    seriesEnd,
+    now,
+    { skipLeadTime: true }
+  );
+  const validation = validateSeries(
+    desiredStart,
+    req.lessons_count,
+    req.interval_days,
+    ctx
+  );
+  if (!validation.ok) {
+    return {
+      error:
+        "Mindestens ein Termin der Serie ist nicht mehr verfügbar (Kollision/Abwesenheit).",
+    };
+  }
+
+  const seriesId = req.lessons_count > 1 ? crypto.randomUUID() : null;
+  const rows = slotsFromStarts(starts).map((s) => ({
+    student_id: req.student_id,
+    package_id: pkg.id,
+    start_at: s.start.toISOString(),
+    end_at: s.end.toISOString(),
+    status: "booked",
+    source: "public_request",
+    series_id: seriesId,
+  }));
+
+  const { data: created, error: insertError } = await admin
+    .from("appointments")
+    .insert(rows)
+    .select("id");
+
+  if (insertError || !created) {
+    return { error: "Termine konnten nicht erstellt werden." };
+  }
+
+  await admin
+    .from("booking_requests")
+    .update({
+      status: "accepted",
+      processed_at: new Date().toISOString(),
+      created_appointment_ids: created.map((c) => c.id),
+    })
+    .eq("id", requestId);
+
+  await enqueueEmail(admin, "booking_confirmed", {
+    student_id: req.student_id,
+    to: profile?.email,
+    starts: starts.map((s) => s.toISOString()),
+    lessons_count: req.lessons_count,
+    interval_days: req.interval_days,
+  });
+
+  revalidatePath("/admin/terminanfragen");
+  revalidatePath("/admin/kalender");
+  revalidatePath("/admin");
+  revalidatePath(`/admin/schueler/${req.student_id}`);
+  return { success: true };
+}
+
+/** Admin lehnt eine Terminanfrage ab (optional mit Begründung). */
+export async function rejectBookingRequest(requestId: string, reason?: string) {
+  const admin = await createAdminClient();
+
+  const { data: req } = await admin
+    .from("booking_requests")
+    .select("id, status, student_id")
+    .eq("id", requestId)
+    .single();
+
+  if (!req) return { error: "Anfrage nicht gefunden." };
+  if (req.status !== "open") {
+    return { error: "Diese Anfrage wurde bereits bearbeitet." };
+  }
+
+  const { error } = await admin
+    .from("booking_requests")
+    .update({ status: "rejected", processed_at: new Date().toISOString() })
+    .eq("id", requestId);
+  if (error) return { error: "Anfrage konnte nicht abgelehnt werden." };
+
+  await enqueueEmail(admin, "booking_rejected", {
+    student_id: req.student_id,
+    request_id: requestId,
+    reason: reason ?? null,
+  });
+
+  revalidatePath("/admin/terminanfragen");
   return { success: true };
 }
 

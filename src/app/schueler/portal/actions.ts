@@ -12,90 +12,268 @@ import {
   computePackageState,
   pricePerLessonFor,
 } from "@/lib/packages";
+import {
+  type CalDate,
+  DEFAULT_BUFFER_MIN,
+  SERIES_INTERVALS,
+  SERIES_LESSON_COUNTS,
+  addDaysCal,
+  computeAvailableSlots,
+  generateSeriesStarts,
+  isAtLeast24hAway,
+  utcToZonedDate,
+  validateSeries,
+  weekdayOf,
+  zonedToUtc,
+} from "@/lib/booking";
+import { loadAvailabilityContext } from "@/lib/booking-server";
+import { enqueueEmail } from "@/lib/emails-outbox";
 
 export type AvailableSlot = {
   beginn: string;
   ende: string;
 };
 
+/**
+ * Freie Slots einer Woche über die Buchungs-Engine (Meilenstein 4).
+ * Belegte Zeiten werden via Service-Role gelesen (Kollisionsprüfung),
+ * nach aussen gehen nur freie Slot-Zeiten.
+ */
 export async function getVerfuegbareSlots(
   weekOffset: number
 ): Promise<AvailableSlot[]> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
 
-  // 1. Get active availability slots
-  const { data: verfuegbarkeit } = await supabase
-    .from("admin_verfuegbarkeit")
-    .select("*")
-    .eq("aktiv", true);
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("buffer_time_minutes")
+    .eq("id", user.id)
+    .maybeSingle();
+  const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
 
-  if (!verfuegbarkeit || verfuegbarkeit.length === 0) return [];
-
-  // 2. Calculate week boundaries
   const now = new Date();
-  const monday = getMonday(now, weekOffset);
-  const sunday = new Date(monday.getTime() + 7 * 86400000);
 
-  // 3. Fetch existing non-cancelled termine for that week
-  const { data: booked } = await supabase
-    .from("termine")
-    .select("beginn, ende")
-    .neq("status", "storniert")
-    .gte("beginn", monday.toISOString())
-    .lt("beginn", sunday.toISOString());
+  // Montag der Zielwoche (Zürcher Kalenderdatum)
+  const todayCal = utcToZonedDate(now);
+  const w = weekdayOf(todayCal); // 0=So … 6=Sa
+  const mondayOffset = w === 0 ? -6 : 1 - w;
+  const fromCal: CalDate = addDaysCal(todayCal, mondayOffset + weekOffset * 7);
 
-  const bookedSet = new Set(booked?.map((t) => t.beginn) ?? []);
+  const fromInstant = zonedToUtc(fromCal.y, fromCal.m, fromCal.d, 0, 0);
+  const toInstant = new Date(fromInstant.getTime() + 7 * 86400000);
 
-  // 4. Generate 60-min slots for each availability window in the week
-  const slots: AvailableSlot[] = [];
+  const admin = await createAdminClient();
+  const ctx = await loadAvailabilityContext(
+    admin,
+    user.id,
+    bufferMin,
+    fromInstant,
+    toInstant,
+    now
+  );
 
-  for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-    const date = new Date(monday.getTime() + dayIndex * 86400000);
-    // wochentag in DB: 1=Mon, ..., 6=Sat, 0=Sun
-    // date.getDay(): 0=Sun, 1=Mon, ..., 6=Sat
-    const jsDay = date.getDay();
-    const dbDay = jsDay; // same mapping in DB
-
-    const dayVerfuegbarkeit = verfuegbarkeit.filter(
-      (v) => v.wochentag === dbDay
-    );
-
-    for (const v of dayVerfuegbarkeit) {
-      const [beginH, beginM] = v.beginn_zeit.split(":").map(Number);
-      const [endH, endM] = v.ende_zeit.split(":").map(Number);
-
-      const windowStart = new Date(date);
-      windowStart.setHours(beginH, beginM, 0, 0);
-      const windowEnd = new Date(date);
-      windowEnd.setHours(endH, endM, 0, 0);
-
-      let slotStart = new Date(windowStart);
-      while (slotStart.getTime() + 60 * 60000 <= windowEnd.getTime()) {
-        const slotEnd = new Date(slotStart.getTime() + 60 * 60000);
-
-        // Only show future slots
-        if (slotStart > now && !bookedSet.has(slotStart.toISOString())) {
-          slots.push({
-            beginn: slotStart.toISOString(),
-            ende: slotEnd.toISOString(),
-          });
-        }
-
-        slotStart = slotEnd;
-      }
-    }
-  }
-
-  return slots;
+  return computeAvailableSlots(fromCal, 7, ctx).map((s) => ({
+    beginn: s.start.toISOString(),
+    ende: s.end.toISOString(),
+  }));
 }
 
-function getMonday(date: Date, offset: number): Date {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff + offset * 7);
-  d.setHours(0, 0, 0, 0);
-  return d;
+/**
+ * Schüler stellt eine Terminanfrage (öffentliche Buchung, Spec §4.1).
+ * Optional als Serie (1/5/10 Lektionen, Intervall 7/14 Tage). Wird als
+ * `booking_requests` (status open) gespeichert; Termine entstehen erst bei
+ * Admin-Annahme.
+ */
+export async function requestBooking(
+  desiredStartIso: string,
+  lessonsCount: number,
+  intervalDays: number
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  if (!SERIES_LESSON_COUNTS.includes(lessonsCount as 1 | 5 | 10)) {
+    return { error: "Ungültige Lektionsanzahl." };
+  }
+  if (!SERIES_INTERVALS.includes(intervalDays as 7 | 14)) {
+    return { error: "Ungültiges Intervall." };
+  }
+
+  const desiredStart = new Date(desiredStartIso);
+  const now = new Date();
+  if (!isAtLeast24hAway(desiredStart, now)) {
+    return {
+      error: "Anfragen sind nur mindestens 24 Stunden im Voraus möglich.",
+    };
+  }
+
+  // Profil (Puffer) + aktives Paket
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("buffer_time_minutes, vorname, nachname, email")
+    .eq("id", user.id)
+    .maybeSingle();
+  const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
+
+  const { data: pkgs } = await supabase
+    .from("packages")
+    .select("*")
+    .eq("student_id", user.id)
+    .eq("status", "active");
+  const pkg = (pkgs as Paket[] | null)?.find((p) => !canBuyNewPackage(p)) ?? null;
+  if (!pkg) {
+    return { error: "Du hast kein aktives Paket. Bitte buche zuerst ein Paket." };
+  }
+  const state = computePackageState(pkg);
+  if (state.lessonsRemaining < lessonsCount) {
+    return {
+      error: `Dein Paket hat nur noch ${state.lessonsRemaining} Lektion${
+        state.lessonsRemaining !== 1 ? "en" : ""
+      }.`,
+    };
+  }
+
+  // Serie gegen Engine validieren
+  const admin = await createAdminClient();
+  const starts = generateSeriesStarts(desiredStart, lessonsCount, intervalDays);
+  const seriesEnd = new Date(starts[starts.length - 1].getTime() + 3600000);
+  const ctx = await loadAvailabilityContext(
+    admin,
+    user.id,
+    bufferMin,
+    desiredStart,
+    seriesEnd,
+    now
+  );
+  const validation = validateSeries(desiredStart, lessonsCount, intervalDays, ctx);
+  if (!validation.ok) {
+    return {
+      error:
+        "Mindestens einer der gewünschten Termine ist nicht verfügbar. Bitte wähle einen anderen Zeitpunkt.",
+    };
+  }
+
+  const calculatedPrice = lessonsCount * Number(pkg.price_per_lesson);
+
+  const { error } = await supabase.from("booking_requests").insert({
+    student_id: user.id,
+    desired_start: desiredStart.toISOString(),
+    status: "open",
+    type: "public_request",
+    lessons_count: lessonsCount,
+    interval_days: intervalDays,
+    calculated_price: calculatedPrice,
+  });
+
+  if (error) {
+    return { error: "Anfrage konnte nicht gespeichert werden. Bitte erneut versuchen." };
+  }
+
+  // Outbox: Admin-Benachrichtigung + Bestätigung an Schüler
+  const studentName = profile ? `${profile.vorname} ${profile.nachname}` : "Schüler";
+  await enqueueEmail(admin, "booking_request_admin", {
+    student_id: user.id,
+    student_name: studentName,
+    desired_start: desiredStart.toISOString(),
+    lessons_count: lessonsCount,
+    interval_days: intervalDays,
+  });
+  await enqueueEmail(admin, "booking_request_received", {
+    student_id: user.id,
+    to: profile?.email,
+    desired_start: desiredStart.toISOString(),
+    lessons_count: lessonsCount,
+  });
+
+  revalidatePath("/schueler/portal");
+  return { success: true };
+}
+
+/** Schüler zieht eine offene Terminanfrage zurück (Spec §10.4). */
+export async function withdrawBookingRequest(requestId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const { data: req } = await supabase
+    .from("booking_requests")
+    .select("id, status, student_id")
+    .eq("id", requestId)
+    .single();
+
+  if (!req || req.student_id !== user.id) {
+    return { error: "Anfrage nicht gefunden." };
+  }
+  if (req.status !== "open") {
+    return { error: "Nur offene Anfragen können zurückgezogen werden." };
+  }
+
+  const { error } = await supabase
+    .from("booking_requests")
+    .update({ status: "withdrawn" })
+    .eq("id", requestId);
+  if (error) return { error: "Anfrage konnte nicht zurückgezogen werden." };
+
+  const admin = await createAdminClient();
+  await enqueueEmail(admin, "booking_request_withdrawn", {
+    student_id: user.id,
+    request_id: requestId,
+  });
+
+  revalidatePath("/schueler/portal");
+  return { success: true };
+}
+
+/**
+ * Schüler storniert einen bestätigten Termin (nur ≥24h vorher, Spec §10.4).
+ * Update läuft über Service-Role, da appointments per RLS nur vom Admin
+ * geändert werden dürfen; Eigentümerschaft + 24h werden serverseitig geprüft.
+ */
+export async function cancelAppointment(appointmentId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const { data: appt } = await supabase
+    .from("appointments")
+    .select("id, start_at, student_id, status")
+    .eq("id", appointmentId)
+    .single();
+
+  if (!appt || appt.student_id !== user.id) {
+    return { error: "Termin nicht gefunden." };
+  }
+  if (appt.status === "cancelled") return { success: true };
+  if (!isAtLeast24hAway(appt.start_at, new Date())) {
+    return { error: "Stornierungen sind nur bis 24 Stunden vorher möglich." };
+  }
+
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("appointments")
+    .update({ status: "cancelled" })
+    .eq("id", appointmentId);
+  if (error) return { error: "Termin konnte nicht storniert werden." };
+
+  await enqueueEmail(admin, "appointment_cancelled_by_student", {
+    student_id: user.id,
+    appointment_id: appointmentId,
+    start_at: appt.start_at,
+  });
+
+  revalidatePath("/schueler/portal");
+  return { success: true };
 }
 
 export async function storniereTermin(termin_id: string, schueler_id: string) {

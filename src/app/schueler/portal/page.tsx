@@ -22,15 +22,6 @@ export default async function SchuelerPortalPage() {
     .eq("user_id", user.id)
     .single();
 
-  // Altes Paket (für Buchungs-Sektion – wird in Meilenstein 4 auf
-  // appointments/packages migriert).
-  const { data: aktivPaket } = await supabase
-    .from("pakete")
-    .select("*")
-    .eq("schueler_id", schueler?.id ?? "")
-    .eq("aktiv", true)
-    .single();
-
   // Neues Schema: aktives Paket + Profilpreise (Meilenstein 3)
   const { data: profile } = await supabase
     .from("profiles")
@@ -82,14 +73,25 @@ export default async function SchuelerPortalPage() {
   };
 
   const kannNeuesPaket = canBuyNewPackage(aktivesPackage);
+  // Buchen erlaubt, wenn ein nutzbares aktives Paket vorhanden ist.
+  const canBook = !!aktivesPackage && !canBuyNewPackage(aktivesPackage);
 
-  const { data: naechsteTermine } = await supabase
-    .from("termine")
-    .select("*")
-    .eq("schueler_id", schueler?.id ?? "")
-    .gte("beginn", new Date().toISOString())
-    .order("beginn", { ascending: true })
-    .limit(5);
+  // Neue Termine (appointments) + offene Terminanfragen (Meilenstein 5)
+  const { data: naechsteAppointments } = await supabase
+    .from("appointments")
+    .select("id, start_at, end_at, status")
+    .eq("student_id", user.id)
+    .in("status", ["booked", "completed"])
+    .gte("start_at", new Date().toISOString())
+    .order("start_at", { ascending: true })
+    .limit(10);
+
+  const { data: offeneAnfragen } = await supabase
+    .from("booking_requests")
+    .select("id, desired_start, lessons_count, interval_days, status")
+    .eq("student_id", user.id)
+    .eq("status", "open")
+    .order("desired_start", { ascending: true });
 
   const { data: zahlungen } = await supabase
     .from("zahlungen")
@@ -186,10 +188,13 @@ export default async function SchuelerPortalPage() {
         {/* Termine */}
         <section id="termine">
           <SectionHeader icon={<Calendar className="w-4 h-4" />} title="Nächste Lektionen" />
-          <NaechsteTermine termine={naechsteTermine ?? []} schueler_id={schueler?.id ?? ""} />
-          {aktivPaket && (
+          <NaechsteTermine
+            appointments={naechsteAppointments ?? []}
+            requests={offeneAnfragen ?? []}
+          />
+          {aktivesPackage && canBook && (
             <div className="mt-4">
-              <TerminBuchen schueler_id={schueler?.id ?? ""} paket_id={aktivPaket.id} />
+              <TerminBuchen />
             </div>
           )}
         </section>

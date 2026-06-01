@@ -261,12 +261,17 @@ export type AvailabilityContext = {
   absences: Absence[];
   timeBlocks: TimeBlock[];
   timeBlockRules: TimeBlockRule[];
+  /** Admin-Operationen überspringen die 24-Stunden-Vorlaufregel. */
+  skipLeadTime?: boolean;
 };
 
 /** Ist ein einzelner Slot buchbar? (alle Regeln) */
 export function isSlotBookable(slot: Slot, ctx: AvailabilityContext): boolean {
-  // 24-Stunden-Regel
-  if (slot.start.getTime() < ctx.now.getTime() + BOOKING_LEAD_HOURS * 3600000) {
+  // 24-Stunden-Regel (für Admin-Aktionen überspringbar)
+  if (
+    !ctx.skipLeadTime &&
+    slot.start.getTime() < ctx.now.getTime() + BOOKING_LEAD_HOURS * 3600000
+  ) {
     return false;
   }
   if (ctx.absences.length && absenceBlocks(slot, ctx.absences, ctx.studentId)) {
