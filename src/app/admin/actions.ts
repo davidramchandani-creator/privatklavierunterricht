@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { sendInviteEmail, sendPasswordResetEmail } from "@/lib/email";
 
+const APP_URL = "https://privatklavierunterricht.vercel.app";
+
 // ── Schüler ──────────────────────────────────────────────────────────────────
 
 export async function inviteSchueler(formData: FormData) {
@@ -19,7 +21,7 @@ export async function inviteSchueler(formData: FormData) {
 
   const adminClient = await createAdminClient();
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
+  const appUrl = APP_URL;
 
   // Generate invite link (bypasses PKCE — works across any browser/device)
   const { data: linkData, error: inviteError } =
@@ -158,7 +160,7 @@ export async function hardDeleteSchueler(id: string) {
 }
 
 export async function resendInvite(email: string) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
+  const appUrl = APP_URL;
   const adminClient = await createAdminClient();
 
   // admin.generateLink bypasses PKCE – works across any browser/device
