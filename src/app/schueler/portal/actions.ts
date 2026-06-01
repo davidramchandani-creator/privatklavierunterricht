@@ -1,7 +1,17 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { isWithin24Hours } from "@/lib/utils";
+import { revalidatePath } from "next/cache";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { addMonths, isWithin24Hours } from "@/lib/utils";
+import {
+  type Package as Paket,
+  PACKAGE_LABELS,
+  PACKAGE_LESSONS,
+  PACKAGE_VALIDITY_MONTHS,
+  canBuyNewPackage,
+  computePackageState,
+  pricePerLessonFor,
+} from "@/lib/packages";
 
 export type AvailableSlot = {
   beginn: string;
@@ -171,6 +181,90 @@ export async function buchTermin(
 
   if (error) return { error: "Buchung fehlgeschlagen. Bitte versuche es erneut." };
 
+  return { success: true };
+}
+
+/**
+ * Schüler bucht ein neues Paket (10er oder 20er) im Portal.
+ * Preis wird serverseitig aus dem Profil berechnet – nie aus dem Client
+ * übernommen. Insert läuft über den Service-Role-Client, da die RLS auf
+ * `packages` nur Admin-Inserts erlaubt; sämtliche Geschäftsregeln werden
+ * vorher serverseitig geprüft.
+ */
+export async function buyPackage(type: "10er" | "20er", agbAccepted: boolean) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  if (!agbAccepted) return { error: "Bitte akzeptiere zuerst die AGB." };
+  if (type !== "10er" && type !== "20er") {
+    return { error: "Ungültiger Pakettyp." };
+  }
+
+  // Profil + Preise des angemeldeten Schülers laden
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, role, price_single, price_10er, price_20er, travel_surcharge")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile) return { error: "Profil nicht gefunden." };
+
+  // Prüfen, ob bereits ein nutzbares Paket existiert (Spec §5)
+  const { data: existing } = await supabase
+    .from("packages")
+    .select("*")
+    .eq("student_id", user.id)
+    .eq("status", "active");
+
+  const usable = (existing ?? []).find(
+    (p) => !canBuyNewPackage(p as Paket)
+  );
+  if (usable) {
+    const state = computePackageState(usable as Paket);
+    return {
+      error: `Du hast noch ${state.lessonsRemaining} Lektion${
+        state.lessonsRemaining !== 1 ? "en" : ""
+      } offen. Ein neues Paket kannst du erst danach buchen.`,
+    };
+  }
+
+  const lessonsTotal = PACKAGE_LESSONS[type];
+  const validityMonths = PACKAGE_VALIDITY_MONTHS[type];
+  const ppl = pricePerLessonFor(type, {
+    price_single: Number(profile.price_single),
+    price_10er: Number(profile.price_10er),
+    price_20er: Number(profile.price_20er),
+    travel_surcharge: Number(profile.travel_surcharge),
+  });
+  const totalPrice = ppl * lessonsTotal;
+
+  const startsAt = new Date();
+  const expiresAt =
+    validityMonths != null ? addMonths(startsAt, validityMonths) : null;
+
+  const admin = await createAdminClient();
+  const { error } = await admin.from("packages").insert({
+    student_id: user.id,
+    type,
+    lessons_total: lessonsTotal,
+    lessons_used: 0,
+    name: PACKAGE_LABELS[type],
+    price_per_lesson: ppl,
+    total_price: totalPrice,
+    starts_at: startsAt.toISOString(),
+    expires_at: expiresAt ? expiresAt.toISOString() : null,
+    status: "active",
+  });
+
+  if (error) {
+    return { error: "Paket konnte nicht gebucht werden. Bitte versuche es erneut." };
+  }
+
+  revalidatePath("/schueler/portal");
   return { success: true };
 }
 

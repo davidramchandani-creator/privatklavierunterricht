@@ -4,10 +4,12 @@ import { Music, Calendar, Package, CreditCard, Star, LogOut } from "lucide-react
 import Link from "next/link";
 import { logout } from "@/app/auth/actions";
 import PaketCard from "./_components/PaketCard";
+import NeuesPaket from "./_components/NeuesPaket";
 import NaechsteTermine from "./_components/NaechsteTermine";
 import TerminBuchen from "./_components/TerminBuchen";
 import ZahlungenSection from "./_components/ZahlungenSection";
 import BewertungSection from "./_components/BewertungSection";
+import { canBuyNewPackage, type Package as Paket } from "@/lib/packages";
 
 export default async function SchuelerPortalPage() {
   const supabase = await createClient();
@@ -20,12 +22,66 @@ export default async function SchuelerPortalPage() {
     .eq("user_id", user.id)
     .single();
 
+  // Altes Paket (für Buchungs-Sektion – wird in Meilenstein 4 auf
+  // appointments/packages migriert).
   const { data: aktivPaket } = await supabase
     .from("pakete")
     .select("*")
     .eq("schueler_id", schueler?.id ?? "")
     .eq("aktiv", true)
     .single();
+
+  // Neues Schema: aktives Paket + Profilpreise (Meilenstein 3)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("price_single, price_10er, price_20er, travel_surcharge")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const { data: packagesRows } = await supabase
+    .from("packages")
+    .select("*")
+    .eq("student_id", user.id)
+    .order("erstellt_am", { ascending: false });
+
+  // Aktivstes Paket auswählen: bevorzugt ein nutzbares aktives Paket,
+  // sonst das zuletzt erstellte (für Status-Anzeige).
+  const aktivesPackage: Paket | null =
+    (packagesRows as Paket[] | null)?.find(
+      (p) => p.status === "active" && !canBuyNewPackage(p)
+    ) ??
+    (packagesRows as Paket[] | null)?.[0] ??
+    null;
+
+  // Genutzte Lektionen aus tatsächlichen Appointments berechnen (Spec §3)
+  let lessonsUsed = aktivesPackage?.lessons_used ?? 0;
+  if (aktivesPackage) {
+    const { count } = await supabase
+      .from("appointments")
+      .select("id", { count: "exact", head: true })
+      .eq("package_id", aktivesPackage.id)
+      .in("status", ["booked", "completed"]);
+    if (count != null) lessonsUsed = count;
+  }
+
+  // Kommende Abwesenheit (eigene oder Admin-weite) für Hinweis
+  const heute = new Date().toISOString().split("T")[0];
+  const { data: kommendeAbwesenheit } = await supabase
+    .from("absences")
+    .select("start_date, end_date, title, scope, student_id")
+    .gte("end_date", heute)
+    .or(`scope.eq.admin,student_id.eq.${user.id}`)
+    .order("start_date", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  const prices = {
+    price_10er: Number(profile?.price_10er ?? 70),
+    price_20er: Number(profile?.price_20er ?? 65),
+    travel_surcharge: Number(profile?.travel_surcharge ?? 0),
+  };
+
+  const kannNeuesPaket = canBuyNewPackage(aktivesPackage);
 
   const { data: naechsteTermine } = await supabase
     .from("termine")
@@ -113,9 +169,18 @@ export default async function SchuelerPortalPage() {
         </div>
 
         {/* Paket */}
-        <section id="paket">
+        <section id="paket" className="space-y-4">
           <SectionHeader icon={<Package className="w-4 h-4" />} title="Mein Paket" />
-          <PaketCard paket={aktivPaket} />
+          <PaketCard
+            paket={aktivesPackage}
+            lessonsUsed={lessonsUsed}
+            upcomingAbsence={kommendeAbwesenheit}
+          />
+
+          <div>
+            <h3 className="text-sm font-600 text-gray-500 mb-2">Neues Paket buchen</h3>
+            <NeuesPaket prices={prices} canBuy={kannNeuesPaket} />
+          </div>
         </section>
 
         {/* Termine */}
