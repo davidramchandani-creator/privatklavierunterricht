@@ -48,16 +48,16 @@ export async function inviteSchueler(formData: FormData) {
   const userId = inviteData.user.id;
 
   // Set role
-  const { error: roleError } = await adminClient.from("profile_roles").insert({
+  const { error: roleError } = await adminClient.from("profile_roles").upsert({
     user_id: userId,
     role: "schueler",
-  });
+  }, { onConflict: "user_id" });
   if (roleError) {
     return { error: "Rolle konnte nicht gesetzt werden: " + roleError.message };
   }
 
   // Create schueler record
-  const { error: schuelerError } = await adminClient.from("schueler").insert({
+  const { error: schuelerError } = await adminClient.from("schueler").upsert({
     user_id: userId,
     vorname,
     nachname,
@@ -65,7 +65,7 @@ export async function inviteSchueler(formData: FormData) {
     telefon,
     adresse,
     aktiv: true,
-  });
+  }, { onConflict: "user_id" });
 
   if (schuelerError) {
     return { error: "Schüler-Datensatz konnte nicht erstellt werden: " + schuelerError.message };
