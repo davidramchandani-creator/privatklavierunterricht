@@ -796,6 +796,318 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
   return { success: true };
 }
 
+// ── Abwesenheiten, Zeitblöcke & Timer (Meilenstein 8) ───────────────────────
+
+/** Inklusive Tage zwischen zwei Datums-Strings (YYYY-MM-DD). */
+function inclusiveDays(startDate: string, endDate: string): number {
+  const [sy, sm, sd] = startDate.split("-").map(Number);
+  const [ey, em, ed] = endDate.split("-").map(Number);
+  const s = Date.UTC(sy, sm - 1, sd);
+  const e = Date.UTC(ey, em - 1, ed);
+  return Math.round((e - s) / 86400000) + 1;
+}
+
+/**
+ * Verlängert die Laufzeit eines Pakets um `days` Tage. Bei pausiertem Paket
+ * wird die eingefrorene Restzeit erhöht, sonst `expires_at`. Loggt optional
+ * in package_extensions (für spätere Rücknahme bei gelöschter Abwesenheit).
+ */
+async function applyExtensionToPackage(
+  admin: SupabaseClient,
+  pkg: {
+    id: string;
+    student_id: string;
+    expires_at: string | null;
+    paused: boolean;
+    pause_remaining_seconds: number | null;
+  },
+  days: number,
+  absenceId: string | null,
+  reason: string
+) {
+  if (days <= 0) return;
+  const addSeconds = days * 86400;
+
+  if (pkg.paused) {
+    const next = (pkg.pause_remaining_seconds ?? 0) + addSeconds;
+    await admin
+      .from("packages")
+      .update({ pause_remaining_seconds: next })
+      .eq("id", pkg.id);
+  } else if (pkg.expires_at) {
+    const next = new Date(
+      new Date(pkg.expires_at).getTime() + addSeconds * 1000
+    ).toISOString();
+    await admin.from("packages").update({ expires_at: next }).eq("id", pkg.id);
+  } else {
+    return; // Pakete ohne Ablauf (Einzellektion) werden nicht verlängert
+  }
+
+  await admin.from("package_extensions").insert({
+    student_id: pkg.student_id,
+    package_id: pkg.id,
+    absence_id: absenceId,
+    days_added: days,
+    reason,
+  });
+}
+
+type ExtendablePackage = {
+  id: string;
+  student_id: string;
+  expires_at: string | null;
+  paused: boolean;
+  pause_remaining_seconds: number | null;
+};
+
+/** Admin/Schüler-Abwesenheit anlegen (Spec §7). */
+export async function createAbsence(formData: FormData) {
+  const admin = await createAdminClient();
+
+  const scope = formData.get("scope") as string; // admin | student
+  const studentUserId = (formData.get("student_user_id") as string) || null;
+  const title = (formData.get("title") as string) || "";
+  const startDate = formData.get("start_date") as string;
+  const endDate = formData.get("end_date") as string;
+  const autoExtend = formData.get("auto_extend") !== "false";
+
+  if (!startDate || !endDate) return { error: "Start- und Enddatum erforderlich." };
+  if (scope === "student" && !studentUserId) {
+    return { error: "Für eine Schüler-Abwesenheit ist ein Schüler nötig." };
+  }
+  if (endDate < startDate) return { error: "Enddatum liegt vor dem Startdatum." };
+
+  const { data: absence, error } = await admin
+    .from("absences")
+    .insert({
+      scope,
+      student_id: scope === "student" ? studentUserId : null,
+      title,
+      start_date: startDate,
+      end_date: endDate,
+      auto_extend: autoExtend,
+    })
+    .select("id")
+    .single();
+
+  if (error || !absence) return { error: "Abwesenheit konnte nicht erstellt werden." };
+
+  if (autoExtend) {
+    const days = inclusiveDays(startDate, endDate);
+    let query = admin
+      .from("packages")
+      .select("id, student_id, expires_at, paused, pause_remaining_seconds")
+      .eq("status", "active");
+    if (scope === "student") query = query.eq("student_id", studentUserId);
+
+    const { data: pkgs } = await query;
+    for (const pkg of (pkgs as ExtendablePackage[] | null) ?? []) {
+      await applyExtensionToPackage(
+        admin,
+        pkg,
+        days,
+        absence.id,
+        `Abwesenheit: ${title || (scope === "admin" ? "Admin" : "Schüler")}`
+      );
+    }
+  }
+
+  revalidatePath("/admin/abwesenheiten");
+  if (scope === "student" && studentUserId) {
+    revalidatePath("/admin/schueler");
+  }
+  return { success: true };
+}
+
+/** Abwesenheit löschen und die Timer-Verlängerung zurückrechnen. */
+export async function deleteAbsence(id: string) {
+  const admin = await createAdminClient();
+
+  // Verlängerungen dieser Abwesenheit zurücknehmen
+  const { data: logs } = await admin
+    .from("package_extensions")
+    .select("id, package_id, days_added")
+    .eq("absence_id", id);
+
+  for (const log of logs ?? []) {
+    const { data: pkg } = await admin
+      .from("packages")
+      .select("id, expires_at, paused, pause_remaining_seconds")
+      .eq("id", log.package_id)
+      .single();
+    if (!pkg) continue;
+
+    const subSeconds = log.days_added * 86400;
+    if (pkg.paused) {
+      const next = Math.max(0, (pkg.pause_remaining_seconds ?? 0) - subSeconds);
+      await admin
+        .from("packages")
+        .update({ pause_remaining_seconds: next })
+        .eq("id", pkg.id);
+    } else if (pkg.expires_at) {
+      const next = new Date(
+        new Date(pkg.expires_at).getTime() - subSeconds * 1000
+      ).toISOString();
+      await admin.from("packages").update({ expires_at: next }).eq("id", pkg.id);
+    }
+    await admin.from("package_extensions").delete().eq("id", log.id);
+  }
+
+  const { error } = await admin.from("absences").delete().eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/abwesenheiten");
+  return { success: true };
+}
+
+/** Einmaligen Zeitblock anlegen. */
+export async function createTimeBlock(formData: FormData) {
+  const admin = await createAdminClient();
+  const title = (formData.get("title") as string) || "";
+  const date = formData.get("date") as string;
+  const startTime = formData.get("start_time") as string;
+  const endTime = formData.get("end_time") as string;
+
+  if (!date || !startTime || !endTime) return { error: "Alle Felder erforderlich." };
+  if (endTime <= startTime) return { error: "Endzeit muss nach Startzeit liegen." };
+
+  const { error } = await admin
+    .from("time_blocks")
+    .insert({ title, date, start_time: startTime, end_time: endTime });
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/abwesenheiten");
+  return { success: true };
+}
+
+export async function deleteTimeBlock(id: string) {
+  const admin = await createAdminClient();
+  const { error } = await admin.from("time_blocks").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/abwesenheiten");
+  return { success: true };
+}
+
+/** Wiederkehrende Sperrregel anlegen (alle 7/14 Tage). */
+export async function createTimeBlockRule(formData: FormData) {
+  const admin = await createAdminClient();
+  const title = (formData.get("title") as string) || "";
+  const startDate = formData.get("start_date") as string;
+  const startTime = formData.get("start_time") as string;
+  const endTime = formData.get("end_time") as string;
+  const intervalDays = parseInt(formData.get("interval_days") as string) || 7;
+
+  if (!startDate || !startTime || !endTime) return { error: "Alle Felder erforderlich." };
+  if (endTime <= startTime) return { error: "Endzeit muss nach Startzeit liegen." };
+  if (intervalDays !== 7 && intervalDays !== 14) return { error: "Intervall muss 7 oder 14 Tage sein." };
+
+  const { error } = await admin.from("time_block_rules").insert({
+    title,
+    start_date: startDate,
+    start_time: startTime,
+    end_time: endTime,
+    interval_days: intervalDays,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/abwesenheiten");
+  return { success: true };
+}
+
+export async function deleteTimeBlockRule(id: string) {
+  const admin = await createAdminClient();
+  const { error } = await admin.from("time_block_rules").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/abwesenheiten");
+  return { success: true };
+}
+
+/** Paket-Timer pausieren: Restzeit einfrieren. Spec §7. */
+export async function pausePackage(packageId: string, schuelerId: string) {
+  const admin = await createAdminClient();
+  const { data: pkg } = await admin
+    .from("packages")
+    .select("id, expires_at, paused")
+    .eq("id", packageId)
+    .single();
+  if (!pkg) return { error: "Paket nicht gefunden." };
+  if (pkg.paused) return { success: true };
+
+  const remaining = pkg.expires_at
+    ? Math.max(0, Math.floor((new Date(pkg.expires_at).getTime() - Date.now()) / 1000))
+    : null;
+
+  const { error } = await admin
+    .from("packages")
+    .update({
+      paused: true,
+      pause_remaining_seconds: remaining,
+      paused_at: new Date().toISOString(),
+    })
+    .eq("id", packageId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/schueler/${schuelerId}`);
+  return { success: true };
+}
+
+/** Paket-Timer fortsetzen: Ablauf = jetzt + eingefrorene Restzeit. Spec §7. */
+export async function resumePackage(packageId: string, schuelerId: string) {
+  const admin = await createAdminClient();
+  const { data: pkg } = await admin
+    .from("packages")
+    .select("id, paused, pause_remaining_seconds")
+    .eq("id", packageId)
+    .single();
+  if (!pkg) return { error: "Paket nicht gefunden." };
+  if (!pkg.paused) return { success: true };
+
+  const update: Record<string, unknown> = {
+    paused: false,
+    pause_remaining_seconds: null,
+    paused_at: null,
+  };
+  if (pkg.pause_remaining_seconds != null) {
+    update.expires_at = new Date(
+      Date.now() + pkg.pause_remaining_seconds * 1000
+    ).toISOString();
+  }
+
+  const { error } = await admin.from("packages").update(update).eq("id", packageId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/schueler/${schuelerId}`);
+  return { success: true };
+}
+
+/** Paket-Timer manuell um N Tage verlängern. */
+export async function extendPackage(
+  packageId: string,
+  schuelerId: string,
+  days: number,
+  reason?: string
+) {
+  if (!days || days <= 0) return { error: "Ungültige Anzahl Tage." };
+  const admin = await createAdminClient();
+  const { data: pkg } = await admin
+    .from("packages")
+    .select("id, student_id, expires_at, paused, pause_remaining_seconds")
+    .eq("id", packageId)
+    .single();
+  if (!pkg) return { error: "Paket nicht gefunden." };
+
+  await applyExtensionToPackage(
+    admin,
+    pkg as ExtendablePackage,
+    days,
+    null,
+    reason || "Manuelle Verlängerung"
+  );
+
+  revalidatePath(`/admin/schueler/${schuelerId}`);
+  return { success: true };
+}
+
 // ── Anfragen ─────────────────────────────────────────────────────────────────
 
 export async function updateAnfrageStatus(id: string, status: string) {

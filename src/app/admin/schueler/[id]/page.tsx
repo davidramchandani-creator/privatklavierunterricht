@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
 import { computePackageState, PACKAGE_LABELS, type Package } from "@/lib/packages";
-import SchuelerDetailActions, { ZahlungAction, PreiseForm, PackageFormNew, DirektBuchung, AppointmentActions } from "./_components/SchuelerDetailActions";
+import SchuelerDetailActions, { ZahlungAction, PreiseForm, PackageFormNew, DirektBuchung, AppointmentActions, PackageTimerActions } from "./_components/SchuelerDetailActions";
 
 export default async function SchuelerDetailPage({
   params,
@@ -192,6 +192,7 @@ export default async function SchuelerDetailPage({
                 <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2 hidden sm:table-cell">Preis/Lekt.</th>
                 <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2 hidden md:table-cell">Gültig bis</th>
                 <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2">Status</th>
+                <th className="pb-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -222,6 +223,15 @@ export default async function SchuelerDetailPage({
                       >
                         {state.effectiveStatus}
                       </span>
+                    </td>
+                    <td className="py-3">
+                      {pkg.status === "active" && (
+                        <PackageTimerActions
+                          packageId={pkg.id}
+                          schuelerId={id}
+                          paused={pkg.paused}
+                        />
+                      )}
                     </td>
                   </tr>
                 );

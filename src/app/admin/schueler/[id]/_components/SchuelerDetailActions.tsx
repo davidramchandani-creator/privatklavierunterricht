@@ -17,11 +17,14 @@ import {
   createDirectBooking,
   completeAppointmentNew,
   cancelAppointmentNew,
+  pausePackage,
+  resumePackage,
+  extendPackage,
 } from "../../../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatCHF } from "@/lib/utils";
-import { Loader2, Pencil, Trash2, CheckCircle2, XCircle, Plus, Mail, AlertTriangle, Calendar } from "lucide-react";
+import { Loader2, Pencil, Trash2, CheckCircle2, XCircle, Plus, Mail, AlertTriangle, Calendar, Pause, Play, Clock } from "lucide-react";
 
 type Schueler = {
   id: string;
@@ -778,8 +781,87 @@ function AppointmentActions({
   );
 }
 
+function PackageTimerActions({
+  packageId,
+  schuelerId,
+  paused,
+}: {
+  packageId: string;
+  schuelerId: string;
+  paused: boolean;
+}) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  function handleExtend() {
+    const input = prompt("Um wie viele Tage verlängern?");
+    if (input === null) return;
+    const days = parseInt(input, 10);
+    if (!Number.isFinite(days) || days <= 0) return;
+    startTransition(async () => {
+      await extendPackage(packageId, schuelerId, days);
+      router.refresh();
+    });
+  }
+
+  function handlePause() {
+    startTransition(async () => {
+      await pausePackage(packageId, schuelerId);
+      router.refresh();
+    });
+  }
+
+  function handleResume() {
+    startTransition(async () => {
+      await resumePackage(packageId, schuelerId);
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="flex gap-1.5">
+      {paused ? (
+        <button
+          disabled={isPending}
+          onClick={handleResume}
+          className="p-1.5 rounded-lg hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-50"
+          title="Fortsetzen"
+        >
+          {isPending ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Play className="w-3.5 h-3.5" />
+          )}
+        </button>
+      ) : (
+        <button
+          disabled={isPending}
+          onClick={handlePause}
+          className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors disabled:opacity-50"
+          title="Pausieren"
+        >
+          {isPending ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Pause className="w-3.5 h-3.5" />
+          )}
+        </button>
+      )}
+      <button
+        disabled={isPending}
+        onClick={handleExtend}
+        className="p-1.5 rounded-lg hover:bg-[#3730A3]/10 text-gray-400 hover:text-[#3730A3] transition-colors disabled:opacity-50"
+        title="Verlängern"
+      >
+        <Clock className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
 export {
   PaketForm,
+  PackageTimerActions,
   TerminActions,
   ZahlungAction,
   PreiseForm,
