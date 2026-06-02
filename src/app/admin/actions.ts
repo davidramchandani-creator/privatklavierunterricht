@@ -45,7 +45,7 @@ async function bookSeriesForStudent(
 ): Promise<{ appointmentIds: string[] } | { error: string }> {
   const { data: profile } = await admin
     .from("profiles")
-    .select("buffer_time_minutes, email, vorname, nachname, adresse")
+    .select("buffer_time_minutes, email, vorname, nachname, adresse, payment_method")
     .eq("id", studentUserId)
     .single();
   const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
@@ -109,7 +109,11 @@ async function bookSeriesForStudent(
     const createdAppt = created[rows.indexOf(appt)];
     if (!createdAppt) continue;
 
-    const paymentMethod: "twint" | "qr" = (pkg.payment_method as "twint" | "qr") ?? "twint";
+    // Zahlungsart des Schülers hat Vorrang, dann Paket, dann QR als Default.
+    const paymentMethod: "twint" | "qr" =
+      ((profile?.payment_method as "twint" | "qr" | null) ??
+        (pkg.payment_method as "twint" | "qr" | null)) ??
+      "qr";
     const amount = Number(pkg.price_per_lesson ?? 0);
     const studentName = profile ? `${profile.vorname} ${profile.nachname}` : "Schüler";
 
@@ -830,7 +834,7 @@ export async function updateStudentPrices(
 ) {
   const admin = await createAdminClient();
 
-  const update: Record<string, number> = {};
+  const update: Record<string, number | string> = {};
   const fields = ["price_single", "price_10er", "price_20er", "travel_surcharge"] as const;
   for (const f of fields) {
     const v = parseFloat(formData.get(f) as string);
@@ -838,6 +842,10 @@ export async function updateStudentPrices(
   }
   const buffer = parseInt(formData.get("buffer_time_minutes") as string);
   if (buffer === 15 || buffer === 30) update.buffer_time_minutes = buffer;
+
+  // Zahlungsart pro Schüler (TWINT oder QR-Rechnung)
+  const pm = formData.get("payment_method") as string | null;
+  if (pm === "twint" || pm === "qr") update.payment_method = pm;
 
   if (Object.keys(update).length === 0) return { success: true };
 
@@ -855,7 +863,7 @@ export async function createPackageAdmin(formData: FormData) {
   const userId = formData.get("student_user_id") as string;
   const schuelerId = formData.get("schueler_id") as string;
   const type = formData.get("type") as string; // single|10er|20er
-  const paymentMethod = (formData.get("payment_method") as string) || null;
+  let paymentMethod = (formData.get("payment_method") as string) || null;
   const pricePerLesson = parseFloat(formData.get("price_per_lesson") as string);
 
   if (!userId || !["single", "10er", "20er"].includes(type)) {
@@ -863,6 +871,16 @@ export async function createPackageAdmin(formData: FormData) {
   }
   if (isNaN(pricePerLesson) || pricePerLesson < 0) {
     return { error: "Ungültiger Preis." };
+  }
+
+  // Ohne explizite Auswahl die Zahlungsart des Schülers übernehmen.
+  if (paymentMethod !== "twint" && paymentMethod !== "qr") {
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("payment_method")
+      .eq("id", userId)
+      .maybeSingle();
+    paymentMethod = (prof?.payment_method as string) ?? "qr";
   }
 
   const lessonsTotal = PACKAGE_LESSONS[type];

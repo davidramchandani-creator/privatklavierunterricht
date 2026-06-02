@@ -36,7 +36,7 @@ export default async function SchuelerDetailPage({
     userId
       ? supabase
           .from("profiles")
-          .select("price_single, price_10er, price_20er, travel_surcharge, buffer_time_minutes")
+          .select("price_single, price_10er, price_20er, travel_surcharge, buffer_time_minutes, payment_method")
           .eq("id", safeUserId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -75,6 +75,7 @@ export default async function SchuelerDetailPage({
     price_20er: Number(profile?.price_20er ?? 65),
     travel_surcharge: Number(profile?.travel_surcharge ?? 0),
     buffer_time_minutes: Number(profile?.buffer_time_minutes ?? 15),
+    payment_method: (profile?.payment_method as string) ?? "qr",
   };
 
   const packageStatusColors: Record<string, string> = {
@@ -140,6 +141,12 @@ export default async function SchuelerDetailPage({
               {schueler.erstellt_am ? formatDate(schueler.erstellt_am) : "—"}
             </p>
           </div>
+          <div>
+            <p className="text-gray-400 text-xs font-600 uppercase tracking-wide mb-1">Zahlungsart</p>
+            <p className="text-gray-900">
+              {prices.payment_method === "twint" ? "TWINT" : "QR-Rechnung"}
+            </p>
+          </div>
           {schueler.adresse && (
             <div className="col-span-2 md:col-span-3">
               <p className="text-gray-400 text-xs font-600 uppercase tracking-wide mb-1">Adresse</p>
@@ -170,6 +177,7 @@ export default async function SchuelerDetailPage({
               price_20er: prices.price_20er,
               travel_surcharge: prices.travel_surcharge,
               buffer_time_minutes: prices.buffer_time_minutes,
+              payment_method: prices.payment_method,
             }}
           />
         ) : (

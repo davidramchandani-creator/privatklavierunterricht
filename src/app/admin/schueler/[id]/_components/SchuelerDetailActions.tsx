@@ -385,6 +385,7 @@ function PreiseForm({
     price_20er: number;
     travel_surcharge: number;
     buffer_time_minutes: number;
+    payment_method: string;
   };
 }) {
   const router = useRouter();
@@ -397,6 +398,7 @@ function PreiseForm({
   const [price20er, setPrice20er] = useState(String(initial.price_20er));
   const [travel, setTravel] = useState(String(initial.travel_surcharge));
   const [buffer, setBuffer] = useState(String(initial.buffer_time_minutes));
+  const [paymentMethod, setPaymentMethod] = useState(initial.payment_method || "qr");
 
   const t = Number(travel) || 0;
   const effSingle = (Number(priceSingle) || 0) + t;
@@ -479,6 +481,18 @@ function PreiseForm({
           >
             <option value="15">15 Minuten</option>
             <option value="30">30 Minuten</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-500 text-gray-600">Zahlungsart</label>
+          <select
+            name="payment_method"
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value)}
+            className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="qr">QR-Rechnung</option>
+            <option value="twint">TWINT</option>
           </select>
         </div>
       </div>
