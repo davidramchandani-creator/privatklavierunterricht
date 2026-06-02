@@ -20,11 +20,16 @@ import {
   pausePackage,
   resumePackage,
   extendPackage,
+  cancelPackage,
 } from "../../../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatCHF } from "@/lib/utils";
-import { Loader2, Pencil, Trash2, CheckCircle2, XCircle, Plus, Mail, AlertTriangle, Calendar, Pause, Play, Clock } from "lucide-react";
+import {
+  CANCELLATION_SINGLE_BASE,
+  CANCELLATION_SINGLE_THRESHOLD,
+} from "@/lib/packages";
+import { Loader2, Pencil, Trash2, CheckCircle2, XCircle, Plus, Mail, AlertTriangle, Calendar, Pause, Play, Clock, Ban } from "lucide-react";
 
 type Schueler = {
   id: string;
@@ -785,13 +790,32 @@ function PackageTimerActions({
   packageId,
   schuelerId,
   paused,
+  canCancel = false,
+  pricePerLesson = 0,
+  totalPrice = 0,
+  lessonsUsed = 0,
 }: {
   packageId: string;
   schuelerId: string;
   paused: boolean;
+  canCancel?: boolean;
+  pricePerLesson?: number;
+  totalPrice?: number;
+  lessonsUsed?: number;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [showCancel, setShowCancel] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  // Einzelpreis-Vorschau (Spec §10): 70 + max(0, Paketpreis − 60).
+  const singleLessonPrice =
+    CANCELLATION_SINGLE_BASE +
+    Math.max(0, pricePerLesson - CANCELLATION_SINGLE_THRESHOLD);
+  const usedCost = lessonsUsed * singleLessonPrice;
+  const diff = totalPrice - usedCost;
+  const refund = Math.max(0, diff);
+  const owed = Math.max(0, -diff);
 
   function handleExtend() {
     const input = prompt("Um wie viele Tage verlängern?");
@@ -815,6 +839,18 @@ function PackageTimerActions({
     startTransition(async () => {
       await resumePackage(packageId, schuelerId);
       router.refresh();
+    });
+  }
+
+  function handleCancel() {
+    setCancelError(null);
+    startTransition(async () => {
+      const result = await cancelPackage(packageId, schuelerId);
+      if (result?.error) setCancelError(result.error);
+      else {
+        setShowCancel(false);
+        router.refresh();
+      }
     });
   }
 
@@ -855,6 +891,85 @@ function PackageTimerActions({
       >
         <Clock className="w-3.5 h-3.5" />
       </button>
+      {canCancel && (
+        <button
+          disabled={isPending}
+          onClick={() => {
+            setCancelError(null);
+            setShowCancel(true);
+          }}
+          className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+          title="Paket stornieren"
+        >
+          <Ban className="w-3.5 h-3.5" />
+        </button>
+      )}
+
+      {showCancel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5" />
+              <h3 className="font-700 text-gray-900">Paket stornieren</h3>
+            </div>
+            <p className="text-sm text-gray-600">
+              Die bereits besuchten Lektionen werden zum Einzelpreis verrechnet.
+              Künftige gebuchte Termine dieses Pakets werden storniert.
+            </p>
+            <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Besuchte Lektionen</span>
+                <span className="font-600 text-gray-900">
+                  {lessonsUsed} × {formatCHF(singleLessonPrice)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Verrechnet</span>
+                <span className="font-600 text-gray-900">{formatCHF(usedCost)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Bezahlt (Paket)</span>
+                <span className="font-600 text-gray-900">{formatCHF(totalPrice)}</span>
+              </div>
+              <div className="border-t border-gray-200 pt-2 flex justify-between">
+                {owed > 0 ? (
+                  <>
+                    <span className="text-gray-700 font-600">Nachzahlung</span>
+                    <span className="font-700 text-red-600">{formatCHF(owed)}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-gray-700 font-600">Rückerstattung</span>
+                    <span className="font-700 text-emerald-700">{formatCHF(refund)}</span>
+                  </>
+                )}
+              </div>
+            </div>
+            {cancelError && (
+              <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
+                {cancelError}
+              </p>
+            )}
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowCancel(false)}
+                disabled={isPending}
+                className="px-4 py-2 text-sm font-500 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors disabled:opacity-50"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={isPending}
+                className="px-4 py-2 text-sm font-600 text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                Verbindlich stornieren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

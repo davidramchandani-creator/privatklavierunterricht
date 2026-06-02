@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
         "booking_confirmed",
         "reschedule_request_received",
         "reschedule_confirmed",
+        "package_cancelled",
       ];
       // Typen, deren Empfänger-Mail erst aus der profiles-Tabelle aufgelöst wird.
       const studentLookupTypes = ["booking_rejected", "reschedule_rejected"];
