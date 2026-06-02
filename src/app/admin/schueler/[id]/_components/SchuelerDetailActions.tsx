@@ -660,7 +660,7 @@ function DirektBuchung({
     formData.set("interval_days", intervalDays);
     startTransition(async () => {
       const result = await createDirectBooking(formData);
-      if (result?.error) setError(result.error);
+      if (result && "error" in result && result.error) setError(result.error);
       else {
         setOpen(false);
         router.refresh();

@@ -28,6 +28,7 @@ import {
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
 import { enqueueEmail } from "@/lib/emails-outbox";
+import { deleteCalendarEvent } from "@/lib/google-calendar";
 
 export type AvailableSlot = {
   beginn: string;
@@ -265,6 +266,16 @@ export async function cancelAppointment(appointmentId: string) {
     .update({ status: "cancelled" })
     .eq("id", appointmentId);
   if (error) return { error: "Termin konnte nicht storniert werden." };
+
+  // Google Calendar: Event löschen
+  await deleteCalendarEvent(admin, appointmentId);
+
+  // Offene Rechnung zu diesem Termin stornieren
+  await admin
+    .from("invoices")
+    .update({ status: "cancelled" })
+    .eq("appointment_id", appointmentId)
+    .in("status", ["unpaid", "pending_confirmation", "rejected"]);
 
   await enqueueEmail(admin, "appointment_cancelled_by_student", {
     student_id: user.id,

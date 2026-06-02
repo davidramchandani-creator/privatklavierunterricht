@@ -10,6 +10,7 @@ import {
   Star,
   CreditCard,
   Inbox,
+  Settings,
   Music,
   LogOut,
 } from "lucide-react";
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/admin/preise", label: "Preise", icon: Tag },
   { href: "/admin/bewertungen", label: "Bewertungen", icon: Star },
   { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
+  { href: "/admin/einstellungen", label: "Einstellungen", icon: Settings },
 ];
 
 export default async function AdminLayout({

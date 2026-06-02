@@ -23,6 +23,12 @@ import {
 } from "@/lib/packages";
 import { addMonths } from "@/lib/utils";
 import { buildTwintLink } from "@/lib/twint";
+import {
+  syncAppointmentToCalendar,
+  deleteCalendarEvent,
+  testCalendarConnection,
+  fullSyncFutureAppointments,
+} from "@/lib/google-calendar";
 
 /**
  * Bucht (ggf. als Serie) Termine für einen Schüler im neuen Schema.
@@ -142,6 +148,11 @@ async function bookSeriesForStudent(
         }, sendAt);
       }
     }
+  }
+
+  // Google Calendar Sync (one-way, fehlertolerant)
+  for (const c of created) {
+    await syncAppointmentToCalendar(admin, c.id);
   }
 
   return { appointmentIds: created.map((c) => c.id) };
@@ -592,12 +603,11 @@ export async function acceptBookingRequest(requestId: string) {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("buffer_time_minutes, vorname, nachname, email")
+    .select("vorname, nachname, email")
     .eq("id", req.student_id)
     .single();
-  const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
 
-  // Aktives, nutzbares Paket des Schülers
+  // Aktives, nutzbares Paket des Schülers (für freundliche Fehlermeldung)
   const { data: pkgs } = await admin
     .from("packages")
     .select("*")
@@ -613,55 +623,24 @@ export async function acceptBookingRequest(requestId: string) {
     };
   }
 
-  const desiredStart = new Date(req.desired_start);
-  const now = new Date();
   const starts = generateSeriesStarts(
-    desiredStart,
+    new Date(req.desired_start),
     req.lessons_count,
     req.interval_days
   );
-  const seriesEnd = new Date(starts[starts.length - 1].getTime() + 3600000);
 
-  const ctx = await loadAvailabilityContext(
+  // Buchung über den gemeinsamen Pfad: erstellt Termine, Rechnungen,
+  // geplante Zahlungsmails und synchronisiert den Google-Kalender.
+  const result = await bookSeriesForStudent(
     admin,
     req.student_id,
-    bufferMin,
-    desiredStart,
-    seriesEnd,
-    now,
-    { skipLeadTime: true }
-  );
-  const validation = validateSeries(
-    desiredStart,
+    req.desired_start,
     req.lessons_count,
     req.interval_days,
-    ctx
+    "public_request"
   );
-  if (!validation.ok) {
-    return {
-      error:
-        "Mindestens ein Termin der Serie ist nicht mehr verfügbar (Kollision/Abwesenheit).",
-    };
-  }
-
-  const seriesId = req.lessons_count > 1 ? crypto.randomUUID() : null;
-  const rows = slotsFromStarts(starts).map((s) => ({
-    student_id: req.student_id,
-    package_id: pkg.id,
-    start_at: s.start.toISOString(),
-    end_at: s.end.toISOString(),
-    status: "booked",
-    source: "public_request",
-    series_id: seriesId,
-  }));
-
-  const { data: created, error: insertError } = await admin
-    .from("appointments")
-    .insert(rows)
-    .select("id");
-
-  if (insertError || !created) {
-    return { error: "Termine konnten nicht erstellt werden." };
+  if ("error" in result) {
+    return { error: result.error };
   }
 
   await admin
@@ -669,7 +648,7 @@ export async function acceptBookingRequest(requestId: string) {
     .update({
       status: "accepted",
       processed_at: new Date().toISOString(),
-      created_appointment_ids: created.map((c) => c.id),
+      created_appointment_ids: result.appointmentIds,
     })
     .eq("id", requestId);
 
@@ -786,6 +765,9 @@ export async function acceptReschedule(rescheduleId: string) {
   if (updateError) {
     return { error: "Termin konnte nicht verschoben werden." };
   }
+
+  // Google Calendar: verschobenen Termin aktualisieren
+  await syncAppointmentToCalendar(admin, rr.appointment_id);
 
   await admin
     .from("reschedule_requests")
@@ -944,6 +926,10 @@ export async function completeAppointmentNew(id: string, schuelerId: string) {
     .update({ status: "completed" })
     .eq("id", id);
   if (error) return { error: error.message };
+
+  // Google Calendar: Event-Farbe auf „abgeschlossen" aktualisieren
+  await syncAppointmentToCalendar(admin, id);
+
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
@@ -958,6 +944,17 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
     .update({ status: "cancelled" })
     .eq("id", id);
   if (error) return { error: error.message };
+
+  // Google Calendar: Event löschen
+  await deleteCalendarEvent(admin, id);
+
+  // Offene Rechnung zu diesem Termin stornieren (Spec §6)
+  await admin
+    .from("invoices")
+    .update({ status: "cancelled" })
+    .eq("appointment_id", id)
+    .in("status", ["unpaid", "pending_confirmation", "rejected"]);
+
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
@@ -1318,13 +1315,18 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
     .eq("status", "booked")
     .gte("start_at", new Date().toISOString());
   if (futureAppts && futureAppts.length > 0) {
+    const ids = futureAppts.map((a) => a.id);
+    await admin.from("appointments").update({ status: "cancelled" }).in("id", ids);
+    // Google-Events der stornierten Termine löschen
+    for (const fid of ids) {
+      await deleteCalendarEvent(admin, fid);
+    }
+    // Zugehörige offene Rechnungen stornieren
     await admin
-      .from("appointments")
+      .from("invoices")
       .update({ status: "cancelled" })
-      .in(
-        "id",
-        futureAppts.map((a) => a.id)
-      );
+      .in("appointment_id", ids)
+      .in("status", ["unpaid", "pending_confirmation", "rejected"]);
   }
 
   const { error } = await admin
@@ -1549,6 +1551,21 @@ export async function resendPaymentEmail(invoiceId: string) {
 
   revalidatePath("/admin/zahlungen");
   return { success: true };
+}
+
+// ── Google Calendar (Meilenstein 12) ─────────────────────────────────────────
+
+/** Testet die Verbindung zum Google-Kalender (Einstellungsseite). */
+export async function testGoogleCalendar() {
+  return await testCalendarConnection();
+}
+
+/** Synchronisiert alle zukünftigen gebuchten Termine in den Google-Kalender. */
+export async function runFullCalendarSync() {
+  const admin = await createAdminClient();
+  const result = await fullSyncFutureAppointments(admin);
+  revalidatePath("/admin/einstellungen");
+  return { success: true, ...result };
 }
 
 // ── Anfragen ─────────────────────────────────────────────────────────────────

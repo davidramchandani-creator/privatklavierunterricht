@@ -14,6 +14,7 @@ import {
   Star,
   CreditCard,
   Inbox,
+  Settings,
 } from "lucide-react";
 
 const navItems = [
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/admin/preise", label: "Preise", icon: Tag },
   { href: "/admin/bewertungen", label: "Bewertungen", icon: Star },
   { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
+  { href: "/admin/einstellungen", label: "Einstellungen", icon: Settings },
 ];
 
 export default function AdminMobileMenu() {
