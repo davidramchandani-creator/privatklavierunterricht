@@ -17,6 +17,8 @@ import {
   PACKAGE_LESSONS,
   PACKAGE_VALIDITY_MONTHS,
   canBuyNewPackage,
+  canCancelPackage,
+  computeCancellationSettlement,
   computePackageState,
 } from "@/lib/packages";
 import { addMonths } from "@/lib/utils";
@@ -1225,6 +1227,89 @@ export async function extendPackage(
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
   return { success: true };
+}
+
+/**
+ * Storniert ein Paket mit Einzelpreis-Nachberechnung (Spec §10, Meilenstein 10).
+ * Erlaubt nur bis einschliesslich der 3. genutzten Lektion. Die genutzten
+ * Lektionen werden anhand der tatsächlich gebuchten/abgeschlossenen Termine
+ * gezählt; künftige gebuchte Termine dieses Pakets werden storniert. Gibt die
+ * berechnete Abrechnung (Rückerstattung/Nachzahlung) zurück.
+ */
+export async function cancelPackage(packageId: string, schuelerId: string) {
+  const admin = await createAdminClient();
+
+  const { data: pkg } = await admin
+    .from("packages")
+    .select("*")
+    .eq("id", packageId)
+    .single();
+  if (!pkg) return { error: "Paket nicht gefunden." };
+
+  // Genutzte Lektionen aus tatsächlichen Terminen zählen (Spec §3).
+  const { count: usedCount } = await admin
+    .from("appointments")
+    .select("id", { count: "exact", head: true })
+    .eq("package_id", packageId)
+    .in("status", ["booked", "completed"]);
+  const lessonsUsed = usedCount ?? 0;
+
+  if (!canCancelPackage(pkg as Paket, lessonsUsed)) {
+    return {
+      error:
+        "Dieses Paket kann nicht mehr storniert werden (nur bis zur 3. genutzten Lektion bei aktiven/pausierten Paketen).",
+    };
+  }
+
+  const settlement = computeCancellationSettlement(pkg as Paket, lessonsUsed);
+
+  // Künftige gebuchte Termine dieses Pakets stornieren.
+  const { data: futureAppts } = await admin
+    .from("appointments")
+    .select("id")
+    .eq("package_id", packageId)
+    .eq("status", "booked")
+    .gte("start_at", new Date().toISOString());
+  if (futureAppts && futureAppts.length > 0) {
+    await admin
+      .from("appointments")
+      .update({ status: "cancelled" })
+      .in(
+        "id",
+        futureAppts.map((a) => a.id)
+      );
+  }
+
+  const { error } = await admin
+    .from("packages")
+    .update({
+      status: "cancelled",
+      paused: false,
+      pause_remaining_seconds: null,
+      paused_at: null,
+      aktualisiert_am: new Date().toISOString(),
+    })
+    .eq("id", packageId);
+  if (error) return { error: "Paket konnte nicht storniert werden." };
+
+  // Schüler benachrichtigen (Outbox).
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("email")
+    .eq("id", pkg.student_id)
+    .maybeSingle();
+  await enqueueEmail(admin, "package_cancelled", {
+    student_id: pkg.student_id,
+    to: profile?.email,
+    lessons_used: settlement.lessonsUsed,
+    single_lesson_price: settlement.singleLessonPrice,
+    refund: settlement.refund,
+    owed: settlement.owed,
+  });
+
+  revalidatePath(`/admin/schueler/${schuelerId}`);
+  revalidatePath("/admin");
+  return { success: true, settlement };
 }
 
 // ── Anfragen ─────────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
-import { computePackageState, PACKAGE_LABELS, type Package } from "@/lib/packages";
+import { computePackageState, canCancelPackage, PACKAGE_LABELS, type Package } from "@/lib/packages";
 import SchuelerDetailActions, { ZahlungAction, PreiseForm, PackageFormNew, DirektBuchung, AppointmentActions, PackageTimerActions } from "./_components/SchuelerDetailActions";
 
 export default async function SchuelerDetailPage({
@@ -230,6 +230,14 @@ export default async function SchuelerDetailPage({
                           packageId={pkg.id}
                           schuelerId={id}
                           paused={pkg.paused}
+                          canCancel={canCancelPackage(pkg, state.lessonsUsed)}
+                          pricePerLesson={Number(pkg.price_per_lesson)}
+                          totalPrice={
+                            pkg.total_price != null
+                              ? Number(pkg.total_price)
+                              : pkg.lessons_total * Number(pkg.price_per_lesson)
+                          }
+                          lessonsUsed={state.lessonsUsed}
                         />
                       )}
                     </td>
