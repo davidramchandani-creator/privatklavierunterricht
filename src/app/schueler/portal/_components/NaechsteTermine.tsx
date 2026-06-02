@@ -1,9 +1,27 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Calendar, Clock, X, Download, CalendarClock, Repeat } from "lucide-react";
+import { useState, useTransition, useEffect } from "react";
+import {
+  Calendar,
+  Clock,
+  X,
+  Download,
+  CalendarClock,
+  Repeat,
+  CalendarSync,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+} from "lucide-react";
 import { isWithin24Hours } from "@/lib/utils";
-import { cancelAppointment, withdrawBookingRequest } from "../actions";
+import {
+  cancelAppointment,
+  withdrawBookingRequest,
+  requestReschedule,
+  withdrawReschedule,
+  getVerfuegbareSlots,
+  type AvailableSlot,
+} from "../actions";
 
 type Appointment = {
   id: string;
@@ -20,16 +38,31 @@ type BookingRequest = {
   status: string;
 };
 
+type RescheduleRequest = {
+  id: string;
+  appointment_id: string;
+  original_start: string;
+  proposed_start: string;
+  status: string;
+};
+
 export default function NaechsteTermine({
   appointments,
   requests,
+  reschedules = [],
 }: {
   appointments: Appointment[];
   requests: BookingRequest[];
+  reschedules?: RescheduleRequest[];
 }) {
   const offeneAnfragen = requests.filter((r) => r.status === "open");
+  const offeneVerschiebungen = reschedules.filter((r) => r.status === "open");
 
-  if (appointments.length === 0 && offeneAnfragen.length === 0) {
+  if (
+    appointments.length === 0 &&
+    offeneAnfragen.length === 0 &&
+    offeneVerschiebungen.length === 0
+  ) {
     return (
       <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center">
         <Calendar className="w-8 h-8 text-gray-300 mx-auto mb-2" />
@@ -44,7 +77,13 @@ export default function NaechsteTermine({
         <AnfrageRow key={r.id} request={r} />
       ))}
       {appointments.map((a) => (
-        <TerminRow key={a.id} appointment={a} />
+        <TerminRow
+          key={a.id}
+          appointment={a}
+          pendingReschedule={
+            offeneVerschiebungen.find((v) => v.appointment_id === a.id) ?? null
+          }
+        />
       ))}
     </div>
   );
@@ -122,10 +161,18 @@ function AnfrageRow({ request }: { request: BookingRequest }) {
   );
 }
 
-function TerminRow({ appointment }: { appointment: Appointment }) {
+function TerminRow({
+  appointment,
+  pendingReschedule,
+}: {
+  appointment: Appointment;
+  pendingReschedule: RescheduleRequest | null;
+}) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [cancelled, setCancelled] = useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [rescheduleSent, setRescheduleSent] = useState(false);
 
   const beginn = new Date(appointment.start_at);
   const ende = new Date(appointment.end_at);
@@ -183,6 +230,8 @@ function TerminRow({ appointment }: { appointment: Appointment }) {
     );
   }
 
+  const hasPendingReschedule = !!pendingReschedule || rescheduleSent;
+
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
       <div className="flex items-start justify-between gap-3">
@@ -208,6 +257,23 @@ function TerminRow({ appointment }: { appointment: Appointment }) {
           >
             <Download className="w-4 h-4" />
           </button>
+          {!hasPendingReschedule && (
+            <button
+              onClick={() => {
+                if (within24h) {
+                  setError("Verschiebungen sind nur bis 24 Stunden vorher möglich.");
+                  return;
+                }
+                setError(null);
+                setRescheduleOpen((o) => !o);
+              }}
+              disabled={within24h}
+              className="p-1.5 text-gray-400 hover:text-[#3730A3] rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              title={within24h ? "Verschieben weniger als 24h vorher nicht möglich" : "Termin verschieben"}
+            >
+              <CalendarSync className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={handleStornieren}
             disabled={isPending || within24h}
@@ -218,9 +284,30 @@ function TerminRow({ appointment }: { appointment: Appointment }) {
           </button>
         </div>
       </div>
-      {within24h && (
+
+      {hasPendingReschedule && (
+        <PendingRescheduleBanner
+          reschedule={pendingReschedule}
+          onWithdrawn={() => {
+            setRescheduleSent(false);
+          }}
+        />
+      )}
+
+      {rescheduleOpen && !hasPendingReschedule && (
+        <ReschedulePicker
+          appointmentId={appointment.id}
+          onClose={() => setRescheduleOpen(false)}
+          onSent={() => {
+            setRescheduleOpen(false);
+            setRescheduleSent(true);
+          }}
+        />
+      )}
+
+      {within24h && !hasPendingReschedule && (
         <p className="text-xs text-amber-600 mt-2 bg-amber-50 rounded-lg px-3 py-1.5">
-          Absage weniger als 24h vorher nicht mehr möglich
+          Änderungen weniger als 24h vorher nicht mehr möglich
         </p>
       )}
       {error && (
@@ -228,4 +315,245 @@ function TerminRow({ appointment }: { appointment: Appointment }) {
       )}
     </div>
   );
+}
+
+function PendingRescheduleBanner({
+  reschedule,
+  onWithdrawn,
+}: {
+  reschedule: RescheduleRequest | null;
+  onWithdrawn: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [withdrawn, setWithdrawn] = useState(false);
+
+  if (withdrawn) {
+    return (
+      <p className="text-xs text-gray-400 mt-2 bg-gray-50 rounded-lg px-3 py-1.5">
+        Verschiebung zurückgezogen
+      </p>
+    );
+  }
+
+  const proposed = reschedule ? new Date(reschedule.proposed_start) : null;
+  const proposedLabel = proposed
+    ? `${proposed.toLocaleDateString("de-CH", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      })}, ${proposed.toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" })} Uhr`
+    : null;
+
+  function handleWithdraw() {
+    if (!reschedule) return;
+    startTransition(async () => {
+      const result = await withdrawReschedule(reschedule.id);
+      if (result?.error) setError(result.error);
+      else {
+        setWithdrawn(true);
+        onWithdrawn();
+      }
+    });
+  }
+
+  return (
+    <div className="mt-2 bg-amber-50/70 border border-amber-200 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
+      <p className="text-xs text-amber-700 flex items-center gap-1.5">
+        <CalendarSync className="w-3.5 h-3.5 flex-shrink-0" />
+        Verschiebung angefragt
+        {proposedLabel && (
+          <span className="font-600">→ {proposedLabel}</span>
+        )}
+      </p>
+      {reschedule && (
+        <button
+          onClick={handleWithdraw}
+          disabled={isPending}
+          className="text-[11px] text-amber-700 hover:text-red-600 font-600 disabled:opacity-40 flex-shrink-0"
+        >
+          {isPending ? "…" : "Zurückziehen"}
+        </button>
+      )}
+      {error && <span className="text-[11px] text-red-600">{error}</span>}
+    </div>
+  );
+}
+
+function ReschedulePicker({
+  appointmentId,
+  onClose,
+  onSent,
+}: {
+  appointmentId: string;
+  onClose: () => void;
+  onSent: () => void;
+}) {
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [slots, setSlots] = useState<AvailableSlot[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setLoadingSlots(true);
+    setSelectedSlot(null);
+    startTransition(async () => {
+      const result = await getVerfuegbareSlots(weekOffset);
+      setSlots(result);
+      setLoadingSlots(false);
+    });
+  }, [weekOffset]);
+
+  const slotsByDay = new Map<string, AvailableSlot[]>();
+  for (const slot of slots) {
+    const dateStr = slot.beginn.split("T")[0];
+    if (!slotsByDay.has(dateStr)) slotsByDay.set(dateStr, []);
+    slotsByDay.get(dateStr)!.push(slot);
+  }
+
+  const monday = getMonday(weekOffset);
+  const days: { dateStr: string; label: string }[] = [];
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(monday.getTime() + i * 86400000);
+    days.push({
+      dateStr: d.toISOString().split("T")[0],
+      label: d.toLocaleDateString("de-CH", { weekday: "short" }),
+    });
+  }
+  const friday = new Date(monday.getTime() + 4 * 86400000);
+  const weekLabel = `${monday.toLocaleDateString("de-CH", {
+    day: "numeric",
+    month: "short",
+  })} – ${friday.toLocaleDateString("de-CH", {
+    day: "numeric",
+    month: "short",
+  })}`;
+
+  function handleSubmit() {
+    if (!selectedSlot) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await requestReschedule(appointmentId, selectedSlot.beginn);
+      if (result?.error) setError(result.error);
+      else onSent();
+    });
+  }
+
+  return (
+    <div className="mt-3 border-t border-gray-100 pt-3 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-600 text-gray-700">Neuen Zeitpunkt wählen</p>
+        <button
+          onClick={onClose}
+          className="text-[11px] text-gray-400 hover:text-gray-600"
+        >
+          Abbrechen
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => setWeekOffset((w) => w - 1)}
+          disabled={weekOffset <= 0}
+          className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30 transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <span className="text-xs font-500 text-gray-600">{weekLabel}</span>
+        <button
+          onClick={() => setWeekOffset((w) => w + 1)}
+          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {loadingSlots ? (
+        <div className="flex items-center justify-center py-6">
+          <Loader2 className="w-5 h-5 animate-spin text-[#3730A3]" />
+        </div>
+      ) : slots.length === 0 ? (
+        <div className="text-center py-6 text-gray-400">
+          <Calendar className="w-5 h-5 mx-auto mb-1.5 opacity-40" />
+          <p className="text-xs">Keine freien Slots diese Woche</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-5 gap-1.5">
+          {days.map((d) => {
+            const daySlots = slotsByDay.get(d.dateStr) ?? [];
+            return (
+              <div key={d.dateStr} className="space-y-1">
+                <p className="text-[10px] font-600 text-gray-400 text-center uppercase tracking-wide">
+                  {d.label}
+                </p>
+                {daySlots.length === 0 ? (
+                  <p className="text-[10px] text-gray-300 text-center mt-1">—</p>
+                ) : (
+                  daySlots.map((slot) => {
+                    const isSelected = selectedSlot?.beginn === slot.beginn;
+                    const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+                    return (
+                      <button
+                        key={slot.beginn}
+                        onClick={() => setSelectedSlot(isSelected ? null : slot)}
+                        className={`w-full text-[11px] py-1.5 rounded-lg font-500 transition-colors ${
+                          isSelected
+                            ? "bg-[#3730A3] text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-[#3730A3]/10"
+                        }`}
+                      >
+                        {time}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {error && (
+        <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+      )}
+
+      <button
+        onClick={handleSubmit}
+        disabled={!selectedSlot || isPending || loadingSlots}
+        className="w-full text-sm font-600 text-white bg-[#3730A3] rounded-xl py-2.5 hover:bg-[#2d2682] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        {isPending && !loadingSlots ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Wird gesendet…
+          </>
+        ) : selectedSlot ? (
+          `Verschiebung anfragen – ${new Date(selectedSlot.beginn).toLocaleDateString(
+            "de-CH",
+            { weekday: "short", day: "numeric", month: "short" }
+          )} ${new Date(selectedSlot.beginn).toLocaleTimeString("de-CH", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })} Uhr`
+        ) : (
+          "Zeitfenster wählen"
+        )}
+      </button>
+    </div>
+  );
+}
+
+function getMonday(weekOffset: number): Date {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff + weekOffset * 7);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
 }

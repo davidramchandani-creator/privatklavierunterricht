@@ -43,11 +43,16 @@ export async function GET(request: NextRequest) {
         "booking_request_admin",
         "booking_request_withdrawn",
         "appointment_cancelled_by_student",
+        "reschedule_request_admin",
       ];
       const studentPayloadToTypes = [
         "booking_request_received",
         "booking_confirmed",
+        "reschedule_request_received",
+        "reschedule_confirmed",
       ];
+      // Typen, deren Empfänger-Mail erst aus der profiles-Tabelle aufgelöst wird.
+      const studentLookupTypes = ["booking_rejected", "reschedule_rejected"];
 
       if (adminRecipientTypes.includes(email.type)) {
         to = process.env.ADMIN_EMAIL ?? null;
@@ -68,7 +73,7 @@ export async function GET(request: NextRequest) {
         }
       } else if (studentPayloadToTypes.includes(email.type)) {
         to = (payload.to as string) ?? null;
-      } else if (email.type === "booking_rejected") {
+      } else if (studentLookupTypes.includes(email.type)) {
         // Look up student email
         if (payload.student_id) {
           const { data: profile } = await admin

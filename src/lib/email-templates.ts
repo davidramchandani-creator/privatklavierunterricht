@@ -278,6 +278,109 @@ export function renderEmail(
       return { subject, html: baseWrapper(content) };
     }
 
+    case "reschedule_request_admin": {
+      const studentName = String(payload.student_name ?? "Unbekannt");
+      const originalStart = String(payload.original_start ?? "");
+      const proposedStart = String(payload.proposed_start ?? "");
+
+      const subject = `Verschiebungswunsch – ${studentName}`;
+      const content = `
+        <p style="margin:0 0 16px;"><strong>${studentName}</strong> möchte einen Termin verschieben:</p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;">
+          <tr>
+            <td style="padding:8px 0;color:#6b7280;width:180px;font-size:14px;">Bisheriger Termin</td>
+            <td style="padding:8px 0;font-weight:600;font-size:14px;">${originalStart ? fmtDateTime(originalStart) : "–"}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:#6b7280;font-size:14px;">Gewünschter neuer Termin</td>
+            <td style="padding:8px 0;font-weight:600;font-size:14px;color:#3730A3;">${proposedStart ? fmtDateTime(proposedStart) : "–"}</td>
+          </tr>
+        </table>
+        <p style="margin:0 0 24px;">
+          <a href="${APP_URL}/admin/terminanfragen"
+             style="display:inline-block;background-color:#3730A3;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+            Verschiebung prüfen
+          </a>
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "reschedule_request_received": {
+      const originalStart = String(payload.original_start ?? "");
+      const proposedStart = String(payload.proposed_start ?? "");
+
+      const subject = "Dein Verschiebungswunsch wurde erhalten";
+      const content = `
+        <p style="margin:0 0 16px;">Vielen Dank – wir haben deinen Verschiebungswunsch erhalten.</p>
+        <p style="margin:0 0 16px;">
+          David prüft den neuen Zeitpunkt und bestätigt ihn so bald wie möglich.
+          Bis dahin bleibt dein bisheriger Termin gültig.
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Bisheriger Termin</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${originalStart ? fmtDateTime(originalStart) : "–"}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Gewünschter neuer Termin</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${proposedStart ? fmtDateTime(proposedStart) : "–"}</td>
+          </tr>
+        </table>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "reschedule_confirmed": {
+      const proposedStart = String(payload.proposed_start ?? "");
+
+      const subject = "Dein Termin wurde verschoben – Klavierunterricht";
+      const content = `
+        <p style="margin:0 0 16px;font-size:18px;font-weight:bold;color:#3730A3;">
+          Dein Termin wurde verschoben ✓
+        </p>
+        <p style="margin:0 0 16px;">Dein neuer Termin ist bestätigt:</p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Neuer Termin</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;color:#3730A3;">${proposedStart ? fmtDateTime(proposedStart) : "–"}</td>
+          </tr>
+        </table>
+        <p style="margin:0;color:#6b7280;font-size:13px;">Wir freuen uns auf die Lektion!</p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "reschedule_rejected": {
+      const originalStart = String(payload.original_start ?? "");
+      const reason = payload.reason ? String(payload.reason) : null;
+
+      const subject = "Dein Verschiebungswunsch – Absage";
+      const content = `
+        <p style="margin:0 0 16px;">
+          Leider können wir deinen Verschiebungswunsch nicht annehmen.
+          Dein bisheriger Termin${originalStart ? ` am <strong>${fmtDateTime(originalStart)}</strong>` : ""} bleibt bestehen.
+        </p>
+        ${
+          reason
+            ? `<p style="margin:0 0 16px;padding:12px 16px;background-color:#fef2f2;border-left:3px solid #ef4444;border-radius:4px;font-size:14px;color:#7f1d1d;">
+            <strong>Begründung:</strong> ${reason}
+          </p>`
+            : ""
+        }
+        <p style="margin:0 0 24px;">
+          Gerne kannst du im Portal einen anderen Zeitpunkt anfragen.
+        </p>
+        <p style="margin:0;">
+          <a href="${APP_URL}/schueler/portal"
+             style="display:inline-block;background-color:#3730A3;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+            Zum Portal
+          </a>
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
     default:
       return null;
   }
