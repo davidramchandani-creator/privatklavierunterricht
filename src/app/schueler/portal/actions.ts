@@ -422,6 +422,42 @@ export async function withdrawReschedule(rescheduleId: string) {
   return { success: true };
 }
 
+/**
+ * Schüler markiert eine Rechnung als bezahlt (unpaid/rejected → pending_confirmation).
+ * Nur für eigene Rechnungen. Spec §6.
+ */
+export async function markInvoicePaid(invoiceId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  // Eigentümerschaft prüfen
+  const { data: inv } = await supabase
+    .from("invoices")
+    .select("id, student_id, status")
+    .eq("id", invoiceId)
+    .maybeSingle();
+
+  if (!inv || inv.student_id !== user.id) {
+    return { error: "Rechnung nicht gefunden." };
+  }
+  if (!["unpaid", "rejected"].includes(inv.status)) {
+    return { error: "Nur unbezahlte oder abgelehnte Rechnungen können bestätigt werden." };
+  }
+
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("invoices")
+    .update({ status: "pending_confirmation" })
+    .eq("id", invoiceId);
+  if (error) return { error: "Status konnte nicht aktualisiert werden." };
+
+  revalidatePath("/schueler/portal");
+  return { success: true };
+}
+
 export async function storniereTermin(termin_id: string, schueler_id: string) {
   const supabase = await createClient();
 

@@ -100,12 +100,14 @@ export default async function SchuelerPortalPage() {
     .eq("status", "open")
     .order("proposed_start", { ascending: true });
 
-  const { data: zahlungen } = await supabase
-    .from("zahlungen")
-    .select("*")
-    .eq("schueler_id", schueler?.id ?? "")
-    .order("faellig_am", { ascending: false })
-    .limit(10);
+  // Rechnungen aus neuem Schema (Meilenstein 9)
+  const { data: invoices } = await supabase
+    .from("invoices")
+    .select("id, invoice_number, amount, status, method, lesson_date, pdf_url, access_token, appointment_id")
+    .eq("student_id", user.id)
+    .not("status", "in", '("archived","cancelled")')
+    .order("lesson_date", { ascending: false })
+    .limit(20);
 
   const { data: meineBewertung } = await supabase
     .from("bewertungen")
@@ -210,7 +212,7 @@ export default async function SchuelerPortalPage() {
         {/* Zahlungen */}
         <section id="zahlungen">
           <SectionHeader icon={<CreditCard className="w-4 h-4" />} title="Zahlungen" />
-          <ZahlungenSection zahlungen={zahlungen ?? []} />
+          <ZahlungenSection invoices={invoices ?? []} />
         </section>
 
         {/* Bewertung */}

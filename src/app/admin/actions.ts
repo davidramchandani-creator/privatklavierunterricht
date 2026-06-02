@@ -22,6 +22,7 @@ import {
   computePackageState,
 } from "@/lib/packages";
 import { addMonths } from "@/lib/utils";
+import { buildTwintLink } from "@/lib/twint";
 
 /**
  * Bucht (ggf. als Serie) Termine für einen Schüler im neuen Schema.
@@ -38,7 +39,7 @@ async function bookSeriesForStudent(
 ): Promise<{ appointmentIds: string[] } | { error: string }> {
   const { data: profile } = await admin
     .from("profiles")
-    .select("buffer_time_minutes")
+    .select("buffer_time_minutes, email, vorname, nachname, adresse")
     .eq("id", studentUserId)
     .single();
   const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
@@ -96,6 +97,52 @@ async function bookSeriesForStudent(
     .insert(rows)
     .select("id");
   if (error || !created) return { error: "Termine konnten nicht erstellt werden." };
+
+  // Für jeden Termin: Rechnung anlegen + Zahlungsmail planen
+  for (const appt of rows) {
+    const createdAppt = created[rows.indexOf(appt)];
+    if (!createdAppt) continue;
+
+    const paymentMethod: "twint" | "qr" = (pkg.payment_method as "twint" | "qr") ?? "twint";
+    const amount = Number(pkg.price_per_lesson ?? 0);
+    const studentName = profile ? `${profile.vorname} ${profile.nachname}` : "Schüler";
+
+    const { data: inv } = await admin
+      .from("invoices")
+      .insert({
+        student_id: studentUserId,
+        appointment_id: createdAppt.id,
+        amount,
+        payer_name: studentName,
+        payer_address: profile?.adresse ?? null,
+        status: "unpaid",
+        method: paymentMethod,
+        lesson_date: appt.start_at,
+      })
+      .select("id, invoice_number, access_token")
+      .maybeSingle();
+
+    if (inv && profile?.email) {
+      const sendAt = new Date(appt.end_at);
+      const basePayload = {
+        to: profile.email,
+        student_name: studentName,
+        student_id: studentUserId,
+        lesson_date: appt.start_at,
+        amount,
+        invoice_number: inv.invoice_number,
+        invoice_id: inv.id,
+      };
+      if (paymentMethod === "qr") {
+        await enqueueEmail(admin, "qr_invoice", basePayload, sendAt);
+      } else {
+        await enqueueEmail(admin, "twint_payment_request", {
+          ...basePayload,
+          twint_link: buildTwintLink(amount, inv.invoice_number ?? inv.id),
+        }, sendAt);
+      }
+    }
+  }
 
   return { appointmentIds: created.map((c) => c.id) };
 }
@@ -1310,6 +1357,198 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin");
   return { success: true, settlement };
+}
+
+// ── Rechnungen / Zahlungen (Meilenstein 9) ────────────────────────────────────
+
+/**
+ * Erstellt eine Rechnung für einen Termin (neues Schema). Wird intern beim
+ * Buchen aufgerufen; kann auch manuell ausgelöst werden.
+ */
+export async function createInvoiceForAppointment(appointmentId: string) {
+  const admin = await createAdminClient();
+
+  const { data: appt } = await admin
+    .from("appointments")
+    .select("id, student_id, start_at, end_at, package_id")
+    .eq("id", appointmentId)
+    .single();
+  if (!appt) return { error: "Termin nicht gefunden." };
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("vorname, nachname, email, adresse")
+    .eq("id", appt.student_id)
+    .maybeSingle();
+
+  const { data: pkg } = await admin
+    .from("packages")
+    .select("price_per_lesson, payment_method")
+    .eq("id", appt.package_id ?? "")
+    .maybeSingle();
+
+  const amount = Number(pkg?.price_per_lesson ?? 85);
+  const paymentMethod = pkg?.payment_method ?? "twint";
+  const invoiceNumber =
+    "PIANO-" + new Date().getFullYear() + "-" + String(Math.floor(Math.random() * 9000) + 1000);
+
+  const { data: inv, error } = await admin
+    .from("invoices")
+    .insert({
+      invoice_number: invoiceNumber,
+      student_id: appt.student_id,
+      appointment_id: appointmentId,
+      amount,
+      payer_name: profile ? `${profile.vorname} ${profile.nachname}` : null,
+      payer_address: profile?.adresse ?? null,
+      status: "unpaid",
+      method: paymentMethod,
+      lesson_date: appt.start_at,
+    })
+    .select("id")
+    .single();
+
+  if (error || !inv) return { error: "Rechnung konnte nicht erstellt werden." };
+
+  revalidatePath("/admin/zahlungen");
+  return { success: true, invoiceId: inv.id };
+}
+
+/** Admin bestätigt eine Zahlung (pending_confirmation → paid). */
+export async function confirmInvoicePayment(invoiceId: string) {
+  const admin = await createAdminClient();
+
+  const { data: inv } = await admin
+    .from("invoices")
+    .select("id, student_id, invoice_number, amount, lesson_date")
+    .eq("id", invoiceId)
+    .single();
+  if (!inv) return { error: "Rechnung nicht gefunden." };
+
+  const { error } = await admin
+    .from("invoices")
+    .update({ status: "paid", paid_at: new Date().toISOString() })
+    .eq("id", invoiceId);
+  if (error) return { error: error.message };
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("email, vorname, nachname")
+    .eq("id", inv.student_id)
+    .maybeSingle();
+
+  if (profile?.email) {
+    await enqueueEmail(admin, "payment_confirmed", {
+      to: profile.email,
+      student_name: `${profile.vorname} ${profile.nachname}`,
+      student_id: inv.student_id,
+      lesson_date: inv.lesson_date,
+      amount: inv.amount,
+      invoice_number: inv.invoice_number,
+    });
+  }
+
+  revalidatePath("/admin/zahlungen");
+  return { success: true };
+}
+
+/** Admin lehnt eine Zahlung ab (pending_confirmation → rejected). */
+export async function rejectInvoicePayment(invoiceId: string, reason?: string) {
+  const admin = await createAdminClient();
+
+  const { data: inv } = await admin
+    .from("invoices")
+    .select("id, student_id, invoice_number, amount, lesson_date")
+    .eq("id", invoiceId)
+    .single();
+  if (!inv) return { error: "Rechnung nicht gefunden." };
+
+  const { error } = await admin
+    .from("invoices")
+    .update({ status: "rejected" })
+    .eq("id", invoiceId);
+  if (error) return { error: error.message };
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("email, vorname, nachname")
+    .eq("id", inv.student_id)
+    .maybeSingle();
+
+  if (profile?.email) {
+    await enqueueEmail(admin, "payment_rejected", {
+      to: profile.email,
+      student_name: `${profile.vorname} ${profile.nachname}`,
+      student_id: inv.student_id,
+      lesson_date: inv.lesson_date,
+      amount: inv.amount,
+      invoice_number: inv.invoice_number,
+      reason: reason ?? null,
+    });
+  }
+
+  revalidatePath("/admin/zahlungen");
+  return { success: true };
+}
+
+/** Admin archiviert eine Rechnung (aus der aktiven Liste entfernen). */
+export async function archiveInvoice(invoiceId: string) {
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("invoices")
+    .update({ status: "archived" })
+    .eq("id", invoiceId);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/zahlungen");
+  return { success: true };
+}
+
+/** Admin sendet die Zahlungsmail für eine Rechnung erneut (sofort). */
+export async function resendPaymentEmail(invoiceId: string) {
+  const admin = await createAdminClient();
+
+  const { data: inv } = await admin
+    .from("invoices")
+    .select("*")
+    .eq("id", invoiceId)
+    .single();
+  if (!inv) return { error: "Rechnung nicht gefunden." };
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("email, vorname, nachname")
+    .eq("id", inv.student_id)
+    .maybeSingle();
+  if (!profile?.email) return { error: "Schüler-E-Mail nicht gefunden." };
+
+  const studentName = `${profile.vorname} ${profile.nachname}`;
+
+  if (inv.method === "qr") {
+    await enqueueEmail(admin, "qr_invoice", {
+      to: profile.email,
+      student_name: studentName,
+      student_id: inv.student_id,
+      lesson_date: inv.lesson_date,
+      amount: inv.amount,
+      invoice_number: inv.invoice_number,
+      invoice_id: invoiceId,
+    });
+  } else {
+    const twintLink = buildTwintLink(Number(inv.amount ?? 0), inv.invoice_number ?? invoiceId);
+    await enqueueEmail(admin, "twint_payment_request", {
+      to: profile.email,
+      student_name: studentName,
+      student_id: inv.student_id,
+      lesson_date: inv.lesson_date,
+      amount: inv.amount,
+      twint_link: twintLink,
+      invoice_number: inv.invoice_number,
+      invoice_id: invoiceId,
+    });
+  }
+
+  revalidatePath("/admin/zahlungen");
+  return { success: true };
 }
 
 // ── Anfragen ─────────────────────────────────────────────────────────────────
