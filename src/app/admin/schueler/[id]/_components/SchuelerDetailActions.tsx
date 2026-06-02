@@ -9,7 +9,6 @@ import {
   hardDeleteSchueler,
   resendInvite,
   createPaket,
-  bestaetigeTermin,
   storniereTerminAdmin,
   abschliessenTermin,
   updateZahlungStatus,
@@ -314,38 +313,6 @@ function TerminActions({
   const [isPending, startTransition] = useTransition();
 
   if (status === "storniert" || status === "abgeschlossen") return null;
-
-  if (status === "angefragt") {
-    return (
-      <div className="flex gap-1.5">
-        <button
-          disabled={isPending}
-          onClick={() => {
-            startTransition(async () => {
-              await bestaetigeTermin(terminId);
-            });
-          }}
-          className="p-1.5 rounded-lg hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 transition-colors"
-          title="Bestätigen"
-        >
-          {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-        </button>
-        <button
-          disabled={isPending}
-          onClick={() => {
-            if (!confirm("Anfrage ablehnen?")) return;
-            startTransition(async () => {
-              await storniereTerminAdmin(terminId);
-            });
-          }}
-          className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
-          title="Ablehnen"
-        >
-          <XCircle className="w-3.5 h-3.5" />
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="flex gap-1.5">
