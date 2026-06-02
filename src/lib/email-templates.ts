@@ -1,0 +1,284 @@
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.ch";
+
+function fmtDateTime(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("de-CH", {
+      timeZone: "Europe/Zurich",
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+      .format(new Date(iso))
+      .replace(",", ",")
+      + " Uhr";
+  } catch {
+    return iso;
+  }
+}
+
+function fmtDate(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("de-CH", {
+      timeZone: "Europe/Zurich",
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+function baseWrapper(contentHtml: string): string {
+  return `<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f3f4f6;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#3730A3;padding:28px 32px;text-align:center;">
+              <span style="color:#ffffff;font-size:20px;font-weight:bold;letter-spacing:0.5px;">
+                Klavierunterricht David Ramchandani
+              </span>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;color:#1f2937;font-size:15px;line-height:1.7;">
+              ${contentHtml}
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#f9fafb;padding:20px 32px;text-align:center;border-top:1px solid #e5e7eb;">
+              <span style="color:#6b7280;font-size:12px;">
+                Diese E-Mail wurde automatisch versandt.
+              </span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export function renderEmail(
+  type: string,
+  payload: Record<string, unknown>
+): { subject: string; html: string } | null {
+  switch (type) {
+    case "booking_request_admin": {
+      const studentName = String(payload.student_name ?? "Unbekannt");
+      const desiredStart = String(payload.desired_start ?? "");
+      const lessonsCount = Number(payload.lessons_count ?? 1);
+      const intervalDays = Number(payload.interval_days ?? 0);
+
+      const subject = `Neue Terminanfrage – ${studentName}`;
+      const content = `
+        <p style="margin:0 0 16px;">Es liegt eine neue Terminanfrage vor:</p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;">
+          <tr>
+            <td style="padding:8px 0;color:#6b7280;width:180px;font-size:14px;">Schüler/in</td>
+            <td style="padding:8px 0;font-weight:600;font-size:14px;">${studentName}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:#6b7280;font-size:14px;">Wunschtermin</td>
+            <td style="padding:8px 0;font-weight:600;font-size:14px;">${desiredStart ? fmtDateTime(desiredStart) : "–"}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:#6b7280;font-size:14px;">Anzahl Lektionen</td>
+            <td style="padding:8px 0;font-weight:600;font-size:14px;">${lessonsCount}</td>
+          </tr>
+          ${
+            intervalDays > 0
+              ? `<tr>
+            <td style="padding:8px 0;color:#6b7280;font-size:14px;">Seriell</td>
+            <td style="padding:8px 0;font-weight:600;font-size:14px;">Ja (alle ${intervalDays} Tage)</td>
+          </tr>`
+              : ""
+          }
+        </table>
+        <p style="margin:0 0 24px;">
+          <a href="${APP_URL}/admin/terminanfragen"
+             style="display:inline-block;background-color:#3730A3;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+            Zur Terminanfragen-Übersicht
+          </a>
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "booking_request_received": {
+      const desiredStart = String(payload.desired_start ?? "");
+      const lessonsCount = Number(payload.lessons_count ?? 1);
+
+      const subject = "Deine Terminanfrage wurde erhalten";
+      const content = `
+        <p style="margin:0 0 16px;">Vielen Dank für deine Terminanfrage!</p>
+        <p style="margin:0 0 16px;">
+          David hat deine Anfrage erhalten und wird sie so bald wie möglich bearbeiten.
+          Du erhältst eine Bestätigung, sobald dein Termin genehmigt wurde.
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Angefragter Termin</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${desiredStart ? fmtDateTime(desiredStart) : "–"}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Anzahl Lektionen</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${lessonsCount}</td>
+          </tr>
+        </table>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Falls du Fragen hast, wende dich direkt an David.
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "booking_confirmed": {
+      const starts = Array.isArray(payload.starts) ? (payload.starts as string[]) : [];
+      const lessonsCount = Number(payload.lessons_count ?? starts.length);
+      const intervalDays = Number(payload.interval_days ?? 0);
+
+      const subject = "Deine Termine wurden bestätigt – Klavierunterricht";
+      const displayedStarts = starts.slice(0, 10);
+      const remaining = starts.length - displayedStarts.length;
+
+      const dateListItems = displayedStarts
+        .map(
+          (s) =>
+            `<li style="padding:4px 0;font-size:14px;">${fmtDateTime(s)}</li>`
+        )
+        .join("");
+
+      const content = `
+        <p style="margin:0 0 16px;font-size:18px;font-weight:bold;color:#3730A3;">
+          Herzlichen Glückwunsch! 🎹
+        </p>
+        <p style="margin:0 0 16px;">
+          Dein${lessonsCount > 1 ? "e Termine wurden" : " Termin wurde"} bestätigt.
+          ${intervalDays > 0 ? `Die Lektionen finden alle ${intervalDays} Tage statt.` : ""}
+        </p>
+        <p style="margin:0 0 8px;font-weight:600;">Bestätigte Termine:</p>
+        <ul style="margin:0 0 24px;padding-left:20px;color:#1f2937;">
+          ${dateListItems}
+          ${remaining > 0 ? `<li style="padding:4px 0;font-size:14px;color:#6b7280;">… und ${remaining} weitere Termine</li>` : ""}
+        </ul>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Wir freuen uns auf die gemeinsamen Lektionen!
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "booking_rejected": {
+      const reason = payload.reason ? String(payload.reason) : null;
+
+      const subject = "Deine Terminanfrage – Absage";
+      const content = `
+        <p style="margin:0 0 16px;">
+          Leider können wir deinen angefragten Termin nicht bestätigen.
+        </p>
+        ${
+          reason
+            ? `<p style="margin:0 0 16px;padding:12px 16px;background-color:#fef2f2;border-left:3px solid #ef4444;border-radius:4px;font-size:14px;color:#7f1d1d;">
+            <strong>Begründung:</strong> ${reason}
+          </p>`
+            : ""
+        }
+        <p style="margin:0 0 24px;">
+          Gerne kannst du einen anderen Termin anfragen. Wir helfen dir, einen passenden Zeitpunkt zu finden.
+        </p>
+        <p style="margin:0 0 24px;">
+          <a href="${APP_URL}/schueler/portal"
+             style="display:inline-block;background-color:#3730A3;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+            Neuen Termin anfragen
+          </a>
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "booking_request_withdrawn": {
+      const studentName = payload.student_name
+        ? String(payload.student_name)
+        : null;
+
+      const subject = "Terminanfrage zurückgezogen";
+      const content = `
+        <p style="margin:0 0 16px;">
+          ${
+            studentName
+              ? `<strong>${studentName}</strong> hat`
+              : "Ein Schüler / eine Schülerin hat"
+          } eine Terminanfrage zurückgezogen.
+        </p>
+        <p style="margin:0 0 24px;color:#6b7280;font-size:14px;">
+          Die Anfrage wurde aus dem System entfernt. Es sind keine weiteren Aktionen erforderlich.
+        </p>
+        <p style="margin:0;">
+          <a href="${APP_URL}/admin/terminanfragen"
+             style="display:inline-block;background-color:#3730A3;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+            Zur Terminanfragen-Übersicht
+          </a>
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "appointment_cancelled_by_student": {
+      const startAt = String(payload.start_at ?? "");
+      const studentName = payload.student_name
+        ? String(payload.student_name)
+        : null;
+      const formattedDate = startAt ? fmtDateTime(startAt) : "–";
+
+      const subject = `Termin storniert – ${startAt ? fmtDate(startAt) : "Unbekanntes Datum"}`;
+      const content = `
+        <p style="margin:0 0 16px;">
+          ${
+            studentName
+              ? `<strong>${studentName}</strong> hat`
+              : "Ein Schüler / eine Schülerin hat"
+          } einen Termin storniert.
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Stornierter Termin</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${formattedDate}</td>
+          </tr>
+          ${
+            studentName
+              ? `<tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Schüler/in</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${studentName}</td>
+          </tr>`
+              : ""
+          }
+        </table>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Der Termin ist nun wieder frei.
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    default:
+      return null;
+  }
+}

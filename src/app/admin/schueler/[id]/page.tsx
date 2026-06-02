@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
-import SchuelerDetailActions, { PaketForm, TerminActions, ZahlungAction } from "./_components/SchuelerDetailActions";
+import { computePackageState, PACKAGE_LABELS, type Package } from "@/lib/packages";
+import SchuelerDetailActions, { ZahlungAction, PreiseForm, PackageFormNew, DirektBuchung, AppointmentActions, PackageTimerActions } from "./_components/SchuelerDetailActions";
 
 export default async function SchuelerDetailPage({
   params,
@@ -21,24 +22,41 @@ export default async function SchuelerDetailPage({
 
   if (!schueler) notFound();
 
+  const userId = schueler.user_id as string | null;
+  const safeUserId = userId ?? "00000000-0000-0000-0000-000000000000";
+  const nowIso = new Date().toISOString();
+
   const [
-    { data: pakete },
-    { data: termine },
+    { data: profile },
+    { data: packages },
+    { data: appointments },
     { data: zahlungen },
     { data: bewertung },
   ] = await Promise.all([
-    supabase
-      .from("pakete")
-      .select("*")
-      .eq("schueler_id", id)
-      .order("erstellt_am", { ascending: false }),
-    supabase
-      .from("termine")
-      .select("*")
-      .eq("schueler_id", id)
-      .gte("beginn", new Date().toISOString())
-      .order("beginn", { ascending: true })
-      .limit(10),
+    userId
+      ? supabase
+          .from("profiles")
+          .select("price_single, price_10er, price_20er, travel_surcharge, buffer_time_minutes")
+          .eq("id", safeUserId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    userId
+      ? supabase
+          .from("packages")
+          .select("*")
+          .eq("student_id", safeUserId)
+          .order("erstellt_am", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    userId
+      ? supabase
+          .from("appointments")
+          .select("id, start_at, end_at, status, series_id")
+          .eq("student_id", safeUserId)
+          .in("status", ["booked", "completed"])
+          .gte("start_at", nowIso)
+          .order("start_at", { ascending: true })
+          .limit(10)
+      : Promise.resolve({ data: [] }),
     supabase
       .from("zahlungen")
       .select("*")
@@ -51,10 +69,28 @@ export default async function SchuelerDetailPage({
       .maybeSingle(),
   ]);
 
-  const typLabels: Record<string, string> = {
-    einzellektion: "Einzellektion",
-    "10er": "10er-Paket",
-    "20er": "20er-Paket",
+  const prices = {
+    price_single: Number(profile?.price_single ?? 85),
+    price_10er: Number(profile?.price_10er ?? 70),
+    price_20er: Number(profile?.price_20er ?? 65),
+    travel_surcharge: Number(profile?.travel_surcharge ?? 0),
+    buffer_time_minutes: Number(profile?.buffer_time_minutes ?? 15),
+  };
+
+  const packageStatusColors: Record<string, string> = {
+    aktiv: "bg-emerald-50 text-emerald-700",
+    pausiert: "bg-blue-50 text-blue-700",
+    aufgebraucht: "bg-gray-100 text-gray-500",
+    abgelaufen: "bg-red-50 text-red-600",
+    storniert: "bg-red-50 text-red-600",
+    kein_paket: "bg-amber-50 text-amber-700",
+  };
+
+  const appointmentStatusMap: Record<string, { label: string; color: string }> = {
+    booked: { label: "Bestätigt", color: "bg-blue-50 text-blue-700" },
+    completed: { label: "Abgeschlossen", color: "bg-emerald-50 text-emerald-700" },
+    cancelled: { label: "Storniert", color: "bg-red-50 text-red-600" },
+    no_show: { label: "Nicht erschienen", color: "bg-gray-100 text-gray-500" },
   };
 
   const zahlungStatusColors: Record<string, string> = {
@@ -128,11 +164,33 @@ export default async function SchuelerDetailPage({
         <SchuelerDetailActions schueler={schueler} />
       </div>
 
+      {/* Preise & Einstellungen */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+        <h2 className="text-lg font-700 text-[#3730A3] mb-4">Preise & Einstellungen</h2>
+        {userId ? (
+          <PreiseForm
+            userId={userId}
+            schuelerId={id}
+            initial={{
+              price_single: prices.price_single,
+              price_10er: prices.price_10er,
+              price_20er: prices.price_20er,
+              travel_surcharge: prices.travel_surcharge,
+              buffer_time_minutes: prices.buffer_time_minutes,
+            }}
+          />
+        ) : (
+          <p className="text-sm text-gray-400">
+            Schüler ist noch nicht mit einem Login verknüpft.
+          </p>
+        )}
+      </div>
+
       {/* Pakete */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
         <h2 className="text-lg font-700 text-[#3730A3] mb-4">Pakete</h2>
 
-        {pakete && pakete.length > 0 ? (
+        {packages && packages.length > 0 ? (
           <table className="w-full mb-4">
             <thead>
               <tr className="border-b border-gray-100">
@@ -141,38 +199,46 @@ export default async function SchuelerDetailPage({
                 <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2 hidden sm:table-cell">Preis/Lekt.</th>
                 <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2 hidden md:table-cell">Gültig bis</th>
                 <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2">Status</th>
+                <th className="pb-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {pakete.map((p) => {
-                const verbleibend = p.lektionen_gesamt - p.lektionen_genutzt;
+              {(packages as Package[]).map((pkg) => {
+                const state = computePackageState(pkg, pkg.lessons_used);
                 return (
-                  <tr key={p.id}>
+                  <tr key={pkg.id}>
                     <td className="py-3 text-sm font-500 text-gray-900">
-                      {typLabels[p.typ] ?? p.typ}
+                      {PACKAGE_LABELS[pkg.type] ?? pkg.name ?? pkg.type}
                     </td>
                     <td className="py-3 text-sm text-gray-600">
-                      {p.lektionen_genutzt}/{p.lektionen_gesamt}
+                      {state.lessonsUsed}/{state.lessonsTotal}
                       <span className="text-[#3730A3] font-600 ml-1">
-                        ({verbleibend} übrig)
+                        ({state.lessonsRemaining} übrig)
                       </span>
                     </td>
                     <td className="py-3 text-sm text-gray-600 hidden sm:table-cell">
-                      {formatCHF(p.preis_pro_lektion)}
+                      {formatCHF(Number(pkg.price_per_lesson))}
                     </td>
                     <td className="py-3 text-sm text-gray-600 hidden md:table-cell">
-                      {p.gueltig_bis ? formatDate(p.gueltig_bis) : "—"}
+                      {pkg.expires_at ? formatDate(pkg.expires_at) : "—"}
                     </td>
                     <td className="py-3">
                       <span
                         className={`text-xs font-500 px-2.5 py-0.5 rounded-full ${
-                          p.aktiv
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-gray-100 text-gray-500"
+                          packageStatusColors[state.effectiveStatus] ?? "bg-gray-100 text-gray-500"
                         }`}
                       >
-                        {p.aktiv ? "Aktiv" : "Inaktiv"}
+                        {state.effectiveStatus}
                       </span>
+                    </td>
+                    <td className="py-3">
+                      {pkg.status === "active" && (
+                        <PackageTimerActions
+                          packageId={pkg.id}
+                          schuelerId={id}
+                          paused={pkg.paused}
+                        />
+                      )}
                     </td>
                   </tr>
                 );
@@ -183,15 +249,35 @@ export default async function SchuelerDetailPage({
           <p className="text-sm text-gray-400 mb-4">Noch kein Paket vorhanden.</p>
         )}
 
-        <PaketForm schueler_id={id} />
+        {userId ? (
+          <PackageFormNew
+            schueler_id={id}
+            student_user_id={userId}
+            defaultPrices={{
+              price_single: prices.price_single,
+              price_10er: prices.price_10er,
+              price_20er: prices.price_20er,
+              travel_surcharge: prices.travel_surcharge,
+            }}
+          />
+        ) : (
+          <p className="text-sm text-gray-400">
+            Schüler ist noch nicht mit einem Login verknüpft.
+          </p>
+        )}
       </div>
 
-      {/* Termine */}
+      {/* Bevorstehende Lektionen */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
         <h2 className="text-lg font-700 text-[#3730A3] mb-4">
           Bevorstehende Lektionen
         </h2>
-        {!termine || termine.length === 0 ? (
+        {userId && (
+          <div className="mb-4">
+            <DirektBuchung schueler_id={id} student_user_id={userId} />
+          </div>
+        )}
+        {!appointments || appointments.length === 0 ? (
           <p className="text-sm text-gray-400">Keine bevorstehenden Lektionen.</p>
         ) : (
           <table className="w-full">
@@ -199,29 +285,31 @@ export default async function SchuelerDetailPage({
               <tr className="border-b border-gray-100">
                 <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2">Datum & Zeit</th>
                 <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2">Status</th>
-                <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2">Notiz</th>
                 <th className="pb-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {termine.map((t) => (
-                <tr key={t.id}>
-                  <td className="py-3 text-sm text-gray-900">{formatDateTime(t.beginn)}</td>
-                  <td className="py-3">
-                    <span
-                      className={`text-xs font-500 px-2.5 py-0.5 rounded-full ${
-                        terminStatusColors[t.status] ?? "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {t.status}
-                    </span>
-                  </td>
-                  <td className="py-3 text-sm text-gray-500">{t.notiz ?? "—"}</td>
-                  <td className="py-3">
-                    <TerminActions terminId={t.id} status={t.status} />
-                  </td>
-                </tr>
-              ))}
+              {appointments.map((a) => {
+                const meta = appointmentStatusMap[a.status] ?? {
+                  label: a.status,
+                  color: "bg-gray-100 text-gray-600",
+                };
+                return (
+                  <tr key={a.id}>
+                    <td className="py-3 text-sm text-gray-900">{formatDateTime(a.start_at)}</td>
+                    <td className="py-3">
+                      <span
+                        className={`text-xs font-500 px-2.5 py-0.5 rounded-full ${meta.color}`}
+                      >
+                        {meta.label}
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      <AppointmentActions appointmentId={a.id} schuelerId={id} status={a.status} />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
