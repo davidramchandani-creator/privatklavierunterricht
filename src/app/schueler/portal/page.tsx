@@ -16,6 +16,14 @@ export default async function SchuelerPortalPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
+  // Admins haben kein Schülerportal – sauber ins Admin-Panel umleiten.
+  const { data: roleRow } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (roleRow?.role === "admin") redirect("/admin");
+
   const { data: schueler } = await supabase
     .from("schueler")
     .select("*")
