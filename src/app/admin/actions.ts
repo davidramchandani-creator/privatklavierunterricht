@@ -670,6 +670,125 @@ export async function rejectBookingRequest(requestId: string, reason?: string) {
   return { success: true };
 }
 
+/**
+ * Admin nimmt eine Verschiebungsanfrage an (Meilenstein 6). Validiert den
+ * Wunschslot erneut gegen die Engine (24h-Vorlauf übersprungen, eigener Termin
+ * ausgenommen) und verschiebt den Termin auf den neuen Zeitpunkt.
+ */
+export async function acceptReschedule(rescheduleId: string) {
+  const admin = await createAdminClient();
+
+  const { data: rr } = await admin
+    .from("reschedule_requests")
+    .select("*")
+    .eq("id", rescheduleId)
+    .single();
+
+  if (!rr) return { error: "Verschiebung nicht gefunden." };
+  if (rr.status !== "open") {
+    return { error: "Diese Anfrage wurde bereits bearbeitet." };
+  }
+
+  const { data: appt } = await admin
+    .from("appointments")
+    .select("id, status, start_at")
+    .eq("id", rr.appointment_id)
+    .single();
+  if (!appt) return { error: "Zugehöriger Termin nicht gefunden." };
+  if (appt.status !== "booked") {
+    return { error: "Der Termin ist nicht mehr verschiebbar." };
+  }
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("buffer_time_minutes, email")
+    .eq("id", rr.student_id)
+    .single();
+  const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
+
+  const newStart = new Date(rr.proposed_start);
+  const now = new Date();
+  const slotEnd = new Date(newStart.getTime() + 3600000);
+  const ctx = await loadAvailabilityContext(
+    admin,
+    rr.student_id,
+    bufferMin,
+    newStart,
+    slotEnd,
+    now,
+    { skipLeadTime: true, excludeAppointmentId: rr.appointment_id }
+  );
+  const validation = validateSeries(newStart, 1, 7, ctx);
+  if (!validation.ok) {
+    return {
+      error:
+        "Der gewünschte neue Zeitpunkt ist nicht mehr verfügbar (Kollision/Abwesenheit).",
+    };
+  }
+
+  const newEnd = slotsFromStarts([newStart])[0].end;
+  const { error: updateError } = await admin
+    .from("appointments")
+    .update({
+      start_at: newStart.toISOString(),
+      end_at: newEnd.toISOString(),
+    })
+    .eq("id", rr.appointment_id);
+  if (updateError) {
+    return { error: "Termin konnte nicht verschoben werden." };
+  }
+
+  await admin
+    .from("reschedule_requests")
+    .update({ status: "accepted", aktualisiert_am: new Date().toISOString() })
+    .eq("id", rescheduleId);
+
+  await enqueueEmail(admin, "reschedule_confirmed", {
+    student_id: rr.student_id,
+    to: profile?.email,
+    original_start: rr.original_start,
+    proposed_start: rr.proposed_start,
+  });
+
+  revalidatePath("/admin/terminanfragen");
+  revalidatePath("/admin/kalender");
+  revalidatePath("/admin");
+  revalidatePath(`/admin/schueler/${rr.student_id}`);
+  return { success: true };
+}
+
+/** Admin lehnt eine Verschiebungsanfrage ab (optional mit Begründung). */
+export async function rejectReschedule(rescheduleId: string, reason?: string) {
+  const admin = await createAdminClient();
+
+  const { data: rr } = await admin
+    .from("reschedule_requests")
+    .select("id, status, student_id, original_start, proposed_start")
+    .eq("id", rescheduleId)
+    .single();
+
+  if (!rr) return { error: "Verschiebung nicht gefunden." };
+  if (rr.status !== "open") {
+    return { error: "Diese Anfrage wurde bereits bearbeitet." };
+  }
+
+  const { error } = await admin
+    .from("reschedule_requests")
+    .update({ status: "rejected", aktualisiert_am: new Date().toISOString() })
+    .eq("id", rescheduleId);
+  if (error) return { error: "Anfrage konnte nicht abgelehnt werden." };
+
+  await enqueueEmail(admin, "reschedule_rejected", {
+    student_id: rr.student_id,
+    original_start: rr.original_start,
+    proposed_start: rr.proposed_start,
+    reason: reason ?? null,
+  });
+
+  revalidatePath("/admin/terminanfragen");
+  return { success: true };
+}
+
 // ── Admin: Preise, Pakete, Direktbuchung, Termine (neues Schema) ─────────────
 
 /** Setzt die Preise & Pufferzeit eines Schülers (profiles). Spec §11.2. */

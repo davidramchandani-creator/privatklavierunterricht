@@ -276,6 +276,152 @@ export async function cancelAppointment(appointmentId: string) {
   return { success: true };
 }
 
+/**
+ * Schüler beantragt eine Verschiebung eines bestätigten Termins (Spec §6,
+ * Meilenstein 6). Beide – der ursprüngliche wie der gewünschte neue Termin –
+ * müssen ≥24h in der Zukunft liegen. Der Wunschslot wird gegen die Engine
+ * validiert (der zu verschiebende Termin selbst wird dabei ausgenommen). Es
+ * entsteht ein `reschedule_requests`-Eintrag (status open); der Termin wird
+ * erst bei Admin-Bestätigung tatsächlich verschoben.
+ */
+export async function requestReschedule(
+  appointmentId: string,
+  newStartIso: string
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const { data: appt } = await supabase
+    .from("appointments")
+    .select("id, start_at, end_at, student_id, status")
+    .eq("id", appointmentId)
+    .single();
+
+  if (!appt || appt.student_id !== user.id) {
+    return { error: "Termin nicht gefunden." };
+  }
+  if (appt.status !== "booked") {
+    return { error: "Nur bestätigte Termine können verschoben werden." };
+  }
+
+  const now = new Date();
+  if (!isAtLeast24hAway(appt.start_at, now)) {
+    return {
+      error: "Verschiebungen sind nur bis 24 Stunden vor dem Termin möglich.",
+    };
+  }
+
+  const newStart = new Date(newStartIso);
+  if (!isAtLeast24hAway(newStart, now)) {
+    return {
+      error: "Der neue Termin muss mindestens 24 Stunden in der Zukunft liegen.",
+    };
+  }
+
+  // Bereits offene Verschiebung für diesen Termin? Dann nicht doppelt anlegen.
+  const { data: existing } = await supabase
+    .from("reschedule_requests")
+    .select("id")
+    .eq("appointment_id", appointmentId)
+    .eq("status", "open")
+    .maybeSingle();
+  if (existing) {
+    return {
+      error: "Für diesen Termin liegt bereits eine offene Verschiebung vor.",
+    };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("buffer_time_minutes, vorname, nachname, email")
+    .eq("id", user.id)
+    .maybeSingle();
+  const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
+
+  // Wunschslot gegen die Engine validieren (eigenen Termin ausnehmen).
+  const admin = await createAdminClient();
+  const slotEnd = new Date(newStart.getTime() + 3600000);
+  const ctx = await loadAvailabilityContext(
+    admin,
+    user.id,
+    bufferMin,
+    newStart,
+    slotEnd,
+    now,
+    { excludeAppointmentId: appointmentId }
+  );
+  const validation = validateSeries(newStart, 1, 7, ctx);
+  if (!validation.ok) {
+    return {
+      error:
+        "Der gewünschte neue Zeitpunkt ist nicht verfügbar. Bitte wähle einen anderen.",
+    };
+  }
+
+  const { error } = await supabase.from("reschedule_requests").insert({
+    student_id: user.id,
+    appointment_id: appointmentId,
+    original_start: appt.start_at,
+    proposed_start: newStart.toISOString(),
+    status: "open",
+    request_type: "reschedule",
+  });
+  if (error) {
+    return { error: "Verschiebung konnte nicht gespeichert werden." };
+  }
+
+  const studentName = profile ? `${profile.vorname} ${profile.nachname}` : "Schüler";
+  await enqueueEmail(admin, "reschedule_request_admin", {
+    student_id: user.id,
+    student_name: studentName,
+    original_start: appt.start_at,
+    proposed_start: newStart.toISOString(),
+  });
+  await enqueueEmail(admin, "reschedule_request_received", {
+    student_id: user.id,
+    to: profile?.email,
+    original_start: appt.start_at,
+    proposed_start: newStart.toISOString(),
+  });
+
+  revalidatePath("/schueler/portal");
+  return { success: true };
+}
+
+/** Schüler zieht eine offene Verschiebungsanfrage zurück. */
+export async function withdrawReschedule(rescheduleId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const { data: rr } = await supabase
+    .from("reschedule_requests")
+    .select("id, status, student_id")
+    .eq("id", rescheduleId)
+    .single();
+
+  if (!rr || rr.student_id !== user.id) {
+    return { error: "Anfrage nicht gefunden." };
+  }
+  if (rr.status !== "open") {
+    return { error: "Nur offene Anfragen können zurückgezogen werden." };
+  }
+
+  const { error } = await supabase
+    .from("reschedule_requests")
+    .update({ status: "withdrawn" })
+    .eq("id", rescheduleId);
+  if (error) return { error: "Anfrage konnte nicht zurückgezogen werden." };
+
+  revalidatePath("/schueler/portal");
+  return { success: true };
+}
+
 export async function storniereTermin(termin_id: string, schueler_id: string) {
   const supabase = await createClient();
 
