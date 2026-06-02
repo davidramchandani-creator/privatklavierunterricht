@@ -24,7 +24,7 @@ export async function loadAvailabilityContext(
   fromInstant: Date,
   toInstant: Date,
   now: Date = new Date(),
-  opts: { skipLeadTime?: boolean } = {}
+  opts: { skipLeadTime?: boolean; excludeAppointmentId?: string } = {}
 ): Promise<AvailabilityContext> {
   // Termine etwas grosszügiger laden, damit Puffer an den Rändern greifen.
   const apptFrom = new Date(fromInstant.getTime() - 86400000).toISOString();
@@ -32,13 +32,20 @@ export async function loadAvailabilityContext(
   const fromDate = fromInstant.toISOString().slice(0, 10);
   const toDate = toInstant.toISOString().slice(0, 10);
 
+  // Beim Verschieben muss der zu verschiebende Termin selbst von der
+  // Kollisionsprüfung ausgenommen werden (sonst kollidiert er mit sich selbst).
+  let apptQuery = admin
+    .from("appointments")
+    .select("start_at, end_at, profiles(buffer_time_minutes)")
+    .in("status", ["booked", "pending"])
+    .gte("start_at", apptFrom)
+    .lte("start_at", apptTo);
+  if (opts.excludeAppointmentId) {
+    apptQuery = apptQuery.neq("id", opts.excludeAppointmentId);
+  }
+
   const [apptRes, absRes, blockRes, ruleRes] = await Promise.all([
-    admin
-      .from("appointments")
-      .select("start_at, end_at, profiles(buffer_time_minutes)")
-      .in("status", ["booked", "pending"])
-      .gte("start_at", apptFrom)
-      .lte("start_at", apptTo),
+    apptQuery,
     admin
       .from("absences")
       .select("scope, student_id, start_date, end_date")

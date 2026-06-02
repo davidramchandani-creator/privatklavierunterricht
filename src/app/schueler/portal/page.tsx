@@ -93,6 +93,13 @@ export default async function SchuelerPortalPage() {
     .eq("status", "open")
     .order("desired_start", { ascending: true });
 
+  const { data: offeneVerschiebungen } = await supabase
+    .from("reschedule_requests")
+    .select("id, appointment_id, original_start, proposed_start, status")
+    .eq("student_id", user.id)
+    .eq("status", "open")
+    .order("proposed_start", { ascending: true });
+
   const { data: zahlungen } = await supabase
     .from("zahlungen")
     .select("*")
@@ -191,6 +198,7 @@ export default async function SchuelerPortalPage() {
           <NaechsteTermine
             appointments={naechsteAppointments ?? []}
             requests={offeneAnfragen ?? []}
+            reschedules={offeneVerschiebungen ?? []}
           />
           {aktivesPackage && canBook && (
             <div className="mt-4">
