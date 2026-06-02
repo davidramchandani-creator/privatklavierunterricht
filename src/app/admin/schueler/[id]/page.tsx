@@ -99,13 +99,6 @@ export default async function SchuelerDetailPage({
     ausstehend: "bg-gray-100 text-gray-600",
   };
 
-  const terminStatusColors: Record<string, string> = {
-    angefragt: "bg-amber-50 text-amber-700",
-    bestaetigt: "bg-blue-50 text-blue-700",
-    abgeschlossen: "bg-emerald-50 text-emerald-700",
-    storniert: "bg-red-50 text-red-600",
-  };
-
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-3">

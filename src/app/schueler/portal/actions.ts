@@ -76,44 +76,10 @@ export async function getVerfuegbareSlots(
     now
   );
 
-  for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-    const date = new Date(monday.getTime() + dayIndex * 86400000);
-    // wochentag in DB: 1=Mon, ..., 6=Sat, 0=Sun
-    // date.getDay(): 0=Sun, 1=Mon, ..., 6=Sat
-    const jsDay = date.getDay();
-    const dbDay = jsDay; // same mapping in DB
-
-    const dayVerfuegbarkeit = verfuegbarkeit.filter(
-      (v) => v.wochentag === dbDay
-    );
-
-    for (const v of dayVerfuegbarkeit) {
-      const [beginH, beginM] = v.beginn_zeit.split(":").map(Number);
-      const [endH, endM] = v.ende_zeit.split(":").map(Number);
-
-      const windowStart = new Date(date);
-      windowStart.setHours(beginH, beginM, 0, 0);
-      const windowEnd = new Date(date);
-      windowEnd.setHours(endH, endM, 0, 0);
-
-      let slotStart = new Date(windowStart);
-      while (slotStart.getTime() + 45 * 60000 <= windowEnd.getTime()) {
-        const slotEnd = new Date(slotStart.getTime() + 45 * 60000);
-
-        // Only show future slots
-        if (slotStart > now && !bookedSet.has(slotStart.toISOString())) {
-          slots.push({
-            beginn: slotStart.toISOString(),
-            ende: slotEnd.toISOString(),
-          });
-        }
-
-        slotStart = slotEnd;
-      }
-    }
-  }
-
-  return slots;
+  return computeAvailableSlots(fromCal, 7, ctx).map((s) => ({
+    beginn: s.start.toISOString(),
+    ende: s.end.toISOString(),
+  }));
 }
 
 /**
@@ -388,10 +354,10 @@ export async function buchTermin(
     paket_id,
     beginn,
     ende,
-    status: "angefragt",
+    status: "bestaetigt",
   });
 
-  if (error) return { error: "Anfrage fehlgeschlagen. Bitte versuche es erneut." };
+  if (error) return { error: "Buchung fehlgeschlagen. Bitte versuche es erneut." };
 
   return { success: true };
 }

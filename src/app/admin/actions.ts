@@ -2,7 +2,101 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { sendInviteEmail, sendPasswordResetEmail } from "@/lib/email";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  DEFAULT_BUFFER_MIN,
+  generateSeriesStarts,
+  slotsFromStarts,
+  validateSeries,
+} from "@/lib/booking";
+import { loadAvailabilityContext } from "@/lib/booking-server";
+import { enqueueEmail } from "@/lib/emails-outbox";
+import {
+  type Package as Paket,
+  PACKAGE_LABELS,
+  PACKAGE_LESSONS,
+  PACKAGE_VALIDITY_MONTHS,
+  canBuyNewPackage,
+  computePackageState,
+} from "@/lib/packages";
+import { addMonths } from "@/lib/utils";
+
+/**
+ * Bucht (ggf. als Serie) Termine für einen Schüler im neuen Schema.
+ * Validiert transaktional gegen die Buchungs-Engine; 24h-Vorlauf wird als
+ * Admin-Aktion übersprungen. Wird von Direktbuchung & Anfrage-Annahme genutzt.
+ */
+async function bookSeriesForStudent(
+  admin: SupabaseClient,
+  studentUserId: string,
+  startIso: string,
+  lessonsCount: number,
+  intervalDays: number,
+  source: "direct" | "public_request" | "admin_proposal" | "reschedule"
+): Promise<{ appointmentIds: string[] } | { error: string }> {
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("buffer_time_minutes")
+    .eq("id", studentUserId)
+    .single();
+  const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
+
+  const { data: pkgs } = await admin
+    .from("packages")
+    .select("*")
+    .eq("student_id", studentUserId)
+    .eq("status", "active");
+  const pkg = (pkgs as Paket[] | null)?.find((p) => !canBuyNewPackage(p)) ?? null;
+  if (!pkg) return { error: "Der Schüler hat kein aktives Paket." };
+
+  const state = computePackageState(pkg);
+  if (state.lessonsRemaining < lessonsCount) {
+    return {
+      error: `Das Paket hat nur noch ${state.lessonsRemaining} Lektion(en), benötigt werden ${lessonsCount}.`,
+    };
+  }
+
+  const desiredStart = new Date(startIso);
+  const now = new Date();
+  const starts = generateSeriesStarts(desiredStart, lessonsCount, intervalDays);
+  const seriesEnd = new Date(starts[starts.length - 1].getTime() + 3600000);
+
+  const ctx = await loadAvailabilityContext(
+    admin,
+    studentUserId,
+    bufferMin,
+    desiredStart,
+    seriesEnd,
+    now,
+    { skipLeadTime: true }
+  );
+  const validation = validateSeries(desiredStart, lessonsCount, intervalDays, ctx);
+  if (!validation.ok) {
+    return {
+      error:
+        "Mindestens ein Termin ist nicht verfügbar (Kollision/Abwesenheit/Zeitblock).",
+    };
+  }
+
+  const seriesId = lessonsCount > 1 ? crypto.randomUUID() : null;
+  const rows = slotsFromStarts(starts).map((s) => ({
+    student_id: studentUserId,
+    package_id: pkg.id,
+    start_at: s.start.toISOString(),
+    end_at: s.end.toISOString(),
+    status: "booked",
+    source,
+    series_id: seriesId,
+  }));
+
+  const { data: created, error } = await admin
+    .from("appointments")
+    .insert(rows)
+    .select("id");
+  if (error || !created) return { error: "Termine konnten nicht erstellt werden." };
+
+  return { appointmentIds: created.map((c) => c.id) };
+}
 
 // ── Schüler ──────────────────────────────────────────────────────────────────
 
@@ -21,70 +115,24 @@ export async function inviteSchueler(formData: FormData) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
 
-  // Step 1: Create user in Supabase Auth (email confirmed so recovery link works)
-  const { data: userData, error: createError } = await adminClient.auth.admin.createUser({
-    email,
-    user_metadata: { vorname, nachname },
-    email_confirm: true,
-  });
-
-  let userId: string;
-
-  if (createError) {
-    // User might already exist — look up by email
-    const { data: { users }, error: listError } = await adminClient.auth.admin.listUsers();
-    if (listError) return { error: createError.message };
-    const existing = users.find((u) => u.email === email);
-    if (!existing) return { error: createError.message };
-    userId = existing.id;
-  } else {
-    userId = userData.user.id;
-  }
-
-  // Step 2: Generate recovery link — use hashed_token to build our own callback URL
-  // This bypasses Supabase's verify endpoint (which redirects with hash fragment
-  // that server-side routes can't read). Instead we go directly to our callback
-  // with token_hash as a query param so verifyOtp works.
-  const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
-    type: "recovery",
-    email,
-    options: {
+  // Invite user via Auth – redirectTo sends user to password-set page after clicking link
+  const { data: inviteData, error: inviteError } =
+    await adminClient.auth.admin.inviteUserByEmail(email, {
+      data: { vorname, nachname },
       redirectTo: `${appUrl}/auth/callback?next=/auth/passwort-setzen`,
-    },
-  });
+    });
 
-  if (linkError) return { error: linkError.message };
-
-  const passwordSetLink = `${appUrl}/auth/callback?token_hash=${linkData.properties.hashed_token}&type=recovery&next=/auth/passwort-setzen`;
-
-  // If schueler record already exists, just resend the email
-  const { data: existingSchueler } = await adminClient
-    .from("schueler")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (existingSchueler) {
-    try {
-      await sendInviteEmail(email, vorname, passwordSetLink);
-    } catch (e) {
-      return { error: "E-Mail konnte nicht gesendet werden: " + (e as Error).message };
-    }
-    revalidatePath("/admin/schueler");
-    return { success: true };
+  if (inviteError) {
+    return { error: inviteError.message };
   }
 
-  try {
-    await sendInviteEmail(email, vorname, passwordSetLink);
-  } catch (e) {
-    return { error: "Schüler erstellt, aber E-Mail konnte nicht gesendet werden: " + (e as Error).message };
-  }
+  const userId = inviteData.user.id;
 
   // Set role
-  const { error: roleError } = await adminClient.from("profile_roles").upsert({
+  const { error: roleError } = await adminClient.from("profile_roles").insert({
     user_id: userId,
     role: "schueler",
-  }, { onConflict: "user_id" });
+  });
   if (roleError) {
     return { error: "Rolle konnte nicht gesetzt werden: " + roleError.message };
   }
@@ -195,7 +243,7 @@ export async function resendInvite(email: string) {
   const adminClient = await createAdminClient();
 
   // admin.generateLink bypasses PKCE – works across any browser/device
-  const { data, error } = await adminClient.auth.admin.generateLink({
+  const { error } = await adminClient.auth.admin.generateLink({
     type: "recovery",
     email,
     options: {
@@ -204,15 +252,6 @@ export async function resendInvite(email: string) {
   });
 
   if (error) return { error: error.message };
-
-  const passwordSetLink = `${appUrl}/auth/callback?token_hash=${data.properties.hashed_token}&type=recovery&next=/auth/passwort-setzen`;
-
-  try {
-    await sendPasswordResetEmail(email, passwordSetLink);
-  } catch (e) {
-    return { error: "Link generiert, aber E-Mail konnte nicht gesendet werden: " + (e as Error).message };
-  }
-
   return { success: true };
 }
 
@@ -284,36 +323,8 @@ export async function createTermin(formData: FormData) {
   return { success: true };
 }
 
-export async function bestaetigeTermin(id: string) {
-  const supabase = await createClient();
-
-  const { data: termin } = await supabase
-    .from("termine")
-    .select("schueler_id")
-    .eq("id", id)
-    .single();
-
-  const { error } = await supabase
-    .from("termine")
-    .update({ status: "bestaetigt" })
-    .eq("id", id);
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/admin/kalender");
-  revalidatePath("/admin");
-  if (termin?.schueler_id) revalidatePath(`/admin/schueler/${termin.schueler_id}`);
-  return { success: true };
-}
-
 export async function storniereTerminAdmin(id: string) {
   const supabase = await createClient();
-
-  const { data: termin } = await supabase
-    .from("termine")
-    .select("schueler_id")
-    .eq("id", id)
-    .single();
 
   const { error } = await supabase
     .from("termine")
@@ -324,7 +335,6 @@ export async function storniereTerminAdmin(id: string) {
 
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
-  if (termin?.schueler_id) revalidatePath(`/admin/schueler/${termin.schueler_id}`);
   return { success: true };
 }
 
@@ -333,7 +343,7 @@ export async function abschliessenTermin(id: string) {
 
   const { data: termin, error: fetchError } = await supabase
     .from("termine")
-    .select("paket_id, schueler_id")
+    .select("paket_id")
     .eq("id", id)
     .single();
 
@@ -363,7 +373,6 @@ export async function abschliessenTermin(id: string) {
 
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
-  if (termin.schueler_id) revalidatePath(`/admin/schueler/${termin.schueler_id}`);
   return { success: true };
 }
 

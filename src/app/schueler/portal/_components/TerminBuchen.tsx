@@ -71,7 +71,8 @@ export default function TerminBuchen() {
   if (success) {
     return (
       <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center text-sm text-emerald-700 font-500">
-        Anfrage gesendet! David wird sie in Kürze bestätigen.
+        Anfrage gesendet! David bestätigt sie in Kürze – du siehst den Status
+        unter „Nächste Lektionen".
       </div>
     );
   }
