@@ -178,7 +178,7 @@ export default function Preisrechner() {
         <p className="text-[#C9A84C] font-600 text-sm uppercase tracking-widest mb-3">
           Preisrechner
         </p>
-        <h2 className="text-3xl sm:text-4xl font-800 text-[#3730A3] mb-4">
+        <h2 className="text-3xl sm:text-4xl font-800 text-[#1C244B] mb-4">
           Geschätzten Preis berechnen
         </h2>
         <p className="text-gray-500 mb-10">
@@ -195,8 +195,8 @@ export default function Preisrechner() {
                 onClick={() => handlePaketChange(key)}
                 className={`flex flex-col items-center px-5 py-3.5 rounded-xl border-2 transition-all duration-200 min-w-[130px] ${
                   paket === key
-                    ? "border-[#3730A3] bg-[#3730A3] text-white shadow-md shadow-[#3730A3]/20 -translate-y-0.5"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-[#3730A3]/50 hover:-translate-y-0.5"
+                    ? "border-[#1C244B] bg-[#1C244B] text-white shadow-md shadow-[#1C244B]/20 -translate-y-0.5"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-[#1C244B]/50 hover:-translate-y-0.5"
                 }`}
               >
                 <span className="font-600 text-sm">{val.label}</span>

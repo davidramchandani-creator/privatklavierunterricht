@@ -102,7 +102,7 @@ export default function BewertungSection({
         placeholder="Möchtest du noch etwas schreiben? (optional)"
         rows={3}
         maxLength={500}
-        className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-[#3730A3]/20 focus:border-[#3730A3] transition-colors placeholder:text-gray-400"
+        className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-[#1C244B]/20 focus:border-[#1C244B] transition-colors placeholder:text-gray-400"
       />
 
       {error && (

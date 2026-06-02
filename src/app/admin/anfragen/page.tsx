@@ -17,7 +17,7 @@ export default async function AdminAnfragenPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-800 text-[#3730A3]">Anfragen</h1>
+        <h1 className="text-2xl font-800 text-[#1C244B]">Anfragen</h1>
         {neu.length > 0 && (
           <span className="bg-amber-100 text-amber-700 text-xs font-700 px-3 py-1 rounded-full">
             {neu.length} neu
@@ -91,7 +91,7 @@ function AnfrageCard({
       <div className="grid sm:grid-cols-2 gap-2 text-sm">
         <a
           href={`mailto:${anfrage.email}`}
-          className="flex items-center gap-2 text-[#3730A3] hover:underline"
+          className="flex items-center gap-2 text-[#1C244B] hover:underline"
         >
           <Mail className="w-3.5 h-3.5 flex-shrink-0" />
           {anfrage.email}
@@ -99,7 +99,7 @@ function AnfrageCard({
         {anfrage.telefon && (
           <a
             href={`tel:${anfrage.telefon}`}
-            className="flex items-center gap-2 text-gray-600 hover:text-[#3730A3]"
+            className="flex items-center gap-2 text-gray-600 hover:text-[#1C244B]"
           >
             <Phone className="w-3.5 h-3.5 flex-shrink-0" />
             {anfrage.telefon}
@@ -107,8 +107,8 @@ function AnfrageCard({
         )}
         {anfrage.wunschtermin && (
           <div className="flex items-center gap-2 text-gray-600 sm:col-span-2">
-            <Calendar className="w-3.5 h-3.5 flex-shrink-0 text-[#3730A3]" />
-            <span className="font-500 text-[#3730A3]">
+            <Calendar className="w-3.5 h-3.5 flex-shrink-0 text-[#1C244B]" />
+            <span className="font-500 text-[#1C244B]">
               Wunschtermin: {formatDateTime(anfrage.wunschtermin)}
             </span>
           </div>

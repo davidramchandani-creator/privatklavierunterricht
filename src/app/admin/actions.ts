@@ -22,6 +22,13 @@ import {
   computePackageState,
 } from "@/lib/packages";
 import { addMonths } from "@/lib/utils";
+import { buildTwintLink } from "@/lib/twint";
+import {
+  syncAppointmentToCalendar,
+  deleteCalendarEvent,
+  testCalendarConnection,
+  fullSyncFutureAppointments,
+} from "@/lib/google-calendar";
 
 /**
  * Bucht (ggf. als Serie) Termine für einen Schüler im neuen Schema.
@@ -38,7 +45,7 @@ async function bookSeriesForStudent(
 ): Promise<{ appointmentIds: string[] } | { error: string }> {
   const { data: profile } = await admin
     .from("profiles")
-    .select("buffer_time_minutes")
+    .select("buffer_time_minutes, email, vorname, nachname, adresse")
     .eq("id", studentUserId)
     .single();
   const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
@@ -96,6 +103,57 @@ async function bookSeriesForStudent(
     .insert(rows)
     .select("id");
   if (error || !created) return { error: "Termine konnten nicht erstellt werden." };
+
+  // Für jeden Termin: Rechnung anlegen + Zahlungsmail planen
+  for (const appt of rows) {
+    const createdAppt = created[rows.indexOf(appt)];
+    if (!createdAppt) continue;
+
+    const paymentMethod: "twint" | "qr" = (pkg.payment_method as "twint" | "qr") ?? "twint";
+    const amount = Number(pkg.price_per_lesson ?? 0);
+    const studentName = profile ? `${profile.vorname} ${profile.nachname}` : "Schüler";
+
+    const { data: inv } = await admin
+      .from("invoices")
+      .insert({
+        student_id: studentUserId,
+        appointment_id: createdAppt.id,
+        amount,
+        payer_name: studentName,
+        payer_address: profile?.adresse ?? null,
+        status: "unpaid",
+        method: paymentMethod,
+        lesson_date: appt.start_at,
+      })
+      .select("id, invoice_number, access_token")
+      .maybeSingle();
+
+    if (inv && profile?.email) {
+      const sendAt = new Date(appt.end_at);
+      const basePayload = {
+        to: profile.email,
+        student_name: studentName,
+        student_id: studentUserId,
+        lesson_date: appt.start_at,
+        amount,
+        invoice_number: inv.invoice_number,
+        invoice_id: inv.id,
+      };
+      if (paymentMethod === "qr") {
+        await enqueueEmail(admin, "qr_invoice", basePayload, sendAt);
+      } else {
+        await enqueueEmail(admin, "twint_payment_request", {
+          ...basePayload,
+          twint_link: buildTwintLink(amount, inv.invoice_number ?? inv.id),
+        }, sendAt);
+      }
+    }
+  }
+
+  // Google Calendar Sync (one-way, fehlertolerant)
+  for (const c of created) {
+    await syncAppointmentToCalendar(admin, c.id);
+  }
 
   return { appointmentIds: created.map((c) => c.id) };
 }
@@ -545,12 +603,11 @@ export async function acceptBookingRequest(requestId: string) {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("buffer_time_minutes, vorname, nachname, email")
+    .select("vorname, nachname, email")
     .eq("id", req.student_id)
     .single();
-  const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
 
-  // Aktives, nutzbares Paket des Schülers
+  // Aktives, nutzbares Paket des Schülers (für freundliche Fehlermeldung)
   const { data: pkgs } = await admin
     .from("packages")
     .select("*")
@@ -566,55 +623,24 @@ export async function acceptBookingRequest(requestId: string) {
     };
   }
 
-  const desiredStart = new Date(req.desired_start);
-  const now = new Date();
   const starts = generateSeriesStarts(
-    desiredStart,
+    new Date(req.desired_start),
     req.lessons_count,
     req.interval_days
   );
-  const seriesEnd = new Date(starts[starts.length - 1].getTime() + 3600000);
 
-  const ctx = await loadAvailabilityContext(
+  // Buchung über den gemeinsamen Pfad: erstellt Termine, Rechnungen,
+  // geplante Zahlungsmails und synchronisiert den Google-Kalender.
+  const result = await bookSeriesForStudent(
     admin,
     req.student_id,
-    bufferMin,
-    desiredStart,
-    seriesEnd,
-    now,
-    { skipLeadTime: true }
-  );
-  const validation = validateSeries(
-    desiredStart,
+    req.desired_start,
     req.lessons_count,
     req.interval_days,
-    ctx
+    "public_request"
   );
-  if (!validation.ok) {
-    return {
-      error:
-        "Mindestens ein Termin der Serie ist nicht mehr verfügbar (Kollision/Abwesenheit).",
-    };
-  }
-
-  const seriesId = req.lessons_count > 1 ? crypto.randomUUID() : null;
-  const rows = slotsFromStarts(starts).map((s) => ({
-    student_id: req.student_id,
-    package_id: pkg.id,
-    start_at: s.start.toISOString(),
-    end_at: s.end.toISOString(),
-    status: "booked",
-    source: "public_request",
-    series_id: seriesId,
-  }));
-
-  const { data: created, error: insertError } = await admin
-    .from("appointments")
-    .insert(rows)
-    .select("id");
-
-  if (insertError || !created) {
-    return { error: "Termine konnten nicht erstellt werden." };
+  if ("error" in result) {
+    return { error: result.error };
   }
 
   await admin
@@ -622,7 +648,7 @@ export async function acceptBookingRequest(requestId: string) {
     .update({
       status: "accepted",
       processed_at: new Date().toISOString(),
-      created_appointment_ids: created.map((c) => c.id),
+      created_appointment_ids: result.appointmentIds,
     })
     .eq("id", requestId);
 
@@ -739,6 +765,9 @@ export async function acceptReschedule(rescheduleId: string) {
   if (updateError) {
     return { error: "Termin konnte nicht verschoben werden." };
   }
+
+  // Google Calendar: verschobenen Termin aktualisieren
+  await syncAppointmentToCalendar(admin, rr.appointment_id);
 
   await admin
     .from("reschedule_requests")
@@ -897,6 +926,10 @@ export async function completeAppointmentNew(id: string, schuelerId: string) {
     .update({ status: "completed" })
     .eq("id", id);
   if (error) return { error: error.message };
+
+  // Google Calendar: Event-Farbe auf „abgeschlossen" aktualisieren
+  await syncAppointmentToCalendar(admin, id);
+
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
@@ -911,6 +944,17 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
     .update({ status: "cancelled" })
     .eq("id", id);
   if (error) return { error: error.message };
+
+  // Google Calendar: Event löschen
+  await deleteCalendarEvent(admin, id);
+
+  // Offene Rechnung zu diesem Termin stornieren (Spec §6)
+  await admin
+    .from("invoices")
+    .update({ status: "cancelled" })
+    .eq("appointment_id", id)
+    .in("status", ["unpaid", "pending_confirmation", "rejected"]);
+
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
@@ -1271,13 +1315,18 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
     .eq("status", "booked")
     .gte("start_at", new Date().toISOString());
   if (futureAppts && futureAppts.length > 0) {
+    const ids = futureAppts.map((a) => a.id);
+    await admin.from("appointments").update({ status: "cancelled" }).in("id", ids);
+    // Google-Events der stornierten Termine löschen
+    for (const fid of ids) {
+      await deleteCalendarEvent(admin, fid);
+    }
+    // Zugehörige offene Rechnungen stornieren
     await admin
-      .from("appointments")
+      .from("invoices")
       .update({ status: "cancelled" })
-      .in(
-        "id",
-        futureAppts.map((a) => a.id)
-      );
+      .in("appointment_id", ids)
+      .in("status", ["unpaid", "pending_confirmation", "rejected"]);
   }
 
   const { error } = await admin
@@ -1310,6 +1359,213 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin");
   return { success: true, settlement };
+}
+
+// ── Rechnungen / Zahlungen (Meilenstein 9) ────────────────────────────────────
+
+/**
+ * Erstellt eine Rechnung für einen Termin (neues Schema). Wird intern beim
+ * Buchen aufgerufen; kann auch manuell ausgelöst werden.
+ */
+export async function createInvoiceForAppointment(appointmentId: string) {
+  const admin = await createAdminClient();
+
+  const { data: appt } = await admin
+    .from("appointments")
+    .select("id, student_id, start_at, end_at, package_id")
+    .eq("id", appointmentId)
+    .single();
+  if (!appt) return { error: "Termin nicht gefunden." };
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("vorname, nachname, email, adresse")
+    .eq("id", appt.student_id)
+    .maybeSingle();
+
+  const { data: pkg } = await admin
+    .from("packages")
+    .select("price_per_lesson, payment_method")
+    .eq("id", appt.package_id ?? "")
+    .maybeSingle();
+
+  const amount = Number(pkg?.price_per_lesson ?? 85);
+  const paymentMethod = pkg?.payment_method ?? "twint";
+  const invoiceNumber =
+    "PIANO-" + new Date().getFullYear() + "-" + String(Math.floor(Math.random() * 9000) + 1000);
+
+  const { data: inv, error } = await admin
+    .from("invoices")
+    .insert({
+      invoice_number: invoiceNumber,
+      student_id: appt.student_id,
+      appointment_id: appointmentId,
+      amount,
+      payer_name: profile ? `${profile.vorname} ${profile.nachname}` : null,
+      payer_address: profile?.adresse ?? null,
+      status: "unpaid",
+      method: paymentMethod,
+      lesson_date: appt.start_at,
+    })
+    .select("id")
+    .single();
+
+  if (error || !inv) return { error: "Rechnung konnte nicht erstellt werden." };
+
+  revalidatePath("/admin/zahlungen");
+  return { success: true, invoiceId: inv.id };
+}
+
+/** Admin bestätigt eine Zahlung (pending_confirmation → paid). */
+export async function confirmInvoicePayment(invoiceId: string) {
+  const admin = await createAdminClient();
+
+  const { data: inv } = await admin
+    .from("invoices")
+    .select("id, student_id, invoice_number, amount, lesson_date")
+    .eq("id", invoiceId)
+    .single();
+  if (!inv) return { error: "Rechnung nicht gefunden." };
+
+  const { error } = await admin
+    .from("invoices")
+    .update({ status: "paid", paid_at: new Date().toISOString() })
+    .eq("id", invoiceId);
+  if (error) return { error: error.message };
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("email, vorname, nachname")
+    .eq("id", inv.student_id)
+    .maybeSingle();
+
+  if (profile?.email) {
+    await enqueueEmail(admin, "payment_confirmed", {
+      to: profile.email,
+      student_name: `${profile.vorname} ${profile.nachname}`,
+      student_id: inv.student_id,
+      lesson_date: inv.lesson_date,
+      amount: inv.amount,
+      invoice_number: inv.invoice_number,
+    });
+  }
+
+  revalidatePath("/admin/zahlungen");
+  return { success: true };
+}
+
+/** Admin lehnt eine Zahlung ab (pending_confirmation → rejected). */
+export async function rejectInvoicePayment(invoiceId: string, reason?: string) {
+  const admin = await createAdminClient();
+
+  const { data: inv } = await admin
+    .from("invoices")
+    .select("id, student_id, invoice_number, amount, lesson_date")
+    .eq("id", invoiceId)
+    .single();
+  if (!inv) return { error: "Rechnung nicht gefunden." };
+
+  const { error } = await admin
+    .from("invoices")
+    .update({ status: "rejected" })
+    .eq("id", invoiceId);
+  if (error) return { error: error.message };
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("email, vorname, nachname")
+    .eq("id", inv.student_id)
+    .maybeSingle();
+
+  if (profile?.email) {
+    await enqueueEmail(admin, "payment_rejected", {
+      to: profile.email,
+      student_name: `${profile.vorname} ${profile.nachname}`,
+      student_id: inv.student_id,
+      lesson_date: inv.lesson_date,
+      amount: inv.amount,
+      invoice_number: inv.invoice_number,
+      reason: reason ?? null,
+    });
+  }
+
+  revalidatePath("/admin/zahlungen");
+  return { success: true };
+}
+
+/** Admin archiviert eine Rechnung (aus der aktiven Liste entfernen). */
+export async function archiveInvoice(invoiceId: string) {
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("invoices")
+    .update({ status: "archived" })
+    .eq("id", invoiceId);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/zahlungen");
+  return { success: true };
+}
+
+/** Admin sendet die Zahlungsmail für eine Rechnung erneut (sofort). */
+export async function resendPaymentEmail(invoiceId: string) {
+  const admin = await createAdminClient();
+
+  const { data: inv } = await admin
+    .from("invoices")
+    .select("*")
+    .eq("id", invoiceId)
+    .single();
+  if (!inv) return { error: "Rechnung nicht gefunden." };
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("email, vorname, nachname")
+    .eq("id", inv.student_id)
+    .maybeSingle();
+  if (!profile?.email) return { error: "Schüler-E-Mail nicht gefunden." };
+
+  const studentName = `${profile.vorname} ${profile.nachname}`;
+
+  if (inv.method === "qr") {
+    await enqueueEmail(admin, "qr_invoice", {
+      to: profile.email,
+      student_name: studentName,
+      student_id: inv.student_id,
+      lesson_date: inv.lesson_date,
+      amount: inv.amount,
+      invoice_number: inv.invoice_number,
+      invoice_id: invoiceId,
+    });
+  } else {
+    const twintLink = buildTwintLink(Number(inv.amount ?? 0), inv.invoice_number ?? invoiceId);
+    await enqueueEmail(admin, "twint_payment_request", {
+      to: profile.email,
+      student_name: studentName,
+      student_id: inv.student_id,
+      lesson_date: inv.lesson_date,
+      amount: inv.amount,
+      twint_link: twintLink,
+      invoice_number: inv.invoice_number,
+      invoice_id: invoiceId,
+    });
+  }
+
+  revalidatePath("/admin/zahlungen");
+  return { success: true };
+}
+
+// ── Google Calendar (Meilenstein 12) ─────────────────────────────────────────
+
+/** Testet die Verbindung zum Google-Kalender (Einstellungsseite). */
+export async function testGoogleCalendar() {
+  return await testCalendarConnection();
+}
+
+/** Synchronisiert alle zukünftigen gebuchten Termine in den Google-Kalender. */
+export async function runFullCalendarSync() {
+  const admin = await createAdminClient();
+  const result = await fullSyncFutureAppointments(admin);
+  revalidatePath("/admin/einstellungen");
+  return { success: true, ...result };
 }
 
 // ── Anfragen ─────────────────────────────────────────────────────────────────

@@ -62,7 +62,7 @@ export default function NeuenSchuelerPage() {
         >
           <ArrowLeft className="w-4 h-4 text-gray-600" />
         </Link>
-        <h1 className="text-2xl font-800 text-[#3730A3]">Neuer Schüler</h1>
+        <h1 className="text-2xl font-800 text-[#1C244B]">Neuer Schüler</h1>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">

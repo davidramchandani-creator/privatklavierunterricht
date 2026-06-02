@@ -83,7 +83,7 @@ export default async function Bewertungen() {
           <p className="text-[#C9A84C] font-600 text-sm uppercase tracking-widest mb-3">
             Stimmen
           </p>
-          <h2 className="text-3xl sm:text-4xl font-800 text-[#3730A3] mb-4">
+          <h2 className="text-3xl sm:text-4xl font-800 text-[#1C244B] mb-4">
             Was Schüler sagen
           </h2>
           <div className="flex items-center justify-center gap-2">
@@ -95,7 +95,7 @@ export default async function Bewertungen() {
                 />
               ))}
             </div>
-            <span className="font-700 text-[#3730A3]">5.0</span>
+            <span className="font-700 text-[#1C244B]">5.0</span>
             <span className="text-gray-500 text-sm">
               · {anzeigen.length} Bewertungen
             </span>
@@ -107,7 +107,7 @@ export default async function Bewertungen() {
           {anzeigen.map((b) => (
             <div
               key={b.id}
-              className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow"
+              className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
             >
               <Quote className="w-8 h-8 text-[#C9A84C]/30 mb-3" />
               <Sterne count={b.sterne} />

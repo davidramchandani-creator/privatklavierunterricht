@@ -17,10 +17,10 @@ export default async function AdminSchuelerPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-800 text-[#3730A3]">Schüler</h1>
+        <h1 className="text-2xl font-800 text-[#1C244B]">Schüler</h1>
         <Link
           href="/admin/schueler/neu"
-          className="flex items-center gap-2 bg-[#3730A3] text-white text-sm font-600 px-4 py-2.5 rounded-xl hover:bg-[#312e81] transition-colors"
+          className="flex items-center gap-2 bg-[#1C244B] text-white text-sm font-600 px-4 py-2.5 rounded-xl hover:bg-[#151c3d] hover:-translate-y-0.5 transition-all duration-200"
         >
           <Plus className="w-4 h-4" />
           Neuer Schüler
@@ -77,7 +77,7 @@ export default async function AdminSchuelerPage() {
                       <td className="px-5 py-3.5">
                         <Link
                           href={`/admin/schueler/${s.id}`}
-                          className="font-600 text-gray-900 hover:text-[#3730A3] transition-colors text-sm"
+                          className="font-600 text-gray-900 hover:text-[#1C244B] transition-colors text-sm"
                         >
                           {s.vorname} {s.nachname}
                         </Link>
@@ -92,7 +92,7 @@ export default async function AdminSchuelerPage() {
                       </td>
                       <td className="px-5 py-3.5 text-sm text-gray-600 hidden md:table-cell">
                         {verbleibend !== null ? (
-                          <span className="font-600 text-[#3730A3]">
+                          <span className="font-600 text-[#1C244B]">
                             {verbleibend} Lekt.
                           </span>
                         ) : (

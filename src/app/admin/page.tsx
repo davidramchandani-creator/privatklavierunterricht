@@ -95,7 +95,7 @@ export default async function AdminDashboardPage() {
       label: "Aktive Schüler",
       value: activeStudents ?? 0,
       icon: Users,
-      color: "bg-[#3730A3]/10 text-[#3730A3]",
+      color: "bg-[#1C244B]/10 text-[#1C244B]",
       href: "/admin/schueler",
     },
     {
@@ -123,7 +123,7 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-800 text-[#3730A3]">Dashboard</h1>
+      <h1 className="text-2xl font-800 text-[#1C244B]">Dashboard</h1>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -131,7 +131,7 @@ export default async function AdminDashboardPage() {
           <Link
             key={label}
             href={href ?? "#"}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:border-[#3730A3]/30 transition-colors block"
+            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:border-[#1C244B]/30 hover:-translate-y-1 hover:shadow-md transition-all duration-200 block"
           >
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${color}`}>
               <Icon className="w-5 h-5" />
@@ -144,7 +144,7 @@ export default async function AdminDashboardPage() {
 
       {/* Upcoming lessons */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-700 text-[#3730A3] mb-4">
+        <h2 className="text-lg font-700 text-[#1C244B] mb-4">
           Nächste Lektionen
         </h2>
 

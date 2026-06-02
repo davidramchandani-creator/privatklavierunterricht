@@ -86,14 +86,14 @@ export default function VerfuegbarkeitPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-40">
-        <Loader2 className="w-6 h-6 animate-spin text-[#3730A3]" />
+        <Loader2 className="w-6 h-6 animate-spin text-[#1C244B]" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <h1 className="text-2xl font-800 text-[#3730A3]">Verfügbarkeit</h1>
+      <h1 className="text-2xl font-800 text-[#1C244B]">Verfügbarkeit</h1>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
         <p className="text-sm text-gray-500">
@@ -109,7 +109,7 @@ export default function VerfuegbarkeitPage() {
                 key={wochentag}
                 className={`rounded-xl border transition-colors p-4 ${
                   slot.aktiv
-                    ? "border-[#3730A3]/30 bg-[#3730A3]/5"
+                    ? "border-[#1C244B]/30 bg-[#1C244B]/5"
                     : "border-gray-200 bg-gray-50"
                 }`}
               >
@@ -121,11 +121,11 @@ export default function VerfuegbarkeitPage() {
                       onChange={(e) =>
                         update(wochentag, "aktiv", e.target.checked)
                       }
-                      className="w-4 h-4 accent-[#3730A3] cursor-pointer"
+                      className="w-4 h-4 accent-[#1C244B] cursor-pointer"
                     />
                     <span
                       className={`text-sm font-600 ${
-                        slot.aktiv ? "text-[#3730A3]" : "text-gray-500"
+                        slot.aktiv ? "text-[#1C244B]" : "text-gray-500"
                       }`}
                     >
                       {label}
@@ -146,7 +146,7 @@ export default function VerfuegbarkeitPage() {
                           update(wochentag, "beginn_zeit", e.target.value)
                         }
                         disabled={!slot.aktiv}
-                        className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#3730A3]/30 disabled:cursor-not-allowed"
+                        className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#1C244B]/30 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div className="flex items-center gap-2">
@@ -158,7 +158,7 @@ export default function VerfuegbarkeitPage() {
                           update(wochentag, "ende_zeit", e.target.value)
                         }
                         disabled={!slot.aktiv}
-                        className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#3730A3]/30 disabled:cursor-not-allowed"
+                        className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#1C244B]/30 disabled:cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -194,7 +194,7 @@ export default function VerfuegbarkeitPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-700 text-[#3730A3] mb-3">
+        <h2 className="text-lg font-700 text-[#1C244B] mb-3">
           Ausnahmen & Ferien
         </h2>
         <p className="text-sm text-gray-500">

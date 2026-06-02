@@ -28,6 +28,7 @@ import {
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
 import { enqueueEmail } from "@/lib/emails-outbox";
+import { deleteCalendarEvent } from "@/lib/google-calendar";
 
 export type AvailableSlot = {
   beginn: string;
@@ -266,6 +267,16 @@ export async function cancelAppointment(appointmentId: string) {
     .eq("id", appointmentId);
   if (error) return { error: "Termin konnte nicht storniert werden." };
 
+  // Google Calendar: Event löschen
+  await deleteCalendarEvent(admin, appointmentId);
+
+  // Offene Rechnung zu diesem Termin stornieren
+  await admin
+    .from("invoices")
+    .update({ status: "cancelled" })
+    .eq("appointment_id", appointmentId)
+    .in("status", ["unpaid", "pending_confirmation", "rejected"]);
+
   await enqueueEmail(admin, "appointment_cancelled_by_student", {
     student_id: user.id,
     appointment_id: appointmentId,
@@ -417,6 +428,42 @@ export async function withdrawReschedule(rescheduleId: string) {
     .update({ status: "withdrawn" })
     .eq("id", rescheduleId);
   if (error) return { error: "Anfrage konnte nicht zurückgezogen werden." };
+
+  revalidatePath("/schueler/portal");
+  return { success: true };
+}
+
+/**
+ * Schüler markiert eine Rechnung als bezahlt (unpaid/rejected → pending_confirmation).
+ * Nur für eigene Rechnungen. Spec §6.
+ */
+export async function markInvoicePaid(invoiceId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  // Eigentümerschaft prüfen
+  const { data: inv } = await supabase
+    .from("invoices")
+    .select("id, student_id, status")
+    .eq("id", invoiceId)
+    .maybeSingle();
+
+  if (!inv || inv.student_id !== user.id) {
+    return { error: "Rechnung nicht gefunden." };
+  }
+  if (!["unpaid", "rejected"].includes(inv.status)) {
+    return { error: "Nur unbezahlte oder abgelehnte Rechnungen können bestätigt werden." };
+  }
+
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("invoices")
+    .update({ status: "pending_confirmation" })
+    .eq("id", invoiceId);
+  if (error) return { error: "Status konnte nicht aktualisiert werden." };
 
   revalidatePath("/schueler/portal");
   return { success: true };

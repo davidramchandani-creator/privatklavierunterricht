@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email-sender";
 import { renderEmail } from "@/lib/email-templates";
+import { generateQRInvoicePdf, buildSpcData } from "@/lib/qr-invoice";
+import { buildTwintLink } from "@/lib/twint";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +53,10 @@ export async function GET(request: NextRequest) {
         "reschedule_request_received",
         "reschedule_confirmed",
         "package_cancelled",
+        "twint_payment_request",
+        "qr_invoice",
+        "payment_confirmed",
+        "payment_rejected",
       ];
       // Typen, deren Empfänger-Mail erst aus der profiles-Tabelle aufgelöst wird.
       const studentLookupTypes = ["booking_rejected", "reschedule_rejected"];
@@ -90,6 +96,72 @@ export async function GET(request: NextRequest) {
       }
 
       if (!to) throw new Error("No recipient email resolved");
+
+      // QR-Rechnung: PDF erzeugen und in Storage ablegen, falls noch nicht vorhanden
+      if (email.type === "qr_invoice" && payload.invoice_id) {
+        const invoiceId = String(payload.invoice_id);
+        const { data: inv } = await admin
+          .from("invoices")
+          .select("id, invoice_number, amount, payer_name, payer_address, pdf_url, access_token")
+          .eq("id", invoiceId)
+          .maybeSingle();
+
+        if (inv && !inv.pdf_url) {
+          const result = await generateQRInvoicePdf({
+            invoiceNumber: inv.invoice_number ?? invoiceId,
+            amount: Number(inv.amount ?? 0),
+            debtorName: inv.payer_name ?? "Unbekannt",
+            debtorAddress: inv.payer_address ?? "",
+          });
+
+          let pdfUrl: string;
+          if (result.type === "pdf") {
+            const storagePath = `invoices/${invoiceId}.pdf`;
+            const { error: uploadErr } = await admin.storage
+              .from("invoices")
+              .upload(storagePath, result.pdfBuffer, {
+                contentType: "application/pdf",
+                upsert: true,
+              });
+            if (uploadErr) {
+              pdfUrl = `spc:${buildSpcData({
+                invoiceNumber: inv.invoice_number ?? invoiceId,
+                amount: Number(inv.amount ?? 0),
+                debtorName: inv.payer_name ?? "Unbekannt",
+                debtorAddress: inv.payer_address ?? "",
+              })}`;
+            } else {
+              pdfUrl = storagePath;
+            }
+          } else {
+            pdfUrl = `spc:${result.spcData}`;
+          }
+
+          await admin.from("invoices").update({ pdf_url: pdfUrl }).eq("id", invoiceId);
+
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.ch";
+          extraContext.pdf_link = `${appUrl}/api/invoices/${invoiceId}/pdf?token=${inv.access_token}`;
+        } else if (inv?.pdf_url && inv.access_token) {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.ch";
+          extraContext.pdf_link = `${appUrl}/api/invoices/${invoiceId}/pdf?token=${inv.access_token}`;
+        }
+      }
+
+      // TWINT: Link aus invoice_id aufbauen wenn noch kein twint_link im payload
+      if (email.type === "twint_payment_request" && payload.invoice_id && !payload.twint_link) {
+        const invoiceId = String(payload.invoice_id);
+        const { data: inv } = await admin
+          .from("invoices")
+          .select("invoice_number, amount")
+          .eq("id", invoiceId)
+          .maybeSingle();
+        if (inv) {
+          extraContext.twint_link = buildTwintLink(
+            Number(inv.amount ?? 0),
+            inv.invoice_number ?? invoiceId
+          );
+        }
+      }
 
       const rendered = renderEmail(email.type, { ...payload, ...extraContext });
       if (!rendered) throw new Error(`No template for type: ${email.type}`);

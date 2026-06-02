@@ -48,7 +48,7 @@ function baseWrapper(contentHtml: string): string {
         <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
           <!-- Header -->
           <tr>
-            <td style="background-color:#3730A3;padding:28px 32px;text-align:center;">
+            <td style="background-color:#1C244B;padding:28px 32px;text-align:center;">
               <span style="color:#ffffff;font-size:20px;font-weight:bold;letter-spacing:0.5px;">
                 Klavierunterricht David Ramchandani
               </span>
@@ -114,7 +114,7 @@ export function renderEmail(
         </table>
         <p style="margin:0 0 24px;">
           <a href="${APP_URL}/admin/terminanfragen"
-             style="display:inline-block;background-color:#3730A3;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
             Zur Terminanfragen-Übersicht
           </a>
         </p>
@@ -167,7 +167,7 @@ export function renderEmail(
         .join("");
 
       const content = `
-        <p style="margin:0 0 16px;font-size:18px;font-weight:bold;color:#3730A3;">
+        <p style="margin:0 0 16px;font-size:18px;font-weight:bold;color:#1C244B;">
           Herzlichen Glückwunsch! 🎹
         </p>
         <p style="margin:0 0 16px;">
@@ -206,7 +206,7 @@ export function renderEmail(
         </p>
         <p style="margin:0 0 24px;">
           <a href="${APP_URL}/schueler/portal"
-             style="display:inline-block;background-color:#3730A3;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
             Neuen Termin anfragen
           </a>
         </p>
@@ -233,7 +233,7 @@ export function renderEmail(
         </p>
         <p style="margin:0;">
           <a href="${APP_URL}/admin/terminanfragen"
-             style="display:inline-block;background-color:#3730A3;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
             Zur Terminanfragen-Übersicht
           </a>
         </p>
@@ -293,12 +293,12 @@ export function renderEmail(
           </tr>
           <tr>
             <td style="padding:8px 0;color:#6b7280;font-size:14px;">Gewünschter neuer Termin</td>
-            <td style="padding:8px 0;font-weight:600;font-size:14px;color:#3730A3;">${proposedStart ? fmtDateTime(proposedStart) : "–"}</td>
+            <td style="padding:8px 0;font-weight:600;font-size:14px;color:#1C244B;">${proposedStart ? fmtDateTime(proposedStart) : "–"}</td>
           </tr>
         </table>
         <p style="margin:0 0 24px;">
           <a href="${APP_URL}/admin/terminanfragen"
-             style="display:inline-block;background-color:#3730A3;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
             Verschiebung prüfen
           </a>
         </p>
@@ -336,14 +336,14 @@ export function renderEmail(
 
       const subject = "Dein Termin wurde verschoben – Klavierunterricht";
       const content = `
-        <p style="margin:0 0 16px;font-size:18px;font-weight:bold;color:#3730A3;">
+        <p style="margin:0 0 16px;font-size:18px;font-weight:bold;color:#1C244B;">
           Dein Termin wurde verschoben ✓
         </p>
         <p style="margin:0 0 16px;">Dein neuer Termin ist bestätigt:</p>
         <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
           <tr>
             <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Neuer Termin</td>
-            <td style="padding:6px 0;font-weight:600;font-size:14px;color:#3730A3;">${proposedStart ? fmtDateTime(proposedStart) : "–"}</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;color:#1C244B;">${proposedStart ? fmtDateTime(proposedStart) : "–"}</td>
           </tr>
         </table>
         <p style="margin:0;color:#6b7280;font-size:13px;">Wir freuen uns auf die Lektion!</p>
@@ -373,7 +373,7 @@ export function renderEmail(
         </p>
         <p style="margin:0;">
           <a href="${APP_URL}/schueler/portal"
-             style="display:inline-block;background-color:#3730A3;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
             Zum Portal
           </a>
         </p>
@@ -419,6 +419,211 @@ export function renderEmail(
         </table>
         <p style="margin:0;color:#6b7280;font-size:13px;">
           David meldet sich bei dir bezüglich der Abwicklung. Bei Fragen kannst du dich jederzeit melden.
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "twint_payment_request": {
+      const studentName = String(payload.student_name ?? "");
+      const lessonDate = String(payload.lesson_date ?? "");
+      const amount = Number(payload.amount ?? 0);
+      const twintLink = String(payload.twint_link ?? "#");
+      const invoiceNumber = String(payload.invoice_number ?? "");
+      const lessonsRemaining = payload.lessons_remaining != null ? Number(payload.lessons_remaining) : null;
+      const packageType = payload.package_type ? String(payload.package_type) : null;
+
+      const chf = amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const subject = `Zahlungsaufforderung – Klavierstunde vom ${lessonDate ? fmtDate(lessonDate) : ""}`;
+      const content = `
+        <p style="margin:0 0 16px;">Hallo ${studentName ? studentName.split(" ")[0] : ""},</p>
+        <p style="margin:0 0 16px;">
+          deine Klavierstunde hat stattgefunden – vielen Dank! Bitte überweise den Betrag per TWINT.
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Lektion</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${lessonDate ? fmtDateTime(lessonDate) : "–"}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Betrag</td>
+            <td style="padding:6px 0;font-weight:700;font-size:16px;color:#1C244B;">CHF ${chf}</td>
+          </tr>
+          ${invoiceNumber ? `<tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Referenz</td>
+            <td style="padding:6px 0;font-size:14px;">${invoiceNumber}</td>
+          </tr>` : ""}
+          ${lessonsRemaining != null && packageType ? `<tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Verbleibende Lektionen</td>
+            <td style="padding:6px 0;font-size:14px;">${lessonsRemaining} ${packageType === "10er" ? "(10er-Abo)" : packageType === "20er" ? "(20er-Abo)" : ""}</td>
+          </tr>` : ""}
+        </table>
+        <p style="margin:0 0 24px;">
+          <a href="${twintLink}"
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-size:15px;font-weight:700;">
+            Jetzt per TWINT bezahlen
+          </a>
+        </p>
+        <p style="margin:0 0 16px;">
+          Nach der Zahlung bitte im Portal bestätigen:
+        </p>
+        <p style="margin:0 0 24px;">
+          <a href="${APP_URL}/schueler/portal#zahlungen"
+             style="display:inline-block;background-color:#f3f5f8;color:#1C244B;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;border:1px solid #e5e7eb;">
+            Zahlung bestätigen
+          </a>
+        </p>
+        <p style="margin:0 0 8px;color:#6b7280;font-size:13px;">
+          Bei Fragen melde dich jederzeit bei David.
+        </p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Liebe Grüsse<br/>David Ramchandani
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "qr_invoice": {
+      const studentName = String(payload.student_name ?? "");
+      const lessonDate = String(payload.lesson_date ?? "");
+      const amount = Number(payload.amount ?? 0);
+      const invoiceNumber = String(payload.invoice_number ?? "");
+      const pdfLink = String(payload.pdf_link ?? "#");
+      const lessonsRemaining = payload.lessons_remaining != null ? Number(payload.lessons_remaining) : null;
+
+      const chf = amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const subject = `Rechnung ${invoiceNumber} – Klavierstunde vom ${lessonDate ? fmtDate(lessonDate) : ""}`;
+      const content = `
+        <p style="margin:0 0 16px;">Hallo ${studentName ? studentName.split(" ")[0] : ""},</p>
+        <p style="margin:0 0 16px;">
+          deine Klavierstunde hat stattgefunden – vielen Dank! Anbei deine Rechnung als QR-Rechnung.
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Rechnungsnummer</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${invoiceNumber}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Lektion</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${lessonDate ? fmtDateTime(lessonDate) : "–"}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Betrag</td>
+            <td style="padding:6px 0;font-weight:700;font-size:16px;color:#1C244B;">CHF ${chf}</td>
+          </tr>
+          ${lessonsRemaining != null ? `<tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Verbleibende Lektionen</td>
+            <td style="padding:6px 0;font-size:14px;">${lessonsRemaining}</td>
+          </tr>` : ""}
+        </table>
+        <p style="margin:0 0 24px;">
+          <a href="${pdfLink}"
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-size:15px;font-weight:700;">
+            Rechnung als PDF herunterladen
+          </a>
+        </p>
+        <p style="margin:0 0 16px;font-size:14px;color:#374151;">
+          <strong>Zahlungsdetails:</strong><br/>
+          IBAN: CH68 0830 7000 5411 7930 6<br/>
+          Empfänger: David Ramchandani<br/>
+          Verwendungszweck: ${invoiceNumber}
+        </p>
+        <p style="margin:0 0 16px;">
+          Nach der Zahlung bitte im Portal bestätigen:
+        </p>
+        <p style="margin:0 0 24px;">
+          <a href="${APP_URL}/schueler/portal#zahlungen"
+             style="display:inline-block;background-color:#f3f5f8;color:#1C244B;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;border:1px solid #e5e7eb;">
+            Zahlung bestätigen
+          </a>
+        </p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Liebe Grüsse<br/>David Ramchandani
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "payment_confirmed": {
+      const studentName = String(payload.student_name ?? "");
+      const lessonDate = String(payload.lesson_date ?? "");
+      const amount = Number(payload.amount ?? 0);
+      const invoiceNumber = String(payload.invoice_number ?? "");
+
+      const chf = amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const subject = `Zahlung bestätigt – Klavierstunde vom ${lessonDate ? fmtDate(lessonDate) : ""}`;
+      const content = `
+        <p style="margin:0 0 16px;">Hallo ${studentName ? studentName.split(" ")[0] : ""},</p>
+        <p style="margin:0 0 16px;font-size:18px;font-weight:bold;color:#10b981;">
+          Zahlung bestätigt ✓
+        </p>
+        <p style="margin:0 0 16px;">
+          Deine Zahlung wurde erfolgreich verbucht. Danke vielmals!
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f0fdf4;border-radius:6px;padding:16px;border:1px solid #bbf7d0;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Lektion</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${lessonDate ? fmtDateTime(lessonDate) : "–"}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Betrag</td>
+            <td style="padding:6px 0;font-weight:700;font-size:16px;color:#10b981;">CHF ${chf}</td>
+          </tr>
+          ${invoiceNumber ? `<tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Rechnungsnummer</td>
+            <td style="padding:6px 0;font-size:14px;">${invoiceNumber}</td>
+          </tr>` : ""}
+        </table>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Liebe Grüsse<br/>David Ramchandani
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "payment_rejected": {
+      const studentName = String(payload.student_name ?? "");
+      const lessonDate = String(payload.lesson_date ?? "");
+      const amount = Number(payload.amount ?? 0);
+      const invoiceNumber = String(payload.invoice_number ?? "");
+      const reason = payload.reason ? String(payload.reason) : null;
+
+      const chf = amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const subject = `Zahlung nicht gefunden – Klavierstunde vom ${lessonDate ? fmtDate(lessonDate) : ""}`;
+      const content = `
+        <p style="margin:0 0 16px;">Hallo ${studentName ? studentName.split(" ")[0] : ""},</p>
+        <p style="margin:0 0 16px;">
+          Leider konnte deine Zahlung für die folgende Lektion nicht gefunden werden:
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#fef2f2;border-radius:6px;padding:16px;border:1px solid #fecaca;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Lektion</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${lessonDate ? fmtDateTime(lessonDate) : "–"}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Betrag</td>
+            <td style="padding:6px 0;font-weight:700;font-size:16px;color:#dc2626;">CHF ${chf}</td>
+          </tr>
+          ${invoiceNumber ? `<tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Rechnungsnummer</td>
+            <td style="padding:6px 0;font-size:14px;">${invoiceNumber}</td>
+          </tr>` : ""}
+        </table>
+        ${reason ? `<p style="margin:0 0 16px;padding:12px 16px;background-color:#fef2f2;border-left:3px solid #ef4444;border-radius:4px;font-size:14px;color:#7f1d1d;">
+          <strong>Hinweis:</strong> ${reason}
+        </p>` : ""}
+        <p style="margin:0 0 16px;">
+          Bitte überweise den Betrag erneut und bestätige die Zahlung anschliessend im Portal.
+          Falls du glaubst, dass ein Fehler vorliegt, melde dich direkt bei David.
+        </p>
+        <p style="margin:0 0 24px;">
+          <a href="${APP_URL}/schueler/portal#zahlungen"
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">
+            Zum Portal
+          </a>
+        </p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Liebe Grüsse<br/>David Ramchandani
         </p>
       `;
       return { subject, html: baseWrapper(content) };

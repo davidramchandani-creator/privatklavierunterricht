@@ -79,7 +79,7 @@ export default function Pakete() {
           <p className="text-[#C9A84C] font-600 text-sm uppercase tracking-widest mb-3">
             Angebote
           </p>
-          <h2 className="text-3xl sm:text-4xl font-800 text-[#3730A3] mb-4">
+          <h2 className="text-3xl sm:text-4xl font-800 text-[#1C244B] mb-4">
             Wähle dein Paket
           </h2>
           <p className="text-gray-500 max-w-xl mx-auto">
@@ -95,14 +95,14 @@ export default function Pakete() {
               key={paket.id}
               className={`relative rounded-2xl border bg-white flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
                 paket.highlight
-                  ? "border-[#3730A3] shadow-lg shadow-[#3730A3]/10 ring-1 ring-[#3730A3]"
+                  ? "border-[#1C244B] shadow-lg shadow-[#1C244B]/10 ring-1 ring-[#1C244B]"
                   : "border-gray-200 shadow-sm"
               }`}
             >
               {/* Highlight banner */}
               {paket.highlight && (
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                  <span className="bg-[#3730A3] text-white text-xs font-600 px-4 py-1 rounded-full flex items-center gap-1">
+                  <span className="bg-[#1C244B] text-white text-xs font-600 px-4 py-1 rounded-full flex items-center gap-1">
                     <Star className="w-3 h-3 fill-[#C9A84C] text-[#C9A84C]" />
                     Beliebt
                   </span>
@@ -112,7 +112,7 @@ export default function Pakete() {
               <div className="p-6 flex flex-col flex-1">
                 {/* Name + Badge */}
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-700 text-[#3730A3] text-lg">
+                  <h3 className="font-700 text-[#1C244B] text-lg">
                     {paket.name}
                   </h3>
                   {paket.badge && !paket.highlight && (
@@ -125,7 +125,7 @@ export default function Pakete() {
                 {/* Preis */}
                 <div className="mb-6">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-800 text-[#3730A3]">
+                    <span className="text-4xl font-800 text-[#1C244B]">
                       {paket.preis}
                     </span>
                     <span className="text-gray-500 text-sm">

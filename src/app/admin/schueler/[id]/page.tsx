@@ -108,7 +108,7 @@ export default async function SchuelerDetailPage({
         >
           <ArrowLeft className="w-4 h-4 text-gray-600" />
         </Link>
-        <h1 className="text-2xl font-800 text-[#3730A3]">
+        <h1 className="text-2xl font-800 text-[#1C244B]">
           {schueler.vorname} {schueler.nachname}
         </h1>
         <span
@@ -124,7 +124,7 @@ export default async function SchuelerDetailPage({
 
       {/* Schüler info */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-700 text-[#3730A3] mb-4">Stammdaten</h2>
+        <h2 className="text-lg font-700 text-[#1C244B] mb-4">Stammdaten</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
           <div>
             <p className="text-gray-400 text-xs font-600 uppercase tracking-wide mb-1">E-Mail</p>
@@ -159,7 +159,7 @@ export default async function SchuelerDetailPage({
 
       {/* Preise & Einstellungen */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-700 text-[#3730A3] mb-4">Preise & Einstellungen</h2>
+        <h2 className="text-lg font-700 text-[#1C244B] mb-4">Preise & Einstellungen</h2>
         {userId ? (
           <PreiseForm
             userId={userId}
@@ -181,7 +181,7 @@ export default async function SchuelerDetailPage({
 
       {/* Pakete */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-700 text-[#3730A3] mb-4">Pakete</h2>
+        <h2 className="text-lg font-700 text-[#1C244B] mb-4">Pakete</h2>
 
         {packages && packages.length > 0 ? (
           <table className="w-full mb-4">
@@ -205,7 +205,7 @@ export default async function SchuelerDetailPage({
                     </td>
                     <td className="py-3 text-sm text-gray-600">
                       {state.lessonsUsed}/{state.lessonsTotal}
-                      <span className="text-[#3730A3] font-600 ml-1">
+                      <span className="text-[#1C244B] font-600 ml-1">
                         ({state.lessonsRemaining} übrig)
                       </span>
                     </td>
@@ -270,7 +270,7 @@ export default async function SchuelerDetailPage({
 
       {/* Bevorstehende Lektionen */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-700 text-[#3730A3] mb-4">
+        <h2 className="text-lg font-700 text-[#1C244B] mb-4">
           Bevorstehende Lektionen
         </h2>
         {userId && (
@@ -318,7 +318,7 @@ export default async function SchuelerDetailPage({
 
       {/* Zahlungen */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-700 text-[#3730A3] mb-4">Zahlungen</h2>
+        <h2 className="text-lg font-700 text-[#1C244B] mb-4">Zahlungen</h2>
         {!zahlungen || zahlungen.length === 0 ? (
           <p className="text-sm text-gray-400">Keine Zahlungen vorhanden.</p>
         ) : (
@@ -364,7 +364,7 @@ export default async function SchuelerDetailPage({
       {/* Bewertung */}
       {bewertung && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-lg font-700 text-[#3730A3] mb-4">Bewertung</h2>
+          <h2 className="text-lg font-700 text-[#1C244B] mb-4">Bewertung</h2>
           <div className="space-y-2">
             <div className="flex items-center gap-1">
               {Array.from({ length: 5 }).map((_, i) => (

@@ -66,7 +66,7 @@ export default async function AdminTerminanfragenPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-800 text-[#3730A3]">Terminanfragen</h1>
+        <h1 className="text-2xl font-800 text-[#1C244B]">Terminanfragen</h1>
         {offenGesamt > 0 && (
           <span className="bg-amber-100 text-amber-700 text-xs font-700 px-3 py-1 rounded-full">
             {offenGesamt} offen
@@ -153,7 +153,7 @@ function RequestCard({ req, muted = false }: { req: BookingRequest; muted?: bool
       </div>
 
       <div className="grid sm:grid-cols-2 gap-2 text-sm">
-        <div className="flex items-center gap-2 text-[#3730A3] font-500">
+        <div className="flex items-center gap-2 text-[#1C244B] font-500">
           <CalendarClock className="w-3.5 h-3.5 flex-shrink-0" />
           {formatDateTime(req.desired_start)} Uhr
         </div>
@@ -213,7 +213,7 @@ function RescheduleCard({ req }: { req: RescheduleRequest }) {
           {formatDateTime(req.original_start)}
         </span>
         <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-        <span className="text-[#3730A3] font-600">
+        <span className="text-[#1C244B] font-600">
           {formatDateTime(req.proposed_start)} Uhr
         </span>
       </div>

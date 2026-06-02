@@ -236,7 +236,7 @@ function TerminRow({
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#3730A3]/8 flex flex-col items-center justify-center flex-shrink-0 text-[#3730A3]">
+          <div className="w-10 h-10 rounded-xl bg-[#1C244B]/8 flex flex-col items-center justify-center flex-shrink-0 text-[#1C244B]">
             <span className="text-xs font-700 leading-none">{beginn.getDate()}</span>
             <span className="text-[10px] leading-none opacity-70">
               {beginn.toLocaleDateString("de-CH", { month: "short" })}
@@ -252,7 +252,7 @@ function TerminRow({
         <div className="flex items-center gap-1 flex-shrink-0">
           <button
             onClick={downloadIcs}
-            className="p-1.5 text-gray-400 hover:text-[#3730A3] rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-1.5 text-gray-400 hover:text-[#1C244B] rounded-lg hover:bg-gray-100 transition-colors"
             title="Zum Kalender hinzufügen"
           >
             <Download className="w-4 h-4" />
@@ -268,7 +268,7 @@ function TerminRow({
                 setRescheduleOpen((o) => !o);
               }}
               disabled={within24h}
-              className="p-1.5 text-gray-400 hover:text-[#3730A3] rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="p-1.5 text-gray-400 hover:text-[#1C244B] rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               title={within24h ? "Verschieben weniger als 24h vorher nicht möglich" : "Termin verschieben"}
             >
               <CalendarSync className="w-4 h-4" />
@@ -472,7 +472,7 @@ function ReschedulePicker({
 
       {loadingSlots ? (
         <div className="flex items-center justify-center py-6">
-          <Loader2 className="w-5 h-5 animate-spin text-[#3730A3]" />
+          <Loader2 className="w-5 h-5 animate-spin text-[#1C244B]" />
         </div>
       ) : slots.length === 0 ? (
         <div className="text-center py-6 text-gray-400">
@@ -503,8 +503,8 @@ function ReschedulePicker({
                         onClick={() => setSelectedSlot(isSelected ? null : slot)}
                         className={`w-full text-[11px] py-1.5 rounded-lg font-500 transition-colors ${
                           isSelected
-                            ? "bg-[#3730A3] text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-[#3730A3]/10"
+                            ? "bg-[#1C244B] text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-[#1C244B]/10"
                         }`}
                       >
                         {time}
@@ -525,7 +525,7 @@ function ReschedulePicker({
       <button
         onClick={handleSubmit}
         disabled={!selectedSlot || isPending || loadingSlots}
-        className="w-full text-sm font-600 text-white bg-[#3730A3] rounded-xl py-2.5 hover:bg-[#2d2682] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full text-sm font-600 text-white bg-[#1C244B] rounded-xl py-2.5 hover:bg-[#151c3d] hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 flex items-center justify-center gap-2"
       >
         {isPending && !loadingSlots ? (
           <>

@@ -57,14 +57,14 @@ export default function PreisePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-40">
-        <Loader2 className="w-6 h-6 animate-spin text-[#3730A3]" />
+        <Loader2 className="w-6 h-6 animate-spin text-[#1C244B]" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6 max-w-lg">
-      <h1 className="text-2xl font-800 text-[#3730A3]">Preise</h1>
+      <h1 className="text-2xl font-800 text-[#1C244B]">Preise</h1>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
         <form onSubmit={handleSubmit} className="space-y-4">
