@@ -3,18 +3,14 @@
 import { useState, useTransition, useEffect } from "react";
 import { CalendarPlus, ChevronLeft, ChevronRight, Loader2, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { buchTermin, getVerfuegbareSlots, type AvailableSlot } from "../actions";
+import { requestBooking, getVerfuegbareSlots, type AvailableSlot } from "../actions";
 
-export default function TerminBuchen({
-  schueler_id,
-  paket_id,
-}: {
-  schueler_id: string;
-  paket_id: string;
-}) {
+export default function TerminBuchen() {
   const [open, setOpen] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
+  const [lessonsCount, setLessonsCount] = useState(1);
+  const [intervalDays, setIntervalDays] = useState(7);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -58,11 +54,10 @@ export default function TerminBuchen({
     if (!selectedSlot) return;
     setError(null);
     startTransition(async () => {
-      const result = await buchTermin(
-        schueler_id,
-        paket_id,
+      const result = await requestBooking(
         selectedSlot.beginn,
-        selectedSlot.ende
+        lessonsCount,
+        intervalDays
       );
       if (result?.error) setError(result.error);
       else {
@@ -172,6 +167,40 @@ export default function TerminBuchen({
             </div>
           )}
 
+          {/* Serien-Optionen */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <label className="text-[11px] font-600 text-gray-500">Anzahl Lektionen</label>
+              <select
+                value={lessonsCount}
+                onChange={(e) => setLessonsCount(Number(e.target.value))}
+                className="w-full h-9 rounded-lg border border-gray-200 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3730A3]/30"
+              >
+                <option value={1}>1 (Einzeltermin)</option>
+                <option value={5}>5 (Serie)</option>
+                <option value={10}>10 (Serie)</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-600 text-gray-500">Rhythmus</label>
+              <select
+                value={intervalDays}
+                onChange={(e) => setIntervalDays(Number(e.target.value))}
+                disabled={lessonsCount === 1}
+                className="w-full h-9 rounded-lg border border-gray-200 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3730A3]/30 disabled:opacity-40"
+              >
+                <option value={7}>Wöchentlich</option>
+                <option value={14}>Alle 2 Wochen</option>
+              </select>
+            </div>
+          </div>
+          {lessonsCount > 1 && (
+            <p className="text-[11px] text-gray-400">
+              Der gewählte Slot ist die erste Lektion; die weiteren folgen im
+              gewählten Rhythmus zur selben Zeit.
+            </p>
+          )}
+
           {error && (
             <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
               {error}
@@ -186,10 +215,10 @@ export default function TerminBuchen({
             {isPending && !loadingSlots ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Buchen…
+                Anfrage senden…
               </>
             ) : selectedSlot ? (
-              `Buchen – ${new Date(selectedSlot.beginn).toLocaleDateString(
+              `Anfragen – ${new Date(selectedSlot.beginn).toLocaleDateString(
                 "de-CH",
                 { weekday: "short", day: "numeric", month: "short" }
               )} ${new Date(selectedSlot.beginn).toLocaleTimeString("de-CH", {

@@ -1,18 +1,60 @@
-import { Package, CheckCircle2, AlertCircle } from "lucide-react";
+import { Package, CheckCircle2, AlertCircle, PauseCircle, Clock, XCircle } from "lucide-react";
 import { formatCHF } from "@/lib/utils";
+import {
+  type Package as Paket,
+  type EffectiveStatus,
+  PACKAGE_LABELS,
+  computePackageState,
+  formatRemainingTime,
+} from "@/lib/packages";
 
-type Paket = {
-  id: string;
-  typ: string;
-  lektionen_gesamt: number;
-  lektionen_genutzt: number;
-  preis_pro_lektion: number;
-  gueltig_bis: string | null;
-  aktiv: boolean;
-  erstellt_am: string;
+const STATUS_BADGE: Record<
+  EffectiveStatus,
+  { label: string; className: string; icon: React.ReactNode }
+> = {
+  kein_paket: {
+    label: "Kein Paket",
+    className: "bg-amber-50 text-amber-600",
+    icon: <AlertCircle className="w-3 h-3" />,
+  },
+  aktiv: {
+    label: "Aktiv",
+    className: "bg-emerald-50 text-emerald-700",
+    icon: <CheckCircle2 className="w-3 h-3" />,
+  },
+  pausiert: {
+    label: "Pausiert",
+    className: "bg-blue-50 text-blue-700",
+    icon: <PauseCircle className="w-3 h-3" />,
+  },
+  aufgebraucht: {
+    label: "Aufgebraucht",
+    className: "bg-gray-100 text-gray-600",
+    icon: <Clock className="w-3 h-3" />,
+  },
+  abgelaufen: {
+    label: "Abgelaufen",
+    className: "bg-red-50 text-red-600",
+    icon: <XCircle className="w-3 h-3" />,
+  },
+  storniert: {
+    label: "Storniert",
+    className: "bg-red-50 text-red-600",
+    icon: <XCircle className="w-3 h-3" />,
+  },
 };
 
-export default function PaketCard({ paket }: { paket: Paket | null }) {
+export default function PaketCard({
+  paket,
+  lessonsUsed,
+  upcomingAbsence,
+}: {
+  paket: Paket | null;
+  lessonsUsed?: number;
+  upcomingAbsence?: { start_date: string; end_date: string; title: string } | null;
+}) {
+  const state = computePackageState(paket, lessonsUsed);
+
   if (!paket) {
     return (
       <div className="bg-white rounded-2xl border border-gray-200 p-6 flex items-start gap-4">
@@ -22,22 +64,22 @@ export default function PaketCard({ paket }: { paket: Paket | null }) {
         <div>
           <p className="font-600 text-gray-900">Kein aktives Paket</p>
           <p className="text-sm text-gray-500 mt-0.5">
-            Melde dich bei David, um ein Paket zu erwerben.
+            Buche unten ein neues Paket, um mit den Lektionen zu starten.
           </p>
         </div>
       </div>
     );
   }
 
-  const verbleibend = paket.lektionen_gesamt - paket.lektionen_genutzt;
-  const progress = (paket.lektionen_genutzt / paket.lektionen_gesamt) * 100;
-  const abgelaufen = paket.gueltig_bis ? new Date(paket.gueltig_bis) < new Date() : false;
-
-  const typLabels: Record<string, string> = {
-    einzellektion: "Einzellektion",
-    "10er": "10er-Paket",
-    "20er": "20er-Paket",
-  };
+  const badge = STATUS_BADGE[state.effectiveStatus];
+  const timerText =
+    state.effectiveStatus === "pausiert"
+      ? "Pausiert"
+      : state.effectiveStatus === "abgelaufen"
+      ? "Abgelaufen"
+      : state.remainingMs != null
+      ? `Läuft in ${formatRemainingTime(state.remainingMs)} ab`
+      : null;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
@@ -47,45 +89,90 @@ export default function PaketCard({ paket }: { paket: Paket | null }) {
             <Package className="w-5 h-5 text-[#3730A3]" />
           </div>
           <div>
-            <p className="font-700 text-gray-900">{typLabels[paket.typ] ?? paket.typ}</p>
+            <p className="font-700 text-gray-900">
+              {paket.name ?? PACKAGE_LABELS[paket.type] ?? paket.type}
+            </p>
             <p className="text-sm text-gray-500 mt-0.5">
-              {formatCHF(paket.preis_pro_lektion)} pro Lektion
+              {formatCHF(Number(paket.price_per_lesson))} pro Lektion
             </p>
           </div>
         </div>
-        {abgelaufen ? (
-          <span className="text-xs bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-500">Abgelaufen</span>
-        ) : (
-          <span className="text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-500 flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" /> Aktiv
-          </span>
-        )}
+        <span
+          className={`text-xs px-2.5 py-1 rounded-full font-500 flex items-center gap-1 ${badge.className}`}
+        >
+          {badge.icon} {badge.label}
+        </span>
       </div>
 
       <div className="mt-5 space-y-3">
         <div className="flex justify-between text-sm">
           <span className="text-gray-500">Lektionen genutzt</span>
-          <span className="font-600 text-gray-900">{paket.lektionen_genutzt} / {paket.lektionen_gesamt}</span>
+          <span className="font-600 text-gray-900">
+            {state.lessonsUsed} / {state.lessonsTotal}
+          </span>
         </div>
         <div className="w-full bg-gray-100 rounded-full h-2">
           <div
             className="h-2 rounded-full bg-[#3730A3] transition-all duration-500"
-            style={{ width: `${Math.min(progress, 100)}%` }}
+            style={{ width: `${state.progressPercent}%` }}
           />
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-500">Verbleibend</span>
-          <span className="font-700 text-[#3730A3]">{verbleibend} Lektion{verbleibend !== 1 ? "en" : ""}</span>
+          <span className="font-700 text-[#3730A3]">
+            {state.lessonsRemaining} Lektion{state.lessonsRemaining !== 1 ? "en" : ""}
+          </span>
         </div>
-        {paket.gueltig_bis && (
+
+        {timerText && (
           <div className="flex justify-between text-sm pt-1 border-t border-gray-100">
+            <span className="text-gray-500">Laufzeit</span>
+            <span
+              className={`font-500 ${
+                state.effectiveStatus === "abgelaufen"
+                  ? "text-red-600"
+                  : state.effectiveStatus === "pausiert"
+                  ? "text-blue-600"
+                  : "text-gray-700"
+              }`}
+            >
+              {timerText}
+            </span>
+          </div>
+        )}
+
+        {paket.expires_at && state.effectiveStatus !== "pausiert" && (
+          <div className="flex justify-between text-sm">
             <span className="text-gray-500">Gültig bis</span>
             <span className="font-500 text-gray-700">
-              {new Date(paket.gueltig_bis).toLocaleDateString("de-CH", { day: "numeric", month: "long", year: "numeric" })}
+              {new Date(paket.expires_at).toLocaleDateString("de-CH", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
             </span>
           </div>
         )}
       </div>
+
+      {upcomingAbsence && (
+        <div className="mt-4 flex items-start gap-2 rounded-xl bg-blue-50 px-3 py-2.5 text-xs text-blue-700">
+          <Clock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+          <span>
+            Kommende Abwesenheit:{" "}
+            {new Date(upcomingAbsence.start_date).toLocaleDateString("de-CH", {
+              day: "numeric",
+              month: "short",
+            })}{" "}
+            –{" "}
+            {new Date(upcomingAbsence.end_date).toLocaleDateString("de-CH", {
+              day: "numeric",
+              month: "short",
+            })}
+            . Deine Laufzeit wird automatisch verlängert.
+          </span>
+        </div>
+      )}
     </div>
   );
 }

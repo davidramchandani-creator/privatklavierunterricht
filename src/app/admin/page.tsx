@@ -20,6 +20,7 @@ export default async function AdminDashboardPage() {
     { data: openPayments },
     { count: pendingReviews },
     { count: newAnfragen },
+    { count: openBookingRequests },
     { data: nextLessons },
   ] = await Promise.all([
     supabase
@@ -27,11 +28,11 @@ export default async function AdminDashboardPage() {
       .select("*", { count: "exact", head: true })
       .eq("aktiv", true),
     supabase
-      .from("termine")
+      .from("appointments")
       .select("id")
-      .neq("status", "storniert")
-      .gte("beginn", weekStart.toISOString())
-      .lt("beginn", weekEnd.toISOString()),
+      .in("status", ["booked", "completed"])
+      .gte("start_at", weekStart.toISOString())
+      .lt("start_at", weekEnd.toISOString()),
     supabase
       .from("zahlungen")
       .select("betrag")
@@ -45,11 +46,15 @@ export default async function AdminDashboardPage() {
       .select("*", { count: "exact", head: true })
       .eq("status", "neu"),
     supabase
-      .from("termine")
-      .select("id, beginn, ende, status, schueler(vorname, nachname)")
-      .neq("status", "storniert")
-      .gte("beginn", now.toISOString())
-      .order("beginn", { ascending: true })
+      .from("booking_requests")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "open"),
+    supabase
+      .from("appointments")
+      .select("id, start_at, end_at, status, profiles(vorname, nachname)")
+      .in("status", ["booked", "completed"])
+      .gte("start_at", now.toISOString())
+      .order("start_at", { ascending: true })
       .limit(10),
   ]);
 
@@ -59,14 +64,16 @@ export default async function AdminDashboardPage() {
   ) ?? 0;
 
   const statusLabels: Record<string, string> = {
-    bestaetigt: "Bestätigt",
-    abgeschlossen: "Abgeschlossen",
-    storniert: "Storniert",
+    booked: "Bestätigt",
+    completed: "Abgeschlossen",
+    cancelled: "Storniert",
+    no_show: "Nicht erschienen",
   };
   const statusColors: Record<string, string> = {
-    bestaetigt: "bg-blue-50 text-blue-700",
-    abgeschlossen: "bg-emerald-50 text-emerald-700",
-    storniert: "bg-red-50 text-red-600",
+    booked: "bg-blue-50 text-blue-700",
+    completed: "bg-emerald-50 text-emerald-700",
+    cancelled: "bg-red-50 text-red-600",
+    no_show: "bg-gray-100 text-gray-600",
   };
 
   const stats = [
@@ -76,6 +83,13 @@ export default async function AdminDashboardPage() {
       icon: Inbox,
       color: "bg-amber-50 text-amber-600",
       href: "/admin/anfragen",
+    },
+    {
+      label: "Offene Terminanfragen",
+      value: openBookingRequests ?? 0,
+      icon: Calendar,
+      color: "bg-amber-50 text-amber-600",
+      href: "/admin/terminanfragen",
     },
     {
       label: "Aktive Schüler",
@@ -112,7 +126,7 @@ export default async function AdminDashboardPage() {
       <h1 className="text-2xl font-800 text-[#3730A3]">Dashboard</h1>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {stats.map(({ label, value, icon: Icon, color, href }) => (
           <Link
             key={label}
@@ -157,14 +171,14 @@ export default async function AdminDashboardPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {nextLessons.map((t) => {
-                  const s = (t.schueler as unknown) as { vorname: string; nachname: string } | null;
+                  const s = (t.profiles as unknown) as { vorname: string; nachname: string } | null;
                   return (
                     <tr key={t.id}>
                       <td className="py-3 text-sm font-500 text-gray-900">
                         {s ? `${s.vorname} ${s.nachname}` : "—"}
                       </td>
                       <td className="py-3 text-sm text-gray-600">
-                        {formatDateTime(t.beginn)}
+                        {formatDateTime(t.start_at)}
                       </td>
                       <td className="py-3">
                         <span
