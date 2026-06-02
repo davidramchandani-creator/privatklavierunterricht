@@ -56,8 +56,8 @@ export async function getPublicSlots(weekOffset: number): Promise<PublicSlot[]> 
       windowEnd.setHours(endH, endM, 0, 0);
 
       let slotStart = new Date(windowStart);
-      while (slotStart.getTime() + 60 * 60000 <= windowEnd.getTime()) {
-        const slotEnd = new Date(slotStart.getTime() + 60 * 60000);
+      while (slotStart.getTime() + 45 * 60000 <= windowEnd.getTime()) {
+        const slotEnd = new Date(slotStart.getTime() + 45 * 60000);
         if (slotStart > now && !bookedSet.has(slotStart.toISOString())) {
           slots.push({ beginn: slotStart.toISOString(), ende: slotEnd.toISOString() });
         }
