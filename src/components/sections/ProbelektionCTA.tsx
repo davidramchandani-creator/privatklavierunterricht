@@ -6,7 +6,7 @@ export default function ProbelektionCTA() {
   return (
     <section id="probelektion" className="py-24 relative overflow-hidden">
       {/* Gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#3730A3] to-[#4F46E5]" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#1C244B] to-[#4F46E5]" />
       <div
         className="absolute inset-0 opacity-[0.06]"
         style={{
@@ -40,7 +40,7 @@ export default function ProbelektionCTA() {
             <Button
               size="lg"
               variant="outline"
-              className="border-white/30 text-white hover:bg-white hover:text-[#3730A3] gap-2 w-full sm:w-auto"
+              className="border-white/30 text-white hover:bg-white hover:text-[#1C244B] gap-2 w-full sm:w-auto"
             >
               Alle Angebote
               <ArrowRight className="w-4 h-4" />

@@ -31,11 +31,11 @@ export default async function BewertungenPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-800 text-[#3730A3]">Bewertungen</h1>
+      <h1 className="text-2xl font-800 text-[#1C244B]">Bewertungen</h1>
 
       {/* Pending */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-700 text-[#3730A3] mb-4">
+        <h2 className="text-lg font-700 text-[#1C244B] mb-4">
           Ausstehend ({pending.length})
         </h2>
 
@@ -79,7 +79,7 @@ export default async function BewertungenPage() {
 
       {/* Approved */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-700 text-[#3730A3] mb-4">
+        <h2 className="text-lg font-700 text-[#1C244B] mb-4">
           Veröffentlicht ({approved.length})
         </h2>
 

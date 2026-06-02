@@ -86,11 +86,11 @@ export default function NeuesPaket({
                 setAgb(false);
                 setError(null);
               }}
-              className="text-left bg-white rounded-2xl border border-gray-200 hover:border-[#3730A3]/40 hover:shadow-sm transition-all p-5 group"
+              className="text-left bg-white rounded-2xl border border-gray-200 hover:border-[#1C244B]/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5 group"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#3730A3]/10 flex items-center justify-center group-hover:bg-[#3730A3]/15 transition-colors">
-                  <Package className="w-5 h-5 text-[#3730A3]" />
+                <div className="w-10 h-10 rounded-xl bg-[#1C244B]/10 flex items-center justify-center group-hover:bg-[#1C244B]/15 transition-colors">
+                  <Package className="w-5 h-5 text-[#1C244B]" />
                 </div>
                 <div>
                   <p className="font-700 text-gray-900">{v.label}</p>
@@ -99,7 +99,7 @@ export default function NeuesPaket({
               </div>
               <div className="mt-4 flex items-end justify-between">
                 <div>
-                  <p className="text-2xl font-800 text-[#3730A3]">{formatCHF(ppl)}</p>
+                  <p className="text-2xl font-800 text-[#1C244B]">{formatCHF(ppl)}</p>
                   <p className="text-xs text-gray-500">pro Lektion</p>
                 </div>
                 <p className="text-sm text-gray-500">
@@ -123,8 +123,8 @@ export default function NeuesPaket({
           >
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#3730A3]/10 flex items-center justify-center">
-                  <Package className="w-5 h-5 text-[#3730A3]" />
+                <div className="w-10 h-10 rounded-xl bg-[#1C244B]/10 flex items-center justify-center">
+                  <Package className="w-5 h-5 text-[#1C244B]" />
                 </div>
                 <div>
                   <h3 className="font-700 text-gray-900">{selected.label}</h3>
@@ -152,7 +152,7 @@ export default function NeuesPaket({
               </div>
               <div className="flex justify-between border-t border-gray-200 pt-2">
                 <span className="text-gray-500">Gesamtpreis</span>
-                <span className="font-800 text-[#3730A3]">
+                <span className="font-800 text-[#1C244B]">
                   {formatCHF(pricePerLesson(selected.type) * selected.lessons)}
                 </span>
               </div>
@@ -163,14 +163,14 @@ export default function NeuesPaket({
                 type="checkbox"
                 checked={agb}
                 onChange={(e) => setAgb(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#3730A3] focus:ring-[#3730A3]"
+                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#1C244B] focus:ring-[#1C244B]"
               />
               <span className="text-sm text-gray-600 leading-snug">
                 Ich habe die{" "}
                 <Link
                   href="/agb"
                   target="_blank"
-                  className="text-[#3730A3] font-500 hover:underline"
+                  className="text-[#1C244B] font-500 hover:underline"
                 >
                   AGB
                 </Link>{" "}
@@ -188,7 +188,7 @@ export default function NeuesPaket({
             <button
               onClick={handleBuy}
               disabled={!agb || isPending}
-              className="w-full flex items-center justify-center gap-2 bg-[#3730A3] text-white font-600 text-sm rounded-xl py-3 hover:bg-[#2d2982] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-[#1C244B] text-white font-600 text-sm rounded-xl py-3 hover:bg-[#151c3d] hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 transition-all duration-200"
             >
               {isPending ? (
                 <>

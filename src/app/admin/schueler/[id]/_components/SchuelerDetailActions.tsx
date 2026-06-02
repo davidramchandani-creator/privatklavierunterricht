@@ -238,7 +238,7 @@ function PaketForm({ schueler_id }: { schueler_id: string }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 text-sm font-600 text-[#3730A3] px-4 py-2.5 rounded-xl border border-[#3730A3]/20 hover:bg-[#3730A3]/5 transition-colors"
+        className="flex items-center gap-2 text-sm font-600 text-[#1C244B] px-4 py-2.5 rounded-xl border border-[#1C244B]/20 hover:bg-[#1C244B]/5 transition-colors"
       >
         <Plus className="w-4 h-4" />
         Neues Paket erstellen
@@ -483,8 +483,8 @@ function PreiseForm({
         </div>
       </div>
 
-      <div className="rounded-xl bg-[#3730A3]/5 px-4 py-3 text-sm text-[#3730A3] space-y-1">
-        <p className="text-xs font-600 uppercase tracking-wide text-[#3730A3]/70">Effektiver Preis/Lektion (inkl. Wegaufschlag)</p>
+      <div className="rounded-xl bg-[#1C244B]/5 px-4 py-3 text-sm text-[#1C244B] space-y-1">
+        <p className="text-xs font-600 uppercase tracking-wide text-[#1C244B]/70">Effektiver Preis/Lektion (inkl. Wegaufschlag)</p>
         <div className="flex flex-wrap gap-x-6 gap-y-1 font-500">
           <span>Einzellektion: {formatCHF(effSingle)}</span>
           <span>10er: {formatCHF(eff10er)}</span>
@@ -562,7 +562,7 @@ function PackageFormNew({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 text-sm font-600 text-[#3730A3] px-4 py-2.5 rounded-xl border border-[#3730A3]/20 hover:bg-[#3730A3]/5 transition-colors"
+        className="flex items-center gap-2 text-sm font-600 text-[#1C244B] px-4 py-2.5 rounded-xl border border-[#1C244B]/20 hover:bg-[#1C244B]/5 transition-colors"
       >
         <Plus className="w-4 h-4" />
         Neues Paket erstellen
@@ -672,7 +672,7 @@ function DirektBuchung({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 text-sm font-600 text-[#3730A3] px-4 py-2.5 rounded-xl border border-[#3730A3]/20 hover:bg-[#3730A3]/5 transition-colors"
+        className="flex items-center gap-2 text-sm font-600 text-[#1C244B] px-4 py-2.5 rounded-xl border border-[#1C244B]/20 hover:bg-[#1C244B]/5 transition-colors"
       >
         <Calendar className="w-4 h-4" />
         Direkt buchen
@@ -886,7 +886,7 @@ function PackageTimerActions({
       <button
         disabled={isPending}
         onClick={handleExtend}
-        className="p-1.5 rounded-lg hover:bg-[#3730A3]/10 text-gray-400 hover:text-[#3730A3] transition-colors disabled:opacity-50"
+        className="p-1.5 rounded-lg hover:bg-[#1C244B]/10 text-gray-400 hover:text-[#1C244B] transition-colors disabled:opacity-50"
         title="Verlängern"
       >
         <Clock className="w-3.5 h-3.5" />

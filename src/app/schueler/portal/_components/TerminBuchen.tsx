@@ -82,7 +82,7 @@ export default function TerminBuchen() {
       {!open ? (
         <button
           onClick={() => setOpen(true)}
-          className="flex items-center gap-2 text-sm font-600 text-[#3730A3] px-4 py-2.5 rounded-xl border border-[#3730A3]/20 hover:bg-[#3730A3]/5 transition-colors"
+          className="flex items-center gap-2 text-sm font-600 text-[#1C244B] px-4 py-2.5 rounded-xl border border-[#1C244B]/20 hover:bg-[#1C244B]/5 transition-colors"
         >
           <CalendarPlus className="w-4 h-4" />
           Neue Lektion buchen
@@ -120,7 +120,7 @@ export default function TerminBuchen() {
           {/* Slots grid */}
           {loadingSlots ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-[#3730A3]" />
+              <Loader2 className="w-5 h-5 animate-spin text-[#1C244B]" />
             </div>
           ) : slots.length === 0 ? (
             <div className="text-center py-8 text-gray-400">
@@ -153,8 +153,8 @@ export default function TerminBuchen() {
                             }
                             className={`w-full text-xs py-1.5 rounded-lg font-500 transition-colors ${
                               isSelected
-                                ? "bg-[#3730A3] text-white"
-                                : "bg-gray-100 text-gray-700 hover:bg-[#3730A3]/10"
+                                ? "bg-[#1C244B] text-white"
+                                : "bg-gray-100 text-gray-700 hover:bg-[#1C244B]/10"
                             }`}
                           >
                             {time}
@@ -175,7 +175,7 @@ export default function TerminBuchen() {
               <select
                 value={lessonsCount}
                 onChange={(e) => setLessonsCount(Number(e.target.value))}
-                className="w-full h-9 rounded-lg border border-gray-200 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3730A3]/30"
+                className="w-full h-9 rounded-lg border border-gray-200 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C244B]/30"
               >
                 <option value={1}>1 (Einzeltermin)</option>
                 <option value={5}>5 (Serie)</option>
@@ -188,7 +188,7 @@ export default function TerminBuchen() {
                 value={intervalDays}
                 onChange={(e) => setIntervalDays(Number(e.target.value))}
                 disabled={lessonsCount === 1}
-                className="w-full h-9 rounded-lg border border-gray-200 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3730A3]/30 disabled:opacity-40"
+                className="w-full h-9 rounded-lg border border-gray-200 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C244B]/30 disabled:opacity-40"
               >
                 <option value={7}>Wöchentlich</option>
                 <option value={14}>Alle 2 Wochen</option>

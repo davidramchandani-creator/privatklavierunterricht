@@ -56,10 +56,10 @@ export default async function AdminLayout({
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-60 bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-30">
         <div className="h-16 flex items-center gap-2.5 px-5 border-b border-gray-100">
-          <span className="w-8 h-8 rounded-lg bg-[#3730A3] flex items-center justify-center flex-shrink-0">
+          <span className="w-8 h-8 rounded-lg bg-[#1C244B] flex items-center justify-center flex-shrink-0">
             <Music className="w-4 h-4 text-white" />
           </span>
-          <span className="font-700 text-[#3730A3] text-sm">Admin</span>
+          <span className="font-700 text-[#1C244B] text-sm">Admin</span>
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
@@ -67,9 +67,9 @@ export default async function AdminLayout({
             <Link
               key={href}
               href={href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-500 text-gray-600 hover:bg-gray-100 hover:text-[#3730A3] transition-colors group"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-500 text-gray-600 hover:bg-gray-100 hover:text-[#1C244B] transition-colors group"
             >
-              <Icon className="w-4 h-4 text-gray-400 group-hover:text-[#3730A3] transition-colors flex-shrink-0" />
+              <Icon className="w-4 h-4 text-gray-400 group-hover:text-[#1C244B] transition-colors flex-shrink-0" />
               {label}
             </Link>
           ))}
@@ -93,10 +93,10 @@ export default async function AdminLayout({
         {/* Top bar (mobile) */}
         <header className="md:hidden bg-white border-b border-gray-200 sticky top-0 z-20 h-14 flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-lg bg-[#3730A3] flex items-center justify-center">
+            <span className="w-7 h-7 rounded-lg bg-[#1C244B] flex items-center justify-center">
               <Music className="w-3.5 h-3.5 text-white" />
             </span>
-            <span className="font-700 text-[#3730A3] text-sm">Admin</span>
+            <span className="font-700 text-[#1C244B] text-sm">Admin</span>
           </div>
           <AdminMobileMenu />
         </header>

@@ -54,7 +54,7 @@ export default function UeberMichPage() {
   return (
     <main>
       {/* Hero */}
-      <section className="bg-[#3730A3] pt-32 pb-20 px-4 relative overflow-hidden">
+      <section className="bg-[#1C244B] pt-32 pb-20 px-4 relative overflow-hidden">
         <div
           className="absolute inset-0 opacity-[0.04]"
           style={{
@@ -90,14 +90,14 @@ export default function UeberMichPage() {
           {/* Photo placeholder */}
           <div className="flex justify-center md:justify-end">
             <div className="relative w-72 h-80 md:w-80 md:h-96">
-              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[#C9A84C]/30 to-[#3730A3]/50 backdrop-blur-sm border border-white/10 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[#C9A84C]/30 to-[#1C244B]/50 backdrop-blur-sm border border-white/10 flex items-center justify-center">
                 <div className="text-center text-white/40">
                   <Music className="w-16 h-16 mx-auto mb-3" />
                   <p className="text-sm">Foto folgt bald</p>
                 </div>
               </div>
               {/* Badge */}
-              <div className="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-lg px-4 py-3 text-[#3730A3]">
+              <div className="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-lg px-4 py-3 text-[#1C244B]">
                 <p className="text-2xl font-800">16+</p>
                 <p className="text-xs text-gray-500 font-500">Jahre Erfahrung</p>
               </div>
@@ -116,7 +116,7 @@ export default function UeberMichPage() {
             { value: "100%", label: "Persönlicher Unterricht" },
           ].map(({ value, label }) => (
             <div key={label}>
-              <p className="text-3xl font-800 text-[#3730A3]">{value}</p>
+              <p className="text-3xl font-800 text-[#1C244B]">{value}</p>
               <p className="text-sm text-gray-500 mt-1">{label}</p>
             </div>
           ))}
@@ -127,7 +127,7 @@ export default function UeberMichPage() {
       <section className="py-20 px-4">
         <div className="max-w-3xl mx-auto space-y-8">
           <div>
-            <h2 className="text-2xl font-800 text-[#3730A3] mb-4">Meine Geschichte</h2>
+            <h2 className="text-2xl font-800 text-[#1C244B] mb-4">Meine Geschichte</h2>
             <div className="prose prose-gray max-w-none space-y-4 text-gray-600 leading-relaxed">
               <p>
                 Mit 12 Jahren habe ich das erste Mal auf einem alten Klavier gespielt – und seitdem nicht mehr aufgehört. Was als Hobby begann, ist heute mein Beruf und meine Leidenschaft.
@@ -145,7 +145,7 @@ export default function UeberMichPage() {
           <div className="grid sm:grid-cols-3 gap-4 pt-4">
             {werte.map(({ icon, title, desc }) => (
               <div key={title} className="bg-gray-50 rounded-2xl p-5 space-y-2">
-                <div className="w-9 h-9 rounded-xl bg-[#3730A3]/10 text-[#3730A3] flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-[#1C244B]/10 text-[#1C244B] flex items-center justify-center">
                   {icon}
                 </div>
                 <p className="font-700 text-gray-900 text-sm">{title}</p>
@@ -159,7 +159,7 @@ export default function UeberMichPage() {
       {/* Was ich anbiete */}
       <section className="bg-gray-50 py-20 px-4">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-2xl font-800 text-[#3730A3] mb-8">Was ich anbiete</h2>
+          <h2 className="text-2xl font-800 text-[#1C244B] mb-8">Was ich anbiete</h2>
           <div className="grid sm:grid-cols-2 gap-3">
             {[
               "Klavierunterricht für Anfänger und Fortgeschrittene",
@@ -183,7 +183,7 @@ export default function UeberMichPage() {
       {/* Werdegang / Timeline */}
       <section className="py-20 px-4">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-2xl font-800 text-[#3730A3] mb-10">Mein Weg</h2>
+          <h2 className="text-2xl font-800 text-[#1C244B] mb-10">Mein Weg</h2>
           <div className="relative pl-8 space-y-8">
             <div className="absolute left-3.5 top-2 bottom-2 w-px bg-gray-200" />
             {stationen.map(({ year, title, desc }) => (
@@ -199,7 +199,7 @@ export default function UeberMichPage() {
       </section>
 
       {/* CTA */}
-      <section className="bg-[#3730A3] py-20 px-4 text-center">
+      <section className="bg-[#1C244B] py-20 px-4 text-center">
         <div className="max-w-2xl mx-auto space-y-6">
           <h2 className="text-3xl font-800 text-white">Bereit, anzufangen?</h2>
           <p className="text-white/70">

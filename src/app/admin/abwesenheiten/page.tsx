@@ -50,11 +50,11 @@ export default async function AbwesenheitenPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <h1 className="text-2xl font-800 text-[#3730A3]">Abwesenheiten &amp; Zeitblöcke</h1>
+      <h1 className="text-2xl font-800 text-[#1C244B]">Abwesenheiten &amp; Zeitblöcke</h1>
 
       {/* Abwesenheiten */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-700 text-[#3730A3] mb-4">Abwesenheiten</h2>
+        <h2 className="text-lg font-700 text-[#1C244B] mb-4">Abwesenheiten</h2>
         {!absences || absences.length === 0 ? (
           <p className="text-sm text-gray-400 mb-4">Keine Abwesenheiten erfasst.</p>
         ) : (
@@ -66,7 +66,7 @@ export default async function AbwesenheitenPage() {
                     <span
                       className={`text-xs font-500 px-2.5 py-0.5 rounded-full ${
                         a.scope === "admin"
-                          ? "bg-indigo-50 text-[#3730A3]"
+                          ? "bg-indigo-50 text-[#1C244B]"
                           : "bg-amber-50 text-amber-700"
                       }`}
                     >
@@ -95,7 +95,7 @@ export default async function AbwesenheitenPage() {
 
       {/* Zeitblöcke (einmalig) */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-700 text-[#3730A3] mb-4">Zeitblöcke (einmalig)</h2>
+        <h2 className="text-lg font-700 text-[#1C244B] mb-4">Zeitblöcke (einmalig)</h2>
         {!timeBlocks || timeBlocks.length === 0 ? (
           <p className="text-sm text-gray-400 mb-4">Keine Zeitblöcke erfasst.</p>
         ) : (
@@ -118,7 +118,7 @@ export default async function AbwesenheitenPage() {
 
       {/* Wiederholungs-Sperren */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-700 text-[#3730A3] mb-4">Wiederholungs-Sperren</h2>
+        <h2 className="text-lg font-700 text-[#1C244B] mb-4">Wiederholungs-Sperren</h2>
         {!timeBlockRules || timeBlockRules.length === 0 ? (
           <p className="text-sm text-gray-400 mb-4">Keine Sperrregeln erfasst.</p>
         ) : (

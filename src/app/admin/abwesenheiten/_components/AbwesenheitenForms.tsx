@@ -109,7 +109,7 @@ export function AbwesenheitForm({ students }: { students: Student[] }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 text-sm font-600 text-[#3730A3] px-4 py-2.5 rounded-xl border border-[#3730A3]/20 hover:bg-[#3730A3]/5 transition-colors"
+        className="flex items-center gap-2 text-sm font-600 text-[#1C244B] px-4 py-2.5 rounded-xl border border-[#1C244B]/20 hover:bg-[#1C244B]/5 transition-colors"
       >
         <Plus className="w-4 h-4" />
         Abwesenheit erstellen
@@ -165,7 +165,7 @@ export function AbwesenheitForm({ students }: { students: Student[] }) {
           name="auto_extend"
           value="true"
           defaultChecked
-          className="h-4 w-4 rounded border-gray-300 text-[#3730A3] focus:ring-[#3730A3]"
+          className="h-4 w-4 rounded border-gray-300 text-[#1C244B] focus:ring-[#1C244B]"
         />
         Paket-Laufzeit automatisch verlängern
       </label>
@@ -210,7 +210,7 @@ export function ZeitblockForm() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 text-sm font-600 text-[#3730A3] px-4 py-2.5 rounded-xl border border-[#3730A3]/20 hover:bg-[#3730A3]/5 transition-colors"
+        className="flex items-center gap-2 text-sm font-600 text-[#1C244B] px-4 py-2.5 rounded-xl border border-[#1C244B]/20 hover:bg-[#1C244B]/5 transition-colors"
       >
         <Plus className="w-4 h-4" />
         Zeitblock erstellen
@@ -280,7 +280,7 @@ export function ZeitblockRegelForm() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 text-sm font-600 text-[#3730A3] px-4 py-2.5 rounded-xl border border-[#3730A3]/20 hover:bg-[#3730A3]/5 transition-colors"
+        className="flex items-center gap-2 text-sm font-600 text-[#1C244B] px-4 py-2.5 rounded-xl border border-[#1C244B]/20 hover:bg-[#1C244B]/5 transition-colors"
       >
         <Plus className="w-4 h-4" />
         Sperrregel erstellen

@@ -48,7 +48,7 @@ function baseWrapper(contentHtml: string): string {
         <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
           <!-- Header -->
           <tr>
-            <td style="background-color:#3730A3;padding:28px 32px;text-align:center;">
+            <td style="background-color:#1C244B;padding:28px 32px;text-align:center;">
               <span style="color:#ffffff;font-size:20px;font-weight:bold;letter-spacing:0.5px;">
                 Klavierunterricht David Ramchandani
               </span>
@@ -114,7 +114,7 @@ export function renderEmail(
         </table>
         <p style="margin:0 0 24px;">
           <a href="${APP_URL}/admin/terminanfragen"
-             style="display:inline-block;background-color:#3730A3;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
             Zur Terminanfragen-Übersicht
           </a>
         </p>
@@ -167,7 +167,7 @@ export function renderEmail(
         .join("");
 
       const content = `
-        <p style="margin:0 0 16px;font-size:18px;font-weight:bold;color:#3730A3;">
+        <p style="margin:0 0 16px;font-size:18px;font-weight:bold;color:#1C244B;">
           Herzlichen Glückwunsch! 🎹
         </p>
         <p style="margin:0 0 16px;">
@@ -206,7 +206,7 @@ export function renderEmail(
         </p>
         <p style="margin:0 0 24px;">
           <a href="${APP_URL}/schueler/portal"
-             style="display:inline-block;background-color:#3730A3;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
             Neuen Termin anfragen
           </a>
         </p>
@@ -233,7 +233,7 @@ export function renderEmail(
         </p>
         <p style="margin:0;">
           <a href="${APP_URL}/admin/terminanfragen"
-             style="display:inline-block;background-color:#3730A3;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
             Zur Terminanfragen-Übersicht
           </a>
         </p>
@@ -293,12 +293,12 @@ export function renderEmail(
           </tr>
           <tr>
             <td style="padding:8px 0;color:#6b7280;font-size:14px;">Gewünschter neuer Termin</td>
-            <td style="padding:8px 0;font-weight:600;font-size:14px;color:#3730A3;">${proposedStart ? fmtDateTime(proposedStart) : "–"}</td>
+            <td style="padding:8px 0;font-weight:600;font-size:14px;color:#1C244B;">${proposedStart ? fmtDateTime(proposedStart) : "–"}</td>
           </tr>
         </table>
         <p style="margin:0 0 24px;">
           <a href="${APP_URL}/admin/terminanfragen"
-             style="display:inline-block;background-color:#3730A3;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
             Verschiebung prüfen
           </a>
         </p>
@@ -336,14 +336,14 @@ export function renderEmail(
 
       const subject = "Dein Termin wurde verschoben – Klavierunterricht";
       const content = `
-        <p style="margin:0 0 16px;font-size:18px;font-weight:bold;color:#3730A3;">
+        <p style="margin:0 0 16px;font-size:18px;font-weight:bold;color:#1C244B;">
           Dein Termin wurde verschoben ✓
         </p>
         <p style="margin:0 0 16px;">Dein neuer Termin ist bestätigt:</p>
         <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
           <tr>
             <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Neuer Termin</td>
-            <td style="padding:6px 0;font-weight:600;font-size:14px;color:#3730A3;">${proposedStart ? fmtDateTime(proposedStart) : "–"}</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;color:#1C244B;">${proposedStart ? fmtDateTime(proposedStart) : "–"}</td>
           </tr>
         </table>
         <p style="margin:0;color:#6b7280;font-size:13px;">Wir freuen uns auf die Lektion!</p>
@@ -373,7 +373,7 @@ export function renderEmail(
         </p>
         <p style="margin:0;">
           <a href="${APP_URL}/schueler/portal"
-             style="display:inline-block;background-color:#3730A3;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
             Zum Portal
           </a>
         </p>

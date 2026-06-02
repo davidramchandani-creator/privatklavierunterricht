@@ -85,7 +85,7 @@ export default async function AdminKalenderPage({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-800 text-[#3730A3]">Kalender</h1>
+        <h1 className="text-2xl font-800 text-[#1C244B]">Kalender</h1>
         <div className="flex items-center gap-2">
           <Link
             href={`/admin/kalender?week=${weekOffset - 1}`}
@@ -119,13 +119,13 @@ export default async function AdminKalenderPage({
                   <div
                     key={day}
                     className={`py-3 px-2 text-center border-l border-gray-100 ${
-                      isToday ? "bg-[#3730A3]/5" : ""
+                      isToday ? "bg-[#1C244B]/5" : ""
                     }`}
                   >
-                    <p className={`text-xs font-600 uppercase tracking-wide ${isToday ? "text-[#3730A3]" : "text-gray-400"}`}>
+                    <p className={`text-xs font-600 uppercase tracking-wide ${isToday ? "text-[#1C244B]" : "text-gray-400"}`}>
                       {day}
                     </p>
-                    <p className={`text-sm font-700 mt-0.5 ${isToday ? "text-[#3730A3]" : "text-gray-700"}`}>
+                    <p className={`text-sm font-700 mt-0.5 ${isToday ? "text-[#1C244B]" : "text-gray-700"}`}>
                       {date.getDate()}
                     </p>
                   </div>
@@ -155,7 +155,7 @@ export default async function AdminKalenderPage({
                   return (
                     <div
                       key={di}
-                      className={`border-l border-gray-100 p-1 ${isToday ? "bg-[#3730A3]/5" : ""}`}
+                      className={`border-l border-gray-100 p-1 ${isToday ? "bg-[#1C244B]/5" : ""}`}
                     >
                       {thisHourTermine.map((t) => {
                         const s = (t.schueler as unknown) as
@@ -177,7 +177,7 @@ export default async function AdminKalenderPage({
                                 ? "bg-emerald-100 text-emerald-800"
                                 : t.status === "angefragt"
                                 ? "bg-amber-100 text-amber-800"
-                                : "bg-[#3730A3]/10 text-[#3730A3]"
+                                : "bg-[#1C244B]/10 text-[#1C244B]"
                             }`}
                           >
                             <p className="font-600 truncate">

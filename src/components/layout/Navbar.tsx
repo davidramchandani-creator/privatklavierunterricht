@@ -69,10 +69,10 @@ export default function Navbar() {
         {/* Logo */}
         <Link
           href="/"
-          className="flex items-center gap-2 font-800 text-[#3730A3] text-lg hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 font-800 text-[#1C244B] text-lg hover:opacity-80 transition-opacity"
           onClick={handleAdminSecret}
         >
-          <span className="w-8 h-8 rounded-lg bg-[#3730A3] flex items-center justify-center">
+          <span className="w-8 h-8 rounded-lg bg-[#1C244B] flex items-center justify-center">
             <Music className="w-4 h-4 text-white" />
           </span>
           <span className="hidden sm:block">David</span>
@@ -84,7 +84,7 @@ export default function Navbar() {
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-500 text-gray-600 hover:text-[#3730A3] transition-colors"
+              className="text-sm font-500 text-gray-600 hover:text-[#1C244B] transition-colors"
             >
               {link.label}
             </Link>
@@ -125,9 +125,9 @@ export default function Navbar() {
           aria-label="Menü"
         >
           {menuOpen ? (
-            <X className="w-5 h-5 text-[#3730A3]" />
+            <X className="w-5 h-5 text-[#1C244B]" />
           ) : (
-            <Menu className="w-5 h-5 text-[#3730A3]" />
+            <Menu className="w-5 h-5 text-[#1C244B]" />
           )}
         </button>
       </nav>
@@ -139,7 +139,7 @@ export default function Navbar() {
             <Link
               key={link.href}
               href={link.href}
-              className="block text-sm font-500 text-gray-700 py-2 hover:text-[#3730A3] transition-colors"
+              className="block text-sm font-500 text-gray-700 py-2 hover:text-[#1C244B] transition-colors"
               onClick={() => setMenuOpen(false)}
             >
               {link.label}

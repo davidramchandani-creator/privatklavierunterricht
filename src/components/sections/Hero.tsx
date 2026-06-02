@@ -9,7 +9,7 @@ export default function Hero() {
       <div
         className="absolute inset-0 opacity-[0.03]"
         style={{
-          backgroundImage: `linear-gradient(#3730A3 1px, transparent 1px), linear-gradient(90deg, #3730A3 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(#1C244B 1px, transparent 1px), linear-gradient(90deg, #1C244B 1px, transparent 1px)`,
           backgroundSize: "60px 60px",
         }}
       />
@@ -25,7 +25,7 @@ export default function Hero() {
             {/* Overline badge */}
             <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5">
               <span className="w-2 h-2 rounded-full bg-[#C9A84C] animate-pulse" />
-              <span className="text-[#3730A3] text-sm font-600">
+              <span className="text-[#1C244B] text-sm font-600">
                 Klavierunterricht in Neftenbach & Umgebung
               </span>
             </div>
@@ -33,7 +33,7 @@ export default function Hero() {
             {/* Headline */}
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-800 text-gray-900 leading-[1.1] tracking-tight">
               Spiel, was du fühlst –{" "}
-              <span className="text-[#3730A3]">ich zeig dir wie.</span>
+              <span className="text-[#1C244B]">ich zeig dir wie.</span>
             </h1>
 
             {/* Subtext */}
@@ -60,8 +60,8 @@ export default function Hero() {
             {/* Social proof pills */}
             <div className="flex flex-wrap gap-3 pt-2 opacity-0 animate-fade-in delay-300">
               <Pill icon={<Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />} text="5.0 Sterne" />
-              <Pill icon={<Users className="w-3.5 h-3.5 text-[#3730A3]" />} text="200+ Schülerinnen & Schüler" />
-              <Pill icon={<Clock className="w-3.5 h-3.5 text-[#3730A3]" />} text="16+ Jahre Erfahrung" />
+              <Pill icon={<Users className="w-3.5 h-3.5 text-[#1C244B]" />} text="200+ Schülerinnen & Schüler" />
+              <Pill icon={<Clock className="w-3.5 h-3.5 text-[#1C244B]" />} text="16+ Jahre Erfahrung" />
             </div>
           </div>
 
@@ -69,7 +69,7 @@ export default function Hero() {
           <div className="relative opacity-0 animate-fade-in delay-100 flex justify-center md:justify-end">
             <div className="relative w-full max-w-sm">
               {/* Main card */}
-              <div className="rounded-3xl bg-gradient-to-br from-[#3730A3] to-[#4F46E5] p-8 shadow-2xl shadow-indigo-200">
+              <div className="rounded-3xl bg-gradient-to-br from-[#1C244B] to-[#4F46E5] p-8 shadow-2xl shadow-indigo-200">
                 {/* Piano keys motif */}
                 <div className="flex gap-1 mb-8 opacity-30">
                   {[1,2,3,4,5,6,7].map((i) => (
@@ -98,7 +98,7 @@ export default function Hero() {
 
               {/* Floating badge: Erfahrung */}
               <div className="absolute -top-5 -left-5 bg-white rounded-2xl shadow-lg px-4 py-3 border border-gray-100">
-                <p className="text-2xl font-800 text-[#3730A3]">16+</p>
+                <p className="text-2xl font-800 text-[#1C244B]">16+</p>
                 <p className="text-xs text-gray-400 font-500">Jahre Erfahrung</p>
               </div>
 

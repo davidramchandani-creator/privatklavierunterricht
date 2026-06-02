@@ -55,8 +55,8 @@ export default function ProbelektionPage() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-[#3730A3]">
-            <span className="w-8 h-8 rounded-lg bg-[#3730A3] flex items-center justify-center">
+          <Link href="/" className="flex items-center gap-2 text-[#1C244B]">
+            <span className="w-8 h-8 rounded-lg bg-[#1C244B] flex items-center justify-center">
               <Music className="w-4 h-4 text-white" />
             </span>
             <span className="font-700 text-base hidden sm:block">David</span>
@@ -79,7 +79,7 @@ export default function ProbelektionPage() {
               ich innerhalb von 24 Stunden.
             </p>
             {selectedSlot && (
-              <p className="text-sm text-[#3730A3] font-600 bg-indigo-50 rounded-xl px-4 py-2 inline-block">
+              <p className="text-sm text-[#1C244B] font-600 bg-indigo-50 rounded-xl px-4 py-2 inline-block">
                 Wunschtermin:{" "}
                 {new Date(selectedSlot.beginn).toLocaleDateString("de-CH", {
                   weekday: "long",
@@ -104,7 +104,7 @@ export default function ProbelektionPage() {
             <div className="text-center space-y-2">
               <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5 mb-2">
                 <span className="w-2 h-2 rounded-full bg-[#C9A84C] animate-pulse" />
-                <span className="text-[#3730A3] text-sm font-600">Kostenlos & unverbindlich</span>
+                <span className="text-[#1C244B] text-sm font-600">Kostenlos & unverbindlich</span>
               </div>
               <h1 className="text-3xl font-800 text-gray-900">Probelektion buchen</h1>
               <p className="text-gray-500 max-w-lg mx-auto">
@@ -115,7 +115,7 @@ export default function ProbelektionPage() {
 
             {/* Slot picker */}
             <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 space-y-4">
-              <h2 className="font-700 text-[#3730A3]">
+              <h2 className="font-700 text-[#1C244B]">
                 {selectedSlot ? "✓ Wunschtermin gewählt" : "Wunschtermin wählen"}
                 <span className="text-gray-400 font-400 text-sm ml-2">(optional)</span>
               </h2>
@@ -140,7 +140,7 @@ export default function ProbelektionPage() {
 
               {loadingSlots ? (
                 <div className="flex items-center justify-center py-10">
-                  <Loader2 className="w-5 h-5 animate-spin text-[#3730A3]" />
+                  <Loader2 className="w-5 h-5 animate-spin text-[#1C244B]" />
                 </div>
               ) : slots.length === 0 ? (
                 <div className="text-center py-10 text-gray-400">
@@ -175,8 +175,8 @@ export default function ProbelektionPage() {
                                 onClick={() => setSelectedSlot(isSelected ? null : slot)}
                                 className={`w-full text-xs py-1.5 rounded-lg font-500 transition-colors ${
                                   isSelected
-                                    ? "bg-[#3730A3] text-white"
-                                    : "bg-gray-100 text-gray-700 hover:bg-[#3730A3]/10"
+                                    ? "bg-[#1C244B] text-white"
+                                    : "bg-gray-100 text-gray-700 hover:bg-[#1C244B]/10"
                                 }`}
                               >
                                 {time}
@@ -191,7 +191,7 @@ export default function ProbelektionPage() {
               )}
 
               {selectedSlot && (
-                <p className="text-xs text-[#3730A3] bg-indigo-50 rounded-xl px-3 py-2 font-500">
+                <p className="text-xs text-[#1C244B] bg-indigo-50 rounded-xl px-3 py-2 font-500">
                   Gewählt:{" "}
                   {new Date(selectedSlot.beginn).toLocaleDateString("de-CH", {
                     weekday: "long",
@@ -210,7 +210,7 @@ export default function ProbelektionPage() {
 
             {/* Contact form */}
             <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6">
-              <h2 className="font-700 text-[#3730A3] mb-5">Deine Kontaktdaten</h2>
+              <h2 className="font-700 text-[#1C244B] mb-5">Deine Kontaktdaten</h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
@@ -218,7 +218,7 @@ export default function ProbelektionPage() {
                     <input
                       name="vorname"
                       required
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3730A3]/30 focus:border-[#3730A3]"
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C244B]/30 focus:border-[#1C244B]"
                       placeholder="Anna"
                     />
                   </div>
@@ -227,7 +227,7 @@ export default function ProbelektionPage() {
                     <input
                       name="nachname"
                       required
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3730A3]/30 focus:border-[#3730A3]"
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C244B]/30 focus:border-[#1C244B]"
                       placeholder="Müller"
                     />
                   </div>
@@ -239,7 +239,7 @@ export default function ProbelektionPage() {
                     name="email"
                     type="email"
                     required
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3730A3]/30 focus:border-[#3730A3]"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C244B]/30 focus:border-[#1C244B]"
                     placeholder="anna@beispiel.ch"
                   />
                 </div>
@@ -249,7 +249,7 @@ export default function ProbelektionPage() {
                   <input
                     name="telefon"
                     type="tel"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3730A3]/30 focus:border-[#3730A3]"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C244B]/30 focus:border-[#1C244B]"
                     placeholder="+41 79 123 45 67"
                   />
                 </div>
@@ -259,7 +259,7 @@ export default function ProbelektionPage() {
                   <textarea
                     name="nachricht"
                     rows={3}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3730A3]/30 focus:border-[#3730A3] resize-none"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C244B]/30 focus:border-[#1C244B] resize-none"
                     placeholder="Erfahrung, Ziele, besondere Wünsche…"
                   />
                 </div>
