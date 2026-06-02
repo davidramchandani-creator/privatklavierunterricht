@@ -381,6 +381,49 @@ export function renderEmail(
       return { subject, html: baseWrapper(content) };
     }
 
+    case "package_cancelled": {
+      const lessonsUsed = Number(payload.lessons_used ?? 0);
+      const singlePrice = Number(payload.single_lesson_price ?? 0);
+      const refund = Number(payload.refund ?? 0);
+      const owed = Number(payload.owed ?? 0);
+      const chf = (n: number) =>
+        `CHF ${n.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      const subject = "Dein Paket wurde storniert";
+      const content = `
+        <p style="margin:0 0 16px;">Dein Paket wurde storniert.</p>
+        <p style="margin:0 0 16px;">
+          Die bereits besuchten Lektionen werden zum Einzelpreis verrechnet:
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:220px;font-size:14px;">Besuchte Lektionen</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${lessonsUsed} × ${chf(singlePrice)}</td>
+          </tr>
+          ${
+            refund > 0
+              ? `<tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Rückerstattung</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;color:#047857;">${chf(refund)}</td>
+          </tr>`
+              : ""
+          }
+          ${
+            owed > 0
+              ? `<tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Nachzahlung</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;color:#b91c1c;">${chf(owed)}</td>
+          </tr>`
+              : ""
+          }
+        </table>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          David meldet sich bei dir bezüglich der Abwicklung. Bei Fragen kannst du dich jederzeit melden.
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
     default:
       return null;
   }

@@ -160,6 +160,85 @@ export function formatRemainingTime(ms: number | null): string {
   return `${minutes} ${minutes === 1 ? "Minute" : "Minuten"}`;
 }
 
+// ============================================================
+// Paket-Stornierung (Meilenstein 10)
+// ============================================================
+
+/** Stornierung nur bis einschliesslich der so vielten genutzten Lektion. */
+export const MAX_USED_LESSONS_FOR_CANCELLATION = 3;
+/** Basis-Einzelpreis bei Stornierung (Spec §10). */
+export const CANCELLATION_SINGLE_BASE = 70;
+/** Schwelle, ab der der Paket-Lektionspreis den Einzelpreis erhöht. */
+export const CANCELLATION_SINGLE_THRESHOLD = 60;
+
+/**
+ * Effektiver Einzelpreis je bereits genutzter Lektion bei Stornierung:
+ * 70 + max(0, Paket-Lektionspreis − 60). Damit wird der vergünstigte
+ * Paketpreis für die tatsächlich besuchten Lektionen auf Einzelpreis-Niveau
+ * nachberechnet (Spec §10).
+ */
+export function cancellationSingleLessonPrice(pricePerLesson: number): number {
+  return (
+    CANCELLATION_SINGLE_BASE +
+    Math.max(0, Number(pricePerLesson) - CANCELLATION_SINGLE_THRESHOLD)
+  );
+}
+
+export type CancellationSettlement = {
+  lessonsUsed: number;
+  singleLessonPrice: number;
+  usedCost: number; // genutzte Lektionen × Einzelpreis
+  paidTotal: number; // ursprünglich bezahlter Paketpreis
+  refund: number; // Rückerstattung (nie negativ)
+  owed: number; // Nachzahlung, falls usedCost > paidTotal
+};
+
+/**
+ * Berechnet die finanzielle Abrechnung einer Paket-Stornierung.
+ * Die bereits genutzten Lektionen werden zum Einzelpreis verrechnet; die
+ * Differenz zum bezahlten Paketpreis ergibt die Rückerstattung (bzw. eine
+ * Nachzahlung, falls die genutzten Lektionen teurer sind als das Paket).
+ */
+export function computeCancellationSettlement(
+  pkg: Package,
+  lessonsUsed: number
+): CancellationSettlement {
+  const singleLessonPrice = cancellationSingleLessonPrice(
+    Number(pkg.price_per_lesson)
+  );
+  const usedCost = lessonsUsed * singleLessonPrice;
+  const paidTotal =
+    pkg.total_price != null
+      ? Number(pkg.total_price)
+      : pkg.lessons_total * Number(pkg.price_per_lesson);
+  const diff = paidTotal - usedCost;
+  return {
+    lessonsUsed,
+    singleLessonPrice,
+    usedCost,
+    paidTotal,
+    refund: Math.max(0, diff),
+    owed: Math.max(0, -diff),
+  };
+}
+
+/**
+ * Ob ein Paket noch stornierbar ist: nur aktive/pausierte Pakete und nur,
+ * solange höchstens MAX_USED_LESSONS_FOR_CANCELLATION Lektionen genutzt wurden.
+ */
+export function canCancelPackage(
+  pkg: Package | null,
+  lessonsUsed: number
+): boolean {
+  if (!pkg) return false;
+  if (pkg.status === "cancelled") return false;
+  const state = computePackageState(pkg, lessonsUsed);
+  if (state.effectiveStatus !== "aktiv" && state.effectiveStatus !== "pausiert") {
+    return false;
+  }
+  return lessonsUsed <= MAX_USED_LESSONS_FOR_CANCELLATION;
+}
+
 /** Preis pro Lektion für einen Pakettyp inkl. Wegaufschlag. */
 export function pricePerLessonFor(
   type: PackageType,
