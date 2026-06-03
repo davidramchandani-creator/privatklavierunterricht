@@ -23,7 +23,7 @@ import {
   computePackageState,
 } from "@/lib/packages";
 import { addMonths } from "@/lib/utils";
-import { buildTwintLink } from "@/lib/twint";
+import { getTwintBaseUrl } from "@/lib/twint";
 import {
   syncAppointmentToCalendar,
   deleteCalendarEvent,
@@ -1166,7 +1166,7 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
       } else {
         await enqueueEmail(admin, "twint_payment_request", {
           ...basePayload,
-          twint_link: buildTwintLink(settlement.owed, inv.invoice_number ?? inv.id),
+          twint_link: getTwintBaseUrl(),
         });
       }
     }
@@ -1352,7 +1352,7 @@ export async function resendPaymentEmail(invoiceId: string) {
       invoice_id: invoiceId,
     });
   } else {
-    const twintLink = buildTwintLink(Number(inv.amount ?? 0), inv.invoice_number ?? invoiceId);
+    const twintLink = getTwintBaseUrl();
     await enqueueEmail(admin, "twint_payment_request", {
       to: profile.email,
       student_name: studentName,

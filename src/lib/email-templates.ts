@@ -459,9 +459,8 @@ export function renderEmail(
           </tr>` : ""}
         </table>
         <p style="margin:0 0 24px;">
-          <a href="${twintLink}"
-             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-size:15px;font-weight:700;">
-            Jetzt per TWINT bezahlen
+          <a href="${twintLink}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
+            <img alt="Mit TWINT bezahlen" src="https://go.twint.ch/static/img/button_dark_en.svg" style="height:58px;width:auto;border:none;" />
           </a>
         </p>
         <p style="margin:0 0 16px;">

@@ -12,7 +12,7 @@ import {
   canBuyNewPackage,
   computePackageState,
 } from "@/lib/packages";
-import { buildTwintLink } from "@/lib/twint";
+import { getTwintBaseUrl } from "@/lib/twint";
 import { syncAppointmentToCalendar } from "@/lib/google-calendar";
 
 /**
@@ -141,7 +141,7 @@ export async function bookSeriesForStudent(
           "twint_payment_request",
           {
             ...basePayload,
-            twint_link: buildTwintLink(amount, inv.invoice_number ?? inv.id),
+            twint_link: getTwintBaseUrl(),
           },
           sendAt
         );

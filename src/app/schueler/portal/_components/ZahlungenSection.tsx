@@ -41,6 +41,25 @@ function fmtDate(iso: string): string {
   }
 }
 
+/** Datum + Uhrzeit der Lektion (Spec: Zahlungsposten zeigt Lektion mit Zeit). */
+function fmtLesson(iso: string): string {
+  try {
+    return (
+      new Intl.DateTimeFormat("de-CH", {
+        timeZone: "Europe/Zurich",
+        weekday: "short",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(iso)) + " Uhr"
+    );
+  } catch {
+    return iso;
+  }
+}
+
 function fmtCHF(n: number): string {
   return "CHF " + n.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -89,10 +108,12 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-600 text-gray-900">
-            {invoice.lesson_date ? fmtDate(invoice.lesson_date) : "Klavierstunde"}
+            {invoice.lesson_date ? fmtLesson(invoice.lesson_date) : "Stornierungsbetrag"}
           </p>
           {invoice.invoice_number && (
-            <p className="text-xs text-gray-400 mt-0.5">{invoice.invoice_number}</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Lektion · {invoice.invoice_number}
+            </p>
           )}
         </div>
         <div className="flex flex-col items-end gap-1.5">
@@ -114,15 +135,29 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
       {passed && (localStatus === "unpaid" || localStatus === "rejected") && (
         <div className="pt-2 border-t border-gray-100 flex flex-wrap gap-2">
           {invoice.method === "twint" && twintLink && (
-            <a
-              href={twintLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm font-600 text-white bg-[#1C244B] px-4 py-2 rounded-lg hover:opacity-90 transition-opacity"
+            <button
+              type="button"
+              onClick={() => window.open(twintLink, "_blank")}
+              aria-label="Mit TWINT bezahlen"
+              style={{
+                height: 58,
+                width: "auto",
+                borderRadius: 6,
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                cursor: "pointer",
+                backgroundColor: "transparent",
+                border: "none",
+              }}
             >
-              <ExternalLink className="w-3.5 h-3.5" />
-              Per TWINT bezahlen
-            </a>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                style={{ height: 58, width: "auto" }}
+                alt="Mit TWINT bezahlen"
+                src="https://go.twint.ch/static/img/button_dark_en.svg"
+              />
+            </button>
           )}
           {invoice.method === "qr" && pdfLink && (
             <a
