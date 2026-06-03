@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Music, Calendar, Package, CreditCard, Star, LogOut } from "lucide-react";
+import { Music, Calendar, Package, CreditCard, LogOut } from "lucide-react";
 import Link from "next/link";
 import { logout } from "@/app/auth/actions";
 import PaketCard from "./_components/PaketCard";
@@ -8,7 +8,6 @@ import NeuesPaket from "./_components/NeuesPaket";
 import NaechsteTermine from "./_components/NaechsteTermine";
 import TerminBuchen from "./_components/TerminBuchen";
 import ZahlungenSection from "./_components/ZahlungenSection";
-import BewertungSection from "./_components/BewertungSection";
 import { canBuyNewPackage, type Package as Paket } from "@/lib/packages";
 
 export default async function SchuelerPortalPage() {
@@ -16,26 +15,13 @@ export default async function SchuelerPortalPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  // Admins haben kein Schülerportal – sauber ins Admin-Panel umleiten.
-  const { data: roleRow } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (roleRow?.role === "admin") redirect("/admin");
-
-  const { data: schueler } = await supabase
-    .from("schueler")
-    .select("*")
-    .eq("user_id", user.id)
-    .single();
-
-  // Neues Schema: aktives Paket + Profilpreise (Meilenstein 3)
   const { data: profile } = await supabase
     .from("profiles")
-    .select("price_single, price_10er, price_20er, travel_surcharge")
+    .select("id, role, vorname, nachname, price_single, price_10er, price_20er, travel_surcharge")
     .eq("id", user.id)
     .maybeSingle();
+
+  if (profile?.role === "admin") redirect("/admin");
 
   const { data: packagesRows } = await supabase
     .from("packages")
@@ -43,8 +29,6 @@ export default async function SchuelerPortalPage() {
     .eq("student_id", user.id)
     .order("erstellt_am", { ascending: false });
 
-  // Aktivstes Paket auswählen: bevorzugt ein nutzbares aktives Paket,
-  // sonst das zuletzt erstellte (für Status-Anzeige).
   const aktivesPackage: Paket | null =
     (packagesRows as Paket[] | null)?.find(
       (p) => p.status === "active" && !canBuyNewPackage(p)
@@ -52,7 +36,6 @@ export default async function SchuelerPortalPage() {
     (packagesRows as Paket[] | null)?.[0] ??
     null;
 
-  // Genutzte Lektionen aus tatsächlichen Appointments berechnen (Spec §3)
   let lessonsUsed = aktivesPackage?.lessons_used ?? 0;
   if (aktivesPackage) {
     const { count } = await supabase
@@ -63,7 +46,6 @@ export default async function SchuelerPortalPage() {
     if (count != null) lessonsUsed = count;
   }
 
-  // Kommende Abwesenheit (eigene oder Admin-weite) für Hinweis
   const heute = new Date().toISOString().split("T")[0];
   const { data: kommendeAbwesenheit } = await supabase
     .from("absences")
@@ -81,10 +63,8 @@ export default async function SchuelerPortalPage() {
   };
 
   const kannNeuesPaket = canBuyNewPackage(aktivesPackage);
-  // Buchen erlaubt, wenn ein nutzbares aktives Paket vorhanden ist.
   const canBook = !!aktivesPackage && !canBuyNewPackage(aktivesPackage);
 
-  // Neue Termine (appointments) + offene Terminanfragen (Meilenstein 5)
   const { data: naechsteAppointments } = await supabase
     .from("appointments")
     .select("id, start_at, end_at, status")
@@ -108,7 +88,6 @@ export default async function SchuelerPortalPage() {
     .eq("status", "open")
     .order("proposed_start", { ascending: true });
 
-  // Rechnungen aus neuem Schema (Meilenstein 9)
   const { data: invoices } = await supabase
     .from("invoices")
     .select("id, invoice_number, amount, status, method, lesson_date, pdf_url, access_token, appointment_id")
@@ -117,23 +96,16 @@ export default async function SchuelerPortalPage() {
     .order("lesson_date", { ascending: false })
     .limit(20);
 
-  const { data: meineBewertung } = await supabase
-    .from("bewertungen")
-    .select("*")
-    .eq("schueler_id", schueler?.id ?? "")
-    .maybeSingle();
+  const vorname = profile?.vorname ?? user.email?.split("@")[0] ?? "Schüler";
 
-  const vorname = schueler?.vorname ?? user.email?.split("@")[0] ?? "Schüler";
-
-  // No schueler record yet – admin hasn't created the profile
-  if (!schueler) {
+  if (!profile) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white rounded-3xl border border-gray-200 shadow-sm p-8 text-center space-y-4">
           <div className="w-14 h-14 bg-indigo-50 rounded-full flex items-center justify-center mx-auto">
             <Music className="w-7 h-7 text-[#1C244B]" />
           </div>
-          <h1 className="text-xl font-800 text-gray-900">Willkommen, {vorname}!</h1>
+          <h1 className="text-xl font-800 text-gray-900">Willkommen!</h1>
           <p className="text-gray-500 text-sm leading-relaxed">
             Dein Schülerprofil wird noch von David eingerichtet. Das dauert
             normalerweise nur kurz – schreib ihm eine kurze Nachricht wenn es
@@ -152,7 +124,6 @@ export default async function SchuelerPortalPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 text-[#1C244B]">
@@ -168,9 +139,6 @@ export default async function SchuelerPortalPage() {
             <a href="#zahlungen" className="px-3 py-1.5 text-gray-600 hover:text-[#1C244B] rounded-lg hover:bg-gray-100 transition-colors hidden sm:flex items-center gap-1.5">
               <CreditCard className="w-3.5 h-3.5" /> Zahlungen
             </a>
-            <a href="#bewertung" className="px-3 py-1.5 text-gray-600 hover:text-[#1C244B] rounded-lg hover:bg-gray-100 transition-colors hidden sm:flex items-center gap-1.5">
-              <Star className="w-3.5 h-3.5" /> Bewertung
-            </a>
             <form action={logout}>
               <button type="submit" className="ml-2 px-3 py-1.5 text-gray-500 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors flex items-center gap-1.5 text-sm">
                 <LogOut className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Abmelden</span>
@@ -181,13 +149,11 @@ export default async function SchuelerPortalPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-10">
-        {/* Greeting */}
         <div>
           <h1 className="text-2xl font-800 text-[#1C244B]">Hallo, {vorname} 👋</h1>
           <p className="text-gray-500 text-sm mt-1">Willkommen in deinem Schülerportal</p>
         </div>
 
-        {/* Paket */}
         <section id="paket" className="space-y-4">
           <SectionHeader icon={<Package className="w-4 h-4" />} title="Mein Paket" />
           <PaketCard
@@ -195,14 +161,12 @@ export default async function SchuelerPortalPage() {
             lessonsUsed={lessonsUsed}
             upcomingAbsence={kommendeAbwesenheit}
           />
-
           <div>
             <h3 className="text-sm font-600 text-gray-500 mb-2">Neues Paket buchen</h3>
             <NeuesPaket prices={prices} canBuy={kannNeuesPaket} />
           </div>
         </section>
 
-        {/* Termine */}
         <section id="termine">
           <SectionHeader icon={<Calendar className="w-4 h-4" />} title="Nächste Lektionen" />
           <NaechsteTermine
@@ -217,16 +181,9 @@ export default async function SchuelerPortalPage() {
           )}
         </section>
 
-        {/* Zahlungen */}
         <section id="zahlungen">
           <SectionHeader icon={<CreditCard className="w-4 h-4" />} title="Zahlungen" />
           <ZahlungenSection invoices={invoices ?? []} />
-        </section>
-
-        {/* Bewertung */}
-        <section id="bewertung">
-          <SectionHeader icon={<Star className="w-4 h-4" />} title="Bewertung abgeben" />
-          <BewertungSection schueler_id={schueler?.id ?? ""} vorhandene={meineBewertung} vorname={vorname} />
         </section>
       </main>
     </div>
