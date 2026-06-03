@@ -45,7 +45,7 @@ async function bookSeriesForStudent(
 ): Promise<{ appointmentIds: string[] } | { error: string }> {
   const { data: profile } = await admin
     .from("profiles")
-    .select("buffer_time_minutes, email, vorname, nachname, adresse")
+    .select("buffer_time_minutes, email, vorname, nachname, adresse, payment_method")
     .eq("id", studentUserId)
     .single();
   const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
@@ -109,7 +109,11 @@ async function bookSeriesForStudent(
     const createdAppt = created[rows.indexOf(appt)];
     if (!createdAppt) continue;
 
-    const paymentMethod: "twint" | "qr" = (pkg.payment_method as "twint" | "qr") ?? "twint";
+    // Zahlungsart des Schülers hat Vorrang, dann Paket, dann QR als Default.
+    const paymentMethod: "twint" | "qr" =
+      ((profile?.payment_method as "twint" | "qr" | null) ??
+        (pkg.payment_method as "twint" | "qr" | null)) ??
+      "qr";
     const amount = Number(pkg.price_per_lesson ?? 0);
     const studentName = profile ? `${profile.vorname} ${profile.nachname}` : "Schüler";
 
@@ -172,10 +176,8 @@ export async function inviteSchueler(formData: FormData) {
   }
 
   const adminClient = await createAdminClient();
-
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
 
-  // Invite user via Auth – redirectTo sends user to password-set page after clicking link
   const { data: inviteData, error: inviteError } =
     await adminClient.auth.admin.inviteUserByEmail(email, {
       data: { vorname, nachname },
@@ -188,43 +190,19 @@ export async function inviteSchueler(formData: FormData) {
 
   const userId = inviteData.user.id;
 
-  // Set role
-  const { error: roleError } = await adminClient.from("profile_roles").insert({
-    user_id: userId,
-    role: "schueler",
-  });
-  if (roleError) {
-    return { error: "Rolle konnte nicht gesetzt werden: " + roleError.message };
-  }
-
-  // Create schueler record
-  const { error: schuelerError } = await adminClient.from("schueler").insert({
-    user_id: userId,
-    vorname,
-    nachname,
-    email,
-    telefon,
-    adresse,
-    aktiv: true,
-  });
-
-  if (schuelerError) {
-    return { error: "Schüler-Datensatz konnte nicht erstellt werden: " + schuelerError.message };
-  }
-
-  // Create/upsert profiles row for the new student
   const { error: profileError } = await adminClient.from("profiles").upsert({
     id: userId,
     role: "student",
     vorname,
     nachname,
     email,
-    // price fields default to spec values (85/70/65/0)
+    telefon,
+    adresse,
+    aktiv: true,
   }, { onConflict: "id" });
 
   if (profileError) {
-    // Non-fatal: log but don't block invite success
-    console.error("Profile upsert failed:", profileError.message);
+    return { error: "Profil konnte nicht erstellt werden: " + profileError.message };
   }
 
   revalidatePath("/admin/schueler");
@@ -232,7 +210,7 @@ export async function inviteSchueler(formData: FormData) {
 }
 
 export async function updateSchueler(id: string, formData: FormData) {
-  const supabase = await createClient();
+  const adminClient = await createAdminClient();
 
   const vorname = formData.get("vorname") as string;
   const nachname = formData.get("nachname") as string;
@@ -241,8 +219,8 @@ export async function updateSchueler(id: string, formData: FormData) {
   const adresse = (formData.get("adresse") as string) || null;
   const notizen = (formData.get("notizen") as string) || null;
 
-  const { error } = await supabase
-    .from("schueler")
+  const { error } = await adminClient
+    .from("profiles")
     .update({ vorname, nachname, email, telefon, adresse, notizen })
     .eq("id", id);
 
@@ -254,8 +232,8 @@ export async function updateSchueler(id: string, formData: FormData) {
 }
 
 export async function deleteSchueler(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("schueler").update({ aktiv: false }).eq("id", id);
+  const adminClient = await createAdminClient();
+  const { error } = await adminClient.from("profiles").update({ aktiv: false }).eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/admin/schueler");
   revalidatePath(`/admin/schueler/${id}`);
@@ -263,8 +241,8 @@ export async function deleteSchueler(id: string) {
 }
 
 export async function reactivateSchueler(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("schueler").update({ aktiv: true }).eq("id", id);
+  const adminClient = await createAdminClient();
+  const { error } = await adminClient.from("profiles").update({ aktiv: true }).eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/admin/schueler");
   revalidatePath(`/admin/schueler/${id}`);
@@ -274,25 +252,9 @@ export async function reactivateSchueler(id: string) {
 export async function hardDeleteSchueler(id: string) {
   const adminClient = await createAdminClient();
 
-  // Get user_id before deleting
-  const { data: schueler } = await adminClient
-    .from("schueler")
-    .select("user_id")
-    .eq("id", id)
-    .single();
-
-  // Delete schueler record (cascades to pakete, termine, zahlungen, bewertungen)
-  const { error: schuelerError } = await adminClient
-    .from("schueler")
-    .delete()
-    .eq("id", id);
-
-  if (schuelerError) return { error: schuelerError.message };
-
-  // Delete auth user if linked
-  if (schueler?.user_id) {
-    await adminClient.auth.admin.deleteUser(schueler.user_id);
-  }
+  // Deleting the auth user cascades to profiles (and all linked data via FK)
+  const { error } = await adminClient.auth.admin.deleteUser(id);
+  if (error) return { error: error.message };
 
   revalidatePath("/admin/schueler");
   return { success: true };
@@ -315,142 +277,21 @@ export async function resendInvite(email: string) {
   return { success: true };
 }
 
-// ── Pakete ────────────────────────────────────────────────────────────────────
 
-export async function createPaket(formData: FormData) {
-  const supabase = await createClient();
+// ── Invoices / Zahlungen ──────────────────────────────────────────────────────
 
-  const schueler_id = formData.get("schueler_id") as string;
-  const typ = formData.get("typ") as string;
-  const lektionen_gesamt = parseInt(formData.get("lektionen_gesamt") as string);
-  const preis_pro_lektion = parseFloat(formData.get("preis_pro_lektion") as string);
-  const gueltig_bis = (formData.get("gueltig_bis") as string) || null;
-
-  const { error } = await supabase.from("pakete").insert({
-    schueler_id,
-    typ,
-    lektionen_gesamt,
-    lektionen_genutzt: 0,
-    preis_pro_lektion,
-    aktiv: true,
-    gueltig_bis: gueltig_bis ? new Date(gueltig_bis).toISOString() : null,
-  });
-
-  if (error) return { error: error.message };
-
-  revalidatePath(`/admin/schueler/${schueler_id}`);
-  return { success: true };
-}
-
-export async function updatePaketStatus(id: string, aktiv: boolean) {
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("pakete")
-    .update({ aktiv })
-    .eq("id", id);
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/admin/schueler");
-  return { success: true };
-}
-
-// ── Termine ───────────────────────────────────────────────────────────────────
-
-export async function createTermin(formData: FormData) {
-  const supabase = await createClient();
-
-  const schueler_id = formData.get("schueler_id") as string;
-  const paket_id = (formData.get("paket_id") as string) || null;
-  const beginn = new Date(formData.get("beginn") as string).toISOString();
-  const ende = new Date(formData.get("ende") as string).toISOString();
-  const notiz = (formData.get("notiz") as string) || null;
-
-  const { error } = await supabase.from("termine").insert({
-    schueler_id,
-    paket_id,
-    beginn,
-    ende,
-    status: "bestaetigt",
-    notiz,
-  });
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/admin/kalender");
-  revalidatePath(`/admin/schueler/${schueler_id}`);
-  return { success: true };
-}
-
-export async function storniereTerminAdmin(id: string) {
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("termine")
-    .update({ status: "storniert" })
-    .eq("id", id);
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/admin/kalender");
-  revalidatePath("/admin");
-  return { success: true };
-}
-
-export async function abschliessenTermin(id: string) {
-  const supabase = await createClient();
-
-  const { data: termin, error: fetchError } = await supabase
-    .from("termine")
-    .select("paket_id")
-    .eq("id", id)
-    .single();
-
-  if (fetchError || !termin) return { error: "Termin nicht gefunden." };
-
-  const { error } = await supabase
-    .from("termine")
-    .update({ status: "abgeschlossen" })
-    .eq("id", id);
-
-  if (error) return { error: error.message };
-
-  if (termin.paket_id) {
-    const { data: paket } = await supabase
-      .from("pakete")
-      .select("lektionen_genutzt")
-      .eq("id", termin.paket_id)
-      .single();
-
-    if (paket) {
-      await supabase
-        .from("pakete")
-        .update({ lektionen_genutzt: paket.lektionen_genutzt + 1 })
-        .eq("id", termin.paket_id);
-    }
-  }
-
-  revalidatePath("/admin/kalender");
-  revalidatePath("/admin");
-  return { success: true };
-}
-
-// ── Zahlungen ─────────────────────────────────────────────────────────────────
-
-export async function updateZahlungStatus(
+export async function updateInvoiceStatus(
   id: string,
-  status: string,
-  bezahlt_am?: string
+  status: "paid" | "rejected" | "archived"
 ) {
-  const supabase = await createClient();
+  const adminClient = await createAdminClient();
 
-  const { error } = await supabase
-    .from("zahlungen")
-    .update({
-      status,
-      bezahlt_am: bezahlt_am ?? (status === "bezahlt" ? new Date().toISOString().split("T")[0] : null),
-    })
+  const update: Record<string, unknown> = { status };
+  if (status === "paid") update.paid_at = new Date().toISOString();
+
+  const { error } = await adminClient
+    .from("invoices")
+    .update(update)
     .eq("id", id);
 
   if (error) return { error: error.message };
@@ -460,59 +301,6 @@ export async function updateZahlungStatus(
   return { success: true };
 }
 
-export async function createZahlung(formData: FormData) {
-  const supabase = await createClient();
-
-  const schueler_id = formData.get("schueler_id") as string;
-  const paket_id = (formData.get("paket_id") as string) || null;
-  const betrag = parseFloat(formData.get("betrag") as string);
-  const methode = formData.get("methode") as string;
-  const faellig_am = formData.get("faellig_am") as string;
-  const rechnung_nr = (formData.get("rechnung_nr") as string) || null;
-
-  const { error } = await supabase.from("zahlungen").insert({
-    schueler_id,
-    paket_id,
-    betrag,
-    status: "offen",
-    methode,
-    faellig_am,
-    rechnung_nr,
-  });
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/admin/zahlungen");
-  revalidatePath(`/admin/schueler/${schueler_id}`);
-  return { success: true };
-}
-
-// ── Bewertungen ───────────────────────────────────────────────────────────────
-
-export async function approveBewertung(id: string) {
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("bewertungen")
-    .update({ anzeigen: true })
-    .eq("id", id);
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/admin/bewertungen");
-  return { success: true };
-}
-
-export async function rejectBewertung(id: string) {
-  const supabase = await createClient();
-
-  const { error } = await supabase.from("bewertungen").delete().eq("id", id);
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/admin/bewertungen");
-  return { success: true };
-}
 
 // ── Verfügbarkeit ─────────────────────────────────────────────────────────────
 
@@ -830,7 +618,7 @@ export async function updateStudentPrices(
 ) {
   const admin = await createAdminClient();
 
-  const update: Record<string, number> = {};
+  const update: Record<string, number | string> = {};
   const fields = ["price_single", "price_10er", "price_20er", "travel_surcharge"] as const;
   for (const f of fields) {
     const v = parseFloat(formData.get(f) as string);
@@ -838,6 +626,10 @@ export async function updateStudentPrices(
   }
   const buffer = parseInt(formData.get("buffer_time_minutes") as string);
   if (buffer === 15 || buffer === 30) update.buffer_time_minutes = buffer;
+
+  // Zahlungsart pro Schüler (TWINT oder QR-Rechnung)
+  const pm = formData.get("payment_method") as string | null;
+  if (pm === "twint" || pm === "qr") update.payment_method = pm;
 
   if (Object.keys(update).length === 0) return { success: true };
 
@@ -855,7 +647,7 @@ export async function createPackageAdmin(formData: FormData) {
   const userId = formData.get("student_user_id") as string;
   const schuelerId = formData.get("schueler_id") as string;
   const type = formData.get("type") as string; // single|10er|20er
-  const paymentMethod = (formData.get("payment_method") as string) || null;
+  let paymentMethod = (formData.get("payment_method") as string) || null;
   const pricePerLesson = parseFloat(formData.get("price_per_lesson") as string);
 
   if (!userId || !["single", "10er", "20er"].includes(type)) {
@@ -863,6 +655,16 @@ export async function createPackageAdmin(formData: FormData) {
   }
   if (isNaN(pricePerLesson) || pricePerLesson < 0) {
     return { error: "Ungültiger Preis." };
+  }
+
+  // Ohne explizite Auswahl die Zahlungsart des Schülers übernehmen.
+  if (paymentMethod !== "twint" && paymentMethod !== "qr") {
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("payment_method")
+      .eq("id", userId)
+      .maybeSingle();
+    paymentMethod = (prof?.payment_method as string) ?? "qr";
   }
 
   const lessonsTotal = PACKAGE_LESSONS[type];

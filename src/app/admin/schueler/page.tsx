@@ -1,18 +1,34 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Users, Plus } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { computePackageState, PACKAGE_LABELS, type Package } from "@/lib/packages";
 
 export default async function AdminSchuelerPage() {
-  const supabase = await createClient();
+  const admin = await createAdminClient();
 
-  const { data: schueler } = await supabase
-    .from("schueler")
-    .select(`
-      id, vorname, nachname, email, aktiv, erstellt_am,
-      pakete(id, typ, lektionen_gesamt, lektionen_genutzt, aktiv)
-    `)
+  const { data: profiles } = await admin
+    .from("profiles")
+    .select("id, vorname, nachname, email, aktiv, erstellt_am")
+    .eq("role", "student")
     .order("erstellt_am", { ascending: false });
+
+  // Load active packages for all students in one query
+  const studentIds = (profiles ?? []).map((p) => p.id);
+  const { data: activePackages } = studentIds.length
+    ? await admin
+        .from("packages")
+        .select("id, student_id, type, name, lessons_total, lessons_used, status, paused, expires_at, starts_at, total_price, price_per_lesson, payment_method")
+        .in("student_id", studentIds)
+        .eq("status", "active")
+    : { data: [] };
+
+  const packageByStudent: Record<string, Package> = {};
+  for (const pkg of activePackages ?? []) {
+    if (!packageByStudent[pkg.student_id]) {
+      packageByStudent[pkg.student_id] = pkg as Package;
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -28,7 +44,7 @@ export default async function AdminSchuelerPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-        {!schueler || schueler.length === 0 ? (
+        {!profiles || profiles.length === 0 ? (
           <div className="text-center py-14 text-gray-400">
             <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
             <p className="text-sm">Noch keine Schüler erfasst</p>
@@ -59,18 +75,9 @@ export default async function AdminSchuelerPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {schueler.map((s) => {
-                  const paketeArr = Array.isArray(s.pakete) ? s.pakete : [];
-                  const aktivPaket = paketeArr.find((p) => p.aktiv);
-                  const verbleibend = aktivPaket
-                    ? aktivPaket.lektionen_gesamt - aktivPaket.lektionen_genutzt
-                    : null;
-
-                  const typLabels: Record<string, string> = {
-                    einzellektion: "Einzellektion",
-                    "10er": "10er-Paket",
-                    "20er": "20er-Paket",
-                  };
+                {profiles.map((s) => {
+                  const pkg = packageByStudent[s.id] ?? null;
+                  const state = pkg ? computePackageState(pkg) : null;
 
                   return (
                     <tr key={s.id} className="hover:bg-gray-50 transition-colors">
@@ -86,14 +93,12 @@ export default async function AdminSchuelerPage() {
                         {s.email}
                       </td>
                       <td className="px-5 py-3.5 text-sm text-gray-600 hidden md:table-cell">
-                        {aktivPaket
-                          ? typLabels[aktivPaket.typ] ?? aktivPaket.typ
-                          : <span className="text-gray-400">—</span>}
+                        {pkg ? PACKAGE_LABELS[pkg.type] ?? pkg.name ?? pkg.type : <span className="text-gray-400">—</span>}
                       </td>
                       <td className="px-5 py-3.5 text-sm text-gray-600 hidden md:table-cell">
-                        {verbleibend !== null ? (
+                        {state ? (
                           <span className="font-600 text-[#1C244B]">
-                            {verbleibend} Lekt.
+                            {state.lessonsRemaining} Lekt.
                           </span>
                         ) : (
                           <span className="text-gray-400">—</span>

@@ -9,6 +9,7 @@ import type { User } from "@supabase/supabase-js";
 
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   // Secret admin click counter
@@ -17,11 +18,17 @@ export default function Navbar() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    // getSession() liest die Session aus dem Cookie (schnell, kein Roundtrip)
+    // – verhindert das Flackern von „Anmelden", obwohl man eingeloggt ist.
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null);
+      setLoaded(true);
+    });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_e, session) =>
-      setUser(session?.user ?? null)
-    );
+    const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null);
+      setLoaded(true);
+    });
     return () => listener.subscription.unsubscribe();
   }, []);
 
@@ -93,7 +100,9 @@ export default function Navbar() {
 
         {/* Desktop CTA */}
         <div className="hidden md:flex items-center gap-3">
-          {user ? (
+          {!loaded ? (
+            <div className="w-44 h-9 rounded-lg bg-gray-100 animate-pulse" />
+          ) : user ? (
             <>
               <Link href="/schueler/portal">
                 <Button variant="outline" size="sm">
@@ -146,7 +155,7 @@ export default function Navbar() {
             </Link>
           ))}
           <div className="pt-2 space-y-2">
-            {user ? (
+            {loaded && (user ? (
               <>
                 <Link href="/schueler/portal" onClick={() => setMenuOpen(false)}>
                   <Button variant="outline" className="w-full">
@@ -168,7 +177,7 @@ export default function Navbar() {
                   </Button>
                 </Link>
               </>
-            )}
+            ))}
           </div>
         </div>
       )}

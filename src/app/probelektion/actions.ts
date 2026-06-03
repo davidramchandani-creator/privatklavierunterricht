@@ -22,11 +22,11 @@ export async function getPublicSlots(weekOffset: number): Promise<PublicSlot[]> 
   const sunday = new Date(monday.getTime() + 7 * 86400000);
 
   const { data: booked } = await supabase
-    .from("termine")
-    .select("beginn")
-    .neq("status", "storniert")
-    .gte("beginn", monday.toISOString())
-    .lt("beginn", sunday.toISOString());
+    .from("appointments")
+    .select("start_at")
+    .neq("status", "cancelled")
+    .gte("start_at", monday.toISOString())
+    .lt("start_at", sunday.toISOString());
 
   // Also exclude slots already requested via anfragen
   const { data: requested } = await supabase
@@ -37,7 +37,7 @@ export async function getPublicSlots(weekOffset: number): Promise<PublicSlot[]> 
     .lt("wunschtermin", sunday.toISOString());
 
   const bookedSet = new Set([
-    ...(booked?.map((t) => t.beginn) ?? []),
+    ...(booked?.map((t) => t.start_at) ?? []),
     ...(requested?.map((a) => a.wunschtermin).filter(Boolean) ?? []),
   ]);
 

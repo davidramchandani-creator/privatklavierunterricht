@@ -1,10 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
-import { Users, Calendar, CreditCard, Star, Inbox } from "lucide-react";
+import { createAdminClient } from "@/lib/supabase/server";
+import { Users, Calendar, CreditCard, Inbox } from "lucide-react";
 import { formatCHF, formatDateTime } from "@/lib/utils";
 import Link from "next/link";
 
 export default async function AdminDashboardPage() {
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   const now = new Date();
   const weekStart = new Date(now);
@@ -18,14 +18,13 @@ export default async function AdminDashboardPage() {
     { count: activeStudents },
     { data: upcomingThisWeek },
     { data: openPayments },
-    { count: pendingReviews },
-    { count: newAnfragen },
     { count: openBookingRequests },
     { data: nextLessons },
   ] = await Promise.all([
     supabase
-      .from("schueler")
+      .from("profiles")
       .select("*", { count: "exact", head: true })
+      .eq("role", "student")
       .eq("aktiv", true),
     supabase
       .from("appointments")
@@ -34,17 +33,9 @@ export default async function AdminDashboardPage() {
       .gte("start_at", weekStart.toISOString())
       .lt("start_at", weekEnd.toISOString()),
     supabase
-      .from("zahlungen")
-      .select("betrag")
-      .eq("status", "offen"),
-    supabase
-      .from("bewertungen")
-      .select("*", { count: "exact", head: true })
-      .eq("anzeigen", false),
-    supabase
-      .from("anfragen")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "neu"),
+      .from("invoices")
+      .select("amount")
+      .in("status", ["unpaid", "pending_confirmation"]),
     supabase
       .from("booking_requests")
       .select("*", { count: "exact", head: true })
@@ -59,7 +50,7 @@ export default async function AdminDashboardPage() {
   ]);
 
   const openPaymentsTotal = openPayments?.reduce(
-    (sum, z) => sum + (z.betrag ?? 0),
+    (sum, inv) => sum + Number(inv.amount ?? 0),
     0
   ) ?? 0;
 
@@ -78,16 +69,9 @@ export default async function AdminDashboardPage() {
 
   const stats = [
     {
-      label: "Neue Anfragen",
-      value: newAnfragen ?? 0,
-      icon: Inbox,
-      color: "bg-amber-50 text-amber-600",
-      href: "/admin/anfragen",
-    },
-    {
       label: "Offene Terminanfragen",
       value: openBookingRequests ?? 0,
-      icon: Calendar,
+      icon: Inbox,
       color: "bg-amber-50 text-amber-600",
       href: "/admin/terminanfragen",
     },
@@ -111,13 +95,6 @@ export default async function AdminDashboardPage() {
       icon: CreditCard,
       color: "bg-amber-50 text-amber-600",
       href: "/admin/zahlungen",
-    },
-    {
-      label: "Neue Bewertungen",
-      value: pendingReviews ?? 0,
-      icon: Star,
-      color: "bg-purple-50 text-purple-600",
-      href: "/admin/bewertungen",
     },
   ];
 

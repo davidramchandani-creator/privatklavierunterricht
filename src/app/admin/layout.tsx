@@ -1,35 +1,10 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import {
-  LayoutDashboard,
-  Users,
-  Calendar,
-  CalendarClock,
-  CalendarOff,
-  Tag,
-  Star,
-  CreditCard,
-  Inbox,
-  Settings,
-  Music,
-  LogOut,
-} from "lucide-react";
+import { Music, LogOut } from "lucide-react";
 import Link from "next/link";
 import { logout } from "@/app/auth/actions";
 import AdminMobileMenu from "./_components/AdminMobileMenu";
-
-const navItems = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/anfragen", label: "Anfragen", icon: Inbox },
-  { href: "/admin/terminanfragen", label: "Terminanfragen", icon: CalendarClock },
-  { href: "/admin/schueler", label: "Schüler", icon: Users },
-  { href: "/admin/kalender", label: "Kalender", icon: Calendar },
-  { href: "/admin/abwesenheiten", label: "Abwesenheiten", icon: CalendarOff },
-  { href: "/admin/preise", label: "Preise", icon: Tag },
-  { href: "/admin/bewertungen", label: "Bewertungen", icon: Star },
-  { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
-  { href: "/admin/einstellungen", label: "Einstellungen", icon: Settings },
-];
+import { AdminNavLinks } from "./_components/AdminNav";
 
 export default async function AdminLayout({
   children,
@@ -44,9 +19,9 @@ export default async function AdminLayout({
   if (!user) redirect("/auth/login");
 
   const { data: profile } = await supabase
-    .from("profile_roles")
+    .from("profiles")
     .select("role")
-    .eq("user_id", user.id)
+    .eq("id", user.id)
     .single();
 
   if (profile?.role !== "admin") redirect("/");
@@ -63,16 +38,7 @@ export default async function AdminLayout({
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          {navItems.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-500 text-gray-600 hover:bg-gray-100 hover:text-[#1C244B] transition-colors group"
-            >
-              <Icon className="w-4 h-4 text-gray-400 group-hover:text-[#1C244B] transition-colors flex-shrink-0" />
-              {label}
-            </Link>
-          ))}
+          <AdminNavLinks />
         </nav>
 
         <div className="p-3 border-t border-gray-100">

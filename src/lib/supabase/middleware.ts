@@ -30,35 +30,46 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
   const pathname = request.nextUrl.pathname;
 
+  // Rolle aus `profiles` – einzige Wahrheitsquelle. Nur laden, wenn relevant.
+  let role: string | null = null;
+  if (
+    user &&
+    (pathname.startsWith("/admin") ||
+      pathname.startsWith("/schueler") ||
+      pathname.startsWith("/auth/login") ||
+      pathname.startsWith("/auth/register"))
+  ) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    role = profile?.role ?? null;
+  }
+
+  // Admin-Bereich: nur Admins
   if (pathname.startsWith("/admin")) {
     if (!user) return NextResponse.redirect(new URL("/auth/login", request.url));
-    const { data: profile } = await supabase
-      .from("profile_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-    if (profile?.role !== "admin")
+    if (role !== "admin")
       return NextResponse.redirect(new URL("/", request.url));
   }
 
-  if (pathname.startsWith("/schueler") && !user)
-    return NextResponse.redirect(new URL("/auth/login", request.url));
+  // Schülerportal: nur eingeloggte Schüler – Admins gehören ins Admin-Panel
+  if (pathname.startsWith("/schueler")) {
+    if (!user)
+      return NextResponse.redirect(new URL("/auth/login", request.url));
+    if (role === "admin")
+      return NextResponse.redirect(new URL("/admin", request.url));
+  }
 
+  // Bereits eingeloggt? Login/Register überspringen und passend weiterleiten.
   if (
     (pathname.startsWith("/auth/login") ||
       pathname.startsWith("/auth/register")) &&
     user
   ) {
-    const { data: profile } = await supabase
-      .from("profile_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
     return NextResponse.redirect(
-      new URL(
-        profile?.role === "admin" ? "/admin" : "/schueler/portal",
-        request.url
-      )
+      new URL(role === "admin" ? "/admin" : "/schueler/portal", request.url)
     );
   }
 

@@ -8,10 +8,7 @@ import {
   reactivateSchueler,
   hardDeleteSchueler,
   resendInvite,
-  createPaket,
-  storniereTerminAdmin,
-  abschliessenTermin,
-  updateZahlungStatus,
+  updateInvoiceStatus,
   updateStudentPrices,
   createPackageAdmin,
   createDirectBooking,
@@ -31,7 +28,7 @@ import {
 } from "@/lib/packages";
 import { Loader2, Pencil, Trash2, CheckCircle2, XCircle, Plus, Mail, AlertTriangle, Calendar, Pause, Play, Clock, Ban } from "lucide-react";
 
-type Schueler = {
+type Profile = {
   id: string;
   vorname: string;
   nachname: string;
@@ -40,10 +37,9 @@ type Schueler = {
   adresse: string | null;
   notizen: string | null;
   aktiv: boolean;
-  user_id: string | null;
 };
 
-function SchuelerDetailActionsRoot({ schueler }: { schueler: Schueler }) {
+function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -55,7 +51,7 @@ function SchuelerDetailActionsRoot({ schueler }: { schueler: Schueler }) {
     setError(null);
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
-      const result = await updateSchueler(schueler.id, formData);
+      const result = await updateSchueler(profile.id, formData);
       if (result?.error) setError(result.error);
       else setEditing(false);
     });
@@ -64,7 +60,7 @@ function SchuelerDetailActionsRoot({ schueler }: { schueler: Schueler }) {
   function handleDeactivate() {
     if (!confirm("Schüler deaktivieren?")) return;
     startTransition(async () => {
-      const result = await deleteSchueler(schueler.id);
+      const result = await deleteSchueler(profile.id);
       if (result?.error) setError(result.error);
       else router.refresh();
     });
@@ -72,16 +68,16 @@ function SchuelerDetailActionsRoot({ schueler }: { schueler: Schueler }) {
 
   function handleReactivate() {
     startTransition(async () => {
-      const result = await reactivateSchueler(schueler.id);
+      const result = await reactivateSchueler(profile.id);
       if (result?.error) setError(result.error);
       else router.refresh();
     });
   }
 
   function handleHardDelete() {
-    if (!confirm(`${schueler.vorname} ${schueler.nachname} wirklich permanent löschen? Alle Daten (Pakete, Termine, Zahlungen) werden unwiderruflich gelöscht.`)) return;
+    if (!confirm(`${profile.vorname} ${profile.nachname} wirklich permanent löschen? Alle Daten (Pakete, Termine, Zahlungen) werden unwiderruflich gelöscht.`)) return;
     startTransition(async () => {
-      const result = await hardDeleteSchueler(schueler.id);
+      const result = await hardDeleteSchueler(profile.id);
       if (result?.error) setError(result.error);
       else router.push("/admin/schueler");
     });
@@ -89,7 +85,7 @@ function SchuelerDetailActionsRoot({ schueler }: { schueler: Schueler }) {
 
   function handleResendInvite() {
     startTransition(async () => {
-      const result = await resendInvite(schueler.email);
+      const result = await resendInvite(profile.email);
       if (result?.error) setError(result.error);
       else setInviteSent(true);
     });
@@ -101,29 +97,29 @@ function SchuelerDetailActionsRoot({ schueler }: { schueler: Schueler }) {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <label className="text-xs font-500 text-gray-600">Vorname</label>
-            <Input name="vorname" defaultValue={schueler.vorname} required />
+            <Input name="vorname" defaultValue={profile.vorname} required />
           </div>
           <div className="space-y-1">
             <label className="text-xs font-500 text-gray-600">Nachname</label>
-            <Input name="nachname" defaultValue={schueler.nachname} required />
+            <Input name="nachname" defaultValue={profile.nachname} required />
           </div>
           <div className="space-y-1">
             <label className="text-xs font-500 text-gray-600">E-Mail</label>
-            <Input name="email" type="email" defaultValue={schueler.email} required />
+            <Input name="email" type="email" defaultValue={profile.email} required />
           </div>
           <div className="space-y-1">
             <label className="text-xs font-500 text-gray-600">Telefon</label>
-            <Input name="telefon" defaultValue={schueler.telefon ?? ""} />
+            <Input name="telefon" defaultValue={profile.telefon ?? ""} />
           </div>
           <div className="space-y-1 col-span-2">
             <label className="text-xs font-500 text-gray-600">Adresse</label>
-            <Input name="adresse" defaultValue={schueler.adresse ?? ""} />
+            <Input name="adresse" defaultValue={profile.adresse ?? ""} />
           </div>
           <div className="space-y-1 col-span-2">
             <label className="text-xs font-500 text-gray-600">Notizen</label>
             <textarea
               name="notizen"
-              defaultValue={schueler.notizen ?? ""}
+              defaultValue={profile.notizen ?? ""}
               rows={3}
               className="flex w-full rounded-lg border border-input bg-background px-4 py-2 text-sm font-400 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-transparent transition-all duration-200 resize-none"
             />
@@ -161,19 +157,17 @@ function SchuelerDetailActionsRoot({ schueler }: { schueler: Schueler }) {
           <Pencil className="w-3.5 h-3.5" />
           Bearbeiten
         </Button>
-        {schueler.user_id && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleResendInvite}
-            disabled={isPending || inviteSent}
-            className="flex items-center gap-1.5"
-          >
-            <Mail className="w-3.5 h-3.5" />
-            {inviteSent ? "E-Mail gesendet ✓" : "Einladung erneut senden"}
-          </Button>
-        )}
-        {schueler.aktiv ? (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleResendInvite}
+          disabled={isPending || inviteSent}
+          className="flex items-center gap-1.5"
+        >
+          <Mail className="w-3.5 h-3.5" />
+          {inviteSent ? "E-Mail gesendet ✓" : "Einladung erneut senden"}
+        </Button>
+        {profile.aktiv ? (
           <Button
             variant="ghost"
             size="sm"
@@ -214,161 +208,52 @@ function SchuelerDetailActionsRoot({ schueler }: { schueler: Schueler }) {
   );
 }
 
-function PaketForm({ schueler_id }: { schueler_id: string }) {
-  const [open, setOpen] = useState(false);
+
+function InvoiceAction({ invoiceId, currentStatus }: { invoiceId: string; currentStatus: string }) {
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError(null);
-    const formData = new FormData(e.currentTarget);
-    formData.set("schueler_id", schueler_id);
-    startTransition(async () => {
-      const result = await createPaket(formData);
-      if (result?.error) setError(result.error);
-      else {
-        setOpen(false);
-        e.currentTarget?.reset?.();
-      }
-    });
-  }
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-2 text-sm font-600 text-[#1C244B] px-4 py-2.5 rounded-xl border border-[#1C244B]/20 hover:bg-[#1C244B]/5 transition-colors"
-      >
-        <Plus className="w-4 h-4" />
-        Neues Paket erstellen
-      </button>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="border border-gray-200 rounded-xl p-4 space-y-3">
-      <h3 className="text-sm font-600 text-gray-900">Neues Paket</h3>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="text-xs font-500 text-gray-600">Typ</label>
-          <select
-            name="typ"
-            className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            required
-          >
-            <option value="einzellektion">Einzellektion</option>
-            <option value="10er">10er-Paket</option>
-            <option value="20er">20er-Paket</option>
-          </select>
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-500 text-gray-600">Lektionen</label>
-          <Input
-            name="lektionen_gesamt"
-            type="number"
-            min="1"
-            defaultValue="10"
-            required
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-500 text-gray-600">Preis/Lektion (CHF)</label>
-          <Input
-            name="preis_pro_lektion"
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="80.00"
-            required
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-500 text-gray-600">Gültig bis</label>
-          <Input name="gueltig_bis" type="date" />
-        </div>
-      </div>
-      {error && (
-        <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
-      )}
-      <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={isPending}>
-          {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Erstellen"}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setOpen(false)}
-        >
-          Abbrechen
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-function TerminActions({
-  terminId,
-  status,
-}: {
-  terminId: string;
-  status: string;
-}) {
-  const [isPending, startTransition] = useTransition();
-
-  if (status === "storniert" || status === "abgeschlossen") return null;
 
   return (
     <div className="flex gap-1.5">
-      <button
-        disabled={isPending}
-        onClick={() => {
-          startTransition(async () => {
-            await abschliessenTermin(terminId);
-          });
-        }}
-        className="p-1.5 rounded-lg hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 transition-colors"
-        title="Abschliessen"
-      >
-        {isPending ? (
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        ) : (
-          <CheckCircle2 className="w-3.5 h-3.5" />
-        )}
-      </button>
-      <button
-        disabled={isPending}
-        onClick={() => {
-          if (!confirm("Termin stornieren?")) return;
-          startTransition(async () => {
-            await storniereTerminAdmin(terminId);
-          });
-        }}
-        className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
-        title="Stornieren"
-      >
-        <XCircle className="w-3.5 h-3.5" />
-      </button>
+      {currentStatus === "pending_confirmation" && (
+        <button
+          disabled={isPending}
+          onClick={() => {
+            startTransition(async () => {
+              await updateInvoiceStatus(invoiceId, "paid");
+            });
+          }}
+          className="text-xs font-600 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+        >
+          {isPending ? "…" : "Bestätigen"}
+        </button>
+      )}
+      {currentStatus === "pending_confirmation" && (
+        <button
+          disabled={isPending}
+          onClick={() => {
+            startTransition(async () => {
+              await updateInvoiceStatus(invoiceId, "rejected");
+            });
+          }}
+          className="text-xs font-600 text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+        >
+          {isPending ? "…" : "Ablehnen"}
+        </button>
+      )}
+      {currentStatus === "unpaid" && (
+        <button
+          disabled={isPending}
+          onClick={() => {
+            startTransition(async () => {
+              await updateInvoiceStatus(invoiceId, "paid");
+            });
+          }}
+          className="text-xs font-600 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+        >
+          {isPending ? "…" : "Als bezahlt"}
+        </button>
+      )}
     </div>
-  );
-}
-
-function ZahlungAction({ zahlungId }: { zahlungId: string }) {
-  const [isPending, startTransition] = useTransition();
-
-  return (
-    <button
-      disabled={isPending}
-      onClick={() => {
-        startTransition(async () => {
-          await updateZahlungStatus(zahlungId, "bezahlt");
-        });
-      }}
-      className="text-xs font-600 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
-    >
-      {isPending ? "…" : "Als bezahlt"}
-    </button>
   );
 }
 
@@ -385,6 +270,7 @@ function PreiseForm({
     price_20er: number;
     travel_surcharge: number;
     buffer_time_minutes: number;
+    payment_method: string;
   };
 }) {
   const router = useRouter();
@@ -397,6 +283,7 @@ function PreiseForm({
   const [price20er, setPrice20er] = useState(String(initial.price_20er));
   const [travel, setTravel] = useState(String(initial.travel_surcharge));
   const [buffer, setBuffer] = useState(String(initial.buffer_time_minutes));
+  const [paymentMethod, setPaymentMethod] = useState(initial.payment_method || "qr");
 
   const t = Number(travel) || 0;
   const effSingle = (Number(priceSingle) || 0) + t;
@@ -479,6 +366,18 @@ function PreiseForm({
           >
             <option value="15">15 Minuten</option>
             <option value="30">30 Minuten</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-500 text-gray-600">Zahlungsart</label>
+          <select
+            name="payment_method"
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value)}
+            className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="qr">QR-Rechnung</option>
+            <option value="twint">TWINT</option>
           </select>
         </div>
       </div>
@@ -975,10 +874,8 @@ function PackageTimerActions({
 }
 
 export {
-  PaketForm,
   PackageTimerActions,
-  TerminActions,
-  ZahlungAction,
+  InvoiceAction,
   PreiseForm,
   PackageFormNew,
   DirektBuchung,
