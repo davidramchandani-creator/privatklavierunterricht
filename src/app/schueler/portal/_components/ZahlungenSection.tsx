@@ -46,11 +46,17 @@ function fmtCHF(n: number): string {
 }
 
 function lessonHasPassed(lessonDate: string | null): boolean {
-  if (!lessonDate) return false;
-  // Show payment button/link only after lesson end (approx +45min)
+  // Ohne Lektionsdatum (z. B. Storno-Nachzahlung) ist sofort zahlbar.
+  if (!lessonDate) return true;
+  // Zahlbutton/-Link erst nach Lektionsende (ca. +45min) anzeigen (Spec §6).
   const end = new Date(new Date(lessonDate).getTime() + 45 * 60 * 1000);
   return end <= new Date();
 }
+
+const METHOD_LABEL: Record<string, string> = {
+  twint: "TWINT",
+  qr: "QR-Rechnung",
+};
 
 function InvoiceRow({ invoice }: { invoice: Invoice }) {
   const [isPending, startTransition] = useTransition();
@@ -92,6 +98,11 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
         <div className="flex flex-col items-end gap-1.5">
           <span className="text-base font-700 text-[#1C244B]">{fmtCHF(invoice.amount)}</span>
           <StatusBadge kind="payment" status={localStatus} />
+          {invoice.method && (
+            <span className="text-[11px] text-gray-400">
+              {METHOD_LABEL[invoice.method] ?? invoice.method}
+            </span>
+          )}
         </div>
       </div>
 
@@ -136,6 +147,17 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
             )}
             Ich habe bezahlt
           </button>
+        </div>
+      )}
+
+      {/* Noch nicht fällig: Zahlung erscheint erst nach der Lektion (Spec §6) */}
+      {!passed && localStatus === "unpaid" && (
+        <div className="pt-2 border-t border-gray-100">
+          <p className="text-xs text-gray-400 flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" />
+            Zahlung möglich nach der Lektion
+            {invoice.lesson_date ? ` am ${fmtDate(invoice.lesson_date)}` : ""}.
+          </p>
         </div>
       )}
 
