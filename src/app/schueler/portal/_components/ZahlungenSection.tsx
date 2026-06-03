@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { markInvoicePaid } from "@/app/schueler/portal/actions";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 type Invoice = {
   id: string;
@@ -48,20 +49,6 @@ function lessonHasPassed(lessonDate: string | null): boolean {
   const end = new Date(new Date(lessonDate).getTime() + 45 * 60 * 1000);
   return end <= new Date();
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  unpaid: "Offen",
-  pending_confirmation: "Wird geprüft",
-  paid: "Bezahlt",
-  rejected: "Abgelehnt",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  unpaid: "bg-amber-100 text-amber-800",
-  pending_confirmation: "bg-blue-100 text-blue-800",
-  paid: "bg-emerald-100 text-emerald-700",
-  rejected: "bg-red-100 text-red-700",
-};
 
 function InvoiceRow({ invoice }: { invoice: Invoice }) {
   const [isPending, startTransition] = useTransition();
@@ -106,13 +93,7 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
         </div>
         <div className="flex flex-col items-end gap-1.5">
           <span className="text-base font-700 text-[#1C244B]">{fmtCHF(invoice.amount)}</span>
-          <span
-            className={`text-xs font-500 px-2 py-0.5 rounded-full ${
-              STATUS_COLORS[localStatus] ?? "bg-gray-100 text-gray-600"
-            }`}
-          >
-            {STATUS_LABELS[localStatus] ?? localStatus}
-          </span>
+          <StatusBadge kind="payment" status={localStatus} />
         </div>
       </div>
 

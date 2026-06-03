@@ -1,5 +1,6 @@
 import { Package, CheckCircle2, AlertCircle, PauseCircle, Clock, XCircle } from "lucide-react";
 import { formatCHF } from "@/lib/utils";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   type Package as Paket,
   type EffectiveStatus,
@@ -8,40 +9,13 @@ import {
   formatRemainingTime,
 } from "@/lib/packages";
 
-const STATUS_BADGE: Record<
-  EffectiveStatus,
-  { label: string; className: string; icon: React.ReactNode }
-> = {
-  kein_paket: {
-    label: "Kein Paket",
-    className: "bg-amber-50 text-amber-600",
-    icon: <AlertCircle className="w-3 h-3" />,
-  },
-  aktiv: {
-    label: "Aktiv",
-    className: "bg-emerald-50 text-emerald-700",
-    icon: <CheckCircle2 className="w-3 h-3" />,
-  },
-  pausiert: {
-    label: "Pausiert",
-    className: "bg-blue-50 text-blue-700",
-    icon: <PauseCircle className="w-3 h-3" />,
-  },
-  aufgebraucht: {
-    label: "Aufgebraucht",
-    className: "bg-gray-100 text-gray-600",
-    icon: <Clock className="w-3 h-3" />,
-  },
-  abgelaufen: {
-    label: "Abgelaufen",
-    className: "bg-red-50 text-red-600",
-    icon: <XCircle className="w-3 h-3" />,
-  },
-  storniert: {
-    label: "Storniert",
-    className: "bg-red-50 text-red-600",
-    icon: <XCircle className="w-3 h-3" />,
-  },
+const STATUS_ICON: Record<EffectiveStatus, React.ReactNode> = {
+  kein_paket: <AlertCircle className="w-3 h-3" />,
+  aktiv: <CheckCircle2 className="w-3 h-3" />,
+  pausiert: <PauseCircle className="w-3 h-3" />,
+  aufgebraucht: <Clock className="w-3 h-3" />,
+  abgelaufen: <XCircle className="w-3 h-3" />,
+  storniert: <XCircle className="w-3 h-3" />,
 };
 
 export default function PaketCard({
@@ -71,7 +45,6 @@ export default function PaketCard({
     );
   }
 
-  const badge = STATUS_BADGE[state.effectiveStatus];
   const timerText =
     state.effectiveStatus === "pausiert"
       ? "Pausiert"
@@ -97,11 +70,11 @@ export default function PaketCard({
             </p>
           </div>
         </div>
-        <span
-          className={`text-xs px-2.5 py-1 rounded-full font-500 flex items-center gap-1 ${badge.className}`}
-        >
-          {badge.icon} {badge.label}
-        </span>
+        <StatusBadge
+          kind="packageState"
+          status={state.effectiveStatus}
+          icon={STATUS_ICON[state.effectiveStatus]}
+        />
       </div>
 
       <div className="mt-5 space-y-3">

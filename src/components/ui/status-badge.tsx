@@ -56,10 +56,24 @@ const REQUEST: Record<string, Entry> = {
   withdrawn: { label: "Zurückgezogen", tone: "neutral" },
 };
 
+/**
+ * Berechneter UI-Zustand des aktiven Pakets (lib/packages EffectiveStatus),
+ * deutschsprachig – im Gegensatz zum DB-Status `package`.
+ */
+const PACKAGE_STATE: Record<string, Entry> = {
+  kein_paket: { label: "Kein Paket", tone: "pending" },
+  aktiv: { label: "Aktiv", tone: "success" },
+  pausiert: { label: "Pausiert", tone: "pending" },
+  aufgebraucht: { label: "Aufgebraucht", tone: "neutral" },
+  abgelaufen: { label: "Abgelaufen", tone: "danger" },
+  storniert: { label: "Storniert", tone: "neutral" },
+};
+
 const MAPS = {
   payment: PAYMENT,
   appointment: APPOINTMENT,
   package: PACKAGE,
+  packageState: PACKAGE_STATE,
   request: REQUEST,
 } as const;
 
@@ -69,6 +83,8 @@ export interface StatusBadgeProps
   extends React.HTMLAttributes<HTMLSpanElement> {
   kind: StatusKind;
   status: string;
+  /** Optionales Icon links vom Label (z. B. lucide-Icon). */
+  icon?: React.ReactNode;
   /** Fällt auf den rohen Status-String zurück, falls unbekannt. */
   fallbackLabel?: string;
 }
@@ -76,6 +92,7 @@ export interface StatusBadgeProps
 export function StatusBadge({
   kind,
   status,
+  icon,
   fallbackLabel,
   className,
   ...props
@@ -89,12 +106,13 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-600 ring-1 ring-inset",
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-600 ring-1 ring-inset",
         TONE_CLASSES[entry.tone],
         className
       )}
       {...props}
     >
+      {icon}
       {entry.label}
     </span>
   );
