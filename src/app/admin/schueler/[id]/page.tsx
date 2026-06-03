@@ -4,7 +4,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
 import { computePackageState, canCancelPackage, PACKAGE_LABELS, type Package } from "@/lib/packages";
-import SchuelerDetailActions, { InvoiceAction, PreiseForm, PackageFormNew, DirektBuchung, AppointmentActions, PackageTimerActions } from "./_components/SchuelerDetailActions";
+import SchuelerDetailActions, { InvoiceAction, PreiseForm, PackageFormNew, DirektBuchung, ProposalForm, ProposalWithdraw, AppointmentActions, PackageTimerActions } from "./_components/SchuelerDetailActions";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 export default async function SchuelerDetailPage({
   params,
@@ -20,6 +21,7 @@ export default async function SchuelerDetailPage({
     { data: packages },
     { data: appointments },
     { data: invoices },
+    { data: openProposals },
   ] = await Promise.all([
     admin
       .from("profiles")
@@ -45,6 +47,12 @@ export default async function SchuelerDetailPage({
       .eq("student_id", id)
       .order("created_at", { ascending: false })
       .limit(30),
+    admin
+      .from("proposals")
+      .select("id, proposed_start, lessons_count, interval_days, status")
+      .eq("student_id", id)
+      .eq("status", "open")
+      .order("proposed_start", { ascending: true }),
   ]);
 
   if (!profile || profile.role === "admin") notFound();
@@ -56,37 +64,6 @@ export default async function SchuelerDetailPage({
     travel_surcharge: Number(profile.travel_surcharge ?? 0),
     buffer_time_minutes: Number(profile.buffer_time_minutes ?? 15),
     payment_method: (profile.payment_method as string) ?? "qr",
-  };
-
-  const packageStatusColors: Record<string, string> = {
-    aktiv: "bg-emerald-50 text-emerald-700",
-    pausiert: "bg-blue-50 text-blue-700",
-    aufgebraucht: "bg-gray-100 text-gray-500",
-    abgelaufen: "bg-red-50 text-red-600",
-    storniert: "bg-red-50 text-red-600",
-    kein_paket: "bg-amber-50 text-amber-700",
-  };
-
-  const appointmentStatusMap: Record<string, { label: string; color: string }> = {
-    booked: { label: "Bestätigt", color: "bg-blue-50 text-blue-700" },
-    completed: { label: "Abgeschlossen", color: "bg-emerald-50 text-emerald-700" },
-    cancelled: { label: "Storniert", color: "bg-red-50 text-red-600" },
-    no_show: { label: "Nicht erschienen", color: "bg-gray-100 text-gray-500" },
-  };
-
-  const invoiceStatusColors: Record<string, string> = {
-    unpaid: "bg-amber-50 text-amber-700",
-    pending_confirmation: "bg-blue-50 text-blue-700",
-    paid: "bg-emerald-50 text-emerald-700",
-    rejected: "bg-red-50 text-red-600",
-    archived: "bg-gray-100 text-gray-500",
-  };
-  const invoiceStatusLabels: Record<string, string> = {
-    unpaid: "Offen",
-    pending_confirmation: "Prüfung",
-    paid: "Bezahlt",
-    rejected: "Abgelehnt",
-    archived: "Archiviert",
   };
 
   return (
@@ -207,13 +184,7 @@ export default async function SchuelerDetailPage({
                       {pkg.expires_at ? formatDate(pkg.expires_at) : "—"}
                     </td>
                     <td className="py-3">
-                      <span
-                        className={`text-xs font-500 px-2.5 py-0.5 rounded-full ${
-                          packageStatusColors[state.effectiveStatus] ?? "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        {state.effectiveStatus}
-                      </span>
+                      <StatusBadge kind="packageState" status={state.effectiveStatus} />
                     </td>
                     <td className="py-3">
                       {pkg.status === "active" && (
@@ -258,9 +229,40 @@ export default async function SchuelerDetailPage({
         <h2 className="text-lg font-700 text-[#1C244B] mb-4">
           Bevorstehende Lektionen
         </h2>
-        <div className="mb-4">
+        <div className="mb-4 flex flex-wrap gap-2">
           <DirektBuchung schueler_id={id} student_user_id={id} />
+          <ProposalForm schueler_id={id} student_user_id={id} />
         </div>
+
+        {openProposals && openProposals.length > 0 && (
+          <div className="mb-4 space-y-2">
+            <p className="text-xs font-600 text-gray-400 uppercase tracking-wide">
+              Offene Terminvorschläge
+            </p>
+            {openProposals.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center justify-between gap-3 rounded-xl border border-amber-100 bg-amber-50/50 px-4 py-2.5"
+              >
+                <div className="text-sm">
+                  <span className="font-600 text-gray-900">
+                    {formatDateTime(p.proposed_start)}
+                  </span>
+                  {p.lessons_count > 1 && (
+                    <span className="text-gray-500">
+                      {" "}· {p.lessons_count}× alle {p.interval_days} Tage
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <StatusBadge kind="request" status={p.status} />
+                  <ProposalWithdraw proposalId={p.id} schuelerId={id} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {!appointments || appointments.length === 0 ? (
           <p className="text-sm text-gray-400">Keine bevorstehenden Lektionen.</p>
         ) : (
@@ -273,27 +275,17 @@ export default async function SchuelerDetailPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {appointments.map((a) => {
-                const meta = appointmentStatusMap[a.status] ?? {
-                  label: a.status,
-                  color: "bg-gray-100 text-gray-600",
-                };
-                return (
-                  <tr key={a.id}>
-                    <td className="py-3 text-sm text-gray-900">{formatDateTime(a.start_at)}</td>
-                    <td className="py-3">
-                      <span
-                        className={`text-xs font-500 px-2.5 py-0.5 rounded-full ${meta.color}`}
-                      >
-                        {meta.label}
-                      </span>
-                    </td>
-                    <td className="py-3">
-                      <AppointmentActions appointmentId={a.id} schuelerId={id} status={a.status} />
-                    </td>
-                  </tr>
-                );
-              })}
+              {appointments.map((a) => (
+                <tr key={a.id}>
+                  <td className="py-3 text-sm text-gray-900">{formatDateTime(a.start_at)}</td>
+                  <td className="py-3">
+                    <StatusBadge kind="appointment" status={a.status} />
+                  </td>
+                  <td className="py-3">
+                    <AppointmentActions appointmentId={a.id} schuelerId={id} status={a.status} />
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         )}
@@ -328,13 +320,7 @@ export default async function SchuelerDetailPage({
                     {inv.lesson_date ? formatDate(inv.lesson_date) : inv.created_at ? formatDate(inv.created_at) : "—"}
                   </td>
                   <td className="py-3">
-                    <span
-                      className={`text-xs font-500 px-2.5 py-0.5 rounded-full ${
-                        invoiceStatusColors[inv.status] ?? "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {invoiceStatusLabels[inv.status] ?? inv.status}
-                    </span>
+                    <StatusBadge kind="payment" status={inv.status} />
                   </td>
                   <td className="py-3">
                     {(inv.status === "unpaid" || inv.status === "pending_confirmation") && (

@@ -1,14 +1,16 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Music, Calendar, Package, CreditCard, LogOut } from "lucide-react";
-import Link from "next/link";
-import { logout } from "@/app/auth/actions";
+import { Music } from "lucide-react";
+import PortalNav from "./_components/PortalNav";
 import PaketCard from "./_components/PaketCard";
 import NeuesPaket from "./_components/NeuesPaket";
 import NaechsteTermine from "./_components/NaechsteTermine";
 import TerminBuchen from "./_components/TerminBuchen";
 import ZahlungenSection from "./_components/ZahlungenSection";
+import ProposalCard from "./_components/ProposalCard";
+import PortalTabs from "./_components/PortalTabs";
 import { canBuyNewPackage, type Package as Paket } from "@/lib/packages";
+import { getTwintBaseUrl } from "@/lib/twint";
 
 export default async function SchuelerPortalPage() {
   const supabase = await createClient();
@@ -88,6 +90,13 @@ export default async function SchuelerPortalPage() {
     .eq("status", "open")
     .order("proposed_start", { ascending: true });
 
+  const { data: offeneProposals } = await supabase
+    .from("proposals")
+    .select("id, proposed_start, lessons_count, interval_days, status")
+    .eq("student_id", user.id)
+    .eq("status", "open")
+    .order("proposed_start", { ascending: true });
+
   const { data: invoices } = await supabase
     .from("invoices")
     .select("id, invoice_number, amount, status, method, lesson_date, pdf_url, access_token, appointment_id")
@@ -98,12 +107,29 @@ export default async function SchuelerPortalPage() {
 
   const vorname = profile?.vorname ?? user.email?.split("@")[0] ?? "Schüler";
 
+  // Auf-einen-Blick-Stats für den Hero
+  const nextLessonAt = naechsteAppointments?.[0]?.start_at ?? null;
+  const remainingLessons =
+    aktivesPackage != null
+      ? Math.max(0, aktivesPackage.lessons_total - lessonsUsed)
+      : null;
+  const openPaymentsCount =
+    invoices?.filter((i) => i.status === "unpaid" || i.status === "rejected")
+      .length ?? 0;
+
+  // Offizieller TWINT-Acquirer-Link (serverseitig, nie im Client hartcodiert).
+  const twintBase = getTwintBaseUrl();
+  const invoicesForPortal = (invoices ?? []).map((inv) => ({
+    ...inv,
+    twint_link: inv.method === "twint" ? twintBase : null,
+  }));
+
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-3xl border border-gray-200 shadow-sm p-8 text-center space-y-4">
-          <div className="w-14 h-14 bg-indigo-50 rounded-full flex items-center justify-center mx-auto">
-            <Music className="w-7 h-7 text-[#1C244B]" />
+      <div className="min-h-screen bg-white flex items-center justify-center px-5">
+        <div className="max-w-md w-full bg-white rounded-3xl border border-[#EAECEF] p-8 text-center space-y-4">
+          <div className="w-14 h-14 bg-navy-50 rounded-2xl flex items-center justify-center mx-auto">
+            <Music className="w-7 h-7 text-navy-900" />
           </div>
           <h1 className="text-xl font-800 text-gray-900">Willkommen!</h1>
           <p className="text-gray-500 text-sm leading-relaxed">
@@ -122,79 +148,127 @@ export default async function SchuelerPortalPage() {
     );
   }
 
+  const uebersicht = (
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <StatCard
+          label="Nächste Lektion"
+          value={
+            nextLessonAt
+              ? new Intl.DateTimeFormat("de-CH", {
+                  timeZone: "Europe/Zurich",
+                  weekday: "short",
+                  day: "numeric",
+                  month: "short",
+                }).format(new Date(nextLessonAt))
+              : "—"
+          }
+          hint={nextLessonAt ? "geplant" : "keine geplant"}
+        />
+        <StatCard
+          label="Verbleibende Lektionen"
+          value={remainingLessons != null ? String(remainingLessons) : "0"}
+          hint={remainingLessons != null ? "im aktiven Paket" : "kein aktives Paket"}
+        />
+        <StatCard
+          label="Offene Zahlungen"
+          value={openPaymentsCount > 0 ? String(openPaymentsCount) : "0"}
+          hint={openPaymentsCount > 0 ? "zu begleichen" : "alles bezahlt"}
+          accent={openPaymentsCount > 0}
+        />
+      </div>
+
+      <div className="space-y-5">
+        <SectionHeader title="Mein Paket" />
+        <PaketCard
+          paket={aktivesPackage}
+          lessonsUsed={lessonsUsed}
+          upcomingAbsence={kommendeAbwesenheit}
+        />
+        <div className="pt-1">
+          <p className="text-[13px] font-600 text-gray-400 mb-2.5">Neues Paket buchen</p>
+          <NeuesPaket prices={prices} canBuy={kannNeuesPaket} />
+        </div>
+      </div>
+    </div>
+  );
+
+  const termine = (
+    <div className="space-y-5">
+      <ProposalCard proposals={offeneProposals ?? []} />
+      <NaechsteTermine
+        appointments={naechsteAppointments ?? []}
+        requests={offeneAnfragen ?? []}
+        reschedules={offeneVerschiebungen ?? []}
+      />
+      {aktivesPackage && canBook && (
+        <div className="pt-1">
+          <TerminBuchen />
+        </div>
+      )}
+    </div>
+  );
+
+  const zahlungen = (
+    <div className="space-y-5">
+      <ZahlungenSection invoices={invoicesForPortal} />
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-[#1C244B]">
-            <span className="w-8 h-8 rounded-lg bg-[#1C244B] flex items-center justify-center">
-              <Music className="w-4 h-4 text-white" />
-            </span>
-            <span className="font-700 text-base hidden sm:block">David</span>
-          </Link>
-          <nav className="flex items-center gap-1 text-sm">
-            <a href="#termine" className="px-3 py-1.5 text-gray-600 hover:text-[#1C244B] rounded-lg hover:bg-gray-100 transition-colors hidden sm:flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5" /> Termine
-            </a>
-            <a href="#zahlungen" className="px-3 py-1.5 text-gray-600 hover:text-[#1C244B] rounded-lg hover:bg-gray-100 transition-colors hidden sm:flex items-center gap-1.5">
-              <CreditCard className="w-3.5 h-3.5" /> Zahlungen
-            </a>
-            <form action={logout}>
-              <button type="submit" className="ml-2 px-3 py-1.5 text-gray-500 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors flex items-center gap-1.5 text-sm">
-                <LogOut className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Abmelden</span>
-              </button>
-            </form>
-          </nav>
-        </div>
-      </header>
+    <div className="min-h-screen bg-white">
+      <PortalNav vorname={vorname} />
 
-      <main className="max-w-5xl mx-auto px-4 py-8 space-y-10">
-        <div>
-          <h1 className="text-2xl font-800 text-[#1C244B]">Hallo, {vorname} 👋</h1>
-          <p className="text-gray-500 text-sm mt-1">Willkommen in deinem Schülerportal</p>
+      <main className="max-w-4xl mx-auto px-5 py-8 sm:py-10">
+        <div className="mb-6">
+          <p className="text-[13px] font-500 text-gray-400">Schön, dass du da bist</p>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-700 text-navy-900 tracking-tight">
+            Hallo, {vorname}
+          </h1>
         </div>
 
-        <section id="paket" className="space-y-4">
-          <SectionHeader icon={<Package className="w-4 h-4" />} title="Mein Paket" />
-          <PaketCard
-            paket={aktivesPackage}
-            lessonsUsed={lessonsUsed}
-            upcomingAbsence={kommendeAbwesenheit}
-          />
-          <div>
-            <h3 className="text-sm font-600 text-gray-500 mb-2">Neues Paket buchen</h3>
-            <NeuesPaket prices={prices} canBuy={kannNeuesPaket} />
-          </div>
-        </section>
-
-        <section id="termine">
-          <SectionHeader icon={<Calendar className="w-4 h-4" />} title="Nächste Lektionen" />
-          <NaechsteTermine
-            appointments={naechsteAppointments ?? []}
-            requests={offeneAnfragen ?? []}
-            reschedules={offeneVerschiebungen ?? []}
-          />
-          {aktivesPackage && canBook && (
-            <div className="mt-4">
-              <TerminBuchen />
-            </div>
-          )}
-        </section>
-
-        <section id="zahlungen">
-          <SectionHeader icon={<CreditCard className="w-4 h-4" />} title="Zahlungen" />
-          <ZahlungenSection invoices={invoices ?? []} />
-        </section>
+        <PortalTabs
+          uebersicht={uebersicht}
+          termine={termine}
+          zahlungen={zahlungen}
+          termineBadge={offeneProposals?.length ?? 0}
+          zahlungenBadge={openPaymentsCount}
+        />
       </main>
     </div>
   );
 }
 
-function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
+function StatCard({
+  label,
+  value,
+  hint,
+  accent = false,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  accent?: boolean;
+}) {
   return (
-    <div className="flex items-center gap-2 mb-4">
-      <span className="text-[#1C244B]">{icon}</span>
-      <h2 className="text-lg font-700 text-[#1C244B]">{title}</h2>
+    <div className="rounded-2xl border border-[#EAECEF] bg-white px-5 py-4 transition-colors hover:border-gray-300/70">
+      <p className="text-[11px] font-600 uppercase tracking-wider text-gray-400">
+        {label}
+      </p>
+      <p
+        className={`mt-1.5 text-2xl font-700 tracking-tight ${
+          accent ? "text-red-500" : "text-navy-900"
+        }`}
+      >
+        {value}
+      </p>
+      {hint && <p className="mt-0.5 text-xs text-gray-400">{hint}</p>}
     </div>
+  );
+}
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <h2 className="text-base font-700 text-navy-900 tracking-tight">{title}</h2>
   );
 }

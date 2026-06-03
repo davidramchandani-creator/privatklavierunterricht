@@ -12,6 +12,8 @@ import {
   updateStudentPrices,
   createPackageAdmin,
   createDirectBooking,
+  createProposal,
+  withdrawProposal,
   completeAppointmentNew,
   cancelAppointmentNew,
   pausePackage,
@@ -26,7 +28,7 @@ import {
   CANCELLATION_SINGLE_BASE,
   CANCELLATION_SINGLE_THRESHOLD,
 } from "@/lib/packages";
-import { Loader2, Pencil, Trash2, CheckCircle2, XCircle, Plus, Mail, AlertTriangle, Calendar, Pause, Play, Clock, Ban } from "lucide-react";
+import { Loader2, Pencil, Trash2, CheckCircle2, XCircle, Plus, Mail, AlertTriangle, Calendar, Pause, Play, Clock, Ban, Send } from "lucide-react";
 
 type Profile = {
   id: string;
@@ -634,6 +636,143 @@ function DirektBuchung({
   );
 }
 
+function ProposalForm({
+  schueler_id,
+  student_user_id,
+}: {
+  schueler_id: string;
+  student_user_id: string;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const [start, setStart] = useState("");
+  const [lessonsCount, setLessonsCount] = useState("1");
+  const [intervalDays, setIntervalDays] = useState("7");
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    if (!start) {
+      setError("Bitte Datum und Zeit wählen.");
+      return;
+    }
+    const formData = new FormData();
+    formData.set("student_user_id", student_user_id);
+    formData.set("schueler_id", schueler_id);
+    formData.set("start", new Date(start).toISOString());
+    formData.set("lessons_count", lessonsCount);
+    formData.set("interval_days", intervalDays);
+    startTransition(async () => {
+      const result = await createProposal(formData);
+      if (result && "error" in result && result.error) setError(result.error);
+      else {
+        setOpen(false);
+        setStart("");
+        router.refresh();
+      }
+    });
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-2 text-sm font-600 text-[#1C244B] px-4 py-2.5 rounded-xl border border-[#1C244B]/20 hover:bg-[#1C244B]/5 transition-colors"
+      >
+        <Send className="w-4 h-4" />
+        Termin vorschlagen
+      </button>
+    );
+  }
+
+  const isSingle = lessonsCount === "1";
+
+  return (
+    <form onSubmit={handleSubmit} className="border border-gray-200 rounded-xl p-4 space-y-3 mb-4">
+      <h3 className="text-sm font-600 text-gray-900">Termin vorschlagen</h3>
+      <p className="text-xs text-gray-500">
+        Der Schüler erhält eine E-Mail und bestätigt oder lehnt im Portal ab.
+        Erst bei Annahme werden die Termine gebucht.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="space-y-1">
+          <label className="text-xs font-500 text-gray-600">Start</label>
+          <Input
+            type="datetime-local"
+            value={start}
+            onChange={(e) => setStart(e.target.value)}
+            required
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-500 text-gray-600">Anzahl Lektionen</label>
+          <select
+            value={lessonsCount}
+            onChange={(e) => setLessonsCount(e.target.value)}
+            className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="1">1</option>
+            <option value="5">5</option>
+            <option value="10">10</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-500 text-gray-600">Intervall</label>
+          <select
+            value={intervalDays}
+            onChange={(e) => setIntervalDays(e.target.value)}
+            disabled={isSingle}
+            className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          >
+            <option value="7">Wöchentlich</option>
+            <option value="14">Zweiwöchentlich</option>
+          </select>
+        </div>
+      </div>
+      {error && (
+        <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+      )}
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={isPending}>
+          {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Vorschlag senden"}
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
+          Abbrechen
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+/** Admin zieht einen offenen Vorschlag zurück. */
+function ProposalWithdraw({
+  proposalId,
+  schuelerId,
+}: {
+  proposalId: string;
+  schuelerId: string;
+}) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  return (
+    <button
+      onClick={() =>
+        startTransition(async () => {
+          await withdrawProposal(proposalId, schuelerId);
+          router.refresh();
+        })
+      }
+      disabled={isPending}
+      className="text-xs font-500 text-gray-500 hover:text-red-600 px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+    >
+      {isPending ? "…" : "Zurückziehen"}
+    </button>
+  );
+}
+
 function AppointmentActions({
   appointmentId,
   schuelerId,
@@ -879,6 +1018,8 @@ export {
   PreiseForm,
   PackageFormNew,
   DirektBuchung,
+  ProposalForm,
+  ProposalWithdraw,
   AppointmentActions,
 };
 export default SchuelerDetailActionsRoot;

@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email-sender";
 import { renderEmail } from "@/lib/email-templates";
 import { generateQRInvoicePdf, buildSpcData } from "@/lib/qr-invoice";
-import { buildTwintLink } from "@/lib/twint";
+import { getTwintBaseUrl } from "@/lib/twint";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +46,8 @@ export async function GET(request: NextRequest) {
         "booking_request_withdrawn",
         "appointment_cancelled_by_student",
         "reschedule_request_admin",
+        "reschedule_request_withdrawn",
+        "proposal_rejected_admin",
       ];
       const studentPayloadToTypes = [
         "booking_request_received",
@@ -59,7 +61,14 @@ export async function GET(request: NextRequest) {
         "payment_rejected",
       ];
       // Typen, deren Empfänger-Mail erst aus der profiles-Tabelle aufgelöst wird.
-      const studentLookupTypes = ["booking_rejected", "reschedule_rejected"];
+      const studentLookupTypes = [
+        "booking_rejected",
+        "reschedule_rejected",
+        "appointment_cancelled_student",
+        "appointment_cancelled_by_admin",
+        "proposal_new",
+        "package_settlement_paid",
+      ];
 
       if (adminRecipientTypes.includes(email.type)) {
         to = process.env.ADMIN_EMAIL ?? null;
@@ -147,20 +156,9 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // TWINT: Link aus invoice_id aufbauen wenn noch kein twint_link im payload
-      if (email.type === "twint_payment_request" && payload.invoice_id && !payload.twint_link) {
-        const invoiceId = String(payload.invoice_id);
-        const { data: inv } = await admin
-          .from("invoices")
-          .select("invoice_number, amount")
-          .eq("id", invoiceId)
-          .maybeSingle();
-        if (inv) {
-          extraContext.twint_link = buildTwintLink(
-            Number(inv.amount ?? 0),
-            inv.invoice_number ?? invoiceId
-          );
-        }
+      // TWINT: offiziellen Acquirer-Link setzen, falls noch kein twint_link da.
+      if (email.type === "twint_payment_request" && !payload.twint_link) {
+        extraContext.twint_link = getTwintBaseUrl();
       }
 
       const rendered = renderEmail(email.type, { ...payload, ...extraContext });

@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { markInvoicePaid } from "@/app/schueler/portal/actions";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 type Invoice = {
   id: string;
@@ -22,6 +23,8 @@ type Invoice = {
   pdf_url: string | null;
   access_token: string | null;
   appointment_id: string | null;
+  /** Serverseitig aus TWINT_BASE_URL gebauter Deep-Link (Spec §6). */
+  twint_link: string | null;
 };
 
 function fmtDate(iso: string): string {
@@ -38,29 +41,40 @@ function fmtDate(iso: string): string {
   }
 }
 
+/** Datum + Uhrzeit der Lektion (Spec: Zahlungsposten zeigt Lektion mit Zeit). */
+function fmtLesson(iso: string): string {
+  try {
+    return (
+      new Intl.DateTimeFormat("de-CH", {
+        timeZone: "Europe/Zurich",
+        weekday: "short",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(iso)) + " Uhr"
+    );
+  } catch {
+    return iso;
+  }
+}
+
 function fmtCHF(n: number): string {
   return "CHF " + n.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function lessonHasPassed(lessonDate: string | null): boolean {
-  if (!lessonDate) return false;
-  // Show payment button/link only after lesson end (approx +45min)
+  // Ohne Lektionsdatum (z. B. Storno-Nachzahlung) ist sofort zahlbar.
+  if (!lessonDate) return true;
+  // Zahlbutton/-Link erst nach Lektionsende (ca. +45min) anzeigen (Spec §6).
   const end = new Date(new Date(lessonDate).getTime() + 45 * 60 * 1000);
   return end <= new Date();
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  unpaid: "Offen",
-  pending_confirmation: "Wird geprüft",
-  paid: "Bezahlt",
-  rejected: "Abgelehnt",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  unpaid: "bg-amber-100 text-amber-800",
-  pending_confirmation: "bg-blue-100 text-blue-800",
-  paid: "bg-emerald-100 text-emerald-700",
-  rejected: "bg-red-100 text-red-700",
+const METHOD_LABEL: Record<string, string> = {
+  twint: "TWINT",
+  qr: "QR-Rechnung",
 };
 
 function InvoiceRow({ invoice }: { invoice: Invoice }) {
@@ -73,12 +87,8 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
     ? `/api/invoices/${invoice.id}/pdf?token=${invoice.access_token}`
     : null;
 
-  // TWINT link: built from invoice_number + amount
-  const twintBase =
-    "https://go.twint.ch/1/e/tw?tw=acq.6YabPo0CSR6u1rxllpn-W0WWPnkfZMQnBMX_JvCpUKrIMZZJaBhIz5pjf-UeImB-.";
-  const twintLink = invoice.invoice_number
-    ? `${twintBase}&trxInfo=${encodeURIComponent(invoice.invoice_number ?? "")}&amount=${invoice.amount.toFixed(2)}`
-    : null;
+  // TWINT-Deep-Link wird serverseitig aus TWINT_BASE_URL gebaut und mitgeliefert.
+  const twintLink = invoice.twint_link;
 
   const handleMarkPaid = () => {
     setError(null);
@@ -93,26 +103,27 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-3">
+    <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
       {/* Header row */}
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-600 text-gray-900">
-            {invoice.lesson_date ? fmtDate(invoice.lesson_date) : "Klavierstunde"}
+            {invoice.lesson_date ? fmtLesson(invoice.lesson_date) : "Stornierungsbetrag"}
           </p>
           {invoice.invoice_number && (
-            <p className="text-xs text-gray-400 mt-0.5">{invoice.invoice_number}</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Lektion · {invoice.invoice_number}
+            </p>
           )}
         </div>
         <div className="flex flex-col items-end gap-1.5">
           <span className="text-base font-700 text-[#1C244B]">{fmtCHF(invoice.amount)}</span>
-          <span
-            className={`text-xs font-500 px-2 py-0.5 rounded-full ${
-              STATUS_COLORS[localStatus] ?? "bg-gray-100 text-gray-600"
-            }`}
-          >
-            {STATUS_LABELS[localStatus] ?? localStatus}
-          </span>
+          <StatusBadge kind="payment" status={localStatus} />
+          {invoice.method && (
+            <span className="text-[11px] text-gray-400">
+              {METHOD_LABEL[invoice.method] ?? invoice.method}
+            </span>
+          )}
         </div>
       </div>
 
@@ -124,15 +135,29 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
       {passed && (localStatus === "unpaid" || localStatus === "rejected") && (
         <div className="pt-2 border-t border-gray-100 flex flex-wrap gap-2">
           {invoice.method === "twint" && twintLink && (
-            <a
-              href={twintLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm font-600 text-white bg-[#1C244B] px-4 py-2 rounded-lg hover:opacity-90 transition-opacity"
+            <button
+              type="button"
+              onClick={() => window.open(twintLink, "_blank")}
+              aria-label="Mit TWINT bezahlen"
+              style={{
+                height: 58,
+                width: "auto",
+                borderRadius: 6,
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                cursor: "pointer",
+                backgroundColor: "transparent",
+                border: "none",
+              }}
             >
-              <ExternalLink className="w-3.5 h-3.5" />
-              Per TWINT bezahlen
-            </a>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                style={{ height: 58, width: "auto" }}
+                alt="Mit TWINT bezahlen"
+                src="https://go.twint.ch/static/img/button_dark_en.svg"
+              />
+            </button>
           )}
           {invoice.method === "qr" && pdfLink && (
             <a
@@ -160,9 +185,20 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
         </div>
       )}
 
+      {/* Noch nicht fällig: Zahlung erscheint erst nach der Lektion (Spec §6) */}
+      {!passed && localStatus === "unpaid" && (
+        <div className="pt-2 border-t border-gray-100">
+          <p className="text-xs text-gray-400 flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" />
+            Zahlung möglich nach der Lektion
+            {invoice.lesson_date ? ` am ${fmtDate(invoice.lesson_date)}` : ""}.
+          </p>
+        </div>
+      )}
+
       {localStatus === "pending_confirmation" && (
         <div className="pt-2 border-t border-gray-100">
-          <p className="text-xs text-blue-700 flex items-center gap-1.5">
+          <p className="text-xs text-navy-900 flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5" />
             Deine Zahlung wird geprüft. Du erhältst eine Bestätigung per E-Mail.
           </p>
@@ -193,7 +229,7 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
 export default function ZahlungenSection({ invoices }: { invoices: Invoice[] }) {
   if (invoices.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center">
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
         <p className="text-sm text-gray-500">Keine Zahlungen vorhanden</p>
       </div>
     );
@@ -222,8 +258,8 @@ export default function ZahlungenSection({ invoices }: { invoices: Invoice[] }) 
       {pendingInvoices.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-blue-500" />
-            <p className="text-sm font-600 text-blue-700">
+            <Clock className="w-4 h-4 text-navy-700" />
+            <p className="text-sm font-600 text-navy-900">
               {pendingInvoices.length} Zahlung{pendingInvoices.length !== 1 ? "en" : ""} wird geprüft
             </p>
           </div>

@@ -66,7 +66,7 @@ export default async function AbwesenheitenPage() {
                     <span
                       className={`text-xs font-500 px-2.5 py-0.5 rounded-full ${
                         a.scope === "admin"
-                          ? "bg-indigo-50 text-[#1C244B]"
+                          ? "bg-navy-50 text-[#1C244B]"
                           : "bg-amber-50 text-amber-700"
                       }`}
                     >

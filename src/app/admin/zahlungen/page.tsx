@@ -1,26 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { CreditCard } from "lucide-react";
 import InvoiceActions from "./_components/InvoiceActions";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_LABELS: Record<string, string> = {
-  unpaid: "Offen",
-  pending_confirmation: "Wird geprüft",
-  paid: "Bezahlt",
-  rejected: "Abgelehnt",
-  archived: "Archiviert",
-  cancelled: "Storniert",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  unpaid: "bg-amber-100 text-amber-700",
-  pending_confirmation: "bg-blue-100 text-blue-700",
-  paid: "bg-emerald-100 text-emerald-700",
-  rejected: "bg-red-100 text-red-700",
-  archived: "bg-gray-100 text-gray-500",
-  cancelled: "bg-gray-100 text-gray-500",
-};
 
 const METHOD_LABELS: Record<string, string> = {
   twint: "TWINT",
@@ -185,13 +168,11 @@ export default async function ZahlungenPage({
                         {inv.invoice_number ?? "—"}
                       </td>
                       <td className="py-3.5 pr-4">
-                        <span
-                          className={`text-xs font-600 px-2.5 py-1 rounded-full whitespace-nowrap ${
-                            STATUS_COLORS[inv.status] ?? "bg-gray-100 text-gray-600"
-                          }`}
-                        >
-                          {STATUS_LABELS[inv.status] ?? inv.status}
-                        </span>
+                        <StatusBadge
+                          kind="payment"
+                          status={inv.status}
+                          className="whitespace-nowrap"
+                        />
                         {inv.status === "paid" && inv.paid_at && (
                           <p className="text-xs text-gray-400 mt-0.5">
                             {fmtDate(inv.paid_at)}

@@ -1,5 +1,6 @@
 import { Package, CheckCircle2, AlertCircle, PauseCircle, Clock, XCircle } from "lucide-react";
 import { formatCHF } from "@/lib/utils";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   type Package as Paket,
   type EffectiveStatus,
@@ -8,40 +9,13 @@ import {
   formatRemainingTime,
 } from "@/lib/packages";
 
-const STATUS_BADGE: Record<
-  EffectiveStatus,
-  { label: string; className: string; icon: React.ReactNode }
-> = {
-  kein_paket: {
-    label: "Kein Paket",
-    className: "bg-amber-50 text-amber-600",
-    icon: <AlertCircle className="w-3 h-3" />,
-  },
-  aktiv: {
-    label: "Aktiv",
-    className: "bg-emerald-50 text-emerald-700",
-    icon: <CheckCircle2 className="w-3 h-3" />,
-  },
-  pausiert: {
-    label: "Pausiert",
-    className: "bg-blue-50 text-blue-700",
-    icon: <PauseCircle className="w-3 h-3" />,
-  },
-  aufgebraucht: {
-    label: "Aufgebraucht",
-    className: "bg-gray-100 text-gray-600",
-    icon: <Clock className="w-3 h-3" />,
-  },
-  abgelaufen: {
-    label: "Abgelaufen",
-    className: "bg-red-50 text-red-600",
-    icon: <XCircle className="w-3 h-3" />,
-  },
-  storniert: {
-    label: "Storniert",
-    className: "bg-red-50 text-red-600",
-    icon: <XCircle className="w-3 h-3" />,
-  },
+const STATUS_ICON: Record<EffectiveStatus, React.ReactNode> = {
+  kein_paket: <AlertCircle className="w-3 h-3" />,
+  aktiv: <CheckCircle2 className="w-3 h-3" />,
+  pausiert: <PauseCircle className="w-3 h-3" />,
+  aufgebraucht: <Clock className="w-3 h-3" />,
+  abgelaufen: <XCircle className="w-3 h-3" />,
+  storniert: <XCircle className="w-3 h-3" />,
 };
 
 export default function PaketCard({
@@ -57,7 +31,7 @@ export default function PaketCard({
 
   if (!paket) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 flex items-start gap-4">
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 flex items-start gap-4">
         <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
           <AlertCircle className="w-5 h-5 text-amber-500" />
         </div>
@@ -71,7 +45,6 @@ export default function PaketCard({
     );
   }
 
-  const badge = STATUS_BADGE[state.effectiveStatus];
   const timerText =
     state.effectiveStatus === "pausiert"
       ? "Pausiert"
@@ -82,11 +55,11 @@ export default function PaketCard({
       : null;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+    <div className="bg-white rounded-2xl border border-gray-100 p-6">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#1C244B]/10 flex items-center justify-center flex-shrink-0">
-            <Package className="w-5 h-5 text-[#1C244B]" />
+          <div className="w-10 h-10 rounded-xl bg-navy-50 flex items-center justify-center flex-shrink-0">
+            <Package className="w-5 h-5 text-navy-900" />
           </div>
           <div>
             <p className="font-700 text-gray-900">
@@ -97,11 +70,11 @@ export default function PaketCard({
             </p>
           </div>
         </div>
-        <span
-          className={`text-xs px-2.5 py-1 rounded-full font-500 flex items-center gap-1 ${badge.className}`}
-        >
-          {badge.icon} {badge.label}
-        </span>
+        <StatusBadge
+          kind="packageState"
+          status={state.effectiveStatus}
+          icon={STATUS_ICON[state.effectiveStatus]}
+        />
       </div>
 
       <div className="mt-5 space-y-3">
@@ -132,7 +105,7 @@ export default function PaketCard({
                 state.effectiveStatus === "abgelaufen"
                   ? "text-red-600"
                   : state.effectiveStatus === "pausiert"
-                  ? "text-blue-600"
+                  ? "text-amber-600"
                   : "text-gray-700"
               }`}
             >
@@ -156,7 +129,7 @@ export default function PaketCard({
       </div>
 
       {upcomingAbsence && (
-        <div className="mt-4 flex items-start gap-2 rounded-xl bg-blue-50 px-3 py-2.5 text-xs text-blue-700">
+        <div className="mt-4 flex items-start gap-2 rounded-xl bg-navy-50 px-3 py-2.5 text-xs text-navy-900">
           <Clock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
           <span>
             Kommende Abwesenheit:{" "}

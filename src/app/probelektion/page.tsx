@@ -79,7 +79,7 @@ export default function ProbelektionPage() {
               ich innerhalb von 24 Stunden.
             </p>
             {selectedSlot && (
-              <p className="text-sm text-[#1C244B] font-600 bg-indigo-50 rounded-xl px-4 py-2 inline-block">
+              <p className="text-sm text-[#1C244B] font-600 bg-navy-50 rounded-xl px-4 py-2 inline-block">
                 Wunschtermin:{" "}
                 {new Date(selectedSlot.beginn).toLocaleDateString("de-CH", {
                   weekday: "long",
@@ -102,7 +102,7 @@ export default function ProbelektionPage() {
           <>
             {/* Title */}
             <div className="text-center space-y-2">
-              <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5 mb-2">
+              <div className="inline-flex items-center gap-2 bg-navy-50 border border-navy-100 rounded-full px-4 py-1.5 mb-2">
                 <span className="w-2 h-2 rounded-full bg-[#C9A84C] animate-pulse" />
                 <span className="text-[#1C244B] text-sm font-600">Kostenlos & unverbindlich</span>
               </div>
@@ -191,7 +191,7 @@ export default function ProbelektionPage() {
               )}
 
               {selectedSlot && (
-                <p className="text-xs text-[#1C244B] bg-indigo-50 rounded-xl px-3 py-2 font-500">
+                <p className="text-xs text-[#1C244B] bg-navy-50 rounded-xl px-3 py-2 font-500">
                   Gewählt:{" "}
                   {new Date(selectedSlot.beginn).toLocaleDateString("de-CH", {
                     weekday: "long",
