@@ -23,6 +23,8 @@ type Invoice = {
   pdf_url: string | null;
   access_token: string | null;
   appointment_id: string | null;
+  /** Serverseitig aus TWINT_BASE_URL gebauter Deep-Link (Spec §6). */
+  twint_link: string | null;
 };
 
 function fmtDate(iso: string): string {
@@ -60,12 +62,8 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
     ? `/api/invoices/${invoice.id}/pdf?token=${invoice.access_token}`
     : null;
 
-  // TWINT link: built from invoice_number + amount
-  const twintBase =
-    "https://go.twint.ch/1/e/tw?tw=acq.6YabPo0CSR6u1rxllpn-W0WWPnkfZMQnBMX_JvCpUKrIMZZJaBhIz5pjf-UeImB-.";
-  const twintLink = invoice.invoice_number
-    ? `${twintBase}&trxInfo=${encodeURIComponent(invoice.invoice_number ?? "")}&amount=${invoice.amount.toFixed(2)}`
-    : null;
+  // TWINT-Deep-Link wird serverseitig aus TWINT_BASE_URL gebaut und mitgeliefert.
+  const twintLink = invoice.twint_link;
 
   const handleMarkPaid = () => {
     setError(null);

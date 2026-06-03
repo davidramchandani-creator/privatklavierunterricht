@@ -8,6 +8,7 @@ import NaechsteTermine from "./_components/NaechsteTermine";
 import TerminBuchen from "./_components/TerminBuchen";
 import ZahlungenSection from "./_components/ZahlungenSection";
 import { canBuyNewPackage, type Package as Paket } from "@/lib/packages";
+import { buildTwintLink } from "@/lib/twint";
 
 export default async function SchuelerPortalPage() {
   const supabase = await createClient();
@@ -106,6 +107,16 @@ export default async function SchuelerPortalPage() {
   const openPaymentsCount =
     invoices?.filter((i) => i.status === "unpaid" || i.status === "rejected")
       .length ?? 0;
+
+  // TWINT-Deep-Link serverseitig aus TWINT_BASE_URL bauen (nie im Client
+  // hartcodieren). trxInfo = Rechnungsnummer als Zahlungsreferenz.
+  const invoicesForPortal = (invoices ?? []).map((inv) => ({
+    ...inv,
+    twint_link:
+      inv.method === "twint" && inv.invoice_number
+        ? buildTwintLink(Number(inv.amount), inv.invoice_number)
+        : null,
+  }));
 
   if (!profile) {
     return (
@@ -206,7 +217,7 @@ export default async function SchuelerPortalPage() {
         {/* Zahlungen */}
         <section id="zahlungen" className="space-y-5 scroll-mt-20">
           <SectionHeader title="Zahlungen" />
-          <ZahlungenSection invoices={invoices ?? []} />
+          <ZahlungenSection invoices={invoicesForPortal} />
         </section>
       </main>
     </div>
