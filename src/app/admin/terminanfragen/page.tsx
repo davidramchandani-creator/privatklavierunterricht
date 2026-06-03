@@ -1,8 +1,13 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { formatDateTime } from "@/lib/utils";
 import { CalendarClock, Repeat, Layers, CalendarSync, ArrowRight } from "lucide-react";
 import TerminanfrageActions from "./_components/TerminanfrageActions";
 import VerschiebungActions from "./_components/VerschiebungActions";
+import {
+  DeleteBookingRequestButton,
+  DeleteRescheduleRequestButton,
+} from "./_components/DeleteButton";
+import BulkDeleteButton from "./_components/BulkDeleteButton";
 import { StatusBadge } from "@/components/ui/status-badge";
 
 type BookingRequest = {
@@ -31,16 +36,16 @@ type RescheduleRequest = {
 };
 
 export default async function AdminTerminanfragenPage() {
-  const supabase = await createClient();
+  const admin = createAdminClient();
 
   const [{ data: requests }, { data: reschedules }] = await Promise.all([
-    supabase
+    admin
       .from("booking_requests")
       .select(
         "id, student_id, desired_start, status, lessons_count, interval_days, calculated_price, notes, erstellt_am, processed_at, profiles(vorname, nachname, email)"
       )
       .order("erstellt_am", { ascending: false }),
-    supabase
+    admin
       .from("reschedule_requests")
       .select(
         "id, student_id, original_start, proposed_start, reason, status, erstellt_am, profiles(vorname, nachname)"
@@ -50,12 +55,14 @@ export default async function AdminTerminanfragenPage() {
 
   const list = (requests ?? []) as unknown as BookingRequest[];
   const offen = list.filter((r) => r.status === "open");
-  const erledigt = list.filter((r) => r.status !== "open");
+  const erledigtBooking = list.filter((r) => r.status !== "open");
 
   const rescheduleList = (reschedules ?? []) as unknown as RescheduleRequest[];
   const offeneVerschiebungen = rescheduleList.filter((r) => r.status === "open");
+  const erledigtReschedule = rescheduleList.filter((r) => r.status !== "open");
 
   const offenGesamt = offen.length + offeneVerschiebungen.length;
+  const erledigtGesamt = erledigtBooking.length + erledigtReschedule.length;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -68,7 +75,7 @@ export default async function AdminTerminanfragenPage() {
         )}
       </div>
 
-      {list.length === 0 && offeneVerschiebungen.length === 0 && (
+      {list.length === 0 && rescheduleList.length === 0 && (
         <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center text-gray-400">
           <CalendarClock className="w-8 h-8 mx-auto mb-2 opacity-40" />
           <p className="text-sm">Noch keine Terminanfragen</p>
@@ -88,22 +95,28 @@ export default async function AdminTerminanfragenPage() {
 
       {offen.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-sm font-600 text-gray-500 uppercase tracking-wide">
-            Offen
-          </h2>
+          <h2 className="text-sm font-600 text-gray-500 uppercase tracking-wide">Offen</h2>
           {offen.map((r) => (
             <RequestCard key={r.id} req={r} />
           ))}
         </section>
       )}
 
-      {erledigt.length > 0 && (
+      {erledigtGesamt > 0 && (
         <section className="space-y-3">
-          <h2 className="text-sm font-600 text-gray-500 uppercase tracking-wide">
-            Erledigt
-          </h2>
-          {erledigt.map((r) => (
-            <RequestCard key={r.id} req={r} muted />
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-600 text-gray-500 uppercase tracking-wide">
+              Erledigt ({erledigtGesamt})
+            </h2>
+            <BulkDeleteButton count={erledigtGesamt} />
+          </div>
+
+          {erledigtBooking.map((r) => (
+            <RequestCard key={r.id} req={r} muted showDelete />
+          ))}
+
+          {erledigtReschedule.map((r) => (
+            <RescheduleCard key={r.id} req={r} muted showDelete />
           ))}
         </section>
       )}
@@ -111,7 +124,15 @@ export default async function AdminTerminanfragenPage() {
   );
 }
 
-function RequestCard({ req, muted = false }: { req: BookingRequest; muted?: boolean }) {
+function RequestCard({
+  req,
+  muted = false,
+  showDelete = false,
+}: {
+  req: BookingRequest;
+  muted?: boolean;
+  showDelete?: boolean;
+}) {
   const name = req.profiles
     ? `${req.profiles.vorname} ${req.profiles.nachname}`
     : "Unbekannt";
@@ -133,9 +154,13 @@ function RequestCard({ req, muted = false }: { req: BookingRequest; muted?: bool
             Angefragt am {formatDateTime(req.erstellt_am)}
           </p>
         </div>
-        {req.status === "open" && (
-          <TerminanfrageActions requestId={req.id} />
-        )}
+        <div className="flex items-center gap-2">
+          {req.status === "open" ? (
+            <TerminanfrageActions requestId={req.id} />
+          ) : showDelete ? (
+            <DeleteBookingRequestButton requestId={req.id} />
+          ) : null}
+        </div>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-2 text-sm">
@@ -172,36 +197,56 @@ function RequestCard({ req, muted = false }: { req: BookingRequest; muted?: bool
   );
 }
 
-function RescheduleCard({ req }: { req: RescheduleRequest }) {
+function RescheduleCard({
+  req,
+  muted = false,
+  showDelete = false,
+}: {
+  req: RescheduleRequest;
+  muted?: boolean;
+  showDelete?: boolean;
+}) {
   const name = req.profiles
     ? `${req.profiles.vorname} ${req.profiles.nachname}`
     : "Unbekannt";
 
   return (
-    <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5 space-y-3">
+    <div
+      className={`bg-white rounded-2xl border shadow-sm p-5 space-y-3 ${
+        muted
+          ? "border-gray-100 opacity-70"
+          : "border-amber-200"
+      }`}
+    >
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
             <p className="font-700 text-gray-900">{name}</p>
-            <span className="text-xs font-500 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-              Verschiebung
-            </span>
+            {muted ? (
+              <StatusBadge kind="request" status={req.status} />
+            ) : (
+              <span className="text-xs font-500 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                Verschiebung
+              </span>
+            )}
           </div>
           <p className="text-xs text-gray-400 mt-0.5">
             Angefragt am {formatDateTime(req.erstellt_am)}
           </p>
         </div>
-        <VerschiebungActions rescheduleId={req.id} />
+        <div className="flex items-center gap-2">
+          {req.status === "open" ? (
+            <VerschiebungActions rescheduleId={req.id} />
+          ) : showDelete ? (
+            <DeleteRescheduleRequestButton rescheduleId={req.id} />
+          ) : null}
+        </div>
       </div>
 
       <div className="flex items-center gap-3 text-sm flex-wrap bg-gray-50 rounded-xl px-3 py-2.5">
-        <span className="text-gray-500 line-through">
-          {formatDateTime(req.original_start)}
-        </span>
+        <span className="text-gray-500 line-through">{formatDateTime(req.original_start)}</span>
         <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-        <span className="text-[#1C244B] font-600">
-          {formatDateTime(req.proposed_start)} Uhr
-        </span>
+        <span className="text-[#1C244B] font-600">{formatDateTime(req.proposed_start)} Uhr</span>
       </div>
 
       {req.reason && (

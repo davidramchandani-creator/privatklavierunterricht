@@ -1368,6 +1368,103 @@ export async function resendPaymentEmail(invoiceId: string) {
   return { success: true };
 }
 
+// ── Aufräumen / Löschen ───────────────────────────────────────────────────────
+
+/** Erledigte Buchungsanfrage (nicht open) endgültig löschen. */
+export async function deleteBookingRequest(requestId: string) {
+  const admin = createAdminClient();
+  const { data: req } = await admin
+    .from("booking_requests")
+    .select("status")
+    .eq("id", requestId)
+    .single();
+  if (!req) return { error: "Nicht gefunden." };
+  if (req.status === "open") return { error: "Offene Anfragen können nicht gelöscht werden." };
+  const { error } = await admin.from("booking_requests").delete().eq("id", requestId);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/terminanfragen");
+  return { success: true };
+}
+
+/** Erledigte Verschiebungsanfrage (nicht open) endgültig löschen. */
+export async function deleteRescheduleRequest(rescheduleId: string) {
+  const admin = createAdminClient();
+  const { data: rr } = await admin
+    .from("reschedule_requests")
+    .select("status")
+    .eq("id", rescheduleId)
+    .single();
+  if (!rr) return { error: "Nicht gefunden." };
+  if (rr.status === "open") return { error: "Offene Anfragen können nicht gelöscht werden." };
+  const { error } = await admin.from("reschedule_requests").delete().eq("id", rescheduleId);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/terminanfragen");
+  return { success: true };
+}
+
+/** Alle erledigten Buchungs- und Verschiebungsanfragen auf einmal löschen. */
+export async function bulkDeleteProcessedRequests() {
+  const admin = createAdminClient();
+  await Promise.all([
+    admin.from("booking_requests").delete().neq("status", "open"),
+    admin.from("reschedule_requests").delete().neq("status", "open"),
+  ]);
+  revalidatePath("/admin/terminanfragen");
+  return { success: true };
+}
+
+/** Einzelne archivierte/stornierte Rechnung endgültig löschen. */
+export async function hardDeleteInvoice(invoiceId: string) {
+  const admin = createAdminClient();
+  const { data: inv } = await admin
+    .from("invoices")
+    .select("status")
+    .eq("id", invoiceId)
+    .single();
+  if (!inv) return { error: "Nicht gefunden." };
+  if (!["archived", "cancelled"].includes(inv.status)) {
+    return { error: "Nur archivierte oder stornierte Rechnungen können gelöscht werden." };
+  }
+  const { error } = await admin.from("invoices").delete().eq("id", invoiceId);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/zahlungen");
+  return { success: true };
+}
+
+/** Alle archivierten Rechnungen auf einmal löschen (Papierkorb leeren). */
+export async function deleteArchivedInvoices() {
+  const admin = createAdminClient();
+  const { error } = await admin.from("invoices").delete().eq("status", "archived");
+  if (error) return { error: error.message };
+  revalidatePath("/admin/zahlungen");
+  return { success: true };
+}
+
+/** Sendet eine Test-E-Mail an ADMIN_EMAIL zur Überprüfung der Resend-Konfiguration. */
+export async function sendTestEmail() {
+  const to = process.env.ADMIN_EMAIL;
+  if (!to) {
+    return { error: "Umgebungsvariable ADMIN_EMAIL ist nicht gesetzt." };
+  }
+  const { sendEmail } = await import("@/lib/email-sender");
+  try {
+    await sendEmail({
+      to,
+      subject: "✓ Test-E-Mail – Klavierunterricht System",
+      html: `<div style="font-family:sans-serif;padding:24px;background:#f3f4f6;">
+        <div style="background:#fff;border-radius:8px;padding:24px;max-width:480px;">
+          <h2 style="color:#1C244B;margin-top:0;">Test-E-Mail</h2>
+          <p>Der E-Mail-Versand über Resend funktioniert korrekt.</p>
+          <p style="color:#6b7280;font-size:13px;">Zeitstempel: ${new Date().toLocaleString("de-CH", { timeZone: "Europe/Zurich" })}</p>
+        </div>
+      </div>`,
+    });
+    return { success: true as const, to };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 // ── Google Calendar (Meilenstein 12) ─────────────────────────────────────────
 
 /** Testet die Verbindung zum Google-Kalender (Einstellungsseite). */

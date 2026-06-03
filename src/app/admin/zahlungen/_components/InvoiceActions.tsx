@@ -1,12 +1,13 @@
 "use client";
 
 import { useTransition, useState } from "react";
-import { Loader2, CheckCircle2, XCircle, Archive, Mail, ChevronDown } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Archive, Mail, ChevronDown, Trash2 } from "lucide-react";
 import {
   confirmInvoicePayment,
   rejectInvoicePayment,
   archiveInvoice,
   resendPaymentEmail,
+  hardDeleteInvoice,
 } from "@/app/admin/actions";
 
 type InvoiceActionsProps = {
@@ -53,6 +54,18 @@ export default function InvoiceActions({ invoiceId, status }: InvoiceActionsProp
     setError(null);
     startTransition(async () => {
       const res = await archiveInvoice(invoiceId);
+      if ("error" in res && res.error) {
+        setError(res.error);
+      } else {
+        setDone(true);
+      }
+    });
+  };
+
+  const handleDelete = () => {
+    setError(null);
+    startTransition(async () => {
+      const res = await hardDeleteInvoice(invoiceId);
       if ("error" in res && res.error) {
         setError(res.error);
       } else {
@@ -123,24 +136,38 @@ export default function InvoiceActions({ invoiceId, status }: InvoiceActionsProp
       )}
 
       <div className="flex gap-1.5">
-        <button
-          onClick={handleResend}
-          disabled={isPending}
-          title="E-Mail erneut senden"
-          className="inline-flex items-center gap-1 text-xs font-500 text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-2 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-        >
-          <Mail className="w-3 h-3" />
-          Mail
-        </button>
-        <button
-          onClick={handleArchive}
-          disabled={isPending}
-          title="Archivieren"
-          className="inline-flex items-center gap-1 text-xs font-500 text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-2 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-        >
-          <Archive className="w-3 h-3" />
-          Archiv
-        </button>
+        {(status === "archived" || status === "cancelled") ? (
+          <button
+            onClick={handleDelete}
+            disabled={isPending}
+            title="Endgültig löschen"
+            className="inline-flex items-center gap-1 text-xs font-500 text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+            Löschen
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={handleResend}
+              disabled={isPending}
+              title="E-Mail erneut senden"
+              className="inline-flex items-center gap-1 text-xs font-500 text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-2 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <Mail className="w-3 h-3" />
+              Mail
+            </button>
+            <button
+              onClick={handleArchive}
+              disabled={isPending}
+              title="Archivieren"
+              className="inline-flex items-center gap-1 text-xs font-500 text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-2 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <Archive className="w-3 h-3" />
+              Archiv
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
