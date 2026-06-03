@@ -8,6 +8,7 @@ import NaechsteTermine from "./_components/NaechsteTermine";
 import TerminBuchen from "./_components/TerminBuchen";
 import ZahlungenSection from "./_components/ZahlungenSection";
 import ProposalCard from "./_components/ProposalCard";
+import PortalTabs from "./_components/PortalTabs";
 import { canBuyNewPackage, type Package as Paket } from "@/lib/packages";
 import { buildTwintLink } from "@/lib/twint";
 
@@ -150,84 +151,92 @@ export default async function SchuelerPortalPage() {
     );
   }
 
+  const uebersicht = (
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <StatCard
+          label="Nächste Lektion"
+          value={
+            nextLessonAt
+              ? new Intl.DateTimeFormat("de-CH", {
+                  timeZone: "Europe/Zurich",
+                  weekday: "short",
+                  day: "numeric",
+                  month: "short",
+                }).format(new Date(nextLessonAt))
+              : "—"
+          }
+          hint={nextLessonAt ? "geplant" : "keine geplant"}
+        />
+        <StatCard
+          label="Verbleibende Lektionen"
+          value={remainingLessons != null ? String(remainingLessons) : "0"}
+          hint={remainingLessons != null ? "im aktiven Paket" : "kein aktives Paket"}
+        />
+        <StatCard
+          label="Offene Zahlungen"
+          value={openPaymentsCount > 0 ? String(openPaymentsCount) : "0"}
+          hint={openPaymentsCount > 0 ? "zu begleichen" : "alles bezahlt"}
+          accent={openPaymentsCount > 0}
+        />
+      </div>
+
+      <div className="space-y-5">
+        <SectionHeader title="Mein Paket" />
+        <PaketCard
+          paket={aktivesPackage}
+          lessonsUsed={lessonsUsed}
+          upcomingAbsence={kommendeAbwesenheit}
+        />
+        <div className="pt-1">
+          <p className="text-[13px] font-600 text-gray-400 mb-2.5">Neues Paket buchen</p>
+          <NeuesPaket prices={prices} canBuy={kannNeuesPaket} />
+        </div>
+      </div>
+    </div>
+  );
+
+  const termine = (
+    <div className="space-y-5">
+      <ProposalCard proposals={offeneProposals ?? []} />
+      <NaechsteTermine
+        appointments={naechsteAppointments ?? []}
+        requests={offeneAnfragen ?? []}
+        reschedules={offeneVerschiebungen ?? []}
+      />
+      {aktivesPackage && canBook && (
+        <div className="pt-1">
+          <TerminBuchen />
+        </div>
+      )}
+    </div>
+  );
+
+  const zahlungen = (
+    <div className="space-y-5">
+      <ZahlungenSection invoices={invoicesForPortal} />
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-white">
       <PortalNav vorname={vorname} />
 
-      <main className="max-w-4xl mx-auto px-5 py-10 sm:py-14 space-y-14">
-        {/* Übersicht: Begrüßung + Stats */}
-        <section id="uebersicht" className="space-y-7 scroll-mt-20">
-          <div>
-            <p className="text-[13px] font-500 text-gray-400">Schön, dass du da bist</p>
-            <h1 className="mt-1 text-3xl sm:text-4xl font-700 text-navy-900 tracking-tight">
-              Hallo, {vorname}
-            </h1>
-          </div>
+      <main className="max-w-4xl mx-auto px-5 py-8 sm:py-10">
+        <div className="mb-6">
+          <p className="text-[13px] font-500 text-gray-400">Schön, dass du da bist</p>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-700 text-navy-900 tracking-tight">
+            Hallo, {vorname}
+          </h1>
+        </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <StatCard
-              label="Nächste Lektion"
-              value={
-                nextLessonAt
-                  ? new Intl.DateTimeFormat("de-CH", {
-                      timeZone: "Europe/Zurich",
-                      weekday: "short",
-                      day: "numeric",
-                      month: "short",
-                    }).format(new Date(nextLessonAt))
-                  : "—"
-              }
-              hint={nextLessonAt ? "geplant" : "keine geplant"}
-            />
-            <StatCard
-              label="Verbleibende Lektionen"
-              value={remainingLessons != null ? String(remainingLessons) : "0"}
-              hint={remainingLessons != null ? "im aktiven Paket" : "kein aktives Paket"}
-            />
-            <StatCard
-              label="Offene Zahlungen"
-              value={openPaymentsCount > 0 ? String(openPaymentsCount) : "0"}
-              hint={openPaymentsCount > 0 ? "zu begleichen" : "alles bezahlt"}
-              accent={openPaymentsCount > 0}
-            />
-          </div>
-        </section>
-
-        {/* Paket */}
-        <section id="paket" className="space-y-5 scroll-mt-20">
-          <SectionHeader title="Mein Paket" />
-          <PaketCard
-            paket={aktivesPackage}
-            lessonsUsed={lessonsUsed}
-            upcomingAbsence={kommendeAbwesenheit}
-          />
-          <div className="pt-1">
-            <p className="text-[13px] font-600 text-gray-400 mb-2.5">Neues Paket buchen</p>
-            <NeuesPaket prices={prices} canBuy={kannNeuesPaket} />
-          </div>
-        </section>
-
-        {/* Termine */}
-        <section id="termine" className="space-y-5 scroll-mt-20">
-          <SectionHeader title="Nächste Lektionen" />
-          <ProposalCard proposals={offeneProposals ?? []} />
-          <NaechsteTermine
-            appointments={naechsteAppointments ?? []}
-            requests={offeneAnfragen ?? []}
-            reschedules={offeneVerschiebungen ?? []}
-          />
-          {aktivesPackage && canBook && (
-            <div className="pt-1">
-              <TerminBuchen />
-            </div>
-          )}
-        </section>
-
-        {/* Zahlungen */}
-        <section id="zahlungen" className="space-y-5 scroll-mt-20">
-          <SectionHeader title="Zahlungen" />
-          <ZahlungenSection invoices={invoicesForPortal} />
-        </section>
+        <PortalTabs
+          uebersicht={uebersicht}
+          termine={termine}
+          zahlungen={zahlungen}
+          termineBadge={offeneProposals?.length ?? 0}
+          zahlungenBadge={openPaymentsCount}
+        />
       </main>
     </div>
   );
