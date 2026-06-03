@@ -25,7 +25,7 @@ const vorteile = [
 
 export default function Vorteile() {
   return (
-    <section className="py-24 bg-indigo-50/60">
+    <section className="py-24 bg-navy-50/60">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <p className="text-[#C9A84C] font-600 text-sm uppercase tracking-widest mb-3">
@@ -43,10 +43,10 @@ export default function Vorteile() {
           {vorteile.map((v, i) => (
             <div
               key={v.titel}
-              className="group bg-white rounded-2xl p-6 border border-indigo-100 hover:border-[#1C244B]/30 hover:shadow-lg hover:shadow-indigo-100 transition-all duration-300 hover:-translate-y-1 opacity-0 animate-fade-in"
+              className="group bg-white rounded-2xl p-6 border border-navy-100 hover:border-[#1C244B]/30 hover:shadow-lg hover:shadow-navy-100 transition-all duration-300 hover:-translate-y-1 opacity-0 animate-fade-in"
               style={{ animationDelay: `${i * 100}ms` }}
             >
-              <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center mb-4 group-hover:bg-[#1C244B] transition-colors duration-300">
+              <div className="w-11 h-11 rounded-xl bg-navy-50 flex items-center justify-center mb-4 group-hover:bg-[#1C244B] transition-colors duration-300">
                 <v.icon className="w-5 h-5 text-[#1C244B] group-hover:text-white transition-colors duration-300" />
               </div>
               <h3 className="font-700 text-gray-900 mb-2">{v.titel}</h3>

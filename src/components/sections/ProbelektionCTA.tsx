@@ -6,7 +6,7 @@ export default function ProbelektionCTA() {
   return (
     <section id="probelektion" className="py-24 relative overflow-hidden">
       {/* Gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1C244B] to-[#4F46E5]" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#1C244B] to-[#3a4488]" />
       <div
         className="absolute inset-0 opacity-[0.06]"
         style={{

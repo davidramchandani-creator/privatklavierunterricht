@@ -38,6 +38,42 @@
   --font-sans: "Plus Jakarta Sans", sans-serif;
 }
 
+/* ── Design-System: Markenpalette & Status-Farben (Spec §1) ───────────────── */
+@theme {
+  /* Primär / Navy */
+  --color-navy-50: #f0f1f8;
+  --color-navy-100: #e1e3f1;
+  --color-navy-200: #c3c7e3;
+  --color-navy-300: #a5abd5;
+  --color-navy-400: #878fc7;
+  --color-navy-500: #6973b9;
+  --color-navy-600: #4b57a7;
+  --color-navy-700: #3a4488;
+  --color-navy-800: #2a3169;
+  --color-navy-900: #1c244b;
+  --color-navy: #1c244b;
+
+  /* Akzent / Gold */
+  --color-gold-50: #fdf8ec;
+  --color-gold-100: #fbf1d9;
+  --color-gold-200: #f7e3b3;
+  --color-gold-300: #f3d58d;
+  --color-gold-400: #efc767;
+  --color-gold-500: #c9a84c;
+  --color-gold-600: #b8943a;
+  --color-gold-700: #967828;
+  --color-gold: #c9a84c;
+
+  /* Heller Flächen-Hintergrund */
+  --color-surface: #f3f5f8;
+
+  /* Semantische Status-Farben */
+  --color-status-paid: #10b981;   /* Erfolg / Bezahlt */
+  --color-status-pending: #f59e0b; /* Warnung / Prüfung */
+  --color-status-open: #f87171;    /* Offen / Abgelehnt */
+  --color-status-error: #dc2626;   /* Fehler */
+}
+
 * {
   box-sizing: border-box;
   border-color: hsl(var(--border));

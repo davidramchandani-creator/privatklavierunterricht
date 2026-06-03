@@ -15,7 +15,7 @@ export default function Hero() {
       />
 
       {/* Indigo gradient blob top-right */}
-      <div className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-indigo-100 to-indigo-50 blur-3xl opacity-60 pointer-events-none" />
+      <div className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-navy-100 to-navy-50 blur-3xl opacity-60 pointer-events-none" />
 
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-0">
         <div className="grid md:grid-cols-2 gap-12 lg:gap-20 items-center min-h-screen md:min-h-[auto] md:py-32">
@@ -23,7 +23,7 @@ export default function Hero() {
           {/* Left: Text content */}
           <div className="space-y-8 opacity-0 animate-fade-in">
             {/* Overline badge */}
-            <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5">
+            <div className="inline-flex items-center gap-2 bg-navy-50 border border-navy-100 rounded-full px-4 py-1.5">
               <span className="w-2 h-2 rounded-full bg-[#C9A84C] animate-pulse" />
               <span className="text-[#1C244B] text-sm font-600">
                 Klavierunterricht in Neftenbach & Umgebung
@@ -69,7 +69,7 @@ export default function Hero() {
           <div className="relative opacity-0 animate-fade-in delay-100 flex justify-center md:justify-end">
             <div className="relative w-full max-w-sm">
               {/* Main card */}
-              <div className="rounded-3xl bg-gradient-to-br from-[#1C244B] to-[#4F46E5] p-8 shadow-2xl shadow-indigo-200">
+              <div className="rounded-3xl bg-gradient-to-br from-[#1C244B] to-[#3a4488] p-8 shadow-2xl shadow-navy-200">
                 {/* Piano keys motif */}
                 <div className="flex gap-1 mb-8 opacity-30">
                   {[1,2,3,4,5,6,7].map((i) => (
