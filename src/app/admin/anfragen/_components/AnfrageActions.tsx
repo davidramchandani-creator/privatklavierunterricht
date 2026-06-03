@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { updateAnfrageStatus } from "../../actions";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 export default function AnfrageActions({
   id,
@@ -38,15 +39,7 @@ export default function AnfrageActions({
           </button>
         </>
       ) : (
-        <span
-          className={`text-xs font-500 px-2.5 py-1 rounded-full ${
-            status === "bearbeitet"
-              ? "bg-emerald-50 text-emerald-700"
-              : "bg-red-50 text-red-600"
-          }`}
-        >
-          {status === "bearbeitet" ? "Bearbeitet" : "Abgesagt"}
-        </span>
+        <StatusBadge kind="inquiry" status={status} />
       )}
     </div>
   );

@@ -69,12 +69,20 @@ const PACKAGE_STATE: Record<string, Entry> = {
   storniert: { label: "Storniert", tone: "neutral" },
 };
 
+/** Probelektions-Anfragen (öffentliches Lead-Formular, Tabelle `anfragen`). */
+const INQUIRY: Record<string, Entry> = {
+  neu: { label: "Neu", tone: "pending" },
+  bearbeitet: { label: "Bearbeitet", tone: "success" },
+  abgesagt: { label: "Abgesagt", tone: "neutral" },
+};
+
 const MAPS = {
   payment: PAYMENT,
   appointment: APPOINTMENT,
   package: PACKAGE,
   packageState: PACKAGE_STATE,
   request: REQUEST,
+  inquiry: INQUIRY,
 } as const;
 
 export type StatusKind = keyof typeof MAPS;
