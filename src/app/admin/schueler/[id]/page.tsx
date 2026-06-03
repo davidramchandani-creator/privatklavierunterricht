@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
 import { computePackageState, canCancelPackage, PACKAGE_LABELS, type Package } from "@/lib/packages";
 import SchuelerDetailActions, { InvoiceAction, PreiseForm, PackageFormNew, DirektBuchung, AppointmentActions, PackageTimerActions } from "./_components/SchuelerDetailActions";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 export default async function SchuelerDetailPage({
   params,
@@ -56,37 +57,6 @@ export default async function SchuelerDetailPage({
     travel_surcharge: Number(profile.travel_surcharge ?? 0),
     buffer_time_minutes: Number(profile.buffer_time_minutes ?? 15),
     payment_method: (profile.payment_method as string) ?? "qr",
-  };
-
-  const packageStatusColors: Record<string, string> = {
-    aktiv: "bg-emerald-50 text-emerald-700",
-    pausiert: "bg-blue-50 text-blue-700",
-    aufgebraucht: "bg-gray-100 text-gray-500",
-    abgelaufen: "bg-red-50 text-red-600",
-    storniert: "bg-red-50 text-red-600",
-    kein_paket: "bg-amber-50 text-amber-700",
-  };
-
-  const appointmentStatusMap: Record<string, { label: string; color: string }> = {
-    booked: { label: "Bestätigt", color: "bg-blue-50 text-blue-700" },
-    completed: { label: "Abgeschlossen", color: "bg-emerald-50 text-emerald-700" },
-    cancelled: { label: "Storniert", color: "bg-red-50 text-red-600" },
-    no_show: { label: "Nicht erschienen", color: "bg-gray-100 text-gray-500" },
-  };
-
-  const invoiceStatusColors: Record<string, string> = {
-    unpaid: "bg-amber-50 text-amber-700",
-    pending_confirmation: "bg-blue-50 text-blue-700",
-    paid: "bg-emerald-50 text-emerald-700",
-    rejected: "bg-red-50 text-red-600",
-    archived: "bg-gray-100 text-gray-500",
-  };
-  const invoiceStatusLabels: Record<string, string> = {
-    unpaid: "Offen",
-    pending_confirmation: "Prüfung",
-    paid: "Bezahlt",
-    rejected: "Abgelehnt",
-    archived: "Archiviert",
   };
 
   return (
@@ -207,13 +177,7 @@ export default async function SchuelerDetailPage({
                       {pkg.expires_at ? formatDate(pkg.expires_at) : "—"}
                     </td>
                     <td className="py-3">
-                      <span
-                        className={`text-xs font-500 px-2.5 py-0.5 rounded-full ${
-                          packageStatusColors[state.effectiveStatus] ?? "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        {state.effectiveStatus}
-                      </span>
+                      <StatusBadge kind="packageState" status={state.effectiveStatus} />
                     </td>
                     <td className="py-3">
                       {pkg.status === "active" && (
@@ -273,27 +237,17 @@ export default async function SchuelerDetailPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {appointments.map((a) => {
-                const meta = appointmentStatusMap[a.status] ?? {
-                  label: a.status,
-                  color: "bg-gray-100 text-gray-600",
-                };
-                return (
-                  <tr key={a.id}>
-                    <td className="py-3 text-sm text-gray-900">{formatDateTime(a.start_at)}</td>
-                    <td className="py-3">
-                      <span
-                        className={`text-xs font-500 px-2.5 py-0.5 rounded-full ${meta.color}`}
-                      >
-                        {meta.label}
-                      </span>
-                    </td>
-                    <td className="py-3">
-                      <AppointmentActions appointmentId={a.id} schuelerId={id} status={a.status} />
-                    </td>
-                  </tr>
-                );
-              })}
+              {appointments.map((a) => (
+                <tr key={a.id}>
+                  <td className="py-3 text-sm text-gray-900">{formatDateTime(a.start_at)}</td>
+                  <td className="py-3">
+                    <StatusBadge kind="appointment" status={a.status} />
+                  </td>
+                  <td className="py-3">
+                    <AppointmentActions appointmentId={a.id} schuelerId={id} status={a.status} />
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         )}
@@ -328,13 +282,7 @@ export default async function SchuelerDetailPage({
                     {inv.lesson_date ? formatDate(inv.lesson_date) : inv.created_at ? formatDate(inv.created_at) : "—"}
                   </td>
                   <td className="py-3">
-                    <span
-                      className={`text-xs font-500 px-2.5 py-0.5 rounded-full ${
-                        invoiceStatusColors[inv.status] ?? "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {invoiceStatusLabels[inv.status] ?? inv.status}
-                    </span>
+                    <StatusBadge kind="payment" status={inv.status} />
                   </td>
                   <td className="py-3">
                     {(inv.status === "unpaid" || inv.status === "pending_confirmation") && (

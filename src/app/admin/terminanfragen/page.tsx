@@ -3,6 +3,7 @@ import { formatDateTime } from "@/lib/utils";
 import { CalendarClock, Repeat, Layers, CalendarSync, ArrowRight } from "lucide-react";
 import TerminanfrageActions from "./_components/TerminanfrageActions";
 import VerschiebungActions from "./_components/VerschiebungActions";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 type BookingRequest = {
   id: string;
@@ -27,13 +28,6 @@ type RescheduleRequest = {
   status: string;
   erstellt_am: string;
   profiles: { vorname: string; nachname: string } | null;
-};
-
-const STATUS_LABEL: Record<string, { label: string; className: string }> = {
-  open: { label: "Offen", className: "bg-amber-100 text-amber-700" },
-  accepted: { label: "Angenommen", className: "bg-emerald-50 text-emerald-700" },
-  rejected: { label: "Abgelehnt", className: "bg-red-50 text-red-600" },
-  withdrawn: { label: "Zurückgezogen", className: "bg-gray-100 text-gray-500" },
 };
 
 export default async function AdminTerminanfragenPage() {
@@ -118,10 +112,6 @@ export default async function AdminTerminanfragenPage() {
 }
 
 function RequestCard({ req, muted = false }: { req: BookingRequest; muted?: boolean }) {
-  const status = STATUS_LABEL[req.status] ?? {
-    label: req.status,
-    className: "bg-gray-100 text-gray-600",
-  };
   const name = req.profiles
     ? `${req.profiles.vorname} ${req.profiles.nachname}`
     : "Unbekannt";
@@ -137,11 +127,7 @@ function RequestCard({ req, muted = false }: { req: BookingRequest; muted?: bool
         <div>
           <div className="flex items-center gap-2">
             <p className="font-700 text-gray-900">{name}</p>
-            <span
-              className={`text-xs font-500 px-2 py-0.5 rounded-full ${status.className}`}
-            >
-              {status.label}
-            </span>
+            <StatusBadge kind="request" status={req.status} />
           </div>
           <p className="text-xs text-gray-400 mt-0.5">
             Angefragt am {formatDateTime(req.erstellt_am)}
