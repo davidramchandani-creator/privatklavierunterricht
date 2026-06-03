@@ -11,6 +11,7 @@ import {
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
 import { enqueueEmail } from "@/lib/emails-outbox";
+import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   type Package as Paket,
   PACKAGE_LABELS,
@@ -29,138 +30,6 @@ import {
   testCalendarConnection,
   fullSyncFutureAppointments,
 } from "@/lib/google-calendar";
-
-/**
- * Bucht (ggf. als Serie) Termine für einen Schüler im neuen Schema.
- * Validiert transaktional gegen die Buchungs-Engine; 24h-Vorlauf wird als
- * Admin-Aktion übersprungen. Wird von Direktbuchung & Anfrage-Annahme genutzt.
- */
-async function bookSeriesForStudent(
-  admin: SupabaseClient,
-  studentUserId: string,
-  startIso: string,
-  lessonsCount: number,
-  intervalDays: number,
-  source: "direct" | "public_request" | "admin_proposal" | "reschedule"
-): Promise<{ appointmentIds: string[] } | { error: string }> {
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("buffer_time_minutes, email, vorname, nachname, adresse, payment_method")
-    .eq("id", studentUserId)
-    .single();
-  const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
-
-  const { data: pkgs } = await admin
-    .from("packages")
-    .select("*")
-    .eq("student_id", studentUserId)
-    .eq("status", "active");
-  const pkg = (pkgs as Paket[] | null)?.find((p) => !canBuyNewPackage(p)) ?? null;
-  if (!pkg) return { error: "Der Schüler hat kein aktives Paket." };
-
-  const state = computePackageState(pkg);
-  if (state.lessonsRemaining < lessonsCount) {
-    return {
-      error: `Das Paket hat nur noch ${state.lessonsRemaining} Lektion(en), benötigt werden ${lessonsCount}.`,
-    };
-  }
-
-  const desiredStart = new Date(startIso);
-  const now = new Date();
-  const starts = generateSeriesStarts(desiredStart, lessonsCount, intervalDays);
-  const seriesEnd = new Date(starts[starts.length - 1].getTime() + 3600000);
-
-  const ctx = await loadAvailabilityContext(
-    admin,
-    studentUserId,
-    bufferMin,
-    desiredStart,
-    seriesEnd,
-    now,
-    { skipLeadTime: true }
-  );
-  const validation = validateSeries(desiredStart, lessonsCount, intervalDays, ctx);
-  if (!validation.ok) {
-    return {
-      error:
-        "Mindestens ein Termin ist nicht verfügbar (Kollision/Abwesenheit/Zeitblock).",
-    };
-  }
-
-  const seriesId = lessonsCount > 1 ? crypto.randomUUID() : null;
-  const rows = slotsFromStarts(starts).map((s) => ({
-    student_id: studentUserId,
-    package_id: pkg.id,
-    start_at: s.start.toISOString(),
-    end_at: s.end.toISOString(),
-    status: "booked",
-    source,
-    series_id: seriesId,
-  }));
-
-  const { data: created, error } = await admin
-    .from("appointments")
-    .insert(rows)
-    .select("id");
-  if (error || !created) return { error: "Termine konnten nicht erstellt werden." };
-
-  // Für jeden Termin: Rechnung anlegen + Zahlungsmail planen
-  for (const appt of rows) {
-    const createdAppt = created[rows.indexOf(appt)];
-    if (!createdAppt) continue;
-
-    // Zahlungsart des Schülers hat Vorrang, dann Paket, dann QR als Default.
-    const paymentMethod: "twint" | "qr" =
-      ((profile?.payment_method as "twint" | "qr" | null) ??
-        (pkg.payment_method as "twint" | "qr" | null)) ??
-      "qr";
-    const amount = Number(pkg.price_per_lesson ?? 0);
-    const studentName = profile ? `${profile.vorname} ${profile.nachname}` : "Schüler";
-
-    const { data: inv } = await admin
-      .from("invoices")
-      .insert({
-        student_id: studentUserId,
-        appointment_id: createdAppt.id,
-        amount,
-        payer_name: studentName,
-        payer_address: profile?.adresse ?? null,
-        status: "unpaid",
-        method: paymentMethod,
-        lesson_date: appt.start_at,
-      })
-      .select("id, invoice_number, access_token")
-      .maybeSingle();
-
-    if (inv && profile?.email) {
-      const sendAt = new Date(appt.end_at);
-      const basePayload = {
-        to: profile.email,
-        student_name: studentName,
-        student_id: studentUserId,
-        lesson_date: appt.start_at,
-        amount,
-        invoice_number: inv.invoice_number,
-        invoice_id: inv.id,
-      };
-      if (paymentMethod === "qr") {
-        await enqueueEmail(admin, "qr_invoice", basePayload, sendAt);
-      } else {
-        await enqueueEmail(admin, "twint_payment_request", {
-          ...basePayload,
-          twint_link: buildTwintLink(amount, inv.invoice_number ?? inv.id),
-        }, sendAt);
-      }
-    }
-  }
-
-  // Google Calendar Sync (one-way, fehlertolerant)
-  for (const c of created) {
-    await syncAppointmentToCalendar(admin, c.id);
-  }
-
-  return { appointmentIds: created.map((c) => c.id) };
-}
 
 // ── Schüler ──────────────────────────────────────────────────────────────────
 
@@ -717,6 +586,89 @@ export async function createDirectBooking(formData: FormData) {
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
+  return { success: true };
+}
+
+/**
+ * Admin schlägt dem Schüler einen Termin/Serie vor (Spec §4, Flow 2).
+ * Validiert die Slots gegen die Engine (24h-Vorlauf als Admin übersprungen),
+ * legt einen `proposals`-Eintrag (status open) an und mailt dem Schüler. Erst
+ * bei dessen Annahme im Portal werden Termine gebucht.
+ */
+export async function createProposal(formData: FormData) {
+  const admin = await createAdminClient();
+
+  const studentId = formData.get("student_user_id") as string;
+  const schuelerId = formData.get("schueler_id") as string;
+  const startIso = formData.get("start") as string;
+  const lessonsCount = parseInt(formData.get("lessons_count") as string) || 1;
+  const intervalDays = parseInt(formData.get("interval_days") as string) || 7;
+
+  if (!studentId || !startIso) {
+    return { error: "Schüler und Startzeit erforderlich." };
+  }
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("buffer_time_minutes, email, vorname, nachname")
+    .eq("id", studentId)
+    .maybeSingle();
+  const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
+
+  // Slots gegen die Engine prüfen (Admin → kein 24h-Vorlauf).
+  const desiredStart = new Date(startIso);
+  const now = new Date();
+  const starts = generateSeriesStarts(desiredStart, lessonsCount, intervalDays);
+  const seriesEnd = new Date(starts[starts.length - 1].getTime() + 3600000);
+  const ctx = await loadAvailabilityContext(
+    admin,
+    studentId,
+    bufferMin,
+    desiredStart,
+    seriesEnd,
+    now,
+    { skipLeadTime: true }
+  );
+  const validation = validateSeries(desiredStart, lessonsCount, intervalDays, ctx);
+  if (!validation.ok) {
+    return {
+      error:
+        "Mindestens ein vorgeschlagener Termin ist nicht verfügbar (Kollision/Abwesenheit/Zeitblock).",
+    };
+  }
+
+  const { error } = await admin.from("proposals").insert({
+    student_id: studentId,
+    proposed_start: desiredStart.toISOString(),
+    status: "open",
+    lessons_count: lessonsCount,
+    interval_days: intervalDays,
+  });
+  if (error) return { error: "Vorschlag konnte nicht gespeichert werden." };
+
+  if (profile?.email) {
+    await enqueueEmail(admin, "proposal_new", {
+      student_id: studentId,
+      proposed_start: desiredStart.toISOString(),
+      lessons_count: lessonsCount,
+      interval_days: intervalDays,
+    });
+  }
+
+  revalidatePath(`/admin/schueler/${schuelerId}`);
+  return { success: true };
+}
+
+/** Admin zieht einen offenen Terminvorschlag zurück. */
+export async function withdrawProposal(proposalId: string, schuelerId: string) {
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("proposals")
+    .update({ status: "rejected" })
+    .eq("id", proposalId)
+    .eq("status", "open");
+  if (error) return { error: "Vorschlag konnte nicht zurückgezogen werden." };
+  revalidatePath(`/admin/schueler/${schuelerId}`);
   return { success: true };
 }
 

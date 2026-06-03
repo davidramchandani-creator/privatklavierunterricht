@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
 import { computePackageState, canCancelPackage, PACKAGE_LABELS, type Package } from "@/lib/packages";
-import SchuelerDetailActions, { InvoiceAction, PreiseForm, PackageFormNew, DirektBuchung, AppointmentActions, PackageTimerActions } from "./_components/SchuelerDetailActions";
+import SchuelerDetailActions, { InvoiceAction, PreiseForm, PackageFormNew, DirektBuchung, ProposalForm, ProposalWithdraw, AppointmentActions, PackageTimerActions } from "./_components/SchuelerDetailActions";
 import { StatusBadge } from "@/components/ui/status-badge";
 
 export default async function SchuelerDetailPage({
@@ -21,6 +21,7 @@ export default async function SchuelerDetailPage({
     { data: packages },
     { data: appointments },
     { data: invoices },
+    { data: openProposals },
   ] = await Promise.all([
     admin
       .from("profiles")
@@ -46,6 +47,12 @@ export default async function SchuelerDetailPage({
       .eq("student_id", id)
       .order("created_at", { ascending: false })
       .limit(30),
+    admin
+      .from("proposals")
+      .select("id, proposed_start, lessons_count, interval_days, status")
+      .eq("student_id", id)
+      .eq("status", "open")
+      .order("proposed_start", { ascending: true }),
   ]);
 
   if (!profile || profile.role === "admin") notFound();
@@ -222,9 +229,40 @@ export default async function SchuelerDetailPage({
         <h2 className="text-lg font-700 text-[#1C244B] mb-4">
           Bevorstehende Lektionen
         </h2>
-        <div className="mb-4">
+        <div className="mb-4 flex flex-wrap gap-2">
           <DirektBuchung schueler_id={id} student_user_id={id} />
+          <ProposalForm schueler_id={id} student_user_id={id} />
         </div>
+
+        {openProposals && openProposals.length > 0 && (
+          <div className="mb-4 space-y-2">
+            <p className="text-xs font-600 text-gray-400 uppercase tracking-wide">
+              Offene Terminvorschläge
+            </p>
+            {openProposals.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center justify-between gap-3 rounded-xl border border-amber-100 bg-amber-50/50 px-4 py-2.5"
+              >
+                <div className="text-sm">
+                  <span className="font-600 text-gray-900">
+                    {formatDateTime(p.proposed_start)}
+                  </span>
+                  {p.lessons_count > 1 && (
+                    <span className="text-gray-500">
+                      {" "}· {p.lessons_count}× alle {p.interval_days} Tage
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <StatusBadge kind="request" status={p.status} />
+                  <ProposalWithdraw proposalId={p.id} schuelerId={id} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {!appointments || appointments.length === 0 ? (
           <p className="text-sm text-gray-400">Keine bevorstehenden Lektionen.</p>
         ) : (

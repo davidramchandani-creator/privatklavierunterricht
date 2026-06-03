@@ -7,6 +7,7 @@ import NeuesPaket from "./_components/NeuesPaket";
 import NaechsteTermine from "./_components/NaechsteTermine";
 import TerminBuchen from "./_components/TerminBuchen";
 import ZahlungenSection from "./_components/ZahlungenSection";
+import ProposalCard from "./_components/ProposalCard";
 import { canBuyNewPackage, type Package as Paket } from "@/lib/packages";
 import { buildTwintLink } from "@/lib/twint";
 
@@ -84,6 +85,13 @@ export default async function SchuelerPortalPage() {
   const { data: offeneVerschiebungen } = await supabase
     .from("reschedule_requests")
     .select("id, appointment_id, original_start, proposed_start, status")
+    .eq("student_id", user.id)
+    .eq("status", "open")
+    .order("proposed_start", { ascending: true });
+
+  const { data: offeneProposals } = await supabase
+    .from("proposals")
+    .select("id, proposed_start, lessons_count, interval_days, status")
     .eq("student_id", user.id)
     .eq("status", "open")
     .order("proposed_start", { ascending: true });
@@ -202,6 +210,7 @@ export default async function SchuelerPortalPage() {
         {/* Termine */}
         <section id="termine" className="space-y-5 scroll-mt-20">
           <SectionHeader title="Nächste Lektionen" />
+          <ProposalCard proposals={offeneProposals ?? []} />
           <NaechsteTermine
             appointments={naechsteAppointments ?? []}
             requests={offeneAnfragen ?? []}

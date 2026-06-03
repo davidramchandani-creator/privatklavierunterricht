@@ -29,6 +29,7 @@ import {
 import { loadAvailabilityContext } from "@/lib/booking-server";
 import { enqueueEmail } from "@/lib/emails-outbox";
 import { deleteCalendarEvent } from "@/lib/google-calendar";
+import { bookSeriesForStudent } from "@/lib/series-booking";
 
 export type AvailableSlot = {
   beginn: string;
@@ -446,6 +447,109 @@ export async function withdrawReschedule(rescheduleId: string) {
     student_id: user.id,
     student_name: profile ? `${profile.vorname} ${profile.nachname}` : undefined,
     original_start: rr.original_start,
+  });
+
+  revalidatePath("/schueler/portal");
+  return { success: true };
+}
+
+/**
+ * Schüler nimmt einen Terminvorschlag des Admins an (Spec §4, Flow 2).
+ * Bucht die Termine über die gemeinsame Serien-Logik (Rechnung + Zahlungsmail
+ * + Calendar-Sync) und setzt den Vorschlag auf accepted.
+ */
+export async function acceptProposal(proposalId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const { data: proposal } = await supabase
+    .from("proposals")
+    .select("id, student_id, status, proposed_start, lessons_count, interval_days")
+    .eq("id", proposalId)
+    .single();
+
+  if (!proposal || proposal.student_id !== user.id) {
+    return { error: "Vorschlag nicht gefunden." };
+  }
+  if (proposal.status !== "open") {
+    return { error: "Dieser Vorschlag ist nicht mehr offen." };
+  }
+
+  const admin = await createAdminClient();
+  const result = await bookSeriesForStudent(
+    admin,
+    user.id,
+    new Date(proposal.proposed_start).toISOString(),
+    proposal.lessons_count ?? 1,
+    proposal.interval_days ?? 7,
+    "admin_proposal"
+  );
+  if ("error" in result) return result;
+
+  await admin
+    .from("proposals")
+    .update({ status: "accepted" })
+    .eq("id", proposalId);
+
+  // Bestätigung an den Schüler (gleiches Template wie Anfrage-Annahme).
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("email")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (profile?.email) {
+    await enqueueEmail(admin, "booking_confirmed", {
+      to: profile.email,
+      start_at: proposal.proposed_start,
+      lessons_count: proposal.lessons_count ?? 1,
+      interval_days: proposal.interval_days ?? 0,
+    });
+  }
+
+  revalidatePath("/schueler/portal");
+  return { success: true };
+}
+
+/** Schüler lehnt einen Terminvorschlag ab → Admin wird informiert. */
+export async function rejectProposal(proposalId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const { data: proposal } = await supabase
+    .from("proposals")
+    .select("id, student_id, status, proposed_start")
+    .eq("id", proposalId)
+    .single();
+
+  if (!proposal || proposal.student_id !== user.id) {
+    return { error: "Vorschlag nicht gefunden." };
+  }
+  if (proposal.status !== "open") {
+    return { error: "Dieser Vorschlag ist nicht mehr offen." };
+  }
+
+  const { error } = await supabase
+    .from("proposals")
+    .update({ status: "rejected" })
+    .eq("id", proposalId);
+  if (error) return { error: "Vorschlag konnte nicht abgelehnt werden." };
+
+  const admin = await createAdminClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("vorname, nachname")
+    .eq("id", user.id)
+    .maybeSingle();
+  await enqueueEmail(admin, "proposal_rejected_admin", {
+    student_id: user.id,
+    student_name: profile ? `${profile.vorname} ${profile.nachname}` : undefined,
+    proposed_start: proposal.proposed_start,
   });
 
   revalidatePath("/schueler/portal");
