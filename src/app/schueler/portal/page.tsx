@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Music, Calendar, Package, CreditCard, LogOut } from "lucide-react";
-import Link from "next/link";
-import { logout } from "@/app/auth/actions";
+import { Music } from "lucide-react";
+import PortalNav from "./_components/PortalNav";
 import PaketCard from "./_components/PaketCard";
 import NeuesPaket from "./_components/NeuesPaket";
 import NaechsteTermine from "./_components/NaechsteTermine";
@@ -110,10 +109,10 @@ export default async function SchuelerPortalPage() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-3xl border border-gray-200 shadow-sm p-8 text-center space-y-4">
-          <div className="w-14 h-14 bg-navy-50 rounded-full flex items-center justify-center mx-auto">
-            <Music className="w-7 h-7 text-[#1C244B]" />
+      <div className="min-h-screen bg-white flex items-center justify-center px-5">
+        <div className="max-w-md w-full bg-white rounded-3xl border border-[#EAECEF] p-8 text-center space-y-4">
+          <div className="w-14 h-14 bg-navy-50 rounded-2xl flex items-center justify-center mx-auto">
+            <Music className="w-7 h-7 text-navy-900" />
           </div>
           <h1 className="text-xl font-800 text-gray-900">Willkommen!</h1>
           <p className="text-gray-500 text-sm leading-relaxed">
@@ -133,105 +132,80 @@ export default async function SchuelerPortalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-[#1C244B]">
-            <span className="w-8 h-8 rounded-lg bg-[#1C244B] flex items-center justify-center">
-              <Music className="w-4 h-4 text-white" />
-            </span>
-            <span className="font-700 text-base hidden sm:block">David</span>
-          </Link>
-          <nav className="flex items-center gap-1 text-sm">
-            <a href="#termine" className="px-3 py-1.5 text-gray-600 hover:text-[#1C244B] rounded-lg hover:bg-gray-100 transition-colors hidden sm:flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5" /> Termine
-            </a>
-            <a href="#zahlungen" className="px-3 py-1.5 text-gray-600 hover:text-[#1C244B] rounded-lg hover:bg-gray-100 transition-colors hidden sm:flex items-center gap-1.5">
-              <CreditCard className="w-3.5 h-3.5" /> Zahlungen
-            </a>
-            <form action={logout}>
-              <button type="submit" className="ml-2 px-3 py-1.5 text-gray-500 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors flex items-center gap-1.5 text-sm">
-                <LogOut className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Abmelden</span>
-              </button>
-            </form>
-          </nav>
-        </div>
-      </header>
+    <div className="min-h-screen bg-white">
+      <PortalNav vorname={vorname} />
 
-      <main className="max-w-5xl mx-auto px-4 py-8 space-y-10">
-        {/* Hero */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-navy-900 to-navy-700 px-6 py-7 sm:px-8 sm:py-8 shadow-lg shadow-navy-900/10 animate-fade-in">
-          <div className="absolute -top-16 -right-12 w-64 h-64 rounded-full bg-white/5 blur-2xl pointer-events-none" />
-          <div className="relative">
-            <h1 className="text-2xl sm:text-3xl font-800 text-white">
-              Hallo, {vorname} 👋
+      <main className="max-w-4xl mx-auto px-5 py-10 sm:py-14 space-y-14">
+        {/* Übersicht: Begrüßung + Stats */}
+        <section id="uebersicht" className="space-y-7 scroll-mt-20">
+          <div>
+            <p className="text-[13px] font-500 text-gray-400">Schön, dass du da bist</p>
+            <h1 className="mt-1 text-3xl sm:text-4xl font-700 text-navy-900 tracking-tight">
+              Hallo, {vorname}
             </h1>
-            <p className="text-white/60 text-sm mt-1">
-              Willkommen in deinem Schülerportal
-            </p>
-
-            <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <HeroStat
-                label="Nächste Lektion"
-                value={
-                  nextLessonAt
-                    ? new Intl.DateTimeFormat("de-CH", {
-                        timeZone: "Europe/Zurich",
-                        weekday: "short",
-                        day: "numeric",
-                        month: "short",
-                      }).format(new Date(nextLessonAt))
-                    : "—"
-                }
-              />
-              <HeroStat
-                label="Verbleibend"
-                value={
-                  remainingLessons != null
-                    ? `${remainingLessons} Lektion${remainingLessons !== 1 ? "en" : ""}`
-                    : "Kein Paket"
-                }
-              />
-              <HeroStat
-                label="Offene Zahlungen"
-                value={
-                  openPaymentsCount > 0 ? String(openPaymentsCount) : "Keine"
-                }
-                highlight={openPaymentsCount > 0}
-              />
-            </div>
           </div>
-        </div>
 
-        <section id="paket" className="space-y-4">
-          <SectionHeader icon={<Package className="w-4 h-4" />} title="Mein Paket" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <StatCard
+              label="Nächste Lektion"
+              value={
+                nextLessonAt
+                  ? new Intl.DateTimeFormat("de-CH", {
+                      timeZone: "Europe/Zurich",
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                    }).format(new Date(nextLessonAt))
+                  : "—"
+              }
+              hint={nextLessonAt ? "geplant" : "keine geplant"}
+            />
+            <StatCard
+              label="Verbleibende Lektionen"
+              value={remainingLessons != null ? String(remainingLessons) : "0"}
+              hint={remainingLessons != null ? "im aktiven Paket" : "kein aktives Paket"}
+            />
+            <StatCard
+              label="Offene Zahlungen"
+              value={openPaymentsCount > 0 ? String(openPaymentsCount) : "0"}
+              hint={openPaymentsCount > 0 ? "zu begleichen" : "alles bezahlt"}
+              accent={openPaymentsCount > 0}
+            />
+          </div>
+        </section>
+
+        {/* Paket */}
+        <section id="paket" className="space-y-5 scroll-mt-20">
+          <SectionHeader title="Mein Paket" />
           <PaketCard
             paket={aktivesPackage}
             lessonsUsed={lessonsUsed}
             upcomingAbsence={kommendeAbwesenheit}
           />
-          <div>
-            <h3 className="text-sm font-600 text-gray-500 mb-2">Neues Paket buchen</h3>
+          <div className="pt-1">
+            <p className="text-[13px] font-600 text-gray-400 mb-2.5">Neues Paket buchen</p>
             <NeuesPaket prices={prices} canBuy={kannNeuesPaket} />
           </div>
         </section>
 
-        <section id="termine">
-          <SectionHeader icon={<Calendar className="w-4 h-4" />} title="Nächste Lektionen" />
+        {/* Termine */}
+        <section id="termine" className="space-y-5 scroll-mt-20">
+          <SectionHeader title="Nächste Lektionen" />
           <NaechsteTermine
             appointments={naechsteAppointments ?? []}
             requests={offeneAnfragen ?? []}
             reschedules={offeneVerschiebungen ?? []}
           />
           {aktivesPackage && canBook && (
-            <div className="mt-4">
+            <div className="pt-1">
               <TerminBuchen />
             </div>
           )}
         </section>
 
-        <section id="zahlungen">
-          <SectionHeader icon={<CreditCard className="w-4 h-4" />} title="Zahlungen" />
+        {/* Zahlungen */}
+        <section id="zahlungen" className="space-y-5 scroll-mt-20">
+          <SectionHeader title="Zahlungen" />
           <ZahlungenSection invoices={invoices ?? []} />
         </section>
       </main>
@@ -239,36 +213,36 @@ export default async function SchuelerPortalPage() {
   );
 }
 
-function HeroStat({
+function StatCard({
   label,
   value,
-  highlight = false,
+  hint,
+  accent = false,
 }: {
   label: string;
   value: string;
-  highlight?: boolean;
+  hint?: string;
+  accent?: boolean;
 }) {
   return (
-    <div className="rounded-2xl bg-white/10 backdrop-blur-sm px-4 py-3 ring-1 ring-white/10">
-      <p className="text-[11px] font-600 uppercase tracking-wide text-white/50">
+    <div className="rounded-2xl border border-[#EAECEF] bg-white px-5 py-4 transition-colors hover:border-gray-300/70">
+      <p className="text-[11px] font-600 uppercase tracking-wider text-gray-400">
         {label}
       </p>
       <p
-        className={`mt-1 font-700 text-sm sm:text-base ${
-          highlight ? "text-gold-300" : "text-white"
+        className={`mt-1.5 text-2xl font-700 tracking-tight ${
+          accent ? "text-red-500" : "text-navy-900"
         }`}
       >
         {value}
       </p>
+      {hint && <p className="mt-0.5 text-xs text-gray-400">{hint}</p>}
     </div>
   );
 }
 
-function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
+function SectionHeader({ title }: { title: string }) {
   return (
-    <div className="flex items-center gap-2 mb-4">
-      <span className="text-[#1C244B]">{icon}</span>
-      <h2 className="text-lg font-700 text-[#1C244B]">{title}</h2>
-    </div>
+    <h2 className="text-base font-700 text-navy-900 tracking-tight">{title}</h2>
   );
 }
