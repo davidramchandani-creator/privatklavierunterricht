@@ -501,9 +501,14 @@ export async function acceptProposal(proposalId: string) {
     .eq("id", user.id)
     .maybeSingle();
   if (profile?.email) {
+    const starts = generateSeriesStarts(
+      new Date(proposal.proposed_start),
+      proposal.lessons_count ?? 1,
+      proposal.interval_days ?? 7
+    ).map((d) => d.toISOString());
     await enqueueEmail(admin, "booking_confirmed", {
       to: profile.email,
-      start_at: proposal.proposed_start,
+      starts,
       lessons_count: proposal.lessons_count ?? 1,
       interval_days: proposal.interval_days ?? 0,
     });
