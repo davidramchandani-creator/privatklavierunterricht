@@ -277,7 +277,13 @@ export async function cancelAppointment(appointmentId: string) {
     .eq("appointment_id", appointmentId)
     .in("status", ["unpaid", "pending_confirmation", "rejected"]);
 
+  // Mail an Admin (Info) UND Bestätigung an den Schüler (Spec §9).
   await enqueueEmail(admin, "appointment_cancelled_by_student", {
+    student_id: user.id,
+    appointment_id: appointmentId,
+    start_at: appt.start_at,
+  });
+  await enqueueEmail(admin, "appointment_cancelled_student", {
     student_id: user.id,
     appointment_id: appointmentId,
     start_at: appt.start_at,
@@ -412,7 +418,7 @@ export async function withdrawReschedule(rescheduleId: string) {
 
   const { data: rr } = await supabase
     .from("reschedule_requests")
-    .select("id, status, student_id")
+    .select("id, status, student_id, original_start")
     .eq("id", rescheduleId)
     .single();
 
@@ -428,6 +434,19 @@ export async function withdrawReschedule(rescheduleId: string) {
     .update({ status: "withdrawn" })
     .eq("id", rescheduleId);
   if (error) return { error: "Anfrage konnte nicht zurückgezogen werden." };
+
+  // Admin über das Zurückziehen informieren (Spec §9).
+  const admin = await createAdminClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("vorname, nachname")
+    .eq("id", user.id)
+    .maybeSingle();
+  await enqueueEmail(admin, "reschedule_request_withdrawn", {
+    student_id: user.id,
+    student_name: profile ? `${profile.vorname} ${profile.nachname}` : undefined,
+    original_start: rr.original_start,
+  });
 
   revalidatePath("/schueler/portal");
   return { success: true };

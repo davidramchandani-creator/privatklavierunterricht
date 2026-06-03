@@ -46,6 +46,8 @@ export async function GET(request: NextRequest) {
         "booking_request_withdrawn",
         "appointment_cancelled_by_student",
         "reschedule_request_admin",
+        "reschedule_request_withdrawn",
+        "proposal_rejected_admin",
       ];
       const studentPayloadToTypes = [
         "booking_request_received",
@@ -59,7 +61,14 @@ export async function GET(request: NextRequest) {
         "payment_rejected",
       ];
       // Typen, deren Empfänger-Mail erst aus der profiles-Tabelle aufgelöst wird.
-      const studentLookupTypes = ["booking_rejected", "reschedule_rejected"];
+      const studentLookupTypes = [
+        "booking_rejected",
+        "reschedule_rejected",
+        "appointment_cancelled_student",
+        "appointment_cancelled_by_admin",
+        "proposal_new",
+        "package_settlement_paid",
+      ];
 
       if (adminRecipientTypes.includes(email.type)) {
         to = process.env.ADMIN_EMAIL ?? null;

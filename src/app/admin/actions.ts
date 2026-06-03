@@ -741,6 +741,14 @@ export async function completeAppointmentNew(id: string, schuelerId: string) {
 /** Termin stornieren (neues Schema). Gibt die Lektion wieder frei. */
 export async function cancelAppointmentNew(id: string, schuelerId: string) {
   const admin = await createAdminClient();
+
+  // Termin laden (für Schüler-Benachrichtigung).
+  const { data: appt } = await admin
+    .from("appointments")
+    .select("start_at, student_id, status")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await admin
     .from("appointments")
     .update({ status: "cancelled" })
@@ -756,6 +764,15 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
     .update({ status: "cancelled" })
     .eq("appointment_id", id)
     .in("status", ["unpaid", "pending_confirmation", "rejected"]);
+
+  // Schüler über die Absage informieren (Spec §9).
+  if (appt?.student_id && appt.status !== "cancelled") {
+    await enqueueEmail(admin, "appointment_cancelled_by_admin", {
+      student_id: appt.student_id,
+      appointment_id: id,
+      start_at: appt.start_at,
+    });
+  }
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin/kalender");
@@ -1146,7 +1163,7 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
   // Schüler benachrichtigen (Outbox).
   const { data: profile } = await admin
     .from("profiles")
-    .select("email")
+    .select("email, vorname, nachname, adresse, payment_method")
     .eq("id", pkg.student_id)
     .maybeSingle();
   await enqueueEmail(admin, "package_cancelled", {
@@ -1157,6 +1174,51 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
     refund: settlement.refund,
     owed: settlement.owed,
   });
+
+  // Nachzahlung: zahlbare Storno-Rechnung anlegen, damit der Schüler sie über
+  // das normale Zahlungssystem (TWINT/QR) begleichen kann (sofort fällig).
+  if (settlement.owed > 0) {
+    const paymentMethod: "twint" | "qr" =
+      ((profile?.payment_method as "twint" | "qr" | null) ??
+        (pkg.payment_method as "twint" | "qr" | null)) ??
+      "qr";
+    const studentName = profile
+      ? `${profile.vorname} ${profile.nachname}`
+      : "Schüler";
+    const { data: inv } = await admin
+      .from("invoices")
+      .insert({
+        student_id: pkg.student_id,
+        appointment_id: null,
+        amount: settlement.owed,
+        payer_name: studentName,
+        payer_address: profile?.adresse ?? null,
+        status: "unpaid",
+        method: paymentMethod,
+        lesson_date: null,
+      })
+      .select("id, invoice_number")
+      .maybeSingle();
+
+    if (inv && profile?.email) {
+      const basePayload = {
+        to: profile.email,
+        student_name: studentName,
+        student_id: pkg.student_id,
+        amount: settlement.owed,
+        invoice_number: inv.invoice_number,
+        invoice_id: inv.id,
+      };
+      if (paymentMethod === "qr") {
+        await enqueueEmail(admin, "qr_invoice", basePayload);
+      } else {
+        await enqueueEmail(admin, "twint_payment_request", {
+          ...basePayload,
+          twint_link: buildTwintLink(settlement.owed, inv.invoice_number ?? inv.id),
+        });
+      }
+    }
+  }
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin");

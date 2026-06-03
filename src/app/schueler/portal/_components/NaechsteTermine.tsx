@@ -173,6 +173,7 @@ function TerminRow({
   const [cancelled, setCancelled] = useState(false);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [rescheduleSent, setRescheduleSent] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   const beginn = new Date(appointment.start_at);
   const ende = new Date(appointment.end_at);
@@ -275,7 +276,14 @@ function TerminRow({
             </button>
           )}
           <button
-            onClick={handleStornieren}
+            onClick={() => {
+              if (within24h) {
+                setError("Lektionen können nur bis 24 Stunden vorher abgesagt werden.");
+                return;
+              }
+              setError(null);
+              setConfirmCancel(true);
+            }}
             disabled={isPending || within24h}
             className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             title={within24h ? "Absage weniger als 24h vorher nicht möglich" : "Lektion absagen"}
@@ -284,6 +292,32 @@ function TerminRow({
           </button>
         </div>
       </div>
+
+      {confirmCancel && (
+        <div className="mt-3 rounded-xl border border-red-100 bg-red-50/60 p-3">
+          <p className="text-sm font-600 text-gray-900">Lektion wirklich absagen?</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Das kann nicht rückgängig gemacht werden. Du erhältst eine Bestätigung
+            per E-Mail.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={handleStornieren}
+              disabled={isPending}
+              className="text-xs font-600 text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {isPending ? "Wird abgesagt …" : "Ja, absagen"}
+            </button>
+            <button
+              onClick={() => setConfirmCancel(false)}
+              disabled={isPending}
+              className="text-xs font-500 text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      )}
 
       {hasPendingReschedule && (
         <PendingRescheduleBanner

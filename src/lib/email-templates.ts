@@ -629,6 +629,176 @@ export function renderEmail(
       return { subject, html: baseWrapper(content) };
     }
 
+    case "appointment_cancelled_student": {
+      const startAt = String(payload.start_at ?? "");
+      const formattedDate = startAt ? fmtDateTime(startAt) : "–";
+
+      const subject = `Deine Stornierung ist bestätigt – ${startAt ? fmtDate(startAt) : ""}`.trim();
+      const content = `
+        <p style="margin:0 0 16px;">Hallo,</p>
+        <p style="margin:0 0 16px;">
+          deine Lektion wurde wie gewünscht storniert. Hier die Bestätigung:
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Stornierter Termin</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${formattedDate}</td>
+          </tr>
+        </table>
+        <p style="margin:0 0 16px;">
+          Die Lektion wurde dir nicht vom Paket abgezogen. Du kannst jederzeit
+          einen neuen Termin anfragen.
+        </p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Liebe Grüsse<br/>David Ramchandani
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "appointment_cancelled_by_admin": {
+      const startAt = String(payload.start_at ?? "");
+      const formattedDate = startAt ? fmtDateTime(startAt) : "–";
+      const reason = payload.reason ? String(payload.reason) : null;
+
+      const subject = `Termin abgesagt – ${startAt ? fmtDate(startAt) : ""}`.trim();
+      const content = `
+        <p style="margin:0 0 16px;">Hallo,</p>
+        <p style="margin:0 0 16px;">
+          leider muss deine folgende Lektion entfallen:
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Abgesagter Termin</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${formattedDate}</td>
+          </tr>
+          ${
+            reason
+              ? `<tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Grund</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${reason}</td>
+          </tr>`
+              : ""
+          }
+        </table>
+        <p style="margin:0 0 16px;">
+          Die Lektion wurde dir nicht vom Paket abgezogen. Melde dich gerne für
+          einen Ersatztermin.
+        </p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Liebe Grüsse<br/>David Ramchandani
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "reschedule_request_withdrawn": {
+      const studentName = payload.student_name ? String(payload.student_name) : null;
+      const originalStart = String(payload.original_start ?? "");
+
+      const subject = "Verschiebung zurückgezogen";
+      const content = `
+        <p style="margin:0 0 16px;">
+          ${
+            studentName ? `<strong>${studentName}</strong>` : "Ein Schüler / eine Schülerin"
+          } hat eine offene Verschiebungsanfrage zurückgezogen.
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Betroffener Termin</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${originalStart ? fmtDateTime(originalStart) : "–"}</td>
+          </tr>
+        </table>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Der ursprüngliche Termin bleibt unverändert bestehen.
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "proposal_new": {
+      const proposedStart = String(payload.proposed_start ?? "");
+      const lessonsCount = Number(payload.lessons_count ?? 1);
+      const intervalDays = Number(payload.interval_days ?? 0);
+
+      const subject = "Neuer Terminvorschlag von David";
+      const content = `
+        <p style="margin:0 0 16px;">Hallo,</p>
+        <p style="margin:0 0 16px;">
+          David hat dir einen neuen Termin vorgeschlagen:
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Vorgeschlagener Start</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${proposedStart ? fmtDateTime(proposedStart) : "–"}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Anzahl Lektionen</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${lessonsCount}</td>
+          </tr>
+          ${
+            intervalDays > 0 && lessonsCount > 1
+              ? `<tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Rhythmus</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">alle ${intervalDays} Tage</td>
+          </tr>`
+              : ""
+          }
+        </table>
+        <p style="margin:0 0 24px;">
+          <a href="${APP_URL}/schueler/portal"
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+            Im Portal annehmen oder ablehnen
+          </a>
+        </p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Liebe Grüsse<br/>David Ramchandani
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "proposal_rejected_admin": {
+      const studentName = payload.student_name ? String(payload.student_name) : null;
+      const proposedStart = String(payload.proposed_start ?? "");
+
+      const subject = "Terminvorschlag abgelehnt";
+      const content = `
+        <p style="margin:0 0 16px;">
+          ${
+            studentName ? `<strong>${studentName}</strong>` : "Ein Schüler / eine Schülerin"
+          } hat deinen Terminvorschlag abgelehnt.
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Vorgeschlagen war</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${proposedStart ? fmtDateTime(proposedStart) : "–"}</td>
+          </tr>
+        </table>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Du kannst im Schülerprofil einen neuen Vorschlag machen.
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "package_settlement_paid": {
+      const amount = Number(payload.amount ?? 0);
+      const subject = "Zahlung erhalten – Stornierungsbetrag";
+      const content = `
+        <p style="margin:0 0 16px;">Hallo,</p>
+        <p style="margin:0 0 16px;">
+          vielen Dank – der Stornierungsbetrag von
+          <strong>CHF ${amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+          ist bei mir eingegangen. Damit ist die Stornierung vollständig abgeschlossen.
+        </p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Liebe Grüsse<br/>David Ramchandani
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
     default:
       return null;
   }
