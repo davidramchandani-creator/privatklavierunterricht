@@ -1,34 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import {
-  Menu,
-  X,
-  LayoutDashboard,
-  Users,
-  Calendar,
-  CalendarClock,
-  CalendarOff,
-  Tag,
-  Star,
-  CreditCard,
-  Inbox,
-  Settings,
-} from "lucide-react";
-
-const navItems = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/anfragen", label: "Anfragen", icon: Inbox },
-  { href: "/admin/terminanfragen", label: "Terminanfragen", icon: CalendarClock },
-  { href: "/admin/schueler", label: "Schüler", icon: Users },
-  { href: "/admin/kalender", label: "Kalender", icon: Calendar },
-  { href: "/admin/abwesenheiten", label: "Abwesenheiten", icon: CalendarOff },
-  { href: "/admin/preise", label: "Preise", icon: Tag },
-  { href: "/admin/bewertungen", label: "Bewertungen", icon: Star },
-  { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
-  { href: "/admin/einstellungen", label: "Einstellungen", icon: Settings },
-];
+import { Menu, X } from "lucide-react";
+import { AdminNavLinks } from "./AdminNav";
 
 export default function AdminMobileMenu() {
   const [open, setOpen] = useState(false);
@@ -60,17 +34,7 @@ export default function AdminMobileMenu() {
               </button>
             </div>
             <div className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-              {navItems.map(({ href, label, icon: Icon }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-500 text-gray-600 hover:bg-gray-100 hover:text-[#1C244B] transition-colors"
-                >
-                  <Icon className="w-4 h-4 text-gray-400" />
-                  {label}
-                </Link>
-              ))}
+              <AdminNavLinks onNavigate={() => setOpen(false)} />
             </div>
           </nav>
         </div>
