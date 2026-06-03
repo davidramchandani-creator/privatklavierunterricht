@@ -62,7 +62,7 @@ export default function NeuesPaket({
 
   if (!canBuy) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 p-5">
+      <div className="bg-white rounded-2xl border border-gray-100 p-5">
         <p className="text-sm text-gray-500">
           Ein neues Paket kannst du buchen, sobald dein aktuelles aufgebraucht oder
           abgelaufen ist.
@@ -86,7 +86,7 @@ export default function NeuesPaket({
                 setAgb(false);
                 setError(null);
               }}
-              className="text-left bg-white rounded-2xl border border-gray-200 hover:border-[#1C244B]/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5 group"
+              className="text-left bg-white rounded-2xl border border-gray-100 hover:border-[#1C244B]/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5 group"
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[#1C244B]/10 flex items-center justify-center group-hover:bg-[#1C244B]/15 transition-colors">

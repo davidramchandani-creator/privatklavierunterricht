@@ -80,7 +80,7 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-3">
+    <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
       {/* Header row */}
       <div className="flex items-start justify-between gap-2">
         <div>
@@ -143,7 +143,7 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
 
       {localStatus === "pending_confirmation" && (
         <div className="pt-2 border-t border-gray-100">
-          <p className="text-xs text-blue-700 flex items-center gap-1.5">
+          <p className="text-xs text-navy-900 flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5" />
             Deine Zahlung wird geprüft. Du erhältst eine Bestätigung per E-Mail.
           </p>
@@ -174,7 +174,7 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
 export default function ZahlungenSection({ invoices }: { invoices: Invoice[] }) {
   if (invoices.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center">
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
         <p className="text-sm text-gray-500">Keine Zahlungen vorhanden</p>
       </div>
     );
@@ -203,8 +203,8 @@ export default function ZahlungenSection({ invoices }: { invoices: Invoice[] }) 
       {pendingInvoices.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-blue-500" />
-            <p className="text-sm font-600 text-blue-700">
+            <Clock className="w-4 h-4 text-navy-700" />
+            <p className="text-sm font-600 text-navy-900">
               {pendingInvoices.length} Zahlung{pendingInvoices.length !== 1 ? "en" : ""} wird geprüft
             </p>
           </div>

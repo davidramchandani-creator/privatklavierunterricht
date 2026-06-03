@@ -64,7 +64,7 @@ export default function NaechsteTermine({
     offeneVerschiebungen.length === 0
   ) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center">
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
         <Calendar className="w-8 h-8 text-gray-300 mx-auto mb-2" />
         <p className="text-sm text-gray-500">Keine kommenden Lektionen</p>
       </div>
@@ -113,7 +113,7 @@ function AnfrageRow({ request }: { request: BookingRequest }) {
 
   if (withdrawn) {
     return (
-      <div className="bg-gray-50 rounded-2xl border border-gray-200 p-4 text-center text-sm text-gray-400">
+      <div className="bg-gray-50 rounded-2xl border border-gray-100 p-4 text-center text-sm text-gray-400">
         Anfrage zurückgezogen
       </div>
     );
@@ -224,7 +224,7 @@ function TerminRow({
 
   if (cancelled) {
     return (
-      <div className="bg-gray-50 rounded-2xl border border-gray-200 p-4 text-center text-sm text-gray-400">
+      <div className="bg-gray-50 rounded-2xl border border-gray-100 p-4 text-center text-sm text-gray-400">
         Lektion abgesagt
       </div>
     );
@@ -233,7 +233,7 @@ function TerminRow({
   const hasPendingReschedule = !!pendingReschedule || rescheduleSent;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+    <div className="bg-white rounded-2xl border border-gray-100 p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#1C244B]/8 flex flex-col items-center justify-center flex-shrink-0 text-[#1C244B]">

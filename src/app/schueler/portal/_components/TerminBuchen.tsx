@@ -88,7 +88,7 @@ export default function TerminBuchen() {
           Neue Lektion buchen
         </button>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-600 text-gray-900 text-sm">Lektion buchen</h3>
             <button
