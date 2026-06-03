@@ -302,33 +302,6 @@ export async function updateInvoiceStatus(
 }
 
 
-// ── Bewertungen ───────────────────────────────────────────────────────────────
-
-export async function approveBewertung(id: string) {
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("bewertungen")
-    .update({ anzeigen: true })
-    .eq("id", id);
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/admin/bewertungen");
-  return { success: true };
-}
-
-export async function rejectBewertung(id: string) {
-  const supabase = await createClient();
-
-  const { error } = await supabase.from("bewertungen").delete().eq("id", id);
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/admin/bewertungen");
-  return { success: true };
-}
-
 // ── Verfügbarkeit ─────────────────────────────────────────────────────────────
 
 export type VerfuegbarkeitSlot = {
