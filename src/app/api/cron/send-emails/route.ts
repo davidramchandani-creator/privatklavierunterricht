@@ -1,9 +1,6 @@
 import { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { sendEmail } from "@/lib/email-sender";
-import { renderEmail } from "@/lib/email-templates";
-import { generateQRInvoicePdf, buildSpcData } from "@/lib/qr-invoice";
-import { getTwintBaseUrl } from "@/lib/twint";
+import { dispatchEmail } from "@/lib/email-dispatch";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +14,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const admin = await createAdminClient();
+  const admin = createAdminClient();
 
   // Fetch up to 20 pending emails due now
   const { data: emails } = await admin
@@ -35,136 +32,7 @@ export async function GET(request: NextRequest) {
 
   for (const email of emails) {
     try {
-      const payload = email.payload as Record<string, unknown>;
-
-      // Resolve recipient email for types that need DB lookup
-      let to: string | null = null;
-      const extraContext: Record<string, unknown> = {};
-
-      const adminRecipientTypes = [
-        "booking_request_admin",
-        "booking_request_withdrawn",
-        "appointment_cancelled_by_student",
-        "reschedule_request_admin",
-        "reschedule_request_withdrawn",
-        "proposal_rejected_admin",
-      ];
-      const studentPayloadToTypes = [
-        "booking_request_received",
-        "booking_confirmed",
-        "reschedule_request_received",
-        "reschedule_confirmed",
-        "package_cancelled",
-        "twint_payment_request",
-        "qr_invoice",
-        "payment_confirmed",
-        "payment_rejected",
-      ];
-      // Typen, deren Empfänger-Mail erst aus der profiles-Tabelle aufgelöst wird.
-      const studentLookupTypes = [
-        "booking_rejected",
-        "reschedule_rejected",
-        "appointment_cancelled_student",
-        "appointment_cancelled_by_admin",
-        "proposal_new",
-        "package_settlement_paid",
-      ];
-
-      if (adminRecipientTypes.includes(email.type)) {
-        to = process.env.ADMIN_EMAIL ?? null;
-        // For withdrawn/cancelled, look up student name
-        if (
-          payload.student_id &&
-          (email.type === "booking_request_withdrawn" ||
-            email.type === "appointment_cancelled_by_student")
-        ) {
-          const { data: profile } = await admin
-            .from("profiles")
-            .select("vorname, nachname")
-            .eq("id", payload.student_id)
-            .single();
-          if (profile) {
-            extraContext.student_name = `${profile.vorname} ${profile.nachname}`;
-          }
-        }
-      } else if (studentPayloadToTypes.includes(email.type)) {
-        to = (payload.to as string) ?? null;
-      } else if (studentLookupTypes.includes(email.type)) {
-        // Look up student email
-        if (payload.student_id) {
-          const { data: profile } = await admin
-            .from("profiles")
-            .select("email, vorname, nachname")
-            .eq("id", payload.student_id)
-            .single();
-          if (profile) {
-            to = profile.email;
-            extraContext.student_name = `${profile.vorname} ${profile.nachname}`;
-          }
-        }
-      }
-
-      if (!to) throw new Error("No recipient email resolved");
-
-      // QR-Rechnung: PDF erzeugen und in Storage ablegen, falls noch nicht vorhanden
-      if (email.type === "qr_invoice" && payload.invoice_id) {
-        const invoiceId = String(payload.invoice_id);
-        const { data: inv } = await admin
-          .from("invoices")
-          .select("id, invoice_number, amount, payer_name, payer_address, pdf_url, access_token")
-          .eq("id", invoiceId)
-          .maybeSingle();
-
-        if (inv && !inv.pdf_url) {
-          const result = await generateQRInvoicePdf({
-            invoiceNumber: inv.invoice_number ?? invoiceId,
-            amount: Number(inv.amount ?? 0),
-            debtorName: inv.payer_name ?? "Unbekannt",
-            debtorAddress: inv.payer_address ?? "",
-          });
-
-          let pdfUrl: string;
-          if (result.type === "pdf") {
-            const storagePath = `invoices/${invoiceId}.pdf`;
-            const { error: uploadErr } = await admin.storage
-              .from("invoices")
-              .upload(storagePath, result.pdfBuffer, {
-                contentType: "application/pdf",
-                upsert: true,
-              });
-            if (uploadErr) {
-              pdfUrl = `spc:${buildSpcData({
-                invoiceNumber: inv.invoice_number ?? invoiceId,
-                amount: Number(inv.amount ?? 0),
-                debtorName: inv.payer_name ?? "Unbekannt",
-                debtorAddress: inv.payer_address ?? "",
-              })}`;
-            } else {
-              pdfUrl = storagePath;
-            }
-          } else {
-            pdfUrl = `spc:${result.spcData}`;
-          }
-
-          await admin.from("invoices").update({ pdf_url: pdfUrl }).eq("id", invoiceId);
-
-          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.ch";
-          extraContext.pdf_link = `${appUrl}/api/invoices/${invoiceId}/pdf?token=${inv.access_token}`;
-        } else if (inv?.pdf_url && inv.access_token) {
-          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.ch";
-          extraContext.pdf_link = `${appUrl}/api/invoices/${invoiceId}/pdf?token=${inv.access_token}`;
-        }
-      }
-
-      // TWINT: offiziellen Acquirer-Link setzen, falls noch kein twint_link da.
-      if (email.type === "twint_payment_request" && !payload.twint_link) {
-        extraContext.twint_link = getTwintBaseUrl();
-      }
-
-      const rendered = renderEmail(email.type, { ...payload, ...extraContext });
-      if (!rendered) throw new Error(`No template for type: ${email.type}`);
-
-      await sendEmail({ to, subject: rendered.subject, html: rendered.html });
+      await dispatchEmail(admin, email.type, email.payload as Record<string, unknown>);
 
       await admin
         .from("scheduled_emails")

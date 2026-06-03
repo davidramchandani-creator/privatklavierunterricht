@@ -10,7 +10,7 @@ import {
   validateSeries,
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
-import { enqueueEmail } from "@/lib/emails-outbox";
+import { enqueueEmail, sendEmailNow } from "@/lib/emails-outbox";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   type Package as Paket,
@@ -309,7 +309,7 @@ export async function acceptBookingRequest(requestId: string) {
     })
     .eq("id", requestId);
 
-  await enqueueEmail(admin, "booking_confirmed", {
+  await sendEmailNow(admin, "booking_confirmed", {
     student_id: req.student_id,
     to: profile?.email,
     starts: starts.map((s) => s.toISOString()),
@@ -345,7 +345,7 @@ export async function rejectBookingRequest(requestId: string, reason?: string) {
     .eq("id", requestId);
   if (error) return { error: "Anfrage konnte nicht abgelehnt werden." };
 
-  await enqueueEmail(admin, "booking_rejected", {
+  await sendEmailNow(admin, "booking_rejected", {
     student_id: req.student_id,
     request_id: requestId,
     reason: reason ?? null,
@@ -431,7 +431,7 @@ export async function acceptReschedule(rescheduleId: string) {
     .update({ status: "accepted", aktualisiert_am: new Date().toISOString() })
     .eq("id", rescheduleId);
 
-  await enqueueEmail(admin, "reschedule_confirmed", {
+  await sendEmailNow(admin, "reschedule_confirmed", {
     student_id: rr.student_id,
     to: profile?.email,
     original_start: rr.original_start,
@@ -466,7 +466,7 @@ export async function rejectReschedule(rescheduleId: string, reason?: string) {
     .eq("id", rescheduleId);
   if (error) return { error: "Anfrage konnte nicht abgelehnt werden." };
 
-  await enqueueEmail(admin, "reschedule_rejected", {
+  await sendEmailNow(admin, "reschedule_rejected", {
     student_id: rr.student_id,
     original_start: rr.original_start,
     proposed_start: rr.proposed_start,
@@ -647,7 +647,7 @@ export async function createProposal(formData: FormData) {
   if (error) return { error: "Vorschlag konnte nicht gespeichert werden." };
 
   if (profile?.email) {
-    await enqueueEmail(admin, "proposal_new", {
+    await sendEmailNow(admin, "proposal_new", {
       student_id: studentId,
       proposed_start: desiredStart.toISOString(),
       lessons_count: lessonsCount,
@@ -717,9 +717,9 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
     .eq("appointment_id", id)
     .in("status", ["unpaid", "pending_confirmation", "rejected"]);
 
-  // Schüler über die Absage informieren (Spec §9).
+  // Schüler sofort über die Absage informieren (Spec §9).
   if (appt?.student_id && appt.status !== "cancelled") {
-    await enqueueEmail(admin, "appointment_cancelled_by_admin", {
+    await sendEmailNow(admin, "appointment_cancelled_by_admin", {
       student_id: appt.student_id,
       appointment_id: id,
       start_at: appt.start_at,
@@ -1112,13 +1112,13 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
     .eq("id", packageId);
   if (error) return { error: "Paket konnte nicht storniert werden." };
 
-  // Schüler benachrichtigen (Outbox).
+  // Schüler sofort benachrichtigen.
   const { data: profile } = await admin
     .from("profiles")
     .select("email, vorname, nachname, adresse, payment_method")
     .eq("id", pkg.student_id)
     .maybeSingle();
-  await enqueueEmail(admin, "package_cancelled", {
+  await sendEmailNow(admin, "package_cancelled", {
     student_id: pkg.student_id,
     to: profile?.email,
     lessons_used: settlement.lessonsUsed,
@@ -1256,7 +1256,7 @@ export async function confirmInvoicePayment(invoiceId: string) {
     .maybeSingle();
 
   if (profile?.email) {
-    await enqueueEmail(admin, "payment_confirmed", {
+    await sendEmailNow(admin, "payment_confirmed", {
       to: profile.email,
       student_name: `${profile.vorname} ${profile.nachname}`,
       student_id: inv.student_id,
@@ -1294,7 +1294,7 @@ export async function rejectInvoicePayment(invoiceId: string, reason?: string) {
     .maybeSingle();
 
   if (profile?.email) {
-    await enqueueEmail(admin, "payment_rejected", {
+    await sendEmailNow(admin, "payment_rejected", {
       to: profile.email,
       student_name: `${profile.vorname} ${profile.nachname}`,
       student_id: inv.student_id,
@@ -1342,7 +1342,7 @@ export async function resendPaymentEmail(invoiceId: string) {
   const studentName = `${profile.vorname} ${profile.nachname}`;
 
   if (inv.method === "qr") {
-    await enqueueEmail(admin, "qr_invoice", {
+    await sendEmailNow(admin, "qr_invoice", {
       to: profile.email,
       student_name: studentName,
       student_id: inv.student_id,
@@ -1352,14 +1352,13 @@ export async function resendPaymentEmail(invoiceId: string) {
       invoice_id: invoiceId,
     });
   } else {
-    const twintLink = getTwintBaseUrl();
-    await enqueueEmail(admin, "twint_payment_request", {
+    await sendEmailNow(admin, "twint_payment_request", {
       to: profile.email,
       student_name: studentName,
       student_id: inv.student_id,
       lesson_date: inv.lesson_date,
       amount: inv.amount,
-      twint_link: twintLink,
+      twint_link: getTwintBaseUrl(),
       invoice_number: inv.invoice_number,
       invoice_id: invoiceId,
     });

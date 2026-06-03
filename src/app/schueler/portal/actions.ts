@@ -27,7 +27,7 @@ import {
   zonedToUtc,
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
-import { enqueueEmail } from "@/lib/emails-outbox";
+import { sendEmailNow } from "@/lib/emails-outbox";
 import { deleteCalendarEvent } from "@/lib/google-calendar";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 
@@ -178,16 +178,16 @@ export async function requestBooking(
     return { error: "Anfrage konnte nicht gespeichert werden. Bitte erneut versuchen." };
   }
 
-  // Outbox: Admin-Benachrichtigung + Bestätigung an Schüler
+  // Sofortversand: Admin-Benachrichtigung + Bestätigung an Schüler
   const studentName = profile ? `${profile.vorname} ${profile.nachname}` : "Schüler";
-  await enqueueEmail(admin, "booking_request_admin", {
+  await sendEmailNow(admin, "booking_request_admin", {
     student_id: user.id,
     student_name: studentName,
     desired_start: desiredStart.toISOString(),
     lessons_count: lessonsCount,
     interval_days: intervalDays,
   });
-  await enqueueEmail(admin, "booking_request_received", {
+  await sendEmailNow(admin, "booking_request_received", {
     student_id: user.id,
     to: profile?.email,
     desired_start: desiredStart.toISOString(),
@@ -226,7 +226,7 @@ export async function withdrawBookingRequest(requestId: string) {
   if (error) return { error: "Anfrage konnte nicht zurückgezogen werden." };
 
   const admin = await createAdminClient();
-  await enqueueEmail(admin, "booking_request_withdrawn", {
+  await sendEmailNow(admin, "booking_request_withdrawn", {
     student_id: user.id,
     request_id: requestId,
   });
@@ -278,13 +278,13 @@ export async function cancelAppointment(appointmentId: string) {
     .eq("appointment_id", appointmentId)
     .in("status", ["unpaid", "pending_confirmation", "rejected"]);
 
-  // Mail an Admin (Info) UND Bestätigung an den Schüler (Spec §9).
-  await enqueueEmail(admin, "appointment_cancelled_by_student", {
+  // Sofortversand: Mail an Admin (Info) + Bestätigung an Schüler (Spec §9).
+  await sendEmailNow(admin, "appointment_cancelled_by_student", {
     student_id: user.id,
     appointment_id: appointmentId,
     start_at: appt.start_at,
   });
-  await enqueueEmail(admin, "appointment_cancelled_student", {
+  await sendEmailNow(admin, "appointment_cancelled_student", {
     student_id: user.id,
     appointment_id: appointmentId,
     start_at: appt.start_at,
@@ -392,13 +392,13 @@ export async function requestReschedule(
   }
 
   const studentName = profile ? `${profile.vorname} ${profile.nachname}` : "Schüler";
-  await enqueueEmail(admin, "reschedule_request_admin", {
+  await sendEmailNow(admin, "reschedule_request_admin", {
     student_id: user.id,
     student_name: studentName,
     original_start: appt.start_at,
     proposed_start: newStart.toISOString(),
   });
-  await enqueueEmail(admin, "reschedule_request_received", {
+  await sendEmailNow(admin, "reschedule_request_received", {
     student_id: user.id,
     to: profile?.email,
     original_start: appt.start_at,
@@ -443,7 +443,7 @@ export async function withdrawReschedule(rescheduleId: string) {
     .select("vorname, nachname")
     .eq("id", user.id)
     .maybeSingle();
-  await enqueueEmail(admin, "reschedule_request_withdrawn", {
+  await sendEmailNow(admin, "reschedule_request_withdrawn", {
     student_id: user.id,
     student_name: profile ? `${profile.vorname} ${profile.nachname}` : undefined,
     original_start: rr.original_start,
@@ -506,7 +506,7 @@ export async function acceptProposal(proposalId: string) {
       proposal.lessons_count ?? 1,
       proposal.interval_days ?? 7
     ).map((d) => d.toISOString());
-    await enqueueEmail(admin, "booking_confirmed", {
+    await sendEmailNow(admin, "booking_confirmed", {
       to: profile.email,
       starts,
       lessons_count: proposal.lessons_count ?? 1,
@@ -551,7 +551,7 @@ export async function rejectProposal(proposalId: string) {
     .select("vorname, nachname")
     .eq("id", user.id)
     .maybeSingle();
-  await enqueueEmail(admin, "proposal_rejected_admin", {
+  await sendEmailNow(admin, "proposal_rejected_admin", {
     student_id: user.id,
     student_name: profile ? `${profile.vorname} ${profile.nachname}` : undefined,
     proposed_start: proposal.proposed_start,
