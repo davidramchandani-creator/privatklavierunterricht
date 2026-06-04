@@ -10,7 +10,7 @@ import {
   validateSeries,
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
-import { enqueueEmail } from "@/lib/emails-outbox";
+import { enqueueEmail, sendEmailNow } from "@/lib/emails-outbox";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   type Package as Paket,
@@ -309,7 +309,7 @@ export async function acceptBookingRequest(requestId: string) {
     })
     .eq("id", requestId);
 
-  await enqueueEmail(admin, "booking_confirmed", {
+  await sendEmailNow(admin, "booking_confirmed", {
     student_id: req.student_id,
     to: profile?.email,
     starts: starts.map((s) => s.toISOString()),
@@ -345,7 +345,7 @@ export async function rejectBookingRequest(requestId: string, reason?: string) {
     .eq("id", requestId);
   if (error) return { error: "Anfrage konnte nicht abgelehnt werden." };
 
-  await enqueueEmail(admin, "booking_rejected", {
+  await sendEmailNow(admin, "booking_rejected", {
     student_id: req.student_id,
     request_id: requestId,
     reason: reason ?? null,
@@ -431,7 +431,7 @@ export async function acceptReschedule(rescheduleId: string) {
     .update({ status: "accepted", aktualisiert_am: new Date().toISOString() })
     .eq("id", rescheduleId);
 
-  await enqueueEmail(admin, "reschedule_confirmed", {
+  await sendEmailNow(admin, "reschedule_confirmed", {
     student_id: rr.student_id,
     to: profile?.email,
     original_start: rr.original_start,
@@ -466,7 +466,7 @@ export async function rejectReschedule(rescheduleId: string, reason?: string) {
     .eq("id", rescheduleId);
   if (error) return { error: "Anfrage konnte nicht abgelehnt werden." };
 
-  await enqueueEmail(admin, "reschedule_rejected", {
+  await sendEmailNow(admin, "reschedule_rejected", {
     student_id: rr.student_id,
     original_start: rr.original_start,
     proposed_start: rr.proposed_start,
@@ -494,7 +494,10 @@ export async function updateStudentPrices(
     if (!isNaN(v) && v >= 0) update[f] = v;
   }
   const buffer = parseInt(formData.get("buffer_time_minutes") as string);
-  if (buffer === 15 || buffer === 30) update.buffer_time_minutes = buffer;
+  if (!isNaN(buffer) && buffer >= 1 && buffer <= 120) update.buffer_time_minutes = buffer;
+
+  const bm = formData.get("buffer_mode") as string | null;
+  if (bm === "fixed" || bm === "auto") update.buffer_mode = bm;
 
   // Zahlungsart pro Schüler (TWINT oder QR-Rechnung)
   const pm = formData.get("payment_method") as string | null;
@@ -507,6 +510,45 @@ export async function updateStudentPrices(
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
   return { success: true };
+}
+
+/** Berechnet die Fahrzeit vom Admin-Standort zur Schüleradresse via Google Maps. */
+export async function calculateTravelBuffer(
+  studentAddress: string
+): Promise<{ minutes: number } | { error: string }> {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (!apiKey) return { error: "GOOGLE_MAPS_API_KEY nicht konfiguriert." };
+
+  const origin = process.env.ADMIN_HOME_ADDRESS ?? "Sattleracherstrasse 59, 8413 Neftenbach, Schweiz";
+  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(studentAddress)}&mode=driving&avoid=tolls&region=ch&language=de&key=${apiKey}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return { error: "Google Maps API nicht erreichbar." };
+    const json = await res.json() as {
+      status: string;
+      error_message?: string;
+      rows: Array<{ elements: Array<{ status: string; duration: { value: number; text: string } }> }>;
+    };
+    if (json.status !== "OK") {
+      console.error("[calculateTravelBuffer] Google Maps Fehlerantwort:", JSON.stringify(json, null, 2));
+      if (json.status === "REQUEST_DENIED") {
+        return {
+          error: `Google Maps: REQUEST_DENIED – wahrscheinlich ist der API-Key eingeschränkt oder die Distance Matrix API ist nicht aktiviert. Details: ${json.error_message ?? "keine weiteren Infos"}`,
+        };
+      }
+      return { error: `Google Maps Fehler: ${json.status}${json.error_message ? ` – ${json.error_message}` : ""}` };
+    }
+    const element = json.rows?.[0]?.elements?.[0];
+    if (!element || element.status !== "OK") return { error: "Adresse nicht gefunden." };
+    // Sekunden → Minuten, auf 5 Minuten aufrunden
+    const rawMin = Math.ceil(element.duration.value / 60);
+    const minutes = Math.ceil(rawMin / 5) * 5;
+    return { minutes };
+  } catch (err) {
+    console.error("[calculateTravelBuffer] Unerwarteter Fehler:", err);
+    return { error: "Fehler beim Abrufen der Fahrzeit." };
+  }
 }
 
 /** Admin legt einem Schüler ein Paket an (neues Schema). */
@@ -647,7 +689,7 @@ export async function createProposal(formData: FormData) {
   if (error) return { error: "Vorschlag konnte nicht gespeichert werden." };
 
   if (profile?.email) {
-    await enqueueEmail(admin, "proposal_new", {
+    await sendEmailNow(admin, "proposal_new", {
       student_id: studentId,
       proposed_start: desiredStart.toISOString(),
       lessons_count: lessonsCount,
@@ -673,15 +715,14 @@ export async function withdrawProposal(proposalId: string, schuelerId: string) {
 }
 
 /** Termin als abgeschlossen markieren (neues Schema). */
-export async function completeAppointmentNew(id: string, schuelerId: string) {
+export async function markAppointmentNoShow(id: string, schuelerId: string) {
   const admin = await createAdminClient();
   const { error } = await admin
     .from("appointments")
-    .update({ status: "completed" })
+    .update({ status: "no_show" })
     .eq("id", id);
   if (error) return { error: error.message };
 
-  // Google Calendar: Event-Farbe auf „abgeschlossen" aktualisieren
   await syncAppointmentToCalendar(admin, id);
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
@@ -710,16 +751,28 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
   // Google Calendar: Event löschen
   await deleteCalendarEvent(admin, id);
 
-  // Offene Rechnung zu diesem Termin stornieren (Spec §6)
-  await admin
+  // Offene Rechnung zu diesem Termin archivieren + geplante Zahlungsmail abbrechen
+  // (Spec §6: bei Terminabsage Rechnung archivieren; Invoice-Status kennt kein "cancelled").
+  const { data: cancelledInvoices } = await admin
     .from("invoices")
-    .update({ status: "cancelled" })
+    .update({ status: "archived" })
     .eq("appointment_id", id)
-    .in("status", ["unpaid", "pending_confirmation", "rejected"]);
+    .in("status", ["unpaid", "pending_confirmation", "rejected"])
+    .select("id");
 
-  // Schüler über die Absage informieren (Spec §9).
+  if (cancelledInvoices?.length) {
+    for (const inv of cancelledInvoices) {
+      await admin
+        .from("scheduled_emails")
+        .update({ status: "cancelled" })
+        .eq("status", "pending")
+        .contains("payload", { invoice_id: inv.id });
+    }
+  }
+
+  // Schüler sofort über die Absage informieren (Spec §9).
   if (appt?.student_id && appt.status !== "cancelled") {
-    await enqueueEmail(admin, "appointment_cancelled_by_admin", {
+    await sendEmailNow(admin, "appointment_cancelled_by_admin", {
       student_id: appt.student_id,
       appointment_id: id,
       start_at: appt.start_at,
@@ -1092,12 +1145,21 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
     for (const fid of ids) {
       await deleteCalendarEvent(admin, fid);
     }
-    // Zugehörige offene Rechnungen stornieren
-    await admin
+    // Zugehörige offene Rechnungen archivieren (Invoice-Status kennt kein "cancelled")
+    const { data: archivedInvoices } = await admin
       .from("invoices")
-      .update({ status: "cancelled" })
+      .update({ status: "archived" })
       .in("appointment_id", ids)
-      .in("status", ["unpaid", "pending_confirmation", "rejected"]);
+      .in("status", ["unpaid", "pending_confirmation", "rejected"])
+      .select("id");
+    // Geplante Zahlungsmails dieser Rechnungen abbrechen (Payload trägt invoice_id)
+    for (const inv of archivedInvoices ?? []) {
+      await admin
+        .from("scheduled_emails")
+        .update({ status: "cancelled" })
+        .eq("status", "pending")
+        .contains("payload", { invoice_id: inv.id });
+    }
   }
 
   const { error } = await admin
@@ -1112,13 +1174,13 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
     .eq("id", packageId);
   if (error) return { error: "Paket konnte nicht storniert werden." };
 
-  // Schüler benachrichtigen (Outbox).
+  // Schüler sofort benachrichtigen.
   const { data: profile } = await admin
     .from("profiles")
     .select("email, vorname, nachname, adresse, payment_method")
     .eq("id", pkg.student_id)
     .maybeSingle();
-  await enqueueEmail(admin, "package_cancelled", {
+  await sendEmailNow(admin, "package_cancelled", {
     student_id: pkg.student_id,
     to: profile?.email,
     lessons_used: settlement.lessonsUsed,
@@ -1256,7 +1318,7 @@ export async function confirmInvoicePayment(invoiceId: string) {
     .maybeSingle();
 
   if (profile?.email) {
-    await enqueueEmail(admin, "payment_confirmed", {
+    await sendEmailNow(admin, "payment_confirmed", {
       to: profile.email,
       student_name: `${profile.vorname} ${profile.nachname}`,
       student_id: inv.student_id,
@@ -1294,7 +1356,7 @@ export async function rejectInvoicePayment(invoiceId: string, reason?: string) {
     .maybeSingle();
 
   if (profile?.email) {
-    await enqueueEmail(admin, "payment_rejected", {
+    await sendEmailNow(admin, "payment_rejected", {
       to: profile.email,
       student_name: `${profile.vorname} ${profile.nachname}`,
       student_id: inv.student_id,
@@ -1342,7 +1404,7 @@ export async function resendPaymentEmail(invoiceId: string) {
   const studentName = `${profile.vorname} ${profile.nachname}`;
 
   if (inv.method === "qr") {
-    await enqueueEmail(admin, "qr_invoice", {
+    await sendEmailNow(admin, "qr_invoice", {
       to: profile.email,
       student_name: studentName,
       student_id: inv.student_id,
@@ -1352,14 +1414,13 @@ export async function resendPaymentEmail(invoiceId: string) {
       invoice_id: invoiceId,
     });
   } else {
-    const twintLink = getTwintBaseUrl();
-    await enqueueEmail(admin, "twint_payment_request", {
+    await sendEmailNow(admin, "twint_payment_request", {
       to: profile.email,
       student_name: studentName,
       student_id: inv.student_id,
       lesson_date: inv.lesson_date,
       amount: inv.amount,
-      twint_link: twintLink,
+      twint_link: getTwintBaseUrl(),
       invoice_number: inv.invoice_number,
       invoice_id: invoiceId,
     });
@@ -1367,6 +1428,103 @@ export async function resendPaymentEmail(invoiceId: string) {
 
   revalidatePath("/admin/zahlungen");
   return { success: true };
+}
+
+// ── Aufräumen / Löschen ───────────────────────────────────────────────────────
+
+/** Erledigte Buchungsanfrage (nicht open) endgültig löschen. */
+export async function deleteBookingRequest(requestId: string) {
+  const admin = createAdminClient();
+  const { data: req } = await admin
+    .from("booking_requests")
+    .select("status")
+    .eq("id", requestId)
+    .single();
+  if (!req) return { error: "Nicht gefunden." };
+  if (req.status === "open") return { error: "Offene Anfragen können nicht gelöscht werden." };
+  const { error } = await admin.from("booking_requests").delete().eq("id", requestId);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/terminanfragen");
+  return { success: true };
+}
+
+/** Erledigte Verschiebungsanfrage (nicht open) endgültig löschen. */
+export async function deleteRescheduleRequest(rescheduleId: string) {
+  const admin = createAdminClient();
+  const { data: rr } = await admin
+    .from("reschedule_requests")
+    .select("status")
+    .eq("id", rescheduleId)
+    .single();
+  if (!rr) return { error: "Nicht gefunden." };
+  if (rr.status === "open") return { error: "Offene Anfragen können nicht gelöscht werden." };
+  const { error } = await admin.from("reschedule_requests").delete().eq("id", rescheduleId);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/terminanfragen");
+  return { success: true };
+}
+
+/** Alle erledigten Buchungs- und Verschiebungsanfragen auf einmal löschen. */
+export async function bulkDeleteProcessedRequests() {
+  const admin = createAdminClient();
+  await Promise.all([
+    admin.from("booking_requests").delete().neq("status", "open"),
+    admin.from("reschedule_requests").delete().neq("status", "open"),
+  ]);
+  revalidatePath("/admin/terminanfragen");
+  return { success: true };
+}
+
+/** Einzelne archivierte/stornierte Rechnung endgültig löschen. */
+export async function hardDeleteInvoice(invoiceId: string) {
+  const admin = createAdminClient();
+  const { data: inv } = await admin
+    .from("invoices")
+    .select("status")
+    .eq("id", invoiceId)
+    .single();
+  if (!inv) return { error: "Nicht gefunden." };
+  if (!["archived", "cancelled"].includes(inv.status)) {
+    return { error: "Nur archivierte oder stornierte Rechnungen können gelöscht werden." };
+  }
+  const { error } = await admin.from("invoices").delete().eq("id", invoiceId);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/zahlungen");
+  return { success: true };
+}
+
+/** Alle archivierten Rechnungen auf einmal löschen (Papierkorb leeren). */
+export async function deleteArchivedInvoices() {
+  const admin = createAdminClient();
+  const { error } = await admin.from("invoices").delete().eq("status", "archived");
+  if (error) return { error: error.message };
+  revalidatePath("/admin/zahlungen");
+  return { success: true };
+}
+
+/** Sendet eine Test-E-Mail an ADMIN_EMAIL zur Überprüfung der Resend-Konfiguration. */
+export async function sendTestEmail() {
+  const to = process.env.ADMIN_EMAIL;
+  if (!to) {
+    return { error: "Umgebungsvariable ADMIN_EMAIL ist nicht gesetzt." };
+  }
+  const { sendEmail } = await import("@/lib/email-sender");
+  try {
+    await sendEmail({
+      to,
+      subject: "✓ Test-E-Mail – Klavierunterricht System",
+      html: `<div style="font-family:sans-serif;padding:24px;background:#f3f4f6;">
+        <div style="background:#fff;border-radius:8px;padding:24px;max-width:480px;">
+          <h2 style="color:#1C244B;margin-top:0;">Test-E-Mail</h2>
+          <p>Der E-Mail-Versand über Resend funktioniert korrekt.</p>
+          <p style="color:#6b7280;font-size:13px;">Zeitstempel: ${new Date().toLocaleString("de-CH", { timeZone: "Europe/Zurich" })}</p>
+        </div>
+      </div>`,
+    });
+    return { success: true as const, to };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 // ── Google Calendar (Meilenstein 12) ─────────────────────────────────────────

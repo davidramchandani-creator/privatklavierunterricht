@@ -83,35 +83,36 @@ export function renderEmail(
   switch (type) {
     case "booking_request_admin": {
       const studentName = String(payload.student_name ?? "Unbekannt");
-      const desiredStart = String(payload.desired_start ?? "");
-      const lessonsCount = Number(payload.lessons_count ?? 1);
-      const intervalDays = Number(payload.interval_days ?? 0);
+      const desiredStarts = Array.isArray(payload.desired_starts)
+        ? (payload.desired_starts as string[])
+        : payload.desired_start
+          ? [String(payload.desired_start)]
+          : [];
+      const count = desiredStarts.length;
 
-      const subject = `Neue Terminanfrage – ${studentName}`;
+      const subject = `Neue Terminanfrage – ${studentName} (${count} Termin${count !== 1 ? "e" : ""})`;
+      const dateRows = desiredStarts
+        .map(
+          (s) =>
+            `<li style="padding:3px 0;font-size:14px;font-weight:600;">${fmtDateTime(s)}</li>`
+        )
+        .join("");
       const content = `
         <p style="margin:0 0 16px;">Es liegt eine neue Terminanfrage vor:</p>
-        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;">
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:16px;">
           <tr>
             <td style="padding:8px 0;color:#6b7280;width:180px;font-size:14px;">Schüler/in</td>
             <td style="padding:8px 0;font-weight:600;font-size:14px;">${studentName}</td>
           </tr>
           <tr>
-            <td style="padding:8px 0;color:#6b7280;font-size:14px;">Wunschtermin</td>
-            <td style="padding:8px 0;font-weight:600;font-size:14px;">${desiredStart ? fmtDateTime(desiredStart) : "–"}</td>
+            <td style="padding:8px 0;color:#6b7280;font-size:14px;">Anzahl Termine</td>
+            <td style="padding:8px 0;font-weight:600;font-size:14px;">${count}</td>
           </tr>
-          <tr>
-            <td style="padding:8px 0;color:#6b7280;font-size:14px;">Anzahl Lektionen</td>
-            <td style="padding:8px 0;font-weight:600;font-size:14px;">${lessonsCount}</td>
-          </tr>
-          ${
-            intervalDays > 0
-              ? `<tr>
-            <td style="padding:8px 0;color:#6b7280;font-size:14px;">Seriell</td>
-            <td style="padding:8px 0;font-weight:600;font-size:14px;">Ja (alle ${intervalDays} Tage)</td>
-          </tr>`
-              : ""
-          }
         </table>
+        ${count > 0 ? `
+        <p style="margin:0 0 8px;font-weight:600;font-size:14px;">Gewünschte Termine:</p>
+        <ul style="margin:0 0 24px;padding-left:20px;color:#1f2937;">${dateRows}</ul>
+        ` : ""}
         <p style="margin:0 0 24px;">
           <a href="${APP_URL}/admin/terminanfragen"
              style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
@@ -123,26 +124,37 @@ export function renderEmail(
     }
 
     case "booking_request_received": {
-      const desiredStart = String(payload.desired_start ?? "");
-      const lessonsCount = Number(payload.lessons_count ?? 1);
+      const desiredStarts = Array.isArray(payload.desired_starts)
+        ? (payload.desired_starts as string[])
+        : payload.desired_start
+          ? [String(payload.desired_start)]
+          : [];
+      const count = desiredStarts.length;
 
-      const subject = "Deine Terminanfrage wurde erhalten";
+      const subject =
+        count > 1
+          ? `Deine ${count} Terminanfragen wurden erhalten`
+          : "Deine Terminanfrage wurde erhalten";
+
+      const dateItems = desiredStarts
+        .map(
+          (s) =>
+            `<li style="padding:3px 0;font-size:14px;font-weight:600;">${fmtDateTime(s)}</li>`
+        )
+        .join("");
+
       const content = `
-        <p style="margin:0 0 16px;">Vielen Dank für deine Terminanfrage!</p>
+        <p style="margin:0 0 16px;">Vielen Dank für deine Terminanfrage${count > 1 ? "n" : ""}!</p>
         <p style="margin:0 0 16px;">
-          David hat deine Anfrage erhalten und wird sie so bald wie möglich bearbeiten.
-          Du erhältst eine Bestätigung, sobald dein Termin genehmigt wurde.
+          David hat deine Anfrage erhalten und wird ${count > 1 ? "jeden Termin einzeln" : "sie so bald wie möglich"} bearbeiten.
+          Du erhältst eine Bestätigung, sobald ${count > 1 ? "ein Termin" : "dein Termin"} genehmigt wurde.
         </p>
-        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
-          <tr>
-            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Angefragter Termin</td>
-            <td style="padding:6px 0;font-weight:600;font-size:14px;">${desiredStart ? fmtDateTime(desiredStart) : "–"}</td>
-          </tr>
-          <tr>
-            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Anzahl Lektionen</td>
-            <td style="padding:6px 0;font-weight:600;font-size:14px;">${lessonsCount}</td>
-          </tr>
-        </table>
+        ${count > 0 ? `
+        <div style="background-color:#f9fafb;border-radius:6px;padding:16px;margin-bottom:24px;">
+          <p style="margin:0 0 8px;font-size:13px;color:#6b7280;">Angefragte Termine (${count}):</p>
+          <ul style="margin:0;padding-left:20px;color:#1f2937;">${dateItems}</ul>
+        </div>
+        ` : ""}
         <p style="margin:0;color:#6b7280;font-size:13px;">
           Falls du Fragen hast, wende dich direkt an David.
         </p>

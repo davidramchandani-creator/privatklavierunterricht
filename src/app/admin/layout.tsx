@@ -5,6 +5,7 @@ import Link from "next/link";
 import { logout } from "@/app/auth/actions";
 import AdminMobileMenu from "./_components/AdminMobileMenu";
 import { AdminNavLinks } from "./_components/AdminNav";
+import AdminBottomNav from "./_components/AdminBottomNav";
 
 export default async function AdminLayout({
   children,
@@ -83,8 +84,10 @@ export default async function AdminLayout({
           </form>
         </header>
 
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6">{children}</main>
       </div>
+
+      <AdminBottomNav />
     </div>
   );
 }

@@ -14,12 +14,13 @@ import {
   createDirectBooking,
   createProposal,
   withdrawProposal,
-  completeAppointmentNew,
+  markAppointmentNoShow,
   cancelAppointmentNew,
   pausePackage,
   resumePackage,
   extendPackage,
   cancelPackage,
+  calculateTravelBuffer,
 } from "../../../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,7 @@ import {
   CANCELLATION_SINGLE_BASE,
   CANCELLATION_SINGLE_THRESHOLD,
 } from "@/lib/packages";
-import { Loader2, Pencil, Trash2, CheckCircle2, XCircle, Plus, Mail, AlertTriangle, Calendar, Pause, Play, Clock, Ban, Send } from "lucide-react";
+import { Loader2, Pencil, Trash2, UserX, XCircle, CheckCircle2, Plus, Mail, AlertTriangle, Calendar, Pause, Play, Clock, Ban, Send } from "lucide-react";
 
 type Profile = {
   id: string;
@@ -262,16 +263,21 @@ function InvoiceAction({ invoiceId, currentStatus }: { invoiceId: string; curren
 function PreiseForm({
   userId,
   schuelerId,
+  studentAddress,
+  mapsConfigured,
   initial,
 }: {
   userId: string;
   schuelerId: string;
+  studentAddress: string | null;
+  mapsConfigured: boolean;
   initial: {
     price_single: number;
     price_10er: number;
     price_20er: number;
     travel_surcharge: number;
     buffer_time_minutes: number;
+    buffer_mode: string;
     payment_method: string;
   };
 }) {
@@ -285,12 +291,34 @@ function PreiseForm({
   const [price20er, setPrice20er] = useState(String(initial.price_20er));
   const [travel, setTravel] = useState(String(initial.travel_surcharge));
   const [buffer, setBuffer] = useState(String(initial.buffer_time_minutes));
+  const [bufferMode, setBufferMode] = useState<"fixed" | "auto">(
+    initial.buffer_mode === "auto" ? "auto" : "fixed"
+  );
   const [paymentMethod, setPaymentMethod] = useState(initial.payment_method || "qr");
+
+  const [mapsLoading, setMapsLoading] = useState(false);
+  const [mapsResult, setMapsResult] = useState<number | null>(null);
+  const [mapsError, setMapsError] = useState<string | null>(null);
 
   const t = Number(travel) || 0;
   const effSingle = (Number(priceSingle) || 0) + t;
   const eff10er = (Number(price10er) || 0) + t;
   const eff20er = (Number(price20er) || 0) + t;
+
+  async function handleCalculateMaps() {
+    if (!studentAddress) return;
+    setMapsLoading(true);
+    setMapsError(null);
+    setMapsResult(null);
+    const result = await calculateTravelBuffer(studentAddress);
+    setMapsLoading(false);
+    if ("error" in result) {
+      setMapsError(result.error);
+    } else {
+      setMapsResult(result.minutes);
+      setBuffer(String(result.minutes));
+    }
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -312,76 +340,145 @@ function PreiseForm({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="space-y-1">
           <label className="text-xs font-500 text-gray-600">Einzellektion (CHF)</label>
-          <Input
-            name="price_single"
-            type="number"
-            step="0.01"
-            min="0"
-            value={priceSingle}
-            onChange={(e) => setPriceSingle(e.target.value)}
-            required
-          />
+          <Input name="price_single" type="number" step="0.01" min="0" value={priceSingle}
+            onChange={(e) => setPriceSingle(e.target.value)} required />
         </div>
         <div className="space-y-1">
           <label className="text-xs font-500 text-gray-600">10er (CHF)</label>
-          <Input
-            name="price_10er"
-            type="number"
-            step="0.01"
-            min="0"
-            value={price10er}
-            onChange={(e) => setPrice10er(e.target.value)}
-            required
-          />
+          <Input name="price_10er" type="number" step="0.01" min="0" value={price10er}
+            onChange={(e) => setPrice10er(e.target.value)} required />
         </div>
         <div className="space-y-1">
           <label className="text-xs font-500 text-gray-600">20er (CHF)</label>
-          <Input
-            name="price_20er"
-            type="number"
-            step="0.01"
-            min="0"
-            value={price20er}
-            onChange={(e) => setPrice20er(e.target.value)}
-            required
-          />
+          <Input name="price_20er" type="number" step="0.01" min="0" value={price20er}
+            onChange={(e) => setPrice20er(e.target.value)} required />
         </div>
         <div className="space-y-1">
           <label className="text-xs font-500 text-gray-600">Wegaufschlag (CHF)</label>
-          <Input
-            name="travel_surcharge"
-            type="number"
-            step="0.01"
-            min="0"
-            value={travel}
-            onChange={(e) => setTravel(e.target.value)}
-            required
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-500 text-gray-600">Pufferzeit</label>
-          <select
-            name="buffer_time_minutes"
-            value={buffer}
-            onChange={(e) => setBuffer(e.target.value)}
-            className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="15">15 Minuten</option>
-            <option value="30">30 Minuten</option>
-          </select>
+          <Input name="travel_surcharge" type="number" step="0.01" min="0" value={travel}
+            onChange={(e) => setTravel(e.target.value)} required />
         </div>
         <div className="space-y-1">
           <label className="text-xs font-500 text-gray-600">Zahlungsart</label>
-          <select
-            name="payment_method"
-            value={paymentMethod}
+          <select name="payment_method" value={paymentMethod}
             onChange={(e) => setPaymentMethod(e.target.value)}
-            className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
+            className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <option value="qr">QR-Rechnung</option>
             <option value="twint">TWINT</option>
           </select>
         </div>
+      </div>
+
+      {/* Pufferzeit */}
+      <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-600 text-gray-700">Pufferzeit zwischen Terminen</p>
+          <div className="flex rounded-lg overflow-hidden border border-gray-200 text-xs">
+            {(["fixed", "auto"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => { setBufferMode(m); setMapsResult(null); setMapsError(null); }}
+                className={`px-3 py-1.5 font-500 transition-colors ${
+                  bufferMode === m
+                    ? "bg-[#1C244B] text-white"
+                    : "bg-white text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                {m === "fixed" ? "Fixiert" : "Google Maps"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <input type="hidden" name="buffer_mode" value={bufferMode} />
+
+        {bufferMode === "fixed" ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <Input
+                name="buffer_time_minutes"
+                type="number"
+                min="1"
+                max="120"
+                value={buffer}
+                onChange={(e) => setBuffer(e.target.value)}
+                className="w-20 text-center"
+                required
+              />
+              <span className="text-sm text-gray-500">Min.</span>
+            </div>
+            <div className="flex gap-1.5">
+              {[15, 20, 30, 45].map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setBuffer(String(v))}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-500 border transition-colors ${
+                    buffer === String(v)
+                      ? "bg-[#1C244B] text-white border-[#1C244B]"
+                      : "border-gray-200 text-gray-600 hover:border-[#1C244B]/40"
+                  }`}
+                >
+                  {v}&apos;
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <input type="hidden" name="buffer_time_minutes" value={buffer} />
+            {!mapsConfigured ? (
+              <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                Setze <code className="font-mono">GOOGLE_MAPS_API_KEY</code> in den Umgebungsvariablen,
+                um die automatische Fahrzeitberechnung zu nutzen.
+              </div>
+            ) : !studentAddress ? (
+              <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                Keine Adresse hinterlegt. Trage zuerst die Adresse des Schülers ein.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Von: Neftenbach → {studentAddress}</span>
+                </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCalculateMaps}
+                    disabled={mapsLoading}
+                    className="text-xs h-8"
+                  >
+                    {mapsLoading ? (
+                      <><Loader2 className="w-3 h-3 animate-spin" /> Berechne…</>
+                    ) : (
+                      "Fahrzeit berechnen"
+                    )}
+                  </Button>
+                  {mapsResult !== null && (
+                    <span className="text-sm font-600 text-emerald-700">
+                      ~{mapsResult} Min. ermittelt ✓
+                    </span>
+                  )}
+                  {buffer !== String(initial.buffer_time_minutes) && mapsResult !== null && (
+                    <span className="text-xs text-gray-500">(wird beim Speichern übernommen)</span>
+                  )}
+                  {mapsError && (
+                    <span className="text-xs text-red-600">{mapsError}</span>
+                  )}
+                </div>
+                {!mapsResult && (
+                  <p className="text-xs text-gray-400">
+                    Aktuell gespeichert: {initial.buffer_time_minutes} Min.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="rounded-xl bg-[#1C244B]/5 px-4 py-3 text-sm text-[#1C244B] space-y-1">
@@ -785,25 +882,26 @@ function AppointmentActions({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  if (status === "cancelled" || status === "completed") return null;
+  if (status === "cancelled" || status === "completed" || status === "no_show") return null;
 
   return (
     <div className="flex gap-1.5">
       <button
         disabled={isPending}
         onClick={() => {
+          if (!confirm("Schüler als nicht erschienen markieren?")) return;
           startTransition(async () => {
-            await completeAppointmentNew(appointmentId, schuelerId);
+            await markAppointmentNoShow(appointmentId, schuelerId);
             router.refresh();
           });
         }}
-        className="p-1.5 rounded-lg hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 transition-colors"
-        title="Abschliessen"
+        className="p-1.5 rounded-lg hover:bg-amber-50 text-gray-400 hover:text-amber-600 transition-colors"
+        title="Nicht erschienen"
       >
         {isPending ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
         ) : (
-          <CheckCircle2 className="w-3.5 h-3.5" />
+          <UserX className="w-3.5 h-3.5" />
         )}
       </button>
       <button

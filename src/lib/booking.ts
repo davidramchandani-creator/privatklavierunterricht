@@ -27,6 +27,9 @@ export const SERIES_LESSON_COUNTS = [1, 5, 10] as const;
 export const SERIES_INTERVALS = [7, 14] as const;
 
 // Verfügbare Zeitfenster je Wochentag (JS getUTCDay: 0=So … 6=Sa), Lokalzeit.
+// Dient als Fallback/Default, falls der Admin keine eigene Verfügbarkeit in
+// `admin_verfuegbarkeit` gepflegt hat. Sobald der Admin die Verfügbarkeit setzt,
+// werden diese Fenster durch die DB-Werte ersetzt (siehe loadAvailabilityContext).
 export const AVAILABILITY: Record<number, { start: string; end: string }[]> = {
   1: [{ start: "16:30", end: "20:30" }], // Montag
   2: [{ start: "16:30", end: "20:30" }], // Dienstag
@@ -34,6 +37,8 @@ export const AVAILABILITY: Record<number, { start: string; end: string }[]> = {
   4: [{ start: "16:30", end: "20:30" }], // Donnerstag
   5: [{ start: "16:30", end: "18:00" }], // Freitag
 };
+
+export type AvailabilityWindows = Record<number, { start: string; end: string }[]>;
 
 export type CalDate = { y: number; m: number; d: number }; // m: 1–12
 
@@ -163,8 +168,11 @@ function daysBetween(a: CalDate, b: CalDate): number {
 // ── Slot-Erzeugung ─────────────────────────────────────────
 
 /** Kandidaten-Slots (45 Min, 15-Min-Raster) für ein Kalenderdatum. */
-export function generateDaySlots(date: CalDate): Slot[] {
-  const windows = AVAILABILITY[weekdayOf(date)] ?? [];
+export function generateDaySlots(
+  date: CalDate,
+  availability: AvailabilityWindows = AVAILABILITY
+): Slot[] {
+  const windows = availability[weekdayOf(date)] ?? [];
   const slots: Slot[] = [];
 
   for (const w of windows) {
@@ -187,6 +195,24 @@ export function generateDaySlots(date: CalDate): Slot[] {
 
 function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
   return aStart.getTime() < bEnd.getTime() && bStart.getTime() < aEnd.getTime();
+}
+
+/**
+ * Wie overlaps, aber mit Pufferzeit um das gesperrte Fenster [bStart, bEnd].
+ * Frei nur, wenn der Slot komplett mit Puffer-Abstand davor oder danach liegt.
+ * So gilt die Pufferzeit (Fahrt-/Umstellzeit) auch rund um Zeitblöcke.
+ */
+function overlapsWithBuffer(
+  slot: Slot,
+  bStart: Date,
+  bEnd: Date,
+  bufferMin: number
+): boolean {
+  const gap = bufferMin * 60000;
+  const free =
+    slot.end.getTime() + gap <= bStart.getTime() ||
+    bEnd.getTime() + gap <= slot.start.getTime();
+  return !free;
 }
 
 /** Kollision mit bestehendem Termin inkl. Puffer (Max. beider Puffer). */
@@ -224,20 +250,28 @@ export function absenceBlocks(
   });
 }
 
-/** Überlappt der Slot einen einmaligen Zeitblock? */
-export function timeBlockBlocks(slot: Slot, blocks: TimeBlock[]): boolean {
+/** Überlappt der Slot einen einmaligen Zeitblock (inkl. Pufferzeit)? */
+export function timeBlockBlocks(
+  slot: Slot,
+  blocks: TimeBlock[],
+  bufferMin = 0
+): boolean {
   return blocks.some((b) => {
     const { y, m, d } = parseDateStr(b.date);
     const bs = parseHHMM(b.start_time);
     const be = parseHHMM(b.end_time);
     const start = zonedToUtc(y, m, d, bs.h, bs.m);
     const end = zonedToUtc(y, m, d, be.h, be.m);
-    return overlaps(slot.start, slot.end, start, end);
+    return overlapsWithBuffer(slot, start, end, bufferMin);
   });
 }
 
-/** Überlappt der Slot eine aktive Wiederholungsregel (alle interval_days)? */
-export function timeBlockRuleBlocks(slot: Slot, rules: TimeBlockRule[]): boolean {
+/** Überlappt der Slot eine aktive Wiederholungsregel (alle interval_days, inkl. Puffer)? */
+export function timeBlockRuleBlocks(
+  slot: Slot,
+  rules: TimeBlockRule[],
+  bufferMin = 0
+): boolean {
   const slotDate = utcToZonedDate(slot.start);
   return rules.some((r) => {
     const ruleStart = parseDateStr(r.start_date);
@@ -249,7 +283,7 @@ export function timeBlockRuleBlocks(slot: Slot, rules: TimeBlockRule[]): boolean
     const be = parseHHMM(r.end_time);
     const start = zonedToUtc(slotDate.y, slotDate.m, slotDate.d, bs.h, bs.m);
     const end = zonedToUtc(slotDate.y, slotDate.m, slotDate.d, be.h, be.m);
-    return overlaps(slot.start, slot.end, start, end);
+    return overlapsWithBuffer(slot, start, end, bufferMin);
   });
 }
 
@@ -261,9 +295,28 @@ export type AvailabilityContext = {
   absences: Absence[];
   timeBlocks: TimeBlock[];
   timeBlockRules: TimeBlockRule[];
+  /** Vom Admin gepflegte Verfügbarkeitsfenster; fällt sonst auf AVAILABILITY zurück. */
+  availabilityWindows?: AvailabilityWindows;
   /** Admin-Operationen überspringen die 24-Stunden-Vorlaufregel. */
   skipLeadTime?: boolean;
 };
+
+/** Liegt der Slot vollständig in einem Verfügbarkeitsfenster des Wochentags? */
+export function withinAvailability(
+  slot: Slot,
+  availability: AvailabilityWindows
+): boolean {
+  const date = utcToZonedDate(slot.start);
+  const windows = availability[weekdayOf(date)] ?? [];
+  if (windows.length === 0) return false;
+  const startMin =
+    (slot.start.getTime() - zonedToUtc(date.y, date.m, date.d, 0, 0).getTime()) /
+    60000;
+  const endMin = startMin + LESSON_DURATION_MIN;
+  return windows.some(
+    (w) => startMin >= minutesOf(w.start) && endMin <= minutesOf(w.end)
+  );
+}
 
 /** Ist ein einzelner Slot buchbar? (alle Regeln) */
 export function isSlotBookable(slot: Slot, ctx: AvailabilityContext): boolean {
@@ -274,13 +327,17 @@ export function isSlotBookable(slot: Slot, ctx: AvailabilityContext): boolean {
   ) {
     return false;
   }
+  // Verfügbarkeit: Slot muss in einem Admin-Verfügbarkeitsfenster liegen.
+  if (!withinAvailability(slot, ctx.availabilityWindows ?? AVAILABILITY)) {
+    return false;
+  }
   if (ctx.absences.length && absenceBlocks(slot, ctx.absences, ctx.studentId)) {
     return false;
   }
-  if (ctx.timeBlocks.length && timeBlockBlocks(slot, ctx.timeBlocks)) {
+  if (ctx.timeBlocks.length && timeBlockBlocks(slot, ctx.timeBlocks, ctx.bufferMin)) {
     return false;
   }
-  if (ctx.timeBlockRules.length && timeBlockRuleBlocks(slot, ctx.timeBlockRules)) {
+  if (ctx.timeBlockRules.length && timeBlockRuleBlocks(slot, ctx.timeBlockRules, ctx.bufferMin)) {
     return false;
   }
   for (const appt of ctx.appointments) {
@@ -298,10 +355,11 @@ export function computeAvailableSlots(
   days: number,
   ctx: AvailabilityContext
 ): Slot[] {
+  const windows = ctx.availabilityWindows ?? AVAILABILITY;
   const result: Slot[] = [];
   for (let i = 0; i < days; i++) {
     const date = addDaysCal(fromDate, i);
-    for (const slot of generateDaySlots(date)) {
+    for (const slot of generateDaySlots(date, windows)) {
       if (isSlotBookable(slot, ctx)) result.push(slot);
     }
   }

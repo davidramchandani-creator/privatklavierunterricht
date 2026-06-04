@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -11,44 +12,144 @@ import {
   CreditCard,
   Inbox,
   Settings,
+  Clock,
+  ChevronDown,
 } from "lucide-react";
 
-export const navItems = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  exact?: boolean;
+};
+
+type NavGroup = {
+  label: string;
+  icon: React.ElementType;
+  basePath: string;
+  children: NavItem[];
+};
+
+type NavEntry = NavItem | ({ group: true } & NavGroup);
+
+export const navEntries: NavEntry[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/terminanfragen", label: "Terminanfragen", icon: CalendarClock },
   { href: "/admin/anfragen", label: "Probelektionen", icon: Inbox },
   { href: "/admin/schueler", label: "Schüler", icon: Users },
-  { href: "/admin/kalender", label: "Kalender", icon: Calendar },
-  { href: "/admin/abwesenheiten", label: "Abwesenheiten", icon: CalendarOff },
+  {
+    group: true,
+    label: "Kalender",
+    icon: Calendar,
+    basePath: "/admin/kalender",
+    children: [
+      { href: "/admin/kalender", label: "Kalenderansicht", icon: Calendar, exact: true },
+      { href: "/admin/abwesenheiten", label: "Abwesenheiten", icon: CalendarOff },
+      { href: "/admin/verfuegbarkeit", label: "Verfügbarkeit", icon: Clock },
+    ],
+  },
   { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
   { href: "/admin/einstellungen", label: "Einstellungen", icon: Settings },
 ];
 
-export function AdminNavLinks({ onNavigate }: { onNavigate?: () => void }) {
+function NavLink({
+  href,
+  label,
+  icon: Icon,
+  exact,
+  sub,
+  onNavigate,
+}: NavItem & { sub?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
+  const active = exact ? pathname === href : pathname.startsWith(href);
 
   return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className={`flex items-center gap-3 rounded-xl text-sm font-500 transition-colors ${
+        sub ? "px-3 py-2 ml-4" : "px-3 py-2.5"
+      } ${
+        active
+          ? "bg-[#1C244B] text-white"
+          : sub
+          ? "text-gray-500 hover:bg-gray-100 hover:text-[#1C244B]"
+          : "text-gray-600 hover:bg-gray-100 hover:text-[#1C244B]"
+      }`}
+    >
+      <Icon
+        className={`flex-shrink-0 ${sub ? "w-3.5 h-3.5" : "w-4 h-4"} ${
+          active ? "text-white" : "text-gray-400"
+        }`}
+      />
+      {label}
+    </Link>
+  );
+}
+
+function NavGroupItem({
+  group,
+  onNavigate,
+}: {
+  group: NavGroup;
+  onNavigate?: () => void;
+}) {
+  const pathname = usePathname();
+  const isAnyChildActive = group.children.some((c) =>
+    c.exact ? pathname === c.href : pathname.startsWith(c.href)
+  );
+  const [open, setOpen] = useState(isAnyChildActive);
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-500 transition-colors ${
+          isAnyChildActive
+            ? "text-[#1C244B] bg-[#1C244B]/5"
+            : "text-gray-600 hover:bg-gray-100 hover:text-[#1C244B]"
+        }`}
+      >
+        <group.icon
+          className={`w-4 h-4 flex-shrink-0 ${
+            isAnyChildActive ? "text-[#1C244B]" : "text-gray-400"
+          }`}
+        />
+        <span className="flex-1 text-left">{group.label}</span>
+        <ChevronDown
+          className={`w-3.5 h-3.5 transition-transform ${
+            open ? "rotate-180" : ""
+          } ${isAnyChildActive ? "text-[#1C244B]" : "text-gray-400"}`}
+        />
+      </button>
+
+      {open && (
+        <div className="mt-0.5 space-y-0.5">
+          {group.children.map((child) => (
+            <NavLink key={child.href} {...child} sub onNavigate={onNavigate} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function AdminNavLinks({ onNavigate }: { onNavigate?: () => void }) {
+  return (
     <>
-      {navItems.map(({ href, label, icon: Icon, exact }) => {
-        const active = exact ? pathname === href : pathname.startsWith(href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            onClick={onNavigate}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-500 transition-colors ${
-              active
-                ? "bg-[#1C244B] text-white"
-                : "text-gray-600 hover:bg-gray-100 hover:text-[#1C244B]"
-            }`}
-          >
-            <Icon
-              className={`w-4 h-4 flex-shrink-0 ${
-                active ? "text-white" : "text-gray-400"
-              }`}
+      {navEntries.map((entry) => {
+        if ("group" in entry && entry.group) {
+          return (
+            <NavGroupItem
+              key={entry.basePath}
+              group={entry}
+              onNavigate={onNavigate}
             />
-            {label}
-          </Link>
+          );
+        }
+        const item = entry as NavItem;
+        return (
+          <NavLink key={item.href} {...item} onNavigate={onNavigate} />
         );
       })}
     </>

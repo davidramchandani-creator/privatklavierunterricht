@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { CreditCard } from "lucide-react";
 import InvoiceActions from "./_components/InvoiceActions";
+import BulkDeleteArchivedButton from "./_components/BulkDeleteArchivedButton";
 import { StatusBadge } from "@/components/ui/status-badge";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +32,7 @@ function fmtDate(iso: string | null): string {
   }
 }
 
-const FILTERS = ["alle", "unpaid", "pending_confirmation", "paid", "rejected"] as const;
+const FILTERS = ["alle", "unpaid", "pending_confirmation", "paid", "rejected", "archived"] as const;
 type Filter = (typeof FILTERS)[number];
 const FILTER_LABELS: Record<Filter, string> = {
   alle: "Alle",
@@ -39,6 +40,7 @@ const FILTER_LABELS: Record<Filter, string> = {
   pending_confirmation: "Wird geprüft",
   paid: "Bezahlt",
   rejected: "Abgelehnt",
+  archived: "Archiviert",
 };
 
 export default async function ZahlungenPage({
@@ -54,14 +56,25 @@ export default async function ZahlungenPage({
     .select(
       "id, invoice_number, amount, status, method, lesson_date, paid_at, student_id, profiles(vorname, nachname)"
     )
-    .not("status", "in", '("archived","cancelled")')
     .order("lesson_date", { ascending: false });
 
-  if (filter !== "alle" && FILTERS.includes(filter as Filter)) {
-    query = query.eq("status", filter);
+  if (filter === "archived") {
+    query = query.in("status", ["archived", "cancelled"]);
+  } else if (filter !== "alle") {
+    if (FILTERS.includes(filter as Filter)) {
+      query = query.eq("status", filter);
+    } else {
+      query = query.not("status", "in", '("archived","cancelled")');
+    }
+  } else {
+    // "alle" excludes archived/cancelled by default
+    query = query.not("status", "in", '("archived","cancelled")');
   }
 
-  const { data: invoices } = await query;
+  const [{ data: invoices }, { count: archivedCount }] = await Promise.all([
+    query,
+    admin.from("invoices").select("id", { count: "exact", head: true }).in("status", ["archived", "cancelled"]),
+  ]);
 
   // Summary stats
   const all = invoices ?? [];
@@ -77,7 +90,10 @@ export default async function ZahlungenPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-800 text-[#1C244B]">Zahlungen</h1>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl font-800 text-[#1C244B]">Zahlungen</h1>
+        <BulkDeleteArchivedButton count={archivedCount ?? 0} />
+      </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4 max-w-2xl">

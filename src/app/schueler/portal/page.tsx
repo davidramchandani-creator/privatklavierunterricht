@@ -9,6 +9,7 @@ import TerminBuchen from "./_components/TerminBuchen";
 import ZahlungenSection from "./_components/ZahlungenSection";
 import ProposalCard from "./_components/ProposalCard";
 import PortalTabs from "./_components/PortalTabs";
+import { CalendarPlus } from "lucide-react";
 import { canBuyNewPackage, type Package as Paket } from "@/lib/packages";
 import { getTwintBaseUrl } from "@/lib/twint";
 
@@ -78,7 +79,7 @@ export default async function SchuelerPortalPage() {
 
   const { data: offeneAnfragen } = await supabase
     .from("booking_requests")
-    .select("id, desired_start, lessons_count, interval_days, status")
+    .select("id, desired_start, lessons_count, interval_days, status, group_id")
     .eq("student_id", user.id)
     .eq("status", "open")
     .order("desired_start", { ascending: true });
@@ -113,9 +114,16 @@ export default async function SchuelerPortalPage() {
     aktivesPackage != null
       ? Math.max(0, aktivesPackage.lessons_total - lessonsUsed)
       : null;
+  // Nur tatsächlich fällige Zahlungen zählen: offen/abgelehnt UND Lektion ist
+  // bereits vorbei (Spec §6 – Zahlung erscheint erst nach der Lektion).
+  const nowMs = Date.now();
   const openPaymentsCount =
-    invoices?.filter((i) => i.status === "unpaid" || i.status === "rejected")
-      .length ?? 0;
+    invoices?.filter((i) => {
+      if (i.status !== "unpaid" && i.status !== "rejected") return false;
+      if (!i.lesson_date) return true; // z. B. Storno-Nachzahlung: sofort fällig
+      const lessonEnd = new Date(i.lesson_date).getTime() + 45 * 60 * 1000;
+      return lessonEnd <= nowMs;
+    }).length ?? 0;
 
   // Offizieller TWINT-Acquirer-Link (serverseitig, nie im Client hartcodiert).
   const twintBase = getTwintBaseUrl();
@@ -178,6 +186,29 @@ export default async function SchuelerPortalPage() {
         />
       </div>
 
+      {/* Prominent booking CTA – shown first when the student can book */}
+      {canBook && remainingLessons != null && remainingLessons > 0 && (
+        <a
+          href="#termine"
+          className="flex items-center justify-between gap-4 bg-navy-900 text-white rounded-2xl px-5 py-4 hover:bg-navy-800 transition-colors group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+              <CalendarPlus className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-700 text-sm">Nächste Lektion buchen</p>
+              <p className="text-white/60 text-xs mt-0.5">
+                {remainingLessons} Lektion{remainingLessons !== 1 ? "en" : ""} verfügbar
+              </p>
+            </div>
+          </div>
+          <svg className="w-5 h-5 text-white/60 group-hover:text-white group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
+      )}
+
       <div className="space-y-5">
         <SectionHeader title="Mein Paket" />
         <PaketCard
@@ -201,9 +232,9 @@ export default async function SchuelerPortalPage() {
         requests={offeneAnfragen ?? []}
         reschedules={offeneVerschiebungen ?? []}
       />
-      {aktivesPackage && canBook && (
+      {aktivesPackage && canBook && remainingLessons != null && remainingLessons > 0 && (
         <div className="pt-1">
-          <TerminBuchen />
+          <TerminBuchen maxSlots={remainingLessons} />
         </div>
       )}
     </div>
@@ -219,7 +250,7 @@ export default async function SchuelerPortalPage() {
     <div className="min-h-screen bg-white">
       <PortalNav vorname={vorname} />
 
-      <main className="max-w-4xl mx-auto px-5 py-8 sm:py-10">
+      <main className="max-w-4xl mx-auto px-5 py-8 sm:py-10 pb-24 sm:pb-10">
         <div className="mb-6">
           <p className="text-[13px] font-500 text-gray-400">Schön, dass du da bist</p>
           <h1 className="mt-1 text-2xl sm:text-3xl font-700 text-navy-900 tracking-tight">

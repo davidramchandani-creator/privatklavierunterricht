@@ -12,11 +12,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  List,
+  LayoutGrid,
 } from "lucide-react";
 import { isWithin24Hours } from "@/lib/utils";
 import {
   cancelAppointment,
   withdrawBookingRequest,
+  withdrawGroupBookingRequests,
   requestReschedule,
   withdrawReschedule,
   getVerfuegbareSlots,
@@ -36,6 +39,7 @@ type BookingRequest = {
   lessons_count: number;
   interval_days: number;
   status: string;
+  group_id?: string | null;
 };
 
 type RescheduleRequest = {
@@ -55,8 +59,22 @@ export default function NaechsteTermine({
   requests: BookingRequest[];
   reschedules?: RescheduleRequest[];
 }) {
+  const [view, setView] = useState<"liste" | "kalender">("liste");
+
   const offeneAnfragen = requests.filter((r) => r.status === "open");
   const offeneVerschiebungen = reschedules.filter((r) => r.status === "open");
+
+  // Gruppe Anfragen: mit group_id → gebündelt; ohne → einzeln
+  const grouped = new Map<string, BookingRequest[]>();
+  const singles: BookingRequest[] = [];
+  for (const r of offeneAnfragen) {
+    if (r.group_id) {
+      if (!grouped.has(r.group_id)) grouped.set(r.group_id, []);
+      grouped.get(r.group_id)!.push(r);
+    } else {
+      singles.push(r);
+    }
+  }
 
   if (
     appointments.length === 0 &&
@@ -73,18 +91,312 @@ export default function NaechsteTermine({
 
   return (
     <div className="space-y-3">
-      {offeneAnfragen.map((r) => (
-        <AnfrageRow key={r.id} request={r} />
-      ))}
-      {appointments.map((a) => (
-        <TerminRow
-          key={a.id}
-          appointment={a}
-          pendingReschedule={
-            offeneVerschiebungen.find((v) => v.appointment_id === a.id) ?? null
-          }
+      {/* Ansicht-Umschalter: Liste / Kalender */}
+      <div className="flex justify-end">
+        <div className="inline-flex bg-gray-100 rounded-xl p-0.5">
+          <button
+            onClick={() => setView("liste")}
+            className={`flex items-center gap-1.5 text-xs font-600 px-3 py-1.5 rounded-lg transition-colors ${
+              view === "liste"
+                ? "bg-white text-[#1C244B] shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <List className="w-3.5 h-3.5" /> Liste
+          </button>
+          <button
+            onClick={() => setView("kalender")}
+            className={`flex items-center gap-1.5 text-xs font-600 px-3 py-1.5 rounded-lg transition-colors ${
+              view === "kalender"
+                ? "bg-white text-[#1C244B] shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" /> Kalender
+          </button>
+        </div>
+      </div>
+
+      {view === "kalender" ? (
+        <MonthCalendar
+          appointments={appointments}
+          requests={offeneAnfragen}
         />
-      ))}
+      ) : (
+        <div className="space-y-3">
+          {/* Gruppenanfragen */}
+          {Array.from(grouped.entries()).map(([groupId, reqs]) => (
+            <GruppenAnfrageRow key={groupId} groupId={groupId} requests={reqs} />
+          ))}
+          {/* Einzelanfragen (legacy) */}
+          {singles.map((r) => (
+            <AnfrageRow key={r.id} request={r} />
+          ))}
+          {appointments.map((a) => (
+            <TerminRow
+              key={a.id}
+              appointment={a}
+              pendingReschedule={
+                offeneVerschiebungen.find((v) => v.appointment_id === a.id) ?? null
+              }
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Monatskalender mit bestätigten Terminen (navy) und offenen Anfragen (amber). */
+function MonthCalendar({
+  appointments,
+  requests,
+}: {
+  appointments: Appointment[];
+  requests: BookingRequest[];
+}) {
+  const [monthOffset, setMonthOffset] = useState(0);
+
+  const base = new Date();
+  const viewMonth = new Date(base.getFullYear(), base.getMonth() + monthOffset, 1);
+  const year = viewMonth.getFullYear();
+  const month = viewMonth.getMonth();
+
+  // Einträge pro Tag (YYYY-MM-DD in Zürcher Zeit) sammeln
+  type Entry = { time: string; kind: "termin" | "anfrage"; iso: string };
+  const byDay = new Map<string, Entry[]>();
+  const dayKey = (iso: string) =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Zurich",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date(iso));
+  const timeLabel = (iso: string) =>
+    new Date(iso).toLocaleTimeString("de-CH", {
+      timeZone: "Europe/Zurich",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+  for (const a of appointments) {
+    const k = dayKey(a.start_at);
+    (byDay.get(k) ?? byDay.set(k, []).get(k)!).push({
+      time: timeLabel(a.start_at),
+      kind: "termin",
+      iso: a.start_at,
+    });
+  }
+  for (const r of requests) {
+    const k = dayKey(r.desired_start);
+    (byDay.get(k) ?? byDay.set(k, []).get(k)!).push({
+      time: timeLabel(r.desired_start),
+      kind: "anfrage",
+      iso: r.desired_start,
+    });
+  }
+  for (const list of byDay.values()) list.sort((a, b) => a.iso.localeCompare(b.iso));
+
+  // Kalenderraster (Montag-basiert)
+  const firstOfMonth = new Date(year, month, 1);
+  const jsDay = firstOfMonth.getDay(); // 0=So
+  const leading = jsDay === 0 ? 6 : jsDay - 1; // Mo=0 … So=6
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = [
+    ...Array(leading).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const todayKey = dayKey(new Date().toISOString());
+  const monthLabel = viewMonth.toLocaleDateString("de-CH", {
+    month: "long",
+    year: "numeric",
+  });
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <button
+          onClick={() => setMonthOffset((m) => m - 1)}
+          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <span className="text-sm font-700 text-[#1C244B] capitalize">{monthLabel}</span>
+        <button
+          onClick={() => setMonthOffset((m) => m + 1)}
+          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((d) => (
+          <div key={d} className="text-[10px] font-600 text-gray-400 text-center uppercase py-1">
+            {d}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((day, i) => {
+          if (day === null) return <div key={i} />;
+          const key = `${year}-${pad(month + 1)}-${pad(day)}`;
+          const entries = byDay.get(key) ?? [];
+          const isToday = key === todayKey;
+          return (
+            <div
+              key={i}
+              className={`min-h-[52px] sm:min-h-[64px] rounded-lg border p-1 ${
+                isToday ? "border-[#1C244B]/40 bg-[#1C244B]/5" : "border-gray-100"
+              }`}
+            >
+              <div
+                className={`text-[11px] font-600 mb-0.5 ${
+                  isToday ? "text-[#1C244B]" : "text-gray-500"
+                }`}
+              >
+                {day}
+              </div>
+              <div className="space-y-0.5">
+                {entries.map((e, j) => (
+                  <div key={j}>
+                    {/* Mobile: colored dot */}
+                    <div
+                      className={`sm:hidden w-2 h-2 rounded-full mx-auto mt-0.5 ${
+                        e.kind === "termin" ? "bg-[#1C244B]" : "bg-amber-400"
+                      }`}
+                    />
+                    {/* Desktop: time label */}
+                    <div
+                      className={`hidden sm:block text-[9px] leading-tight font-600 px-1 py-0.5 rounded truncate ${
+                        e.kind === "termin"
+                          ? "bg-[#1C244B] text-white"
+                          : "bg-amber-100 text-amber-700"
+                      }`}
+                      title={`${e.time} Uhr`}
+                    >
+                      {e.time}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
+        <span className="flex items-center gap-1.5 text-[11px] text-gray-500">
+          <span className="w-2.5 h-2.5 rounded bg-[#1C244B]" /> Bestätigt
+        </span>
+        <span className="flex items-center gap-1.5 text-[11px] text-gray-500">
+          <span className="w-2.5 h-2.5 rounded bg-amber-300" /> Angefragt
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function GruppenAnfrageRow({
+  groupId,
+  requests,
+}: {
+  groupId: string;
+  requests: BookingRequest[];
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [withdrawn, setWithdrawn] = useState(false);
+  const [expanded, setExpanded] = useState(true);
+
+  const sorted = [...requests].sort((a, b) =>
+    a.desired_start.localeCompare(b.desired_start)
+  );
+
+  function handleWithdraw() {
+    startTransition(async () => {
+      const result = await withdrawGroupBookingRequests(groupId);
+      if (result?.error) setError(result.error);
+      else setWithdrawn(true);
+    });
+  }
+
+  if (withdrawn) {
+    return (
+      <div className="bg-gray-50 rounded-2xl border border-gray-100 p-4 text-center text-sm text-gray-400">
+        Anfrage zurückgezogen
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-amber-50/60 rounded-2xl border border-amber-200 p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <button
+          onClick={() => setExpanded((e) => !e)}
+          className="flex items-center gap-2 flex-1 text-left"
+        >
+          <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0 text-amber-600">
+            <CalendarClock className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-600 text-gray-900 text-sm">
+                {sorted.length} Lektionen angefragt
+              </p>
+              <span className="text-[10px] font-600 bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+                Angefragt
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {expanded ? "Termine ausblenden" : "Termine anzeigen"}
+            </p>
+          </div>
+        </button>
+        <button
+          onClick={handleWithdraw}
+          disabled={isPending}
+          className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40"
+          title="Alle zurückziehen"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="space-y-1.5 pl-11">
+          {sorted.map((r) => {
+            const start = new Date(r.desired_start);
+            return (
+              <div key={r.id} className="flex items-center gap-2 text-xs text-gray-700">
+                <Clock className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                <span>
+                  {start.toLocaleDateString("de-CH", {
+                    timeZone: "Europe/Zurich",
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })},{" "}
+                  {start.toLocaleTimeString("de-CH", {
+                    timeZone: "Europe/Zurich",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}{" "}
+                  Uhr
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {error && (
+        <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-1.5">{error}</p>
+      )}
     </div>
   );
 }
@@ -442,7 +754,8 @@ function ReschedulePicker({
 
   const slotsByDay = new Map<string, AvailableSlot[]>();
   for (const slot of slots) {
-    const dateStr = slot.beginn.split("T")[0];
+    // Nach Zürcher Datum gruppieren (nicht nach UTC-Datum des ISO-Strings).
+    const dateStr = zurichDateKey(new Date(slot.beginn));
     if (!slotsByDay.has(dateStr)) slotsByDay.set(dateStr, []);
     slotsByDay.get(dateStr)!.push(slot);
   }
@@ -452,8 +765,8 @@ function ReschedulePicker({
   for (let i = 0; i < 5; i++) {
     const d = new Date(monday.getTime() + i * 86400000);
     days.push({
-      dateStr: d.toISOString().split("T")[0],
-      label: d.toLocaleDateString("de-CH", { weekday: "short" }),
+      dateStr: zurichDateKey(d),
+      label: d.toLocaleDateString("de-CH", { timeZone: "Europe/Zurich", weekday: "short" }),
     });
   }
   const friday = new Date(monday.getTime() + 4 * 86400000);
@@ -514,42 +827,87 @@ function ReschedulePicker({
           <p className="text-xs">Keine freien Slots diese Woche</p>
         </div>
       ) : (
-        <div className="grid grid-cols-5 gap-1.5">
-          {days.map((d) => {
-            const daySlots = slotsByDay.get(d.dateStr) ?? [];
-            return (
-              <div key={d.dateStr} className="space-y-1">
-                <p className="text-[10px] font-600 text-gray-400 text-center uppercase tracking-wide">
-                  {d.label}
-                </p>
-                {daySlots.length === 0 ? (
-                  <p className="text-[10px] text-gray-300 text-center mt-1">—</p>
-                ) : (
-                  daySlots.map((slot) => {
-                    const isSelected = selectedSlot?.beginn === slot.beginn;
-                    const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    });
-                    return (
-                      <button
-                        key={slot.beginn}
-                        onClick={() => setSelectedSlot(isSelected ? null : slot)}
-                        className={`w-full text-[11px] py-1.5 rounded-lg font-500 transition-colors ${
-                          isSelected
-                            ? "bg-[#1C244B] text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-[#1C244B]/10"
-                        }`}
-                      >
-                        {time}
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <>
+          {/* Mobile: flat list grouped by day */}
+          <div className="sm:hidden space-y-4">
+            {days.map((d) => {
+              const daySlots = slotsByDay.get(d.dateStr) ?? [];
+              if (daySlots.length === 0) return null;
+              const dayDate = new Date(d.dateStr + "T12:00:00");
+              return (
+                <div key={d.dateStr}>
+                  <p className="text-xs font-600 text-gray-500 mb-2">
+                    {dayDate.toLocaleDateString("de-CH", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {daySlots.map((slot) => {
+                      const isSelected = selectedSlot?.beginn === slot.beginn;
+                      const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
+                      return (
+                        <button
+                          key={slot.beginn}
+                          onClick={() => setSelectedSlot(isSelected ? null : slot)}
+                          className={`text-sm py-2.5 px-3 rounded-xl font-500 transition-colors ${
+                            isSelected
+                              ? "bg-[#1C244B] text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-[#1C244B]/10"
+                          }`}
+                        >
+                          {time}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop: 5-column grid */}
+          <div className="hidden sm:grid grid-cols-5 gap-1.5">
+            {days.map((d) => {
+              const daySlots = slotsByDay.get(d.dateStr) ?? [];
+              return (
+                <div key={d.dateStr} className="space-y-1">
+                  <p className="text-[10px] font-600 text-gray-400 text-center uppercase tracking-wide">
+                    {d.label}
+                  </p>
+                  {daySlots.length === 0 ? (
+                    <p className="text-[10px] text-gray-300 text-center mt-1">—</p>
+                  ) : (
+                    daySlots.map((slot) => {
+                      const isSelected = selectedSlot?.beginn === slot.beginn;
+                      const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
+                      return (
+                        <button
+                          key={slot.beginn}
+                          onClick={() => setSelectedSlot(isSelected ? null : slot)}
+                          className={`w-full text-[11px] py-1.5 rounded-lg font-500 transition-colors ${
+                            isSelected
+                              ? "bg-[#1C244B] text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-[#1C244B]/10"
+                          }`}
+                        >
+                          {time}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {error && (
@@ -590,4 +948,14 @@ function getMonday(weekOffset: number): Date {
   monday.setDate(now.getDate() + diff + weekOffset * 7);
   monday.setHours(0, 0, 0, 0);
   return monday;
+}
+
+/** Zürcher Kalenderdatum (YYYY-MM-DD) eines Instants – DST-sicher. */
+function zurichDateKey(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Zurich",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
 }

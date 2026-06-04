@@ -17,7 +17,7 @@ function StrengthBar({ password }: { password: string }) {
   ];
   const score = checks.filter(Boolean).length;
   const labels = ["", "Schwach", "Mittel", "Gut", "Stark"];
-  const colors = ["", "bg-red-400", "bg-amber-400", "bg-yellow-400", "bg-emerald-500"];
+  const colors = ["", "bg-status-open", "bg-status-pending", "bg-yellow-400", "bg-status-paid"];
 
   if (!password) return null;
 
@@ -33,7 +33,7 @@ function StrengthBar({ password }: { password: string }) {
           />
         ))}
       </div>
-      <p className={`text-xs font-500 ${score < 2 ? "text-red-500" : score < 4 ? "text-amber-600" : "text-emerald-600"}`}>
+      <p className={`text-xs font-500 ${score < 2 ? "text-status-error" : score < 4 ? "text-amber-600" : "text-emerald-600"}`}>
         {labels[score]}
       </p>
     </div>
@@ -58,21 +58,21 @@ export default function PasswortSetzenPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-surface flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-[#1C244B] hover:opacity-80 transition-opacity">
-            <span className="w-10 h-10 rounded-xl bg-[#1C244B] flex items-center justify-center">
-              <Music className="w-5 h-5 text-white" />
+          <Link href="/" className="inline-flex items-center gap-2.5 text-navy-900 hover:opacity-80 transition-opacity">
+            <span className="w-11 h-11 rounded-xl bg-navy-900 flex items-center justify-center shadow-sm">
+              <Music className="w-5 h-5 text-gold-400" />
             </span>
-            <span className="font-800 text-xl">David</span>
+            <span className="font-800 text-xl tracking-tight">David</span>
           </Link>
-          <h1 className="mt-6 text-2xl font-800 text-[#1C244B]">Passwort festlegen</h1>
+          <h1 className="mt-6 text-2xl font-800 text-navy-900 tracking-tight">Passwort festlegen</h1>
           <p className="text-gray-500 text-sm mt-1">Wähle ein sicheres Passwort für dein Konto</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+        <div className="bg-white rounded-2xl border border-[#EAECEF] shadow-sm p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
               <Label htmlFor="password">Neues Passwort</Label>
@@ -139,7 +139,7 @@ export default function PasswortSetzenPage() {
             </ul>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+              <div className="bg-status-open/10 border border-status-open/30 text-status-error text-sm rounded-lg px-4 py-3">
                 {error}
               </div>
             )}

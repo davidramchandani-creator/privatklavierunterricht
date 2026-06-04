@@ -54,7 +54,7 @@ export default function UeberMichPage() {
   return (
     <main>
       {/* Hero */}
-      <section className="bg-[#1C244B] pt-32 pb-20 px-4 relative overflow-hidden">
+      <section className="bg-navy-900 pt-32 pb-20 px-4 relative overflow-hidden">
         <div
           className="absolute inset-0 opacity-[0.04]"
           style={{
@@ -70,7 +70,7 @@ export default function UeberMichPage() {
               Klavierlehrer seit 2008
             </div>
             <h1 className="text-4xl sm:text-5xl font-800 leading-tight">
-              Hallo, ich bin <span className="text-[#C9A84C]">David</span>.
+              Hallo, ich bin <span className="text-gold-400">David</span>.
             </h1>
             <p className="text-white/70 text-lg leading-relaxed">
               Ich bringe dir das Klavierspielen bei – egal ob du absolute Anfängerin oder fortgeschrittener Spieler bist. Mit Geduld, Humor und echter Leidenschaft.
@@ -90,14 +90,14 @@ export default function UeberMichPage() {
           {/* Photo placeholder */}
           <div className="flex justify-center md:justify-end">
             <div className="relative w-72 h-80 md:w-80 md:h-96">
-              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[#C9A84C]/30 to-[#1C244B]/50 backdrop-blur-sm border border-white/10 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-gold-500/30 to-navy-900/50 backdrop-blur-sm border border-white/10 flex items-center justify-center">
                 <div className="text-center text-white/40">
                   <Music className="w-16 h-16 mx-auto mb-3" />
                   <p className="text-sm">Foto folgt bald</p>
                 </div>
               </div>
               {/* Badge */}
-              <div className="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-lg px-4 py-3 text-[#1C244B]">
+              <div className="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-lg px-4 py-3 text-navy-900">
                 <p className="text-2xl font-800">16+</p>
                 <p className="text-xs text-gray-500 font-500">Jahre Erfahrung</p>
               </div>
@@ -107,7 +107,7 @@ export default function UeberMichPage() {
       </section>
 
       {/* Stats */}
-      <section className="bg-white border-b border-gray-100 py-10">
+      <section className="bg-white border-b border-[#EAECEF] py-10">
         <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
             { value: "16+", label: "Jahre Erfahrung" },
@@ -116,7 +116,7 @@ export default function UeberMichPage() {
             { value: "100%", label: "Persönlicher Unterricht" },
           ].map(({ value, label }) => (
             <div key={label}>
-              <p className="text-3xl font-800 text-[#1C244B]">{value}</p>
+              <p className="text-3xl font-800 text-navy-900">{value}</p>
               <p className="text-sm text-gray-500 mt-1">{label}</p>
             </div>
           ))}
@@ -127,7 +127,7 @@ export default function UeberMichPage() {
       <section className="py-20 px-4">
         <div className="max-w-3xl mx-auto space-y-8">
           <div>
-            <h2 className="text-2xl font-800 text-[#1C244B] mb-4">Meine Geschichte</h2>
+            <h2 className="text-2xl font-800 text-navy-900 mb-4">Meine Geschichte</h2>
             <div className="prose prose-gray max-w-none space-y-4 text-gray-600 leading-relaxed">
               <p>
                 Mit 12 Jahren habe ich das erste Mal auf einem alten Klavier gespielt – und seitdem nicht mehr aufgehört. Was als Hobby begann, ist heute mein Beruf und meine Leidenschaft.
@@ -144,11 +144,11 @@ export default function UeberMichPage() {
           {/* Werte */}
           <div className="grid sm:grid-cols-3 gap-4 pt-4">
             {werte.map(({ icon, title, desc }) => (
-              <div key={title} className="bg-gray-50 rounded-2xl p-5 space-y-2">
-                <div className="w-9 h-9 rounded-xl bg-[#1C244B]/10 text-[#1C244B] flex items-center justify-center">
+              <div key={title} className="bg-surface rounded-2xl p-5 space-y-2 border border-[#EAECEF]">
+                <div className="w-9 h-9 rounded-xl bg-navy-50 text-navy-900 flex items-center justify-center">
                   {icon}
                 </div>
-                <p className="font-700 text-gray-900 text-sm">{title}</p>
+                <p className="font-700 text-navy-900 text-sm">{title}</p>
                 <p className="text-xs text-gray-500 leading-relaxed">{desc}</p>
               </div>
             ))}
@@ -157,9 +157,9 @@ export default function UeberMichPage() {
       </section>
 
       {/* Was ich anbiete */}
-      <section className="bg-gray-50 py-20 px-4">
+      <section className="bg-surface py-20 px-4">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-2xl font-800 text-[#1C244B] mb-8">Was ich anbiete</h2>
+          <h2 className="text-2xl font-800 text-navy-900 mb-8 tracking-tight">Was ich anbiete</h2>
           <div className="grid sm:grid-cols-2 gap-3">
             {[
               "Klavierunterricht für Anfänger und Fortgeschrittene",
@@ -171,8 +171,8 @@ export default function UeberMichPage() {
               "Musiktheorie & Notenlesen",
               "Online-Unterricht auf Wunsch",
             ].map((item) => (
-              <div key={item} className="flex items-start gap-3 bg-white rounded-xl p-4 border border-gray-200">
-                <CheckCircle2 className="w-4 h-4 text-[#C9A84C] mt-0.5 flex-shrink-0" />
+              <div key={item} className="flex items-start gap-3 bg-white rounded-xl p-4 border border-[#EAECEF] hover:border-navy-900/20 hover:-translate-y-0.5 transition-all duration-200">
+                <CheckCircle2 className="w-4 h-4 text-gold-600 mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-gray-700">{item}</p>
               </div>
             ))}
@@ -183,14 +183,14 @@ export default function UeberMichPage() {
       {/* Werdegang / Timeline */}
       <section className="py-20 px-4">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-2xl font-800 text-[#1C244B] mb-10">Mein Weg</h2>
+          <h2 className="text-2xl font-800 text-navy-900 mb-10">Mein Weg</h2>
           <div className="relative pl-8 space-y-8">
             <div className="absolute left-3.5 top-2 bottom-2 w-px bg-gray-200" />
             {stationen.map(({ year, title, desc }) => (
               <div key={year} className="relative">
-                <div className="absolute -left-[1.35rem] top-1 w-3 h-3 rounded-full bg-[#C9A84C] border-2 border-white shadow-sm" />
-                <span className="text-xs font-700 text-[#C9A84C] uppercase tracking-widest">{year}</span>
-                <h3 className="font-700 text-gray-900 mt-1">{title}</h3>
+                <div className="absolute -left-[1.35rem] top-1 w-3 h-3 rounded-full bg-gold-500 border-2 border-white shadow-sm" />
+                <span className="text-xs font-700 text-gold-500 uppercase tracking-widest">{year}</span>
+                <h3 className="font-700 text-navy-900 mt-1">{title}</h3>
                 <p className="text-sm text-gray-500 mt-0.5">{desc}</p>
               </div>
             ))}
@@ -199,7 +199,7 @@ export default function UeberMichPage() {
       </section>
 
       {/* CTA */}
-      <section className="bg-[#1C244B] py-20 px-4 text-center">
+      <section className="bg-navy-900 py-20 px-4 text-center">
         <div className="max-w-2xl mx-auto space-y-6">
           <h2 className="text-3xl font-800 text-white">Bereit, anzufangen?</h2>
           <p className="text-white/70">

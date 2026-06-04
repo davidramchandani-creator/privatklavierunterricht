@@ -36,7 +36,7 @@ function Sterne({ count }: { count: number }) {
           key={i}
           className={`w-4 h-4 ${
             i <= count
-              ? "fill-[#C9A84C] text-[#C9A84C]"
+              ? "fill-amber-400 text-amber-400"
               : "fill-gray-200 text-gray-200"
           }`}
         />
@@ -49,14 +49,14 @@ export default function Bewertungen() {
   const anzeigen = BEWERTUNGEN;
 
   return (
-    <section className="py-24 bg-gray-50">
+    <section className="py-24 bg-surface">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-16">
-          <p className="text-[#C9A84C] font-600 text-sm uppercase tracking-widest mb-3">
+          <p className="text-gray-400 font-600 text-xs uppercase tracking-widest mb-3">
             Stimmen
           </p>
-          <h2 className="text-3xl sm:text-4xl font-800 text-[#1C244B] mb-4">
+          <h2 className="text-3xl sm:text-4xl font-800 text-navy-900 mb-4 tracking-tight">
             Was Schüler sagen
           </h2>
           <div className="flex items-center justify-center gap-2">
@@ -64,11 +64,11 @@ export default function Bewertungen() {
               {[1, 2, 3, 4, 5].map((i) => (
                 <Star
                   key={i}
-                  className="w-5 h-5 fill-[#C9A84C] text-[#C9A84C]"
+                  className="w-5 h-5 fill-amber-400 text-amber-400"
                 />
               ))}
             </div>
-            <span className="font-700 text-[#1C244B]">5.0</span>
+            <span className="font-700 text-navy-900">5.0</span>
             <span className="text-gray-500 text-sm">
               · {anzeigen.length} Bewertungen
             </span>
@@ -80,9 +80,9 @@ export default function Bewertungen() {
           {anzeigen.map((b) => (
             <div
               key={b.id}
-              className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+              className="bg-white rounded-2xl border border-[#EAECEF] p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
             >
-              <Quote className="w-8 h-8 text-[#C9A84C]/30 mb-3" />
+              <Quote className="w-8 h-8 text-gray-200 mb-3" />
               <Sterne count={b.sterne} />
               <p className="text-gray-600 mt-3 mb-4 text-sm leading-relaxed">
                   &ldquo;{b.text}&rdquo;

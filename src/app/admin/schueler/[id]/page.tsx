@@ -25,7 +25,7 @@ export default async function SchuelerDetailPage({
   ] = await Promise.all([
     admin
       .from("profiles")
-      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, erstellt_am, price_single, price_10er, price_20er, travel_surcharge, buffer_time_minutes, payment_method")
+      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, erstellt_am, price_single, price_10er, price_20er, travel_surcharge, buffer_time_minutes, buffer_mode, payment_method")
       .eq("id", id)
       .maybeSingle(),
     admin
@@ -35,9 +35,9 @@ export default async function SchuelerDetailPage({
       .order("erstellt_am", { ascending: false }),
     admin
       .from("appointments")
-      .select("id, start_at, end_at, status, series_id")
+      .select("id, start_at, end_at, status, series_id, package_id")
       .eq("student_id", id)
-      .in("status", ["booked", "completed"])
+      .in("status", ["booked", "completed", "no_show"])
       .gte("start_at", nowIso)
       .order("start_at", { ascending: true })
       .limit(10),
@@ -57,14 +57,31 @@ export default async function SchuelerDetailPage({
 
   if (!profile || profile.role === "admin") notFound();
 
+  // Dynamisch gezählte Lektionen pro Paket (booked + completed + no_show zählen als verbraucht)
+  const lessonsUsedByPackage = new Map<string, number>();
+  if (packages && packages.length > 0) {
+    await Promise.all(
+      (packages as Package[]).map(async (pkg) => {
+        const { count } = await admin
+          .from("appointments")
+          .select("id", { count: "exact", head: true })
+          .eq("package_id", pkg.id)
+          .in("status", ["booked", "completed", "no_show"]);
+        lessonsUsedByPackage.set(pkg.id, count ?? pkg.lessons_used ?? 0);
+      })
+    );
+  }
+
   const prices = {
     price_single: Number(profile.price_single ?? 85),
     price_10er: Number(profile.price_10er ?? 70),
     price_20er: Number(profile.price_20er ?? 65),
     travel_surcharge: Number(profile.travel_surcharge ?? 0),
     buffer_time_minutes: Number(profile.buffer_time_minutes ?? 15),
+    buffer_mode: (profile.buffer_mode as string) ?? "fixed",
     payment_method: (profile.payment_method as string) ?? "qr",
   };
+  const mapsConfigured = !!process.env.GOOGLE_MAPS_API_KEY;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -136,12 +153,15 @@ export default async function SchuelerDetailPage({
         <PreiseForm
           userId={id}
           schuelerId={id}
+          studentAddress={profile.adresse ?? null}
+          mapsConfigured={mapsConfigured}
           initial={{
             price_single: prices.price_single,
             price_10er: prices.price_10er,
             price_20er: prices.price_20er,
             travel_surcharge: prices.travel_surcharge,
             buffer_time_minutes: prices.buffer_time_minutes,
+            buffer_mode: prices.buffer_mode,
             payment_method: prices.payment_method,
           }}
         />
@@ -165,7 +185,8 @@ export default async function SchuelerDetailPage({
             </thead>
             <tbody className="divide-y divide-gray-100">
               {(packages as Package[]).map((pkg) => {
-                const state = computePackageState(pkg, pkg.lessons_used);
+                const usedCount = lessonsUsedByPackage.get(pkg.id) ?? pkg.lessons_used ?? 0;
+                const state = computePackageState(pkg, usedCount);
                 return (
                   <tr key={pkg.id}>
                     <td className="py-3 text-sm font-500 text-gray-900">

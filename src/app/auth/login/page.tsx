@@ -32,7 +32,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+    <div className="bg-white rounded-2xl border border-[#EAECEF] shadow-sm p-8">
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-1.5">
           <Label htmlFor="email">E-Mail</Label>
@@ -51,7 +51,7 @@ function LoginForm() {
             <Label htmlFor="password">Passwort</Label>
             <Link
               href="/auth/passwort-vergessen"
-              className="text-xs text-[#1C244B] hover:underline"
+              className="text-xs text-navy-900 hover:underline"
             >
               Passwort vergessen?
             </Link>
@@ -78,7 +78,7 @@ function LoginForm() {
         </div>
 
         {(urlError || error) && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+          <div className="bg-status-open/10 border border-status-open/30 text-status-error text-sm rounded-lg px-4 py-3">
             {error ?? urlErrorMessages[urlError!] ?? "Ein Fehler ist aufgetreten."}
           </div>
         )}
@@ -100,26 +100,26 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-surface flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-[#1C244B] hover:opacity-80 transition-opacity">
-            <span className="w-10 h-10 rounded-xl bg-[#1C244B] flex items-center justify-center">
-              <Music className="w-5 h-5 text-white" />
+          <Link href="/" className="inline-flex items-center gap-2.5 text-navy-900 hover:opacity-80 transition-opacity">
+            <span className="w-11 h-11 rounded-xl bg-navy-900 flex items-center justify-center shadow-sm">
+              <Music className="w-5 h-5 text-gold-400" />
             </span>
-            <span className="font-800 text-xl">David</span>
+            <span className="font-800 text-xl tracking-tight">David</span>
           </Link>
-          <h1 className="mt-6 text-2xl font-800 text-[#1C244B]">Willkommen zurück</h1>
+          <h1 className="mt-6 text-2xl font-800 text-navy-900 tracking-tight">Willkommen zurück</h1>
           <p className="text-gray-500 text-sm mt-1">Melde dich mit deinem Schülerkonto an</p>
         </div>
 
-        <Suspense fallback={<div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 h-64" />}>
+        <Suspense fallback={<div className="bg-white rounded-2xl border border-[#EAECEF] shadow-sm p-8 h-64" />}>
           <LoginForm />
         </Suspense>
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Noch kein Konto?{" "}
-          <Link href="/probelektion" className="text-[#1C244B] font-600 hover:underline">
+          <Link href="/probelektion" className="text-navy-900 font-600 hover:underline">
             Probelektion anfragen
           </Link>
         </p>
