@@ -6,6 +6,7 @@ import Logo from "@/components/layout/Logo";
 import AdminMobileMenu from "./_components/AdminMobileMenu";
 import { AdminNavLinks } from "./_components/AdminNav";
 import AdminBottomNav from "./_components/AdminBottomNav";
+import AdminPageTransition from "./_components/AdminPageTransition";
 
 export default async function AdminLayout({
   children,
@@ -80,7 +81,9 @@ export default async function AdminLayout({
           </form>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6">
+          <AdminPageTransition>{children}</AdminPageTransition>
+        </main>
       </div>
 
       <AdminBottomNav />

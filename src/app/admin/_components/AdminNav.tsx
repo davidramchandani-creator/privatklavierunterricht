@@ -67,14 +67,14 @@ function NavLink({
     <Link
       href={href}
       onClick={onNavigate}
-      className={`flex items-center gap-3 rounded-xl text-sm font-500 transition-colors ${
+      className={`press flex items-center gap-3 rounded-xl text-sm font-500 transition-all duration-200 ${
         sub ? "px-3 py-2 ml-4" : "px-3 py-2.5"
       } ${
         active
-          ? "bg-[#1C244B] text-white"
+          ? "bg-[#1C244B] text-white shadow-sm shadow-[#1C244B]/20"
           : sub
-          ? "text-gray-500 hover:bg-gray-100 hover:text-[#1C244B]"
-          : "text-gray-600 hover:bg-gray-100 hover:text-[#1C244B]"
+          ? "text-gray-500 hover:bg-gray-100 hover:text-[#1C244B] hover:translate-x-0.5"
+          : "text-gray-600 hover:bg-gray-100 hover:text-[#1C244B] hover:translate-x-0.5"
       }`}
     >
       <Icon
@@ -104,7 +104,7 @@ function NavGroupItem({
     <div>
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-500 transition-colors ${
+        className={`press flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-500 transition-all duration-200 ${
           isAnyChildActive
             ? "text-[#1C244B] bg-[#1C244B]/5"
             : "text-gray-600 hover:bg-gray-100 hover:text-[#1C244B]"
@@ -124,7 +124,7 @@ function NavGroupItem({
       </button>
 
       {open && (
-        <div className="mt-0.5 space-y-0.5">
+        <div className="mt-0.5 space-y-0.5 animate-enter-up">
           {group.children.map((child) => (
             <NavLink key={child.href} {...child} sub onNavigate={onNavigate} />
           ))}
