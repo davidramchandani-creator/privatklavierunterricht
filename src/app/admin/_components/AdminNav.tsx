@@ -11,6 +11,7 @@ import {
   CreditCard,
   Inbox,
   Settings,
+  Clock,
 } from "lucide-react";
 
 export const navItems = [
@@ -20,6 +21,7 @@ export const navItems = [
   { href: "/admin/schueler", label: "Schüler", icon: Users },
   { href: "/admin/kalender", label: "Kalender", icon: Calendar },
   { href: "/admin/abwesenheiten", label: "Abwesenheiten", icon: CalendarOff },
+  { href: "/admin/verfuegbarkeit", label: "Verfügbarkeit", icon: Clock },
   { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
   { href: "/admin/einstellungen", label: "Einstellungen", icon: Settings },
 ];
