@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Music, LogOut } from "lucide-react";
-import Link from "next/link";
+import { LogOut } from "lucide-react";
 import { logout } from "@/app/auth/actions";
+import Logo from "@/components/layout/Logo";
 import AdminMobileMenu from "./_components/AdminMobileMenu";
 import { AdminNavLinks } from "./_components/AdminNav";
 import AdminBottomNav from "./_components/AdminBottomNav";
@@ -31,10 +31,8 @@ export default async function AdminLayout({
     <div className="min-h-screen bg-gray-50 flex">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-60 bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-30">
-        <div className="h-16 flex items-center gap-2.5 px-5 border-b border-gray-100">
-          <span className="w-8 h-8 rounded-lg bg-[#1C244B] flex items-center justify-center flex-shrink-0">
-            <Music className="w-4 h-4 text-white" />
-          </span>
+        <div className="h-16 flex items-center gap-2.5 px-5 border-b border-gray-100 text-[#1C244B]">
+          <Logo className="h-7 w-auto" />
           <span className="font-700 text-[#1C244B] text-sm">Admin</span>
         </div>
 
@@ -59,10 +57,8 @@ export default async function AdminLayout({
       <div className="flex-1 md:ml-60 flex flex-col min-h-screen">
         {/* Top bar (mobile) */}
         <header className="md:hidden bg-white border-b border-gray-200 sticky top-0 z-20 h-14 flex items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-lg bg-[#1C244B] flex items-center justify-center">
-              <Music className="w-3.5 h-3.5 text-white" />
-            </span>
+          <div className="flex items-center gap-2 text-[#1C244B]">
+            <Logo className="h-6 w-auto" />
             <span className="font-700 text-[#1C244B] text-sm">Admin</span>
           </div>
           <AdminMobileMenu />

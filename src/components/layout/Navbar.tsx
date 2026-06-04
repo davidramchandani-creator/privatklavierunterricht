@@ -77,11 +77,11 @@ export default function Navbar() {
         {/* Logo */}
         <Link
           href="/"
-          className="flex items-center hover:opacity-80 transition-opacity"
+          className="flex items-center hover:opacity-80 transition-opacity text-navy-900"
           onClick={handleAdminSecret}
           aria-label="Startseite"
         >
-          <Logo className="h-6 w-auto" />
+          <Logo className="h-9 w-auto" withText textClassName="hidden sm:inline text-base" />
         </Link>
 
         {/* Desktop Links */}
