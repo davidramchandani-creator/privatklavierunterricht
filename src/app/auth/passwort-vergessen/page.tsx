@@ -28,7 +28,7 @@ export default function PasswortVergessenPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2.5 text-navy-900 hover:opacity-80 transition-opacity">
             <span className="w-11 h-11 rounded-xl bg-navy-900 flex items-center justify-center shadow-sm">
-              <Music className="w-5 h-5 text-gold-400" />
+              <Music className="w-5 h-5 text-white" />
             </span>
             <span className="font-800 text-xl tracking-tight">David</span>
           </Link>

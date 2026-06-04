@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
-import { Menu, X, Music } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Logo from "./Logo";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
@@ -76,13 +77,11 @@ export default function Navbar() {
         {/* Logo */}
         <Link
           href="/"
-          className="flex items-center gap-2.5 font-800 text-navy-900 text-lg hover:opacity-80 transition-opacity"
+          className="flex items-center hover:opacity-80 transition-opacity"
           onClick={handleAdminSecret}
+          aria-label="Startseite"
         >
-          <span className="w-9 h-9 rounded-xl bg-navy-900 flex items-center justify-center shadow-sm">
-            <Music className="w-4 h-4 text-white" />
-          </span>
-          <span className="hidden sm:block tracking-tight">David</span>
+          <Logo className="h-6 w-auto" />
         </Link>
 
         {/* Desktop Links */}

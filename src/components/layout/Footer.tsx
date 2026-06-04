@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Music, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 import { useRef } from "react";
+import Logo from "./Logo";
 
 export default function Footer() {
   const adminClicks = useRef(0);
@@ -26,11 +27,8 @@ export default function Footer() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
           <div className="col-span-full lg:col-span-1">
-            <div className="flex items-center gap-2.5 mb-4">
-              <span className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
-                <Music className="w-4 h-4 text-gold-400" />
-              </span>
-              <span className="font-800 text-white tracking-tight">David</span>
+            <div className="flex items-center mb-4">
+              <Logo invert className="h-7 w-auto" />
             </div>
             <p className="text-white/50 text-sm leading-relaxed">
               Individueller Klavierunterricht in Neftenbach und Umgebung.
@@ -55,7 +53,7 @@ export default function Footer() {
                 { href: "/ueber-mich", label: "Über mich" },
                 { href: "/#angebote", label: "Angebote" },
                 { href: "/#preise", label: "Preise" },
-                { href: "/#probelektion", label: "Probelektion" },
+                { href: "/probelektion", label: "Probelektion" },
               ].map((l) => (
                 <li key={l.href}>
                   <Link
