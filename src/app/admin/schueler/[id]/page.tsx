@@ -35,9 +35,9 @@ export default async function SchuelerDetailPage({
       .order("erstellt_am", { ascending: false }),
     admin
       .from("appointments")
-      .select("id, start_at, end_at, status, series_id")
+      .select("id, start_at, end_at, status, series_id, package_id")
       .eq("student_id", id)
-      .in("status", ["booked", "completed"])
+      .in("status", ["booked", "completed", "no_show"])
       .gte("start_at", nowIso)
       .order("start_at", { ascending: true })
       .limit(10),
@@ -56,6 +56,21 @@ export default async function SchuelerDetailPage({
   ]);
 
   if (!profile || profile.role === "admin") notFound();
+
+  // Dynamisch gezählte Lektionen pro Paket (booked + completed + no_show zählen als verbraucht)
+  const lessonsUsedByPackage = new Map<string, number>();
+  if (packages && packages.length > 0) {
+    await Promise.all(
+      (packages as Package[]).map(async (pkg) => {
+        const { count } = await admin
+          .from("appointments")
+          .select("id", { count: "exact", head: true })
+          .eq("package_id", pkg.id)
+          .in("status", ["booked", "completed", "no_show"]);
+        lessonsUsedByPackage.set(pkg.id, count ?? pkg.lessons_used ?? 0);
+      })
+    );
+  }
 
   const prices = {
     price_single: Number(profile.price_single ?? 85),
@@ -165,7 +180,8 @@ export default async function SchuelerDetailPage({
             </thead>
             <tbody className="divide-y divide-gray-100">
               {(packages as Package[]).map((pkg) => {
-                const state = computePackageState(pkg, pkg.lessons_used);
+                const usedCount = lessonsUsedByPackage.get(pkg.id) ?? pkg.lessons_used ?? 0;
+                const state = computePackageState(pkg, usedCount);
                 return (
                   <tr key={pkg.id}>
                     <td className="py-3 text-sm font-500 text-gray-900">

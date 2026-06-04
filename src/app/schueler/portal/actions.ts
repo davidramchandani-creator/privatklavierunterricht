@@ -292,12 +292,25 @@ export async function cancelAppointment(appointmentId: string) {
   // Google Calendar: Event löschen
   await deleteCalendarEvent(admin, appointmentId);
 
-  // Offene Rechnung zu diesem Termin stornieren
-  await admin
+  // Offene Rechnung zu diesem Termin stornieren + geplante Zahlungsmail abbrechen
+  const { data: cancelledInvoices } = await admin
     .from("invoices")
     .update({ status: "cancelled" })
     .eq("appointment_id", appointmentId)
-    .in("status", ["unpaid", "pending_confirmation", "rejected"]);
+    .in("status", ["unpaid", "pending_confirmation", "rejected"])
+    .select("id");
+
+  if (cancelledInvoices?.length) {
+    const invoiceIds = cancelledInvoices.map((i: { id: string }) => i.id);
+    // Geplante Zahlungsmails für diese Rechnungen abbrechen
+    for (const invId of invoiceIds) {
+      await admin
+        .from("scheduled_emails")
+        .update({ status: "cancelled" })
+        .eq("status", "pending")
+        .contains("payload", { invoice_id: invId });
+    }
+  }
 
   // Sofortversand: Mail an Admin (Info) + Bestätigung an Schüler (Spec §9).
   await sendEmailNow(admin, "appointment_cancelled_by_student", {

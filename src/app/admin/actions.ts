@@ -673,15 +673,14 @@ export async function withdrawProposal(proposalId: string, schuelerId: string) {
 }
 
 /** Termin als abgeschlossen markieren (neues Schema). */
-export async function completeAppointmentNew(id: string, schuelerId: string) {
+export async function markAppointmentNoShow(id: string, schuelerId: string) {
   const admin = await createAdminClient();
   const { error } = await admin
     .from("appointments")
-    .update({ status: "completed" })
+    .update({ status: "no_show" })
     .eq("id", id);
   if (error) return { error: error.message };
 
-  // Google Calendar: Event-Farbe auf „abgeschlossen" aktualisieren
   await syncAppointmentToCalendar(admin, id);
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
@@ -710,12 +709,23 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
   // Google Calendar: Event löschen
   await deleteCalendarEvent(admin, id);
 
-  // Offene Rechnung zu diesem Termin stornieren (Spec §6)
-  await admin
+  // Offene Rechnung zu diesem Termin stornieren + geplante Zahlungsmail abbrechen
+  const { data: cancelledInvoices } = await admin
     .from("invoices")
     .update({ status: "cancelled" })
     .eq("appointment_id", id)
-    .in("status", ["unpaid", "pending_confirmation", "rejected"]);
+    .in("status", ["unpaid", "pending_confirmation", "rejected"])
+    .select("id");
+
+  if (cancelledInvoices?.length) {
+    for (const inv of cancelledInvoices) {
+      await admin
+        .from("scheduled_emails")
+        .update({ status: "cancelled" })
+        .eq("status", "pending")
+        .contains("payload", { invoice_id: inv.id });
+    }
+  }
 
   // Schüler sofort über die Absage informieren (Spec §9).
   if (appt?.student_id && appt.status !== "cancelled") {

@@ -14,7 +14,7 @@ import {
   createDirectBooking,
   createProposal,
   withdrawProposal,
-  completeAppointmentNew,
+  markAppointmentNoShow,
   cancelAppointmentNew,
   pausePackage,
   resumePackage,
@@ -28,7 +28,7 @@ import {
   CANCELLATION_SINGLE_BASE,
   CANCELLATION_SINGLE_THRESHOLD,
 } from "@/lib/packages";
-import { Loader2, Pencil, Trash2, CheckCircle2, XCircle, Plus, Mail, AlertTriangle, Calendar, Pause, Play, Clock, Ban, Send } from "lucide-react";
+import { Loader2, Pencil, Trash2, UserX, XCircle, CheckCircle2, Plus, Mail, AlertTriangle, Calendar, Pause, Play, Clock, Ban, Send } from "lucide-react";
 
 type Profile = {
   id: string;
@@ -785,25 +785,26 @@ function AppointmentActions({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  if (status === "cancelled" || status === "completed") return null;
+  if (status === "cancelled" || status === "completed" || status === "no_show") return null;
 
   return (
     <div className="flex gap-1.5">
       <button
         disabled={isPending}
         onClick={() => {
+          if (!confirm("Schüler als nicht erschienen markieren?")) return;
           startTransition(async () => {
-            await completeAppointmentNew(appointmentId, schuelerId);
+            await markAppointmentNoShow(appointmentId, schuelerId);
             router.refresh();
           });
         }}
-        className="p-1.5 rounded-lg hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 transition-colors"
-        title="Abschliessen"
+        className="p-1.5 rounded-lg hover:bg-amber-50 text-gray-400 hover:text-amber-600 transition-colors"
+        title="Nicht erschienen"
       >
         {isPending ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
         ) : (
-          <CheckCircle2 className="w-3.5 h-3.5" />
+          <UserX className="w-3.5 h-3.5" />
         )}
       </button>
       <button
