@@ -92,6 +92,12 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
 }
 
+/* iOS-artige Easing-Kurven für ein „cleanes" Gefühl */
+:root {
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);      /* spring-y, sanftes Ausrollen */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1); /* schnell rein, weich raus */
+}
+
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -107,16 +113,49 @@ h1, h2, h3, h4, h5, h6 {
   to   { opacity: 1; transform: scale(1); }
 }
 
-.animate-fade-in  { animation: fade-in 0.5s ease-out forwards; }
-.animate-slide-in { animation: slide-in 0.4s ease-out forwards; }
-.animate-scale-in { animation: scale-in 0.3s ease-out forwards; }
+/* Sanftes Hochgleiten (für Step-/Tab-Wechsel) */
+@keyframes enter-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Dezentes Einschweben von rechts (für Listen-/Slot-Wechsel) */
+@keyframes enter-right {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fade-in  { animation: fade-in 0.5s var(--ease-out-soft) forwards; }
+.animate-slide-in { animation: slide-in 0.4s var(--ease-out-soft) forwards; }
+.animate-scale-in { animation: scale-in 0.3s var(--ease-out-soft) forwards; }
+.animate-enter-up    { animation: enter-up 0.45s var(--ease-ios) forwards; }
+.animate-enter-right { animation: enter-right 0.4s var(--ease-ios) forwards; }
 .opacity-0        { opacity: 0; }
 
+.delay-75  { animation-delay: 75ms; }
 .delay-100 { animation-delay: 100ms; }
+.delay-150 { animation-delay: 150ms; }
 .delay-200 { animation-delay: 200ms; }
 .delay-300 { animation-delay: 300ms; }
 .delay-400 { animation-delay: 400ms; }
 .delay-500 { animation-delay: 500ms; }
+
+/* Sanfte, „premium" Interaktion: leichtes Eindrücken beim Tippen */
+.press {
+  transition: transform 0.12s var(--ease-out-soft), box-shadow 0.2s var(--ease-out-soft),
+    background-color 0.2s var(--ease-out-soft), color 0.2s var(--ease-out-soft);
+}
+.press:active { transform: scale(0.96); }
+
+/* Respektiere System-Einstellung „Bewegung reduzieren" */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 /* Card hover-lift helper */
 .card-hover {

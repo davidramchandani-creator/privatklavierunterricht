@@ -16,7 +16,10 @@ import Footer from "./Footer";
 export default function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
   const isApp =
-    pathname.startsWith("/admin") || pathname.startsWith("/schueler");
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/schueler") ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/probelektion");
 
   if (isApp) {
     return <div className="flex-1">{children}</div>;
