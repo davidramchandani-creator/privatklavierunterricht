@@ -527,16 +527,26 @@ export async function calculateTravelBuffer(
     if (!res.ok) return { error: "Google Maps API nicht erreichbar." };
     const json = await res.json() as {
       status: string;
+      error_message?: string;
       rows: Array<{ elements: Array<{ status: string; duration: { value: number; text: string } }> }>;
     };
-    if (json.status !== "OK") return { error: `Google Maps Fehler: ${json.status}` };
+    if (json.status !== "OK") {
+      console.error("[calculateTravelBuffer] Google Maps Fehlerantwort:", JSON.stringify(json, null, 2));
+      if (json.status === "REQUEST_DENIED") {
+        return {
+          error: `Google Maps: REQUEST_DENIED – wahrscheinlich ist der API-Key eingeschränkt oder die Distance Matrix API ist nicht aktiviert. Details: ${json.error_message ?? "keine weiteren Infos"}`,
+        };
+      }
+      return { error: `Google Maps Fehler: ${json.status}${json.error_message ? ` – ${json.error_message}` : ""}` };
+    }
     const element = json.rows?.[0]?.elements?.[0];
     if (!element || element.status !== "OK") return { error: "Adresse nicht gefunden." };
     // Sekunden → Minuten, auf 5 Minuten aufrunden
     const rawMin = Math.ceil(element.duration.value / 60);
     const minutes = Math.ceil(rawMin / 5) * 5;
     return { minutes };
-  } catch {
+  } catch (err) {
+    console.error("[calculateTravelBuffer] Unerwarteter Fehler:", err);
     return { error: "Fehler beim Abrufen der Fahrzeit." };
   }
 }

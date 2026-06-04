@@ -250,7 +250,7 @@ function MonthCalendar({
           return (
             <div
               key={i}
-              className={`min-h-[64px] rounded-lg border p-1 ${
+              className={`min-h-[52px] sm:min-h-[64px] rounded-lg border p-1 ${
                 isToday ? "border-[#1C244B]/40 bg-[#1C244B]/5" : "border-gray-100"
               }`}
             >
@@ -263,16 +263,24 @@ function MonthCalendar({
               </div>
               <div className="space-y-0.5">
                 {entries.map((e, j) => (
-                  <div
-                    key={j}
-                    className={`text-[9px] leading-tight font-600 px-1 py-0.5 rounded truncate ${
-                      e.kind === "termin"
-                        ? "bg-[#1C244B] text-white"
-                        : "bg-amber-100 text-amber-700"
-                    }`}
-                    title={`${e.time} Uhr – ${e.kind === "termin" ? "Bestätigt" : "Angefragt"}`}
-                  >
-                    {e.time}
+                  <div key={j}>
+                    {/* Mobile: colored dot */}
+                    <div
+                      className={`sm:hidden w-2 h-2 rounded-full mx-auto mt-0.5 ${
+                        e.kind === "termin" ? "bg-[#1C244B]" : "bg-amber-400"
+                      }`}
+                    />
+                    {/* Desktop: time label */}
+                    <div
+                      className={`hidden sm:block text-[9px] leading-tight font-600 px-1 py-0.5 rounded truncate ${
+                        e.kind === "termin"
+                          ? "bg-[#1C244B] text-white"
+                          : "bg-amber-100 text-amber-700"
+                      }`}
+                      title={`${e.time} Uhr`}
+                    >
+                      {e.time}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -818,42 +826,87 @@ function ReschedulePicker({
           <p className="text-xs">Keine freien Slots diese Woche</p>
         </div>
       ) : (
-        <div className="grid grid-cols-5 gap-1.5">
-          {days.map((d) => {
-            const daySlots = slotsByDay.get(d.dateStr) ?? [];
-            return (
-              <div key={d.dateStr} className="space-y-1">
-                <p className="text-[10px] font-600 text-gray-400 text-center uppercase tracking-wide">
-                  {d.label}
-                </p>
-                {daySlots.length === 0 ? (
-                  <p className="text-[10px] text-gray-300 text-center mt-1">—</p>
-                ) : (
-                  daySlots.map((slot) => {
-                    const isSelected = selectedSlot?.beginn === slot.beginn;
-                    const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    });
-                    return (
-                      <button
-                        key={slot.beginn}
-                        onClick={() => setSelectedSlot(isSelected ? null : slot)}
-                        className={`w-full text-[11px] py-1.5 rounded-lg font-500 transition-colors ${
-                          isSelected
-                            ? "bg-[#1C244B] text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-[#1C244B]/10"
-                        }`}
-                      >
-                        {time}
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <>
+          {/* Mobile: flat list grouped by day */}
+          <div className="sm:hidden space-y-4">
+            {days.map((d) => {
+              const daySlots = slotsByDay.get(d.dateStr) ?? [];
+              if (daySlots.length === 0) return null;
+              const dayDate = new Date(d.dateStr + "T12:00:00");
+              return (
+                <div key={d.dateStr}>
+                  <p className="text-xs font-600 text-gray-500 mb-2">
+                    {dayDate.toLocaleDateString("de-CH", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {daySlots.map((slot) => {
+                      const isSelected = selectedSlot?.beginn === slot.beginn;
+                      const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
+                      return (
+                        <button
+                          key={slot.beginn}
+                          onClick={() => setSelectedSlot(isSelected ? null : slot)}
+                          className={`text-sm py-2.5 px-3 rounded-xl font-500 transition-colors ${
+                            isSelected
+                              ? "bg-[#1C244B] text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-[#1C244B]/10"
+                          }`}
+                        >
+                          {time}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop: 5-column grid */}
+          <div className="hidden sm:grid grid-cols-5 gap-1.5">
+            {days.map((d) => {
+              const daySlots = slotsByDay.get(d.dateStr) ?? [];
+              return (
+                <div key={d.dateStr} className="space-y-1">
+                  <p className="text-[10px] font-600 text-gray-400 text-center uppercase tracking-wide">
+                    {d.label}
+                  </p>
+                  {daySlots.length === 0 ? (
+                    <p className="text-[10px] text-gray-300 text-center mt-1">—</p>
+                  ) : (
+                    daySlots.map((slot) => {
+                      const isSelected = selectedSlot?.beginn === slot.beginn;
+                      const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
+                      return (
+                        <button
+                          key={slot.beginn}
+                          onClick={() => setSelectedSlot(isSelected ? null : slot)}
+                          className={`w-full text-[11px] py-1.5 rounded-lg font-500 transition-colors ${
+                            isSelected
+                              ? "bg-[#1C244B] text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-[#1C244B]/10"
+                          }`}
+                        >
+                          {time}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {error && (

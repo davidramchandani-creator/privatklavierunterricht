@@ -51,8 +51,8 @@ export default function PortalTabs({
 
   return (
     <div>
-      {/* Tab-Leiste */}
-      <div className="sticky top-16 z-30 -mx-5 px-5 bg-white/85 backdrop-blur-md">
+      {/* Desktop: Sticky segmented control at top */}
+      <div className="hidden sm:block sticky top-16 z-30 -mx-5 px-5 bg-white/85 backdrop-blur-md">
         <div
           role="tablist"
           className="flex gap-1 rounded-2xl bg-gray-50 p-1 border border-gray-100"
@@ -85,6 +85,51 @@ export default function PortalTabs({
           })}
         </div>
       </div>
+
+      {/* Mobile: Fixed bottom navigation bar */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-40 sm:hidden bg-white border-t border-gray-200"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="flex" role="tablist">
+          {TABS.map((t) => {
+            const isActive = active === t.id;
+            const badge = badgeFor(t.id);
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => select(t.id)}
+                className="relative flex-1 flex flex-col items-center justify-center gap-0.5 pt-2 pb-2 min-h-[56px] transition-colors"
+              >
+                {/* Active indicator line at top */}
+                {isActive && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-[#1C244B]" />
+                )}
+                <div className="relative">
+                  <Icon
+                    className={`w-5 h-5 transition-colors ${
+                      isActive ? "text-[#1C244B]" : "text-gray-400"
+                    }`}
+                  />
+                  {badge > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
+                  )}
+                </div>
+                <span
+                  className={`text-[11px] font-600 transition-colors ${
+                    isActive ? "text-[#1C244B]" : "text-gray-400"
+                  }`}
+                >
+                  {t.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
 
       {/* Panels */}
       <div className="mt-8">

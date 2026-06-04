@@ -162,49 +162,101 @@ export default function TerminBuchen({ maxSlots }: { maxSlots: number }) {
               <p className="text-xs">Keine freien Slots diese Woche</p>
             </div>
           ) : (
-            <div className="grid grid-cols-5 gap-2">
-              {displayDays.slice(0, 5).map((d) => {
-                const daySlots = slotsByDay.get(d.dateStr) ?? [];
-                return (
-                  <div key={d.dateStr} className="space-y-1.5">
-                    <p className="text-[10px] font-600 text-gray-400 text-center uppercase tracking-wide">
-                      {d.label}
-                    </p>
-                    {daySlots.length === 0 ? (
-                      <p className="text-[10px] text-gray-300 text-center mt-2">—</p>
-                    ) : (
-                      daySlots.map((slot) => {
-                        const isSelected = selected.some((s) => s.beginn === slot.beginn);
-                        const isDisabled = !isSelected && selected.length >= maxSlots;
-                        const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        });
-                        return (
-                          <button
-                            key={slot.beginn}
-                            onClick={() => toggleSlot(slot)}
-                            disabled={isDisabled}
-                            className={`w-full text-xs py-1.5 rounded-lg font-500 transition-colors relative ${
-                              isSelected
-                                ? "bg-[#1C244B] text-white"
-                                : isDisabled
-                                  ? "bg-gray-50 text-gray-300 cursor-not-allowed"
-                                  : "bg-gray-100 text-gray-700 hover:bg-[#1C244B]/10"
-                            }`}
-                          >
-                            {isSelected && (
-                              <CheckCircle2 className="w-2.5 h-2.5 absolute top-1 right-1 text-emerald-300" />
-                            )}
-                            {time}
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <>
+              {/* Mobile: flat list grouped by day */}
+              <div className="sm:hidden space-y-4">
+                {displayDays.slice(0, 5).map((d) => {
+                  const daySlots = slotsByDay.get(d.dateStr) ?? [];
+                  if (daySlots.length === 0) return null;
+                  const dayDate = new Date(d.dateStr + "T12:00:00");
+                  return (
+                    <div key={d.dateStr}>
+                      <p className="text-xs font-600 text-gray-500 mb-2">
+                        {dayDate.toLocaleDateString("de-CH", {
+                          weekday: "long",
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {daySlots.map((slot) => {
+                          const isSelected = selected.some((s) => s.beginn === slot.beginn);
+                          const isDisabled = !isSelected && selected.length >= maxSlots;
+                          const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          });
+                          return (
+                            <button
+                              key={slot.beginn}
+                              onClick={() => toggleSlot(slot)}
+                              disabled={isDisabled}
+                              className={`relative text-sm py-2.5 px-3 rounded-xl font-500 transition-colors ${
+                                isSelected
+                                  ? "bg-[#1C244B] text-white"
+                                  : isDisabled
+                                    ? "bg-gray-50 text-gray-300 cursor-not-allowed"
+                                    : "bg-gray-100 text-gray-700 hover:bg-[#1C244B]/10"
+                              }`}
+                            >
+                              {isSelected && (
+                                <CheckCircle2 className="w-2.5 h-2.5 absolute top-1 right-1 text-emerald-300" />
+                              )}
+                              {time}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop: 5-column grid */}
+              <div className="hidden sm:grid grid-cols-5 gap-2">
+                {displayDays.slice(0, 5).map((d) => {
+                  const daySlots = slotsByDay.get(d.dateStr) ?? [];
+                  return (
+                    <div key={d.dateStr} className="space-y-1.5">
+                      <p className="text-[10px] font-600 text-gray-400 text-center uppercase tracking-wide">
+                        {d.label}
+                      </p>
+                      {daySlots.length === 0 ? (
+                        <p className="text-[10px] text-gray-300 text-center mt-2">—</p>
+                      ) : (
+                        daySlots.map((slot) => {
+                          const isSelected = selected.some((s) => s.beginn === slot.beginn);
+                          const isDisabled = !isSelected && selected.length >= maxSlots;
+                          const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          });
+                          return (
+                            <button
+                              key={slot.beginn}
+                              onClick={() => toggleSlot(slot)}
+                              disabled={isDisabled}
+                              className={`w-full text-xs py-1.5 rounded-lg font-500 transition-colors relative ${
+                                isSelected
+                                  ? "bg-[#1C244B] text-white"
+                                  : isDisabled
+                                    ? "bg-gray-50 text-gray-300 cursor-not-allowed"
+                                    : "bg-gray-100 text-gray-700 hover:bg-[#1C244B]/10"
+                              }`}
+                            >
+                              {isSelected && (
+                                <CheckCircle2 className="w-2.5 h-2.5 absolute top-1 right-1 text-emerald-300" />
+                              )}
+                              {time}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
 
           {error && (

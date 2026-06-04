@@ -226,7 +226,7 @@ export default async function SchuelerPortalPage() {
     <div className="min-h-screen bg-white">
       <PortalNav vorname={vorname} />
 
-      <main className="max-w-4xl mx-auto px-5 py-8 sm:py-10">
+      <main className="max-w-4xl mx-auto px-5 py-8 sm:py-10 pb-24 sm:pb-10">
         <div className="mb-6">
           <p className="text-[13px] font-500 text-gray-400">Schön, dass du da bist</p>
           <h1 className="mt-1 text-2xl sm:text-3xl font-700 text-navy-900 tracking-tight">
