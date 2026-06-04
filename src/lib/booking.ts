@@ -197,6 +197,24 @@ function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
   return aStart.getTime() < bEnd.getTime() && bStart.getTime() < aEnd.getTime();
 }
 
+/**
+ * Wie overlaps, aber mit Pufferzeit um das gesperrte Fenster [bStart, bEnd].
+ * Frei nur, wenn der Slot komplett mit Puffer-Abstand davor oder danach liegt.
+ * So gilt die Pufferzeit (Fahrt-/Umstellzeit) auch rund um Zeitblöcke.
+ */
+function overlapsWithBuffer(
+  slot: Slot,
+  bStart: Date,
+  bEnd: Date,
+  bufferMin: number
+): boolean {
+  const gap = bufferMin * 60000;
+  const free =
+    slot.end.getTime() + gap <= bStart.getTime() ||
+    bEnd.getTime() + gap <= slot.start.getTime();
+  return !free;
+}
+
 /** Kollision mit bestehendem Termin inkl. Puffer (Max. beider Puffer). */
 export function collidesWithAppointment(
   slot: Slot,
@@ -232,20 +250,28 @@ export function absenceBlocks(
   });
 }
 
-/** Überlappt der Slot einen einmaligen Zeitblock? */
-export function timeBlockBlocks(slot: Slot, blocks: TimeBlock[]): boolean {
+/** Überlappt der Slot einen einmaligen Zeitblock (inkl. Pufferzeit)? */
+export function timeBlockBlocks(
+  slot: Slot,
+  blocks: TimeBlock[],
+  bufferMin = 0
+): boolean {
   return blocks.some((b) => {
     const { y, m, d } = parseDateStr(b.date);
     const bs = parseHHMM(b.start_time);
     const be = parseHHMM(b.end_time);
     const start = zonedToUtc(y, m, d, bs.h, bs.m);
     const end = zonedToUtc(y, m, d, be.h, be.m);
-    return overlaps(slot.start, slot.end, start, end);
+    return overlapsWithBuffer(slot, start, end, bufferMin);
   });
 }
 
-/** Überlappt der Slot eine aktive Wiederholungsregel (alle interval_days)? */
-export function timeBlockRuleBlocks(slot: Slot, rules: TimeBlockRule[]): boolean {
+/** Überlappt der Slot eine aktive Wiederholungsregel (alle interval_days, inkl. Puffer)? */
+export function timeBlockRuleBlocks(
+  slot: Slot,
+  rules: TimeBlockRule[],
+  bufferMin = 0
+): boolean {
   const slotDate = utcToZonedDate(slot.start);
   return rules.some((r) => {
     const ruleStart = parseDateStr(r.start_date);
@@ -257,7 +283,7 @@ export function timeBlockRuleBlocks(slot: Slot, rules: TimeBlockRule[]): boolean
     const be = parseHHMM(r.end_time);
     const start = zonedToUtc(slotDate.y, slotDate.m, slotDate.d, bs.h, bs.m);
     const end = zonedToUtc(slotDate.y, slotDate.m, slotDate.d, be.h, be.m);
-    return overlaps(slot.start, slot.end, start, end);
+    return overlapsWithBuffer(slot, start, end, bufferMin);
   });
 }
 
@@ -308,10 +334,10 @@ export function isSlotBookable(slot: Slot, ctx: AvailabilityContext): boolean {
   if (ctx.absences.length && absenceBlocks(slot, ctx.absences, ctx.studentId)) {
     return false;
   }
-  if (ctx.timeBlocks.length && timeBlockBlocks(slot, ctx.timeBlocks)) {
+  if (ctx.timeBlocks.length && timeBlockBlocks(slot, ctx.timeBlocks, ctx.bufferMin)) {
     return false;
   }
-  if (ctx.timeBlockRules.length && timeBlockRuleBlocks(slot, ctx.timeBlockRules)) {
+  if (ctx.timeBlockRules.length && timeBlockRuleBlocks(slot, ctx.timeBlockRules, ctx.bufferMin)) {
     return false;
   }
   for (const appt of ctx.appointments) {
