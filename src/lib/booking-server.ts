@@ -25,7 +25,11 @@ export async function loadAvailabilityContext(
   fromInstant: Date,
   toInstant: Date,
   now: Date = new Date(),
-  opts: { skipLeadTime?: boolean; excludeAppointmentId?: string } = {}
+  opts: {
+    skipLeadTime?: boolean;
+    excludeAppointmentId?: string;
+    excludeAppointmentIds?: string[];
+  } = {}
 ): Promise<AvailabilityContext> {
   // Termine etwas grosszügiger laden, damit Puffer an den Rändern greifen.
   const apptFrom = new Date(fromInstant.getTime() - 86400000).toISOString();
@@ -43,6 +47,13 @@ export async function loadAvailabilityContext(
     .lte("start_at", apptTo);
   if (opts.excludeAppointmentId) {
     apptQuery = apptQuery.neq("id", opts.excludeAppointmentId);
+  }
+  if (opts.excludeAppointmentIds?.length) {
+    apptQuery = apptQuery.not(
+      "id",
+      "in",
+      `(${opts.excludeAppointmentIds.join(",")})`
+    );
   }
 
   const [apptRes, absRes, blockRes, ruleRes, availRes] = await Promise.all([
