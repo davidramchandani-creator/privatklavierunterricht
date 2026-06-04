@@ -21,16 +21,16 @@ export default function Footer() {
   }
 
   return (
-    <footer className="bg-[#1C244B] border-t border-white/10">
+    <footer className="bg-navy-900 border-t border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
           <div className="col-span-full lg:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                <Music className="w-4 h-4 text-[#C9A84C]" />
+            <div className="flex items-center gap-2.5 mb-4">
+              <span className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                <Music className="w-4 h-4 text-gold-400" />
               </span>
-              <span className="font-700 text-white">David</span>
+              <span className="font-800 text-white tracking-tight">David</span>
             </div>
             <p className="text-white/50 text-sm leading-relaxed">
               Individueller Klavierunterricht in Neftenbach und Umgebung.

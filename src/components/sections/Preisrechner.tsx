@@ -172,13 +172,13 @@ export default function Preisrechner() {
   }
 
   return (
-    <section id="preise" className="py-24 bg-white">
+    <section id="preise" className="py-24 bg-surface">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         {/* Header */}
-        <p className="text-[#C9A84C] font-600 text-sm uppercase tracking-widest mb-3">
+        <p className="text-gold-600 font-600 text-sm uppercase tracking-widest mb-3">
           Preisrechner
         </p>
-        <h2 className="text-3xl sm:text-4xl font-800 text-[#1C244B] mb-4">
+        <h2 className="text-3xl sm:text-4xl font-800 text-navy-900 mb-4 tracking-tight">
           Geschätzten Preis berechnen
         </h2>
         <p className="text-gray-500 mb-10">
@@ -195,8 +195,8 @@ export default function Preisrechner() {
                 onClick={() => handlePaketChange(key)}
                 className={`flex flex-col items-center px-5 py-3.5 rounded-xl border-2 transition-all duration-200 min-w-[130px] ${
                   paket === key
-                    ? "border-[#1C244B] bg-[#1C244B] text-white shadow-md shadow-[#1C244B]/20 -translate-y-0.5"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-[#1C244B]/50 hover:-translate-y-0.5"
+                    ? "border-navy-900 bg-navy-900 text-white shadow-md shadow-navy-900/20 -translate-y-0.5"
+                    : "border-[#EAECEF] bg-white text-gray-700 hover:border-navy-900/40 hover:-translate-y-0.5"
                 }`}
               >
                 <span className="font-600 text-sm">{val.label}</span>

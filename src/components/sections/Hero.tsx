@@ -7,10 +7,10 @@ export default function Hero() {
     <section className="relative min-h-screen bg-white flex items-center overflow-hidden">
       {/* Subtle grid background */}
       <div
-        className="absolute inset-0 opacity-[0.03]"
+        className="absolute inset-0 opacity-[0.025]"
         style={{
           backgroundImage: `linear-gradient(#1C244B 1px, transparent 1px), linear-gradient(90deg, #1C244B 1px, transparent 1px)`,
-          backgroundSize: "60px 60px",
+          backgroundSize: "64px 64px",
         }}
       />
 
@@ -24,20 +24,20 @@ export default function Hero() {
           <div className="space-y-8 opacity-0 animate-fade-in">
             {/* Overline badge */}
             <div className="inline-flex items-center gap-2 bg-navy-50 border border-navy-100 rounded-full px-4 py-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#C9A84C] animate-pulse" />
-              <span className="text-[#1C244B] text-sm font-600">
+              <span className="w-2 h-2 rounded-full bg-gold-500 animate-pulse" />
+              <span className="text-navy-900 text-sm font-600">
                 Klavierunterricht in Neftenbach & Umgebung
               </span>
             </div>
 
             {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-800 text-gray-900 leading-[1.1] tracking-tight">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-800 text-navy-900 leading-[1.1] tracking-tight">
               Spiel, was du fühlst –{" "}
-              <span className="text-[#1C244B]">ich zeig dir wie.</span>
+              <span className="text-gold-600">ich zeig dir wie.</span>
             </h1>
 
             {/* Subtext */}
-            <p className="text-lg text-gray-500 leading-relaxed max-w-lg">
+            <p className="text-lg text-gray-500 leading-relaxed max-w-lg font-400">
               Individueller Klavierunterricht mit David, ganz ohne Schema F,
               dafür mit Gefühl und Verstand.
             </p>
@@ -45,7 +45,7 @@ export default function Hero() {
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-3 opacity-0 animate-fade-in delay-200">
               <Link href="/probelektion">
-                <Button size="lg" variant="gold" className="gap-2 shadow-lg shadow-[#C9A84C]/20 w-full sm:w-auto">
+                <Button size="lg" variant="gold" className="gap-2 shadow-lg shadow-gold-500/20 w-full sm:w-auto">
                   <CalendarCheck className="w-5 h-5" />
                   Jetzt Probelektion buchen
                 </Button>
@@ -59,9 +59,9 @@ export default function Hero() {
 
             {/* Social proof pills */}
             <div className="flex flex-wrap gap-3 pt-2 opacity-0 animate-fade-in delay-300">
-              <Pill icon={<Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />} text="5.0 Sterne" />
-              <Pill icon={<Users className="w-3.5 h-3.5 text-[#1C244B]" />} text="200+ Schülerinnen & Schüler" />
-              <Pill icon={<Clock className="w-3.5 h-3.5 text-[#1C244B]" />} text="16+ Jahre Erfahrung" />
+              <Pill icon={<Star className="w-3.5 h-3.5 fill-gold-500 text-gold-500" />} text="5.0 Sterne" />
+              <Pill icon={<Users className="w-3.5 h-3.5 text-navy-900" />} text="200+ Schülerinnen & Schüler" />
+              <Pill icon={<Clock className="w-3.5 h-3.5 text-navy-900" />} text="16+ Jahre Erfahrung" />
             </div>
           </div>
 
@@ -69,7 +69,7 @@ export default function Hero() {
           <div className="relative opacity-0 animate-fade-in delay-100 flex justify-center md:justify-end">
             <div className="relative w-full max-w-sm">
               {/* Main card */}
-              <div className="rounded-3xl bg-gradient-to-br from-[#1C244B] to-[#3a4488] p-8 shadow-2xl shadow-navy-200">
+              <div className="rounded-3xl bg-gradient-to-br from-navy-900 to-navy-700 p-8 shadow-2xl shadow-navy-200">
                 {/* Piano keys motif */}
                 <div className="flex gap-1 mb-8 opacity-30">
                   {[1,2,3,4,5,6,7].map((i) => (
@@ -90,7 +90,7 @@ export default function Hero() {
                     <p className="text-white/70 text-xs">Einzellektion ab</p>
                     <p className="text-white font-800 text-xl">CHF 105</p>
                   </div>
-                  <div className="bg-[#C9A84C] text-white text-xs font-700 px-3 py-1.5 rounded-full">
+                  <div className="bg-gold-500 text-white text-xs font-700 px-3 py-1.5 rounded-full">
                     Jetzt buchen
                   </div>
                 </div>
@@ -98,7 +98,7 @@ export default function Hero() {
 
               {/* Floating badge: Erfahrung */}
               <div className="absolute -top-5 -left-5 bg-white rounded-2xl shadow-lg px-4 py-3 border border-gray-100">
-                <p className="text-2xl font-800 text-[#1C244B]">16+</p>
+                <p className="text-2xl font-800 text-navy-900">16+</p>
                 <p className="text-xs text-gray-400 font-500">Jahre Erfahrung</p>
               </div>
 
@@ -106,7 +106,7 @@ export default function Hero() {
               <div className="absolute -bottom-5 -right-5 bg-white rounded-2xl shadow-lg px-4 py-3 border border-gray-100 flex items-center gap-2">
                 <div className="flex">
                   {[1,2,3,4,5].map((i) => (
-                    <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    <Star key={i} className="w-3.5 h-3.5 fill-gold-500 text-gold-500" />
                   ))}
                 </div>
                 <div>
@@ -124,7 +124,7 @@ export default function Hero() {
 
 function Pill({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
-    <div className="inline-flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-full px-3 py-1.5 text-xs font-500 text-gray-600">
+    <div className="inline-flex items-center gap-1.5 bg-surface border border-gray-100 rounded-full px-3 py-1.5 text-xs font-500 text-gray-600">
       {icon}
       {text}
     </div>

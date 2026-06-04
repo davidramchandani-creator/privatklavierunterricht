@@ -51,15 +51,15 @@ export default function ProbelektionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <header className="bg-white/90 backdrop-blur-md border-b border-[#EAECEF] sticky top-0 z-40">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-[#1C244B]">
-            <span className="w-8 h-8 rounded-lg bg-[#1C244B] flex items-center justify-center">
-              <Music className="w-4 h-4 text-white" />
+          <Link href="/" className="flex items-center gap-2.5 text-navy-900">
+            <span className="w-9 h-9 rounded-xl bg-navy-900 flex items-center justify-center shadow-sm">
+              <Music className="w-4 h-4 text-gold-400" />
             </span>
-            <span className="font-700 text-base hidden sm:block">David</span>
+            <span className="font-800 text-base hidden sm:block tracking-tight">David</span>
           </Link>
           <Link href="/" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
             ← Zurück zur Startseite
@@ -69,17 +69,17 @@ export default function ProbelektionPage() {
 
       <main className="max-w-3xl mx-auto px-4 py-10 space-y-8">
         {step === "done" ? (
-          <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-10 text-center space-y-4">
-            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+          <div className="bg-white rounded-2xl border border-[#EAECEF] shadow-sm p-10 text-center space-y-4">
+            <div className="w-16 h-16 bg-status-paid/10 rounded-2xl flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-8 h-8 text-status-paid" />
             </div>
-            <h1 className="text-2xl font-800 text-gray-900">Anfrage gesendet!</h1>
+            <h1 className="text-2xl font-800 text-navy-900 tracking-tight">Anfrage gesendet!</h1>
             <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
               Ich melde mich so schnell wie möglich bei dir. Meist antworte
               ich innerhalb von 24 Stunden.
             </p>
             {selectedSlot && (
-              <p className="text-sm text-[#1C244B] font-600 bg-navy-50 rounded-xl px-4 py-2 inline-block">
+              <p className="text-sm text-navy-900 font-600 bg-navy-50 rounded-xl px-4 py-2 inline-block">
                 Wunschtermin:{" "}
                 {new Date(selectedSlot.beginn).toLocaleDateString("de-CH", {
                   weekday: "long",
@@ -103,10 +103,10 @@ export default function ProbelektionPage() {
             {/* Title */}
             <div className="text-center space-y-2">
               <div className="inline-flex items-center gap-2 bg-navy-50 border border-navy-100 rounded-full px-4 py-1.5 mb-2">
-                <span className="w-2 h-2 rounded-full bg-[#C9A84C] animate-pulse" />
-                <span className="text-[#1C244B] text-sm font-600">Kostenlos & unverbindlich</span>
+                <span className="w-2 h-2 rounded-full bg-gold-500 animate-pulse" />
+                <span className="text-navy-900 text-sm font-600">Kostenlos & unverbindlich</span>
               </div>
-              <h1 className="text-3xl font-800 text-gray-900">Probelektion buchen</h1>
+              <h1 className="text-3xl font-800 text-navy-900 tracking-tight">Probelektion buchen</h1>
               <p className="text-gray-500 max-w-lg mx-auto">
                 Wähle einen Wunschtermin und hinterlasse deine Kontaktdaten.
                 Ich bestätige die Anfrage persönlich.
@@ -114,8 +114,8 @@ export default function ProbelektionPage() {
             </div>
 
             {/* Slot picker */}
-            <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 space-y-4">
-              <h2 className="font-700 text-[#1C244B]">
+            <div className="bg-white rounded-2xl border border-[#EAECEF] shadow-sm p-6 space-y-4">
+              <h2 className="font-700 text-navy-900">
                 {selectedSlot ? "✓ Wunschtermin gewählt" : "Wunschtermin wählen"}
                 <span className="text-gray-400 font-400 text-sm ml-2">(optional)</span>
               </h2>
@@ -140,7 +140,7 @@ export default function ProbelektionPage() {
 
               {loadingSlots ? (
                 <div className="flex items-center justify-center py-10">
-                  <Loader2 className="w-5 h-5 animate-spin text-[#1C244B]" />
+                  <Loader2 className="w-5 h-5 animate-spin text-navy-900" />
                 </div>
               ) : slots.length === 0 ? (
                 <div className="text-center py-10 text-gray-400">
@@ -173,10 +173,10 @@ export default function ProbelektionPage() {
                               <button
                                 key={slot.beginn}
                                 onClick={() => setSelectedSlot(isSelected ? null : slot)}
-                                className={`w-full text-xs py-1.5 rounded-lg font-500 transition-colors ${
+                                className={`w-full text-xs py-1.5 rounded-lg font-500 transition-all duration-200 ${
                                   isSelected
-                                    ? "bg-[#1C244B] text-white"
-                                    : "bg-gray-100 text-gray-700 hover:bg-[#1C244B]/10"
+                                    ? "bg-navy-900 text-white shadow-sm"
+                                    : "bg-surface text-gray-700 hover:bg-navy-50 hover:text-navy-900"
                                 }`}
                               >
                                 {time}
@@ -191,7 +191,7 @@ export default function ProbelektionPage() {
               )}
 
               {selectedSlot && (
-                <p className="text-xs text-[#1C244B] bg-navy-50 rounded-xl px-3 py-2 font-500">
+                <p className="text-xs text-navy-900 bg-navy-50 rounded-xl px-3 py-2 font-500">
                   Gewählt:{" "}
                   {new Date(selectedSlot.beginn).toLocaleDateString("de-CH", {
                     weekday: "long",
@@ -209,8 +209,8 @@ export default function ProbelektionPage() {
             </div>
 
             {/* Contact form */}
-            <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6">
-              <h2 className="font-700 text-[#1C244B] mb-5">Deine Kontaktdaten</h2>
+            <div className="bg-white rounded-2xl border border-[#EAECEF] shadow-sm p-6">
+              <h2 className="font-700 text-navy-900 mb-5">Deine Kontaktdaten</h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
@@ -218,7 +218,7 @@ export default function ProbelektionPage() {
                     <input
                       name="vorname"
                       required
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C244B]/30 focus:border-[#1C244B]"
+                      className="w-full border border-[#EAECEF] rounded-xl px-3 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-navy-900/20 focus:border-navy-900"
                       placeholder="Anna"
                     />
                   </div>
@@ -227,7 +227,7 @@ export default function ProbelektionPage() {
                     <input
                       name="nachname"
                       required
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C244B]/30 focus:border-[#1C244B]"
+                      className="w-full border border-[#EAECEF] rounded-xl px-3 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-navy-900/20 focus:border-navy-900"
                       placeholder="Müller"
                     />
                   </div>
@@ -239,7 +239,7 @@ export default function ProbelektionPage() {
                     name="email"
                     type="email"
                     required
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C244B]/30 focus:border-[#1C244B]"
+                    className="w-full border border-[#EAECEF] rounded-xl px-3 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-navy-900/20 focus:border-navy-900"
                     placeholder="anna@beispiel.ch"
                   />
                 </div>
@@ -249,7 +249,7 @@ export default function ProbelektionPage() {
                   <input
                     name="telefon"
                     type="tel"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C244B]/30 focus:border-[#1C244B]"
+                    className="w-full border border-[#EAECEF] rounded-xl px-3 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-navy-900/20 focus:border-navy-900"
                     placeholder="+41 79 123 45 67"
                   />
                 </div>
@@ -259,13 +259,13 @@ export default function ProbelektionPage() {
                   <textarea
                     name="nachricht"
                     rows={3}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C244B]/30 focus:border-[#1C244B] resize-none"
+                    className="w-full border border-[#EAECEF] rounded-xl px-3 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-navy-900/20 focus:border-navy-900 resize-none"
                     placeholder="Erfahrung, Ziele, besondere Wünsche…"
                   />
                 </div>
 
                 {error && (
-                  <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>
+                  <p className="text-sm text-status-error bg-status-open/10 rounded-xl px-3 py-2">{error}</p>
                 )}
 
                 <Button type="submit" disabled={isPending} size="lg" className="w-full">
