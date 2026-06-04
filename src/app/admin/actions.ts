@@ -709,10 +709,11 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
   // Google Calendar: Event löschen
   await deleteCalendarEvent(admin, id);
 
-  // Offene Rechnung zu diesem Termin stornieren + geplante Zahlungsmail abbrechen
+  // Offene Rechnung zu diesem Termin archivieren + geplante Zahlungsmail abbrechen
+  // (Spec §6: bei Terminabsage Rechnung archivieren; Invoice-Status kennt kein "cancelled").
   const { data: cancelledInvoices } = await admin
     .from("invoices")
-    .update({ status: "cancelled" })
+    .update({ status: "archived" })
     .eq("appointment_id", id)
     .in("status", ["unpaid", "pending_confirmation", "rejected"])
     .select("id");
@@ -1102,12 +1103,21 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
     for (const fid of ids) {
       await deleteCalendarEvent(admin, fid);
     }
-    // Zugehörige offene Rechnungen stornieren
-    await admin
+    // Zugehörige offene Rechnungen archivieren (Invoice-Status kennt kein "cancelled")
+    const { data: archivedInvoices } = await admin
       .from("invoices")
-      .update({ status: "cancelled" })
+      .update({ status: "archived" })
       .in("appointment_id", ids)
-      .in("status", ["unpaid", "pending_confirmation", "rejected"]);
+      .in("status", ["unpaid", "pending_confirmation", "rejected"])
+      .select("id");
+    // Geplante Zahlungsmails dieser Rechnungen abbrechen (Payload trägt invoice_id)
+    for (const inv of archivedInvoices ?? []) {
+      await admin
+        .from("scheduled_emails")
+        .update({ status: "cancelled" })
+        .eq("status", "pending")
+        .contains("payload", { invoice_id: inv.id });
+    }
   }
 
   const { error } = await admin

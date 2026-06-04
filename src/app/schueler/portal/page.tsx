@@ -113,9 +113,16 @@ export default async function SchuelerPortalPage() {
     aktivesPackage != null
       ? Math.max(0, aktivesPackage.lessons_total - lessonsUsed)
       : null;
+  // Nur tatsächlich fällige Zahlungen zählen: offen/abgelehnt UND Lektion ist
+  // bereits vorbei (Spec §6 – Zahlung erscheint erst nach der Lektion).
+  const nowMs = Date.now();
   const openPaymentsCount =
-    invoices?.filter((i) => i.status === "unpaid" || i.status === "rejected")
-      .length ?? 0;
+    invoices?.filter((i) => {
+      if (i.status !== "unpaid" && i.status !== "rejected") return false;
+      if (!i.lesson_date) return true; // z. B. Storno-Nachzahlung: sofort fällig
+      const lessonEnd = new Date(i.lesson_date).getTime() + 45 * 60 * 1000;
+      return lessonEnd <= nowMs;
+    }).length ?? 0;
 
   // Offizieller TWINT-Acquirer-Link (serverseitig, nie im Client hartcodiert).
   const twintBase = getTwintBaseUrl();

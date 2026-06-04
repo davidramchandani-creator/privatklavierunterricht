@@ -292,10 +292,11 @@ export async function cancelAppointment(appointmentId: string) {
   // Google Calendar: Event löschen
   await deleteCalendarEvent(admin, appointmentId);
 
-  // Offene Rechnung zu diesem Termin stornieren + geplante Zahlungsmail abbrechen
+  // Offene Rechnung zu diesem Termin archivieren + geplante Zahlungsmail abbrechen
+  // (Spec §6: bei Terminabsage Rechnung archivieren; Invoice-Status kennt kein "cancelled").
   const { data: cancelledInvoices } = await admin
     .from("invoices")
-    .update({ status: "cancelled" })
+    .update({ status: "archived" })
     .eq("appointment_id", appointmentId)
     .in("status", ["unpaid", "pending_confirmation", "rejected"])
     .select("id");
