@@ -81,7 +81,7 @@ export default async function SchuelerDetailPage({
     buffer_mode: (profile.buffer_mode as string) ?? "fixed",
     payment_method: (profile.payment_method as string) ?? "qr",
   };
-  const mapsConfigured = !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const mapsConfigured = !!process.env.GOOGLE_MAPS_API_KEY;
 
   return (
     <div className="space-y-6 max-w-4xl">

@@ -516,7 +516,7 @@ export async function updateStudentPrices(
 export async function calculateTravelBuffer(
   studentAddress: string
 ): Promise<{ minutes: number } | { error: string }> {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) return { error: "GOOGLE_MAPS_API_KEY nicht konfiguriert." };
 
   const origin = process.env.ADMIN_HOME_ADDRESS ?? "Sattleracherstrasse 59, 8413 Neftenbach, Schweiz";
