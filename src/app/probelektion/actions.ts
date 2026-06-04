@@ -46,6 +46,39 @@ export async function getPublicSlots(weekOffset: number): Promise<PublicSlot[]> 
   }));
 }
 
+// Nächster freier Termin (für Hero/Marketing). Sucht bis zu 4 Wochen voraus.
+export async function getNextPublicSlot(): Promise<PublicSlot | null> {
+  const admin = await createAdminClient();
+  const now = new Date();
+  const todayCal = utcToZonedDate(now);
+
+  for (let weekOffset = 0; weekOffset < 4; weekOffset++) {
+    const w = weekdayOf(todayCal);
+    const mondayOffset = w === 0 ? -6 : 1 - w;
+    const fromCal: CalDate = addDaysCal(todayCal, mondayOffset + weekOffset * 7);
+    const fromInstant = zonedToUtc(fromCal.y, fromCal.m, fromCal.d, 0, 0);
+    const toInstant = new Date(fromInstant.getTime() + 7 * 86400000);
+
+    const ctx = await loadAvailabilityContext(
+      admin,
+      "",
+      DEFAULT_BUFFER_MIN,
+      fromInstant,
+      toInstant,
+      now
+    );
+
+    const slots = computeAvailableSlots(fromCal, 7, ctx)
+      .filter((s) => s.start.getTime() > now.getTime())
+      .sort((a, b) => a.start.getTime() - b.start.getTime());
+
+    if (slots.length > 0) {
+      return { beginn: slots[0].start.toISOString(), ende: slots[0].end.toISOString() };
+    }
+  }
+  return null;
+}
+
 export async function submitAnfrage(formData: FormData) {
   const vorname = (formData.get("vorname") as string)?.trim();
   const nachname = (formData.get("nachname") as string)?.trim();

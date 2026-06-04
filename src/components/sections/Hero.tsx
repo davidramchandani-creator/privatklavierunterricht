@@ -1,15 +1,41 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { CalendarCheck, Star, Users, Clock } from "lucide-react";
+import { CalendarCheck, Star, Users, Clock, ArrowRight } from "lucide-react";
+import { getNextPublicSlot } from "@/app/probelektion/actions";
 
-export default function Hero() {
+function formatSlot(iso: string): string {
+  const d = new Date(iso);
+  const tag = new Intl.DateTimeFormat("de-CH", {
+    timeZone: "Europe/Zurich",
+    weekday: "long",
+  }).format(d);
+  const datum = new Intl.DateTimeFormat("de-CH", {
+    timeZone: "Europe/Zurich",
+    day: "numeric",
+    month: "long",
+  }).format(d);
+  const zeit = new Intl.DateTimeFormat("de-CH", {
+    timeZone: "Europe/Zurich",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+  return `${tag}, ${datum} · ${zeit} Uhr`;
+}
+
+export default async function Hero() {
+  let nextSlotLabel = "Auf Anfrage";
+  try {
+    const slot = await getNextPublicSlot();
+    if (slot) nextSlotLabel = formatSlot(slot.beginn);
+  } catch {
+    // Falls Verfügbarkeit nicht geladen werden kann, bleibt der Fallback stehen.
+  }
+
   return (
     <section className="relative min-h-screen bg-white flex items-center overflow-hidden">
-      {/* Decorative piano keys — bottom */}
-      <PianoKeysDecor />
-
-      {/* Gradient blob top-right */}
-      <div className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-navy-100 to-navy-50 blur-3xl opacity-60 pointer-events-none" />
+      {/* Soft ambient light */}
+      <div className="absolute -top-40 -right-40 w-[680px] h-[680px] rounded-full bg-gradient-to-br from-navy-100/70 via-navy-50/40 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-48 -left-40 w-[560px] h-[560px] rounded-full bg-gradient-to-tr from-surface to-transparent blur-3xl pointer-events-none" />
 
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-0">
         <div className="grid md:grid-cols-2 gap-12 lg:gap-20 items-center min-h-screen md:min-h-[auto] md:py-32">
@@ -63,31 +89,28 @@ export default function Hero() {
           <div className="relative opacity-0 animate-fade-in delay-100 flex justify-center md:justify-end">
             <div className="relative w-full max-w-sm">
               {/* Main card */}
-              <div className="rounded-3xl bg-gradient-to-br from-navy-900 to-navy-700 p-8 shadow-2xl shadow-navy-200">
-                {/* Piano keys motif */}
-                <div className="flex gap-1 mb-8 opacity-30">
-                  {[1,2,3,4,5,6,7].map((i) => (
-                    <div key={i} className="flex-1">
-                      <div className="w-full h-20 bg-white rounded-b-lg" />
-                    </div>
-                  ))}
-                </div>
+              <div className="rounded-3xl bg-navy-900 p-8 shadow-2xl shadow-navy-900/20 overflow-hidden">
+                {/* Keyboard accent — clean SVG, top of card */}
+                <Keyboard className="mb-8 opacity-90" />
 
                 <div className="text-white space-y-2">
-                  <p className="text-white/60 text-xs font-600 uppercase tracking-widest">Verfügbare Termine</p>
-                  <p className="text-2xl font-800">Mo–Do, ab 16:30</p>
-                  <p className="text-white/70 text-sm">Bei dir zu Hause · 45 Min.</p>
+                  <p className="text-white/50 text-xs font-600 uppercase tracking-widest">Nächster freier Termin</p>
+                  <p className="text-2xl font-800 leading-tight">{nextSlotLabel}</p>
+                  <p className="text-white/60 text-sm">Bei dir zu Hause · 45 Min.</p>
                 </div>
 
-                <div className="mt-6 bg-white/15 backdrop-blur-sm rounded-2xl px-4 py-3 flex items-center justify-between">
+                <Link
+                  href="/probelektion"
+                  className="group mt-6 bg-white/[0.08] hover:bg-white/[0.14] border border-white/10 rounded-2xl px-4 py-3.5 flex items-center justify-between transition-colors"
+                >
                   <div>
-                    <p className="text-white/70 text-xs">Im 20er-Paket ab</p>
-                    <p className="text-white font-800 text-xl">CHF 65 / Lektion</p>
+                    <p className="text-white/55 text-xs">Im 20er-Paket ab</p>
+                    <p className="text-white font-800 text-xl">CHF 65 <span className="text-sm font-500 text-white/55">/ Lektion</span></p>
                   </div>
-                  <div className="bg-white/20 border border-white/30 text-white text-xs font-600 px-3 py-1.5 rounded-full">
-                    Jetzt buchen
-                  </div>
-                </div>
+                  <span className="w-9 h-9 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center transition-colors">
+                    <ArrowRight className="w-4 h-4 text-white group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </Link>
               </div>
 
               {/* Floating badge: Erfahrung */}
@@ -125,44 +148,44 @@ function Pill({ icon, text }: { icon: React.ReactNode; text: string }) {
   );
 }
 
-function PianoKeysDecor() {
-  // 21 white keys across the bottom — purely decorative
-  const whiteKeys = Array.from({ length: 21 });
-  // Black key pattern per octave (7 white keys): gaps after index 0, 1, 3, 4, 5 (no key after 2 and 6)
-  const blackKeyOffsets = [1, 2, 4, 5, 6]; // positions within each octave that have a black key to their right
+// Saubere, dezente Klaviatur als SVG (eine Oktave + Anschnitt)
+function Keyboard({ className = "" }: { className?: string }) {
+  const whiteCount = 8;
+  const whiteW = 100 / whiteCount;
+  // Schwarze Tasten sitzen rechts von den weissen Tasten 0,1,3,4,5
+  const blackAfter = [0, 1, 3, 4, 5];
+  const blackW = whiteW * 0.58;
   return (
-    <div className="absolute bottom-0 left-0 right-0 h-28 overflow-hidden pointer-events-none select-none" aria-hidden>
-      {/* White keys */}
-      <div className="absolute inset-0 flex">
-        {whiteKeys.map((_, i) => (
-          <div
-            key={i}
-            className="flex-1 bg-navy-900 opacity-[0.07] border-r border-white"
-            style={{ borderRadius: "4px 4px 0 0" }}
-          />
-        ))}
-      </div>
-      {/* Black keys */}
-      <div className="absolute top-0 left-0 right-0" style={{ height: "55%" }}>
-        {whiteKeys.map((_, i) => {
-          const octavePos = i % 7;
-          if (!blackKeyOffsets.includes(octavePos)) return null;
-          const pct = ((i + 0.6) / 21) * 100;
-          return (
-            <div
-              key={i}
-              className="absolute bg-navy-900 opacity-[0.15]"
-              style={{
-                left: `${pct}%`,
-                width: `${(1 / 21) * 100 * 0.55}%`,
-                height: "100%",
-                borderRadius: "0 0 3px 3px",
-                transform: "translateX(-50%)",
-              }}
-            />
-          );
-        })}
-      </div>
-    </div>
+    <svg
+      viewBox="0 0 100 46"
+      className={`w-full h-16 ${className}`}
+      preserveAspectRatio="none"
+      aria-hidden
+    >
+      {/* Weisse Tasten */}
+      {Array.from({ length: whiteCount }).map((_, i) => (
+        <rect
+          key={`w${i}`}
+          x={i * whiteW + 0.4}
+          y={0}
+          width={whiteW - 0.8}
+          height={46}
+          rx={1.5}
+          className="fill-white"
+        />
+      ))}
+      {/* Schwarze Tasten */}
+      {blackAfter.map((i) => (
+        <rect
+          key={`b${i}`}
+          x={(i + 1) * whiteW - blackW / 2}
+          y={0}
+          width={blackW}
+          height={28}
+          rx={1.2}
+          className="fill-navy-900"
+        />
+      ))}
+    </svg>
   );
 }
