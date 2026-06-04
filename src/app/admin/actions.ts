@@ -1318,14 +1318,22 @@ export async function confirmInvoicePayment(invoiceId: string) {
     .maybeSingle();
 
   if (profile?.email) {
-    await sendEmailNow(admin, "payment_confirmed", {
-      to: profile.email,
-      student_name: `${profile.vorname} ${profile.nachname}`,
-      student_id: inv.student_id,
-      lesson_date: inv.lesson_date,
-      amount: inv.amount,
-      invoice_number: inv.invoice_number,
-    });
+    const isSettlement = !inv.lesson_date;
+    if (isSettlement) {
+      await sendEmailNow(admin, "package_settlement_paid", {
+        student_id: inv.student_id,
+        amount: inv.amount,
+      });
+    } else {
+      await sendEmailNow(admin, "payment_confirmed", {
+        to: profile.email,
+        student_name: `${profile.vorname} ${profile.nachname}`,
+        student_id: inv.student_id,
+        lesson_date: inv.lesson_date,
+        amount: inv.amount,
+        invoice_number: inv.invoice_number,
+      });
+    }
   }
 
   revalidatePath("/admin/zahlungen");
