@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   type AvailabilityContext,
+  type AvailabilityWindows,
   type ExistingAppointment,
   type Absence,
   type TimeBlock,
@@ -44,7 +45,7 @@ export async function loadAvailabilityContext(
     apptQuery = apptQuery.neq("id", opts.excludeAppointmentId);
   }
 
-  const [apptRes, absRes, blockRes, ruleRes] = await Promise.all([
+  const [apptRes, absRes, blockRes, ruleRes, availRes] = await Promise.all([
     apptQuery,
     admin
       .from("absences")
@@ -59,7 +60,29 @@ export async function loadAvailabilityContext(
     admin
       .from("time_block_rules")
       .select("start_date, start_time, end_time, interval_days"),
+    admin
+      .from("admin_verfuegbarkeit")
+      .select("wochentag, beginn_zeit, ende_zeit, aktiv"),
   ]);
+
+  // Vom Admin gepflegte Verfügbarkeit → Fenster-Map (nur aktive Tage).
+  // Ohne Einträge bleibt das Feld leer und die Engine nutzt den AVAILABILITY-Default.
+  let availabilityWindows: AvailabilityWindows | undefined;
+  if (availRes.data && availRes.data.length > 0) {
+    availabilityWindows = {};
+    for (const row of availRes.data as Array<{
+      wochentag: number;
+      beginn_zeit: string;
+      ende_zeit: string;
+      aktiv: boolean;
+    }>) {
+      if (!row.aktiv) continue;
+      (availabilityWindows[row.wochentag] ??= []).push({
+        start: row.beginn_zeit.slice(0, 5),
+        end: row.ende_zeit.slice(0, 5),
+      });
+    }
+  }
 
   const appointments: ExistingAppointment[] = (apptRes.data ?? []).map(
     (a: Record<string, unknown>) => {
@@ -80,6 +103,7 @@ export async function loadAvailabilityContext(
     absences: (absRes.data ?? []) as Absence[],
     timeBlocks: (blockRes.data ?? []) as TimeBlock[],
     timeBlockRules: (ruleRes.data ?? []) as TimeBlockRule[],
+    availabilityWindows,
     skipLeadTime: opts.skipLeadTime ?? false,
   };
 }

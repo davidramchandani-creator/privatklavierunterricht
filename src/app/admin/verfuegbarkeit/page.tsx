@@ -193,13 +193,19 @@ export default function VerfuegbarkeitPage() {
         </Button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-700 text-[#1C244B] mb-3">
-          Ausnahmen & Ferien
+      <div className="bg-[#1C244B]/5 rounded-2xl border border-[#1C244B]/10 p-5">
+        <h2 className="text-lg font-700 text-[#1C244B] mb-2">
+          Abwesenheiten & Ferien
         </h2>
-        <p className="text-sm text-gray-500">
-          Für individuelle Ausnahmen und Ferienabwesenheiten bitte direkt
-          Termine als storniert markieren oder Schüler kontaktieren.
+        <p className="text-sm text-gray-600 leading-relaxed">
+          Diese Verfügbarkeit ist dein wöchentlicher Standard-Rhythmus.{" "}
+          <span className="font-600 text-[#1C244B]">Abwesenheiten überschreiben die Verfügbarkeit</span>{" "}
+          – an Tagen, die du unter{" "}
+          <a href="/admin/abwesenheiten" className="underline font-600 text-[#1C244B] hover:opacity-80">
+            Abwesenheiten
+          </a>{" "}
+          einträgst, sind keine Buchungen möglich, auch wenn der Wochentag hier
+          aktiv ist. Für einzelne gesperrte Zeitfenster nutze die Zeitblöcke.
         </p>
       </div>
     </div>

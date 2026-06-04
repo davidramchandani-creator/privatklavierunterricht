@@ -12,6 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  List,
+  LayoutGrid,
 } from "lucide-react";
 import { isWithin24Hours } from "@/lib/utils";
 import {
@@ -57,6 +59,8 @@ export default function NaechsteTermine({
   requests: BookingRequest[];
   reschedules?: RescheduleRequest[];
 }) {
+  const [view, setView] = useState<"liste" | "kalender">("liste");
+
   const offeneAnfragen = requests.filter((r) => r.status === "open");
   const offeneVerschiebungen = reschedules.filter((r) => r.status === "open");
 
@@ -87,23 +91,204 @@ export default function NaechsteTermine({
 
   return (
     <div className="space-y-3">
-      {/* Gruppenanfragen */}
-      {Array.from(grouped.entries()).map(([groupId, reqs]) => (
-        <GruppenAnfrageRow key={groupId} groupId={groupId} requests={reqs} />
-      ))}
-      {/* Einzelanfragen (legacy) */}
-      {singles.map((r) => (
-        <AnfrageRow key={r.id} request={r} />
-      ))}
-      {appointments.map((a) => (
-        <TerminRow
-          key={a.id}
-          appointment={a}
-          pendingReschedule={
-            offeneVerschiebungen.find((v) => v.appointment_id === a.id) ?? null
-          }
+      {/* Ansicht-Umschalter: Liste / Kalender */}
+      <div className="flex justify-end">
+        <div className="inline-flex bg-gray-100 rounded-xl p-0.5">
+          <button
+            onClick={() => setView("liste")}
+            className={`flex items-center gap-1.5 text-xs font-600 px-3 py-1.5 rounded-lg transition-colors ${
+              view === "liste"
+                ? "bg-white text-[#1C244B] shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <List className="w-3.5 h-3.5" /> Liste
+          </button>
+          <button
+            onClick={() => setView("kalender")}
+            className={`flex items-center gap-1.5 text-xs font-600 px-3 py-1.5 rounded-lg transition-colors ${
+              view === "kalender"
+                ? "bg-white text-[#1C244B] shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" /> Kalender
+          </button>
+        </div>
+      </div>
+
+      {view === "kalender" ? (
+        <MonthCalendar
+          appointments={appointments}
+          requests={offeneAnfragen}
         />
-      ))}
+      ) : (
+        <div className="space-y-3">
+          {/* Gruppenanfragen */}
+          {Array.from(grouped.entries()).map(([groupId, reqs]) => (
+            <GruppenAnfrageRow key={groupId} groupId={groupId} requests={reqs} />
+          ))}
+          {/* Einzelanfragen (legacy) */}
+          {singles.map((r) => (
+            <AnfrageRow key={r.id} request={r} />
+          ))}
+          {appointments.map((a) => (
+            <TerminRow
+              key={a.id}
+              appointment={a}
+              pendingReschedule={
+                offeneVerschiebungen.find((v) => v.appointment_id === a.id) ?? null
+              }
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Monatskalender mit bestätigten Terminen (navy) und offenen Anfragen (amber). */
+function MonthCalendar({
+  appointments,
+  requests,
+}: {
+  appointments: Appointment[];
+  requests: BookingRequest[];
+}) {
+  const [monthOffset, setMonthOffset] = useState(0);
+
+  const base = new Date();
+  const viewMonth = new Date(base.getFullYear(), base.getMonth() + monthOffset, 1);
+  const year = viewMonth.getFullYear();
+  const month = viewMonth.getMonth();
+
+  // Einträge pro Tag (YYYY-MM-DD in Zürcher Zeit) sammeln
+  type Entry = { time: string; kind: "termin" | "anfrage"; iso: string };
+  const byDay = new Map<string, Entry[]>();
+  const dayKey = (iso: string) =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Zurich",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date(iso));
+  const timeLabel = (iso: string) =>
+    new Date(iso).toLocaleTimeString("de-CH", {
+      timeZone: "Europe/Zurich",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+  for (const a of appointments) {
+    const k = dayKey(a.start_at);
+    (byDay.get(k) ?? byDay.set(k, []).get(k)!).push({
+      time: timeLabel(a.start_at),
+      kind: "termin",
+      iso: a.start_at,
+    });
+  }
+  for (const r of requests) {
+    const k = dayKey(r.desired_start);
+    (byDay.get(k) ?? byDay.set(k, []).get(k)!).push({
+      time: timeLabel(r.desired_start),
+      kind: "anfrage",
+      iso: r.desired_start,
+    });
+  }
+  for (const list of byDay.values()) list.sort((a, b) => a.iso.localeCompare(b.iso));
+
+  // Kalenderraster (Montag-basiert)
+  const firstOfMonth = new Date(year, month, 1);
+  const jsDay = firstOfMonth.getDay(); // 0=So
+  const leading = jsDay === 0 ? 6 : jsDay - 1; // Mo=0 … So=6
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = [
+    ...Array(leading).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const todayKey = dayKey(new Date().toISOString());
+  const monthLabel = viewMonth.toLocaleDateString("de-CH", {
+    month: "long",
+    year: "numeric",
+  });
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <button
+          onClick={() => setMonthOffset((m) => m - 1)}
+          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <span className="text-sm font-700 text-[#1C244B] capitalize">{monthLabel}</span>
+        <button
+          onClick={() => setMonthOffset((m) => m + 1)}
+          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((d) => (
+          <div key={d} className="text-[10px] font-600 text-gray-400 text-center uppercase py-1">
+            {d}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((day, i) => {
+          if (day === null) return <div key={i} />;
+          const key = `${year}-${pad(month + 1)}-${pad(day)}`;
+          const entries = byDay.get(key) ?? [];
+          const isToday = key === todayKey;
+          return (
+            <div
+              key={i}
+              className={`min-h-[64px] rounded-lg border p-1 ${
+                isToday ? "border-[#1C244B]/40 bg-[#1C244B]/5" : "border-gray-100"
+              }`}
+            >
+              <div
+                className={`text-[11px] font-600 mb-0.5 ${
+                  isToday ? "text-[#1C244B]" : "text-gray-500"
+                }`}
+              >
+                {day}
+              </div>
+              <div className="space-y-0.5">
+                {entries.map((e, j) => (
+                  <div
+                    key={j}
+                    className={`text-[9px] leading-tight font-600 px-1 py-0.5 rounded truncate ${
+                      e.kind === "termin"
+                        ? "bg-[#1C244B] text-white"
+                        : "bg-amber-100 text-amber-700"
+                    }`}
+                    title={`${e.time} Uhr – ${e.kind === "termin" ? "Bestätigt" : "Angefragt"}`}
+                  >
+                    {e.time}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
+        <span className="flex items-center gap-1.5 text-[11px] text-gray-500">
+          <span className="w-2.5 h-2.5 rounded bg-[#1C244B]" /> Bestätigt
+        </span>
+        <span className="flex items-center gap-1.5 text-[11px] text-gray-500">
+          <span className="w-2.5 h-2.5 rounded bg-amber-300" /> Angefragt
+        </span>
+      </div>
     </div>
   );
 }
