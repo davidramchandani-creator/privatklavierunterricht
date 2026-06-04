@@ -308,13 +308,24 @@ function getMonday(weekOffset: number): Date {
 
 type DayInfo = { dateStr: string; label: string };
 
+/** Zürcher Kalenderdatum (YYYY-MM-DD) eines Instants – DST-sicher. */
+function zurichDateKey(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Zurich",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
 function getDaysInWeek(weekOffset: number): DayInfo[] {
   const monday = getMonday(weekOffset);
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday.getTime() + i * 86400000);
     return {
-      dateStr: d.toISOString().split("T")[0],
-      label: d.toLocaleDateString("de-CH", { weekday: "short" }),
+      // Schlüssel = Zürcher Datum, damit er zu den Slot-Schlüsseln passt.
+      dateStr: zurichDateKey(d),
+      label: d.toLocaleDateString("de-CH", { timeZone: "Europe/Zurich", weekday: "short" }),
     };
   });
 }
@@ -322,7 +333,8 @@ function getDaysInWeek(weekOffset: number): DayInfo[] {
 function groupSlotsByDay(slots: AvailableSlot[]): Map<string, AvailableSlot[]> {
   const map = new Map<string, AvailableSlot[]>();
   for (const slot of slots) {
-    const dateStr = slot.beginn.split("T")[0];
+    // Slots nach Zürcher Datum gruppieren (nicht nach UTC-Datum des ISO-Strings).
+    const dateStr = zurichDateKey(new Date(slot.beginn));
     if (!map.has(dateStr)) map.set(dateStr, []);
     map.get(dateStr)!.push(slot);
   }

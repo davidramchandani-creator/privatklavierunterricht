@@ -754,7 +754,8 @@ function ReschedulePicker({
 
   const slotsByDay = new Map<string, AvailableSlot[]>();
   for (const slot of slots) {
-    const dateStr = slot.beginn.split("T")[0];
+    // Nach Zürcher Datum gruppieren (nicht nach UTC-Datum des ISO-Strings).
+    const dateStr = zurichDateKey(new Date(slot.beginn));
     if (!slotsByDay.has(dateStr)) slotsByDay.set(dateStr, []);
     slotsByDay.get(dateStr)!.push(slot);
   }
@@ -764,8 +765,8 @@ function ReschedulePicker({
   for (let i = 0; i < 5; i++) {
     const d = new Date(monday.getTime() + i * 86400000);
     days.push({
-      dateStr: d.toISOString().split("T")[0],
-      label: d.toLocaleDateString("de-CH", { weekday: "short" }),
+      dateStr: zurichDateKey(d),
+      label: d.toLocaleDateString("de-CH", { timeZone: "Europe/Zurich", weekday: "short" }),
     });
   }
   const friday = new Date(monday.getTime() + 4 * 86400000);
@@ -947,4 +948,14 @@ function getMonday(weekOffset: number): Date {
   monday.setDate(now.getDate() + diff + weekOffset * 7);
   monday.setHours(0, 0, 0, 0);
   return monday;
+}
+
+/** Zürcher Kalenderdatum (YYYY-MM-DD) eines Instants – DST-sicher. */
+function zurichDateKey(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Zurich",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
 }
