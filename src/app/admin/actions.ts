@@ -520,7 +520,7 @@ export async function calculateTravelBuffer(
   if (!apiKey) return { error: "GOOGLE_MAPS_API_KEY nicht konfiguriert." };
 
   const origin = process.env.ADMIN_HOME_ADDRESS ?? "Sattleracherstrasse 59, 8413 Neftenbach, Schweiz";
-  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(studentAddress)}&mode=driving&language=de&key=${apiKey}`;
+  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(studentAddress)}&mode=driving&avoid=tolls&region=ch&language=de&key=${apiKey}`;
 
   try {
     const res = await fetch(url);
