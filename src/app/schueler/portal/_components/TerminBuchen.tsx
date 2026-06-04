@@ -1,16 +1,26 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { CalendarPlus, ChevronLeft, ChevronRight, Loader2, Calendar } from "lucide-react";
+import {
+  CalendarPlus,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Calendar,
+  X,
+  CheckCircle2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { requestBooking, getVerfuegbareSlots, type AvailableSlot } from "../actions";
+import {
+  requestMultipleBookings,
+  getVerfuegbareSlots,
+  type AvailableSlot,
+} from "../actions";
 
-export default function TerminBuchen() {
+export default function TerminBuchen({ maxSlots }: { maxSlots: number }) {
   const [open, setOpen] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0);
-  const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
-  const [lessonsCount, setLessonsCount] = useState(1);
-  const [intervalDays, setIntervalDays] = useState(7);
+  const [selected, setSelected] = useState<AvailableSlot[]>([]);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -18,11 +28,9 @@ export default function TerminBuchen() {
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
-  // Fetch real slots when week changes
   useEffect(() => {
     if (!open) return;
     setLoadingSlots(true);
-    setSelectedSlot(null);
     startTransition(async () => {
       const result = await getVerfuegbareSlots(weekOffset);
       setSlots(result);
@@ -30,49 +38,47 @@ export default function TerminBuchen() {
     });
   }, [open, weekOffset]);
 
-  // Group slots by day-of-week index (0=Mon, ..., 6=Sun)
   const slotsByDay = groupSlotsByDay(slots);
-
-  // Determine which days have slots
-  const daysWithSlots = getDaysInWeek(weekOffset).filter(
-    (d) => (slotsByDay.get(d.dateStr)?.length ?? 0) > 0
-  );
   const displayDays = getDaysInWeek(weekOffset);
 
   const monday = getMonday(weekOffset);
   const friday = new Date(monday.getTime() + 4 * 86400000);
-  const weekLabel = `${monday.toLocaleDateString("de-CH", {
-    day: "numeric",
-    month: "long",
-  })} – ${friday.toLocaleDateString("de-CH", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  })}`;
+  const weekLabel = `${monday.toLocaleDateString("de-CH", { day: "numeric", month: "long" })} – ${friday.toLocaleDateString("de-CH", { day: "numeric", month: "long", year: "numeric" })}`;
 
-  async function handleBuchen() {
-    if (!selectedSlot) return;
+  function toggleSlot(slot: AvailableSlot) {
+    setSelected((prev) => {
+      const already = prev.find((s) => s.beginn === slot.beginn);
+      if (already) return prev.filter((s) => s.beginn !== slot.beginn);
+      if (prev.length >= maxSlots) return prev; // limit reached
+      return [...prev, slot].sort((a, b) => a.beginn.localeCompare(b.beginn));
+    });
+  }
+
+  async function handleSubmit() {
+    if (!selected.length) return;
     setError(null);
     startTransition(async () => {
-      const result = await requestBooking(
-        selectedSlot.beginn,
-        lessonsCount,
-        intervalDays
-      );
-      if (result?.error) setError(result.error);
-      else {
+      const result = await requestMultipleBookings(selected.map((s) => s.beginn));
+      if (result?.error) {
+        setError(result.error);
+      } else {
         setSuccess(true);
         setOpen(false);
-        setSelectedSlot(null);
+        setSelected([]);
       }
     });
+  }
+
+  function handleClose() {
+    setOpen(false);
+    setSelected([]);
+    setError(null);
   }
 
   if (success) {
     return (
       <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center text-sm text-emerald-700 font-500">
-        Anfrage gesendet! David bestätigt sie in Kürze – du siehst den Status
-        unter „Nächste Lektionen".
+        Anfrage gesendet! David bestätigt jeden Termin einzeln – du siehst den Status unter „Termine".
       </div>
     );
   }
@@ -85,19 +91,47 @@ export default function TerminBuchen() {
           className="flex items-center gap-2 text-sm font-600 text-[#1C244B] px-4 py-2.5 rounded-xl border border-[#1C244B]/20 hover:bg-[#1C244B]/5 transition-colors"
         >
           <CalendarPlus className="w-4 h-4" />
-          Neue Lektion buchen
+          Lektionen anfragen
         </button>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+          {/* Header */}
           <div className="flex items-center justify-between">
-            <h3 className="font-600 text-gray-900 text-sm">Lektion buchen</h3>
-            <button
-              onClick={() => setOpen(false)}
-              className="text-xs text-gray-400 hover:text-gray-600"
-            >
+            <div>
+              <h3 className="font-600 text-gray-900 text-sm">Termine wählen</h3>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                Wähle bis zu {maxSlots} Wunschtermin{maxSlots !== 1 ? "e" : ""} aus
+              </p>
+            </div>
+            <button onClick={handleClose} className="text-xs text-gray-400 hover:text-gray-600">
               Abbrechen
             </button>
           </div>
+
+          {/* Selected slots list */}
+          {selected.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-600 text-gray-500 uppercase tracking-wide">
+                Ausgewählt ({selected.length}/{maxSlots})
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {selected.map((slot) => (
+                  <span
+                    key={slot.beginn}
+                    className="inline-flex items-center gap-1 bg-[#1C244B] text-white text-xs font-500 px-2.5 py-1 rounded-lg"
+                  >
+                    {fmtSlot(slot.beginn)}
+                    <button
+                      onClick={() => toggleSlot(slot)}
+                      className="ml-0.5 opacity-70 hover:opacity-100"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Week nav */}
           <div className="flex items-center justify-between">
@@ -140,23 +174,28 @@ export default function TerminBuchen() {
                       <p className="text-[10px] text-gray-300 text-center mt-2">—</p>
                     ) : (
                       daySlots.map((slot) => {
-                        const isSelected = selectedSlot?.beginn === slot.beginn;
-                        const time = new Date(slot.beginn).toLocaleTimeString(
-                          "de-CH",
-                          { hour: "2-digit", minute: "2-digit" }
-                        );
+                        const isSelected = selected.some((s) => s.beginn === slot.beginn);
+                        const isDisabled = !isSelected && selected.length >= maxSlots;
+                        const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        });
                         return (
                           <button
                             key={slot.beginn}
-                            onClick={() =>
-                              setSelectedSlot(isSelected ? null : slot)
-                            }
-                            className={`w-full text-xs py-1.5 rounded-lg font-500 transition-colors ${
+                            onClick={() => toggleSlot(slot)}
+                            disabled={isDisabled}
+                            className={`w-full text-xs py-1.5 rounded-lg font-500 transition-colors relative ${
                               isSelected
                                 ? "bg-[#1C244B] text-white"
-                                : "bg-gray-100 text-gray-700 hover:bg-[#1C244B]/10"
+                                : isDisabled
+                                  ? "bg-gray-50 text-gray-300 cursor-not-allowed"
+                                  : "bg-gray-100 text-gray-700 hover:bg-[#1C244B]/10"
                             }`}
                           >
+                            {isSelected && (
+                              <CheckCircle2 className="w-2.5 h-2.5 absolute top-1 right-1 text-emerald-300" />
+                            )}
                             {time}
                           </button>
                         );
@@ -168,64 +207,22 @@ export default function TerminBuchen() {
             </div>
           )}
 
-          {/* Serien-Optionen */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <label className="text-[11px] font-600 text-gray-500">Anzahl Lektionen</label>
-              <select
-                value={lessonsCount}
-                onChange={(e) => setLessonsCount(Number(e.target.value))}
-                className="w-full h-9 rounded-lg border border-gray-200 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C244B]/30"
-              >
-                <option value={1}>1 (Einzeltermin)</option>
-                <option value={5}>5 (Serie)</option>
-                <option value={10}>10 (Serie)</option>
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[11px] font-600 text-gray-500">Rhythmus</label>
-              <select
-                value={intervalDays}
-                onChange={(e) => setIntervalDays(Number(e.target.value))}
-                disabled={lessonsCount === 1}
-                className="w-full h-9 rounded-lg border border-gray-200 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C244B]/30 disabled:opacity-40"
-              >
-                <option value={7}>Wöchentlich</option>
-                <option value={14}>Alle 2 Wochen</option>
-              </select>
-            </div>
-          </div>
-          {lessonsCount > 1 && (
-            <p className="text-[11px] text-gray-400">
-              Der gewählte Slot ist die erste Lektion; die weiteren folgen im
-              gewählten Rhythmus zur selben Zeit.
-            </p>
-          )}
-
           {error && (
-            <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
-              {error}
-            </p>
+            <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
           )}
 
           <Button
-            onClick={handleBuchen}
-            disabled={!selectedSlot || isPending || loadingSlots}
+            onClick={handleSubmit}
+            disabled={selected.length === 0 || isPending}
             className="w-full"
           >
-            {isPending && !loadingSlots ? (
+            {isPending ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Anfrage senden…
               </>
-            ) : selectedSlot ? (
-              `Anfragen – ${new Date(selectedSlot.beginn).toLocaleDateString(
-                "de-CH",
-                { weekday: "short", day: "numeric", month: "short" }
-              )} ${new Date(selectedSlot.beginn).toLocaleTimeString("de-CH", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })} Uhr`
+            ) : selected.length > 0 ? (
+              `${selected.length} Termin${selected.length !== 1 ? "e" : ""} anfragen`
             ) : (
               "Zeitfenster wählen"
             )}
@@ -234,6 +231,17 @@ export default function TerminBuchen() {
       )}
     </div>
   );
+}
+
+function fmtSlot(iso: string): string {
+  return new Date(iso).toLocaleDateString("de-CH", {
+    timeZone: "Europe/Zurich",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }) + " Uhr";
 }
 
 function getMonday(weekOffset: number): Date {
@@ -250,15 +258,13 @@ type DayInfo = { dateStr: string; label: string };
 
 function getDaysInWeek(weekOffset: number): DayInfo[] {
   const monday = getMonday(weekOffset);
-  const days: DayInfo[] = [];
-  for (let i = 0; i < 7; i++) {
+  return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday.getTime() + i * 86400000);
-    days.push({
+    return {
       dateStr: d.toISOString().split("T")[0],
       label: d.toLocaleDateString("de-CH", { weekday: "short" }),
-    });
-  }
-  return days;
+    };
+  });
 }
 
 function groupSlotsByDay(slots: AvailableSlot[]): Map<string, AvailableSlot[]> {

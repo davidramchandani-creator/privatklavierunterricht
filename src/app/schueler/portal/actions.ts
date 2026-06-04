@@ -15,8 +15,6 @@ import {
 import {
   type CalDate,
   DEFAULT_BUFFER_MIN,
-  SERIES_INTERVALS,
-  SERIES_LESSON_COUNTS,
   addDaysCal,
   computeAvailableSlots,
   generateSeriesStarts,
@@ -85,38 +83,21 @@ export async function getVerfuegbareSlots(
 }
 
 /**
- * Schüler stellt eine Terminanfrage (öffentliche Buchung, Spec §4.1).
- * Optional als Serie (1/5/10 Lektionen, Intervall 7/14 Tage). Wird als
- * `booking_requests` (status open) gespeichert; Termine entstehen erst bei
- * Admin-Annahme.
+ * Schüler stellt mehrere Einzelterminanfragen auf einmal (neue Multi-Slot-Variante,
+ * Spec §4.1). Jeder Slot wird einzeln gegen die Engine validiert und bekommt eine
+ * eigene Zeile in booking_requests. Alle Slots der gleichen Einreichung teilen
+ * dieselbe group_id, damit der Admin sie gebündelt sehen und einzeln entscheiden kann.
  */
-export async function requestBooking(
-  desiredStartIso: string,
-  lessonsCount: number,
-  intervalDays: number
-) {
+export async function requestMultipleBookings(desiredStartIsos: string[]) {
+  if (!desiredStartIsos.length) return { error: "Keine Termine ausgewählt." };
+  if (desiredStartIsos.length > 20) return { error: "Maximal 20 Termine pro Anfrage." };
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Nicht angemeldet." };
 
-  if (!SERIES_LESSON_COUNTS.includes(lessonsCount as 1 | 5 | 10)) {
-    return { error: "Ungültige Lektionsanzahl." };
-  }
-  if (!SERIES_INTERVALS.includes(intervalDays as 7 | 14)) {
-    return { error: "Ungültiges Intervall." };
-  }
-
-  const desiredStart = new Date(desiredStartIso);
-  const now = new Date();
-  if (!isAtLeast24hAway(desiredStart, now)) {
-    return {
-      error: "Anfragen sind nur mindestens 24 Stunden im Voraus möglich.",
-    };
-  }
-
-  // Profil (Puffer) + aktives Paket
   const { data: profile } = await supabase
     .from("profiles")
     .select("buffer_time_minutes, vorname, nachname, email")
@@ -130,68 +111,105 @@ export async function requestBooking(
     .eq("student_id", user.id)
     .eq("status", "active");
   const pkg = (pkgs as Paket[] | null)?.find((p) => !canBuyNewPackage(p)) ?? null;
-  if (!pkg) {
-    return { error: "Du hast kein aktives Paket. Bitte buche zuerst ein Paket." };
-  }
+  if (!pkg) return { error: "Du hast kein aktives Paket. Bitte buche zuerst ein Paket." };
+
   const state = computePackageState(pkg);
-  if (state.lessonsRemaining < lessonsCount) {
+  if (state.lessonsRemaining < desiredStartIsos.length) {
     return {
       error: `Dein Paket hat nur noch ${state.lessonsRemaining} Lektion${
         state.lessonsRemaining !== 1 ? "en" : ""
-      }.`,
+      } übrig.`,
     };
   }
 
-  // Serie gegen Engine validieren
+  const now = new Date();
+
+  // Jeden Slot einzeln gegen 24h-Regel + Engine prüfen
   const admin = await createAdminClient();
-  const starts = generateSeriesStarts(desiredStart, lessonsCount, intervalDays);
-  const seriesEnd = new Date(starts[starts.length - 1].getTime() + 3600000);
-  const ctx = await loadAvailabilityContext(
-    admin,
-    user.id,
-    bufferMin,
-    desiredStart,
-    seriesEnd,
-    now
-  );
-  const validation = validateSeries(desiredStart, lessonsCount, intervalDays, ctx);
-  if (!validation.ok) {
-    return {
-      error:
-        "Mindestens einer der gewünschten Termine ist nicht verfügbar. Bitte wähle einen anderen Zeitpunkt.",
-    };
+  for (const iso of desiredStartIsos) {
+    const desiredStart = new Date(iso);
+    if (!isAtLeast24hAway(desiredStart, now)) {
+      return {
+        error: `Termine müssen mindestens 24 Stunden im Voraus angefragt werden (${desiredStart.toLocaleString("de-CH", { timeZone: "Europe/Zurich" })}).`,
+      };
+    }
+    const slotEnd = new Date(desiredStart.getTime() + 3600000);
+    const ctx = await loadAvailabilityContext(admin, user.id, bufferMin, desiredStart, slotEnd, now);
+    const validation = validateSeries(desiredStart, 1, 7, ctx);
+    if (!validation.ok) {
+      return {
+        error: `Der Slot ${desiredStart.toLocaleString("de-CH", { timeZone: "Europe/Zurich" })} ist nicht verfügbar. Bitte wähle einen anderen Zeitpunkt.`,
+      };
+    }
   }
 
-  const calculatedPrice = lessonsCount * Number(pkg.price_per_lesson);
+  const groupId =
+    desiredStartIsos.length > 1 ? crypto.randomUUID() : null;
 
-  const { error } = await supabase.from("booking_requests").insert({
+  const calculatedPrice = Number(pkg.price_per_lesson ?? 0);
+
+  const rows = desiredStartIsos.map((iso) => ({
     student_id: user.id,
-    desired_start: desiredStart.toISOString(),
+    desired_start: iso,
     status: "open",
     type: "public_request",
-    lessons_count: lessonsCount,
-    interval_days: intervalDays,
+    lessons_count: 1,
+    interval_days: 0,
     calculated_price: calculatedPrice,
-  });
+    group_id: groupId,
+  }));
 
-  if (error) {
-    return { error: "Anfrage konnte nicht gespeichert werden. Bitte erneut versuchen." };
-  }
+  const { error } = await supabase.from("booking_requests").insert(rows);
+  if (error) return { error: "Anfrage konnte nicht gespeichert werden. Bitte erneut versuchen." };
 
-  // Sofortversand: Admin-Benachrichtigung + Bestätigung an Schüler
   const studentName = profile ? `${profile.vorname} ${profile.nachname}` : "Schüler";
+  const sortedStarts = [...desiredStartIsos].sort();
+
+  // Eine gemeinsame Mail für alle Slots (nicht N einzelne Mails)
   await sendEmailNow(admin, "booking_request_admin", {
     student_id: user.id,
     student_name: studentName,
-    desired_start: desiredStart.toISOString(),
-    lessons_count: lessonsCount,
-    interval_days: intervalDays,
+    desired_starts: sortedStarts,
+    lessons_count: desiredStartIsos.length,
   });
   await sendEmailNow(admin, "booking_request_received", {
     student_id: user.id,
     to: profile?.email,
-    desired_start: desiredStart.toISOString(),
-    lessons_count: lessonsCount,
+    desired_starts: sortedStarts,
+    lessons_count: desiredStartIsos.length,
+  });
+
+  revalidatePath("/schueler/portal");
+  return { success: true };
+}
+
+/** Schüler zieht alle offenen Anfragen einer Gruppe auf einmal zurück. */
+export async function withdrawGroupBookingRequests(groupId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  // Nur eigene Anfragen der Gruppe zurückziehen
+  const { error } = await supabase
+    .from("booking_requests")
+    .update({ status: "withdrawn" })
+    .eq("group_id", groupId)
+    .eq("student_id", user.id)
+    .eq("status", "open");
+  if (error) return { error: "Anfragen konnten nicht zurückgezogen werden." };
+
+  const admin = await createAdminClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("vorname, nachname")
+    .eq("id", user.id)
+    .maybeSingle();
+  await sendEmailNow(admin, "booking_request_withdrawn", {
+    student_id: user.id,
+    student_name: profile ? `${profile.vorname} ${profile.nachname}` : undefined,
+    group_id: groupId,
   });
 
   revalidatePath("/schueler/portal");

@@ -17,6 +17,7 @@ import { isWithin24Hours } from "@/lib/utils";
 import {
   cancelAppointment,
   withdrawBookingRequest,
+  withdrawGroupBookingRequests,
   requestReschedule,
   withdrawReschedule,
   getVerfuegbareSlots,
@@ -36,6 +37,7 @@ type BookingRequest = {
   lessons_count: number;
   interval_days: number;
   status: string;
+  group_id?: string | null;
 };
 
 type RescheduleRequest = {
@@ -58,6 +60,18 @@ export default function NaechsteTermine({
   const offeneAnfragen = requests.filter((r) => r.status === "open");
   const offeneVerschiebungen = reschedules.filter((r) => r.status === "open");
 
+  // Gruppe Anfragen: mit group_id → gebündelt; ohne → einzeln
+  const grouped = new Map<string, BookingRequest[]>();
+  const singles: BookingRequest[] = [];
+  for (const r of offeneAnfragen) {
+    if (r.group_id) {
+      if (!grouped.has(r.group_id)) grouped.set(r.group_id, []);
+      grouped.get(r.group_id)!.push(r);
+    } else {
+      singles.push(r);
+    }
+  }
+
   if (
     appointments.length === 0 &&
     offeneAnfragen.length === 0 &&
@@ -73,7 +87,12 @@ export default function NaechsteTermine({
 
   return (
     <div className="space-y-3">
-      {offeneAnfragen.map((r) => (
+      {/* Gruppenanfragen */}
+      {Array.from(grouped.entries()).map(([groupId, reqs]) => (
+        <GruppenAnfrageRow key={groupId} groupId={groupId} requests={reqs} />
+      ))}
+      {/* Einzelanfragen (legacy) */}
+      {singles.map((r) => (
         <AnfrageRow key={r.id} request={r} />
       ))}
       {appointments.map((a) => (
@@ -85,6 +104,106 @@ export default function NaechsteTermine({
           }
         />
       ))}
+    </div>
+  );
+}
+
+function GruppenAnfrageRow({
+  groupId,
+  requests,
+}: {
+  groupId: string;
+  requests: BookingRequest[];
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [withdrawn, setWithdrawn] = useState(false);
+  const [expanded, setExpanded] = useState(true);
+
+  const sorted = [...requests].sort((a, b) =>
+    a.desired_start.localeCompare(b.desired_start)
+  );
+
+  function handleWithdraw() {
+    startTransition(async () => {
+      const result = await withdrawGroupBookingRequests(groupId);
+      if (result?.error) setError(result.error);
+      else setWithdrawn(true);
+    });
+  }
+
+  if (withdrawn) {
+    return (
+      <div className="bg-gray-50 rounded-2xl border border-gray-100 p-4 text-center text-sm text-gray-400">
+        Anfrage zurückgezogen
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-amber-50/60 rounded-2xl border border-amber-200 p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <button
+          onClick={() => setExpanded((e) => !e)}
+          className="flex items-center gap-2 flex-1 text-left"
+        >
+          <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0 text-amber-600">
+            <CalendarClock className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-600 text-gray-900 text-sm">
+                {sorted.length} Lektionen angefragt
+              </p>
+              <span className="text-[10px] font-600 bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+                Angefragt
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {expanded ? "Termine ausblenden" : "Termine anzeigen"}
+            </p>
+          </div>
+        </button>
+        <button
+          onClick={handleWithdraw}
+          disabled={isPending}
+          className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40"
+          title="Alle zurückziehen"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="space-y-1.5 pl-11">
+          {sorted.map((r) => {
+            const start = new Date(r.desired_start);
+            return (
+              <div key={r.id} className="flex items-center gap-2 text-xs text-gray-700">
+                <Clock className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                <span>
+                  {start.toLocaleDateString("de-CH", {
+                    timeZone: "Europe/Zurich",
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })},{" "}
+                  {start.toLocaleTimeString("de-CH", {
+                    timeZone: "Europe/Zurich",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}{" "}
+                  Uhr
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {error && (
+        <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-1.5">{error}</p>
+      )}
     </div>
   );
 }

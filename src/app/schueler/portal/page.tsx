@@ -78,7 +78,7 @@ export default async function SchuelerPortalPage() {
 
   const { data: offeneAnfragen } = await supabase
     .from("booking_requests")
-    .select("id, desired_start, lessons_count, interval_days, status")
+    .select("id, desired_start, lessons_count, interval_days, status, group_id")
     .eq("student_id", user.id)
     .eq("status", "open")
     .order("desired_start", { ascending: true });
@@ -201,9 +201,9 @@ export default async function SchuelerPortalPage() {
         requests={offeneAnfragen ?? []}
         reschedules={offeneVerschiebungen ?? []}
       />
-      {aktivesPackage && canBook && (
+      {aktivesPackage && canBook && remainingLessons != null && remainingLessons > 0 && (
         <div className="pt-1">
-          <TerminBuchen />
+          <TerminBuchen maxSlots={remainingLessons} />
         </div>
       )}
     </div>

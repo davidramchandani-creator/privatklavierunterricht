@@ -3,6 +3,7 @@ import { formatDateTime } from "@/lib/utils";
 import { CalendarClock, Repeat, Layers, CalendarSync, ArrowRight } from "lucide-react";
 import TerminanfrageActions from "./_components/TerminanfrageActions";
 import VerschiebungActions from "./_components/VerschiebungActions";
+import GruppenAnfrageCard from "./_components/GruppenAnfrageCard";
 import {
   DeleteBookingRequestButton,
   DeleteRescheduleRequestButton,
@@ -21,6 +22,7 @@ type BookingRequest = {
   notes: string | null;
   erstellt_am: string;
   processed_at: string | null;
+  group_id: string | null;
   profiles: { vorname: string; nachname: string; email: string } | null;
 };
 
@@ -42,9 +44,9 @@ export default async function AdminTerminanfragenPage() {
     admin
       .from("booking_requests")
       .select(
-        "id, student_id, desired_start, status, lessons_count, interval_days, calculated_price, notes, erstellt_am, processed_at, profiles(vorname, nachname, email)"
+        "id, student_id, desired_start, status, lessons_count, interval_days, calculated_price, notes, erstellt_am, processed_at, group_id, profiles(vorname, nachname, email)"
       )
-      .order("erstellt_am", { ascending: false }),
+      .order("desired_start", { ascending: true }),
     admin
       .from("reschedule_requests")
       .select(
@@ -54,8 +56,24 @@ export default async function AdminTerminanfragenPage() {
   ]);
 
   const list = (requests ?? []) as unknown as BookingRequest[];
-  const offen = list.filter((r) => r.status === "open");
-  const erledigtBooking = list.filter((r) => r.status !== "open");
+
+  // Gruppenanfragen bündeln, Einzelanfragen separat
+  const offenGruppen = new Map<string, BookingRequest[]>();
+  const offenEinzel: BookingRequest[] = [];
+  const erledigtBooking: BookingRequest[] = [];
+
+  for (const r of list) {
+    if (r.status !== "open") {
+      erledigtBooking.push(r);
+    } else if (r.group_id) {
+      if (!offenGruppen.has(r.group_id)) offenGruppen.set(r.group_id, []);
+      offenGruppen.get(r.group_id)!.push(r);
+    } else {
+      offenEinzel.push(r);
+    }
+  }
+
+  const offen = [...offenEinzel, ...Array.from(offenGruppen.values()).flat()];
 
   const rescheduleList = (reschedules ?? []) as unknown as RescheduleRequest[];
   const offeneVerschiebungen = rescheduleList.filter((r) => r.status === "open");
@@ -93,10 +111,15 @@ export default async function AdminTerminanfragenPage() {
         </section>
       )}
 
-      {offen.length > 0 && (
+      {(offenEinzel.length > 0 || offenGruppen.size > 0) && (
         <section className="space-y-3">
           <h2 className="text-sm font-600 text-gray-500 uppercase tracking-wide">Offen</h2>
-          {offen.map((r) => (
+          {/* Gruppenanfragen (Multi-Slot) */}
+          {Array.from(offenGruppen.entries()).map(([groupId, reqs]) => (
+            <GruppenAnfrageCard key={groupId} groupId={groupId} requests={reqs} />
+          ))}
+          {/* Einzelanfragen */}
+          {offenEinzel.map((r) => (
             <RequestCard key={r.id} req={r} />
           ))}
         </section>
