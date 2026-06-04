@@ -57,7 +57,7 @@ export default function ProbelektionPage() {
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 text-navy-900">
             <span className="w-9 h-9 rounded-xl bg-navy-900 flex items-center justify-center shadow-sm">
-              <Music className="w-4 h-4 text-gold-400" />
+              <Music className="w-4 h-4 text-white" />
             </span>
             <span className="font-800 text-base hidden sm:block tracking-tight">David</span>
           </Link>
@@ -82,12 +82,14 @@ export default function ProbelektionPage() {
               <p className="text-sm text-navy-900 font-600 bg-navy-50 rounded-xl px-4 py-2 inline-block">
                 Wunschtermin:{" "}
                 {new Date(selectedSlot.beginn).toLocaleDateString("de-CH", {
+                  timeZone: "Europe/Zurich",
                   weekday: "long",
                   day: "numeric",
                   month: "long",
                 })}{" "}
                 um{" "}
                 {new Date(selectedSlot.beginn).toLocaleTimeString("de-CH", {
+                  timeZone: "Europe/Zurich",
                   hour: "2-digit",
                   minute: "2-digit",
                 })}{" "}
@@ -103,7 +105,7 @@ export default function ProbelektionPage() {
             {/* Title */}
             <div className="text-center space-y-2">
               <div className="inline-flex items-center gap-2 bg-navy-50 border border-navy-100 rounded-full px-4 py-1.5 mb-2">
-                <span className="w-2 h-2 rounded-full bg-gold-500 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-navy-400 animate-pulse" />
                 <span className="text-navy-900 text-sm font-600">Kostenlos & unverbindlich</span>
               </div>
               <h1 className="text-3xl font-800 text-navy-900 tracking-tight">Probelektion buchen</h1>
@@ -149,57 +151,106 @@ export default function ProbelektionPage() {
                   <p className="text-xs mt-1">Nächste Woche versuchen →</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-5 gap-2">
-                  {days.slice(0, 5).map((d) => {
-                    const daySlots = slotsByDay.get(d.dateStr) ?? [];
-                    return (
-                      <div key={d.dateStr} className="space-y-1.5">
-                        <p className="text-[10px] font-600 text-gray-400 text-center uppercase tracking-wide">
-                          {d.label}
-                        </p>
-                        <p className="text-[10px] text-gray-500 text-center">
-                          {new Date(d.dateStr).toLocaleDateString("de-CH", { day: "numeric", month: "numeric" })}
-                        </p>
-                        {daySlots.length === 0 ? (
-                          <p className="text-[10px] text-gray-200 text-center mt-2">—</p>
-                        ) : (
-                          daySlots.map((slot) => {
-                            const isSelected = selectedSlot?.beginn === slot.beginn;
-                            const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            });
-                            return (
-                              <button
-                                key={slot.beginn}
-                                onClick={() => setSelectedSlot(isSelected ? null : slot)}
-                                className={`w-full text-xs py-1.5 rounded-lg font-500 transition-all duration-200 ${
-                                  isSelected
-                                    ? "bg-navy-900 text-white shadow-sm"
-                                    : "bg-surface text-gray-700 hover:bg-navy-50 hover:text-navy-900"
-                                }`}
-                              >
-                                {time}
-                              </button>
-                            );
-                          })
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                <>
+                  {/* Mobile: flat list grouped by day */}
+                  <div className="sm:hidden space-y-4">
+                    {days.slice(0, 5).map((d) => {
+                      const daySlots = slotsByDay.get(d.dateStr) ?? [];
+                      if (daySlots.length === 0) return null;
+                      const dayDate = new Date(d.dateStr + "T12:00:00");
+                      return (
+                        <div key={d.dateStr}>
+                          <p className="text-xs font-600 text-gray-500 mb-2">
+                            {dayDate.toLocaleDateString("de-CH", {
+                              weekday: "long",
+                              day: "numeric",
+                              month: "short",
+                            })}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {daySlots.map((slot) => {
+                              const isSelected = selectedSlot?.beginn === slot.beginn;
+                              const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
+                                timeZone: "Europe/Zurich",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              });
+                              return (
+                                <button
+                                  key={slot.beginn}
+                                  onClick={() => setSelectedSlot(isSelected ? null : slot)}
+                                  className={`text-sm py-2.5 px-3 rounded-xl font-500 transition-colors ${
+                                    isSelected
+                                      ? "bg-navy-900 text-white shadow-sm"
+                                      : "bg-surface text-gray-700 hover:bg-navy-50 hover:text-navy-900"
+                                  }`}
+                                >
+                                  {time}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Desktop: 5-column grid */}
+                  <div className="hidden sm:grid grid-cols-5 gap-2">
+                    {days.slice(0, 5).map((d) => {
+                      const daySlots = slotsByDay.get(d.dateStr) ?? [];
+                      return (
+                        <div key={d.dateStr} className="space-y-1.5">
+                          <p className="text-[10px] font-600 text-gray-400 text-center uppercase tracking-wide">
+                            {d.label}
+                          </p>
+                          <p className="text-[10px] text-gray-500 text-center">
+                            {new Date(d.dateStr + "T12:00:00").toLocaleDateString("de-CH", { day: "numeric", month: "numeric" })}
+                          </p>
+                          {daySlots.length === 0 ? (
+                            <p className="text-[10px] text-gray-200 text-center mt-2">—</p>
+                          ) : (
+                            daySlots.map((slot) => {
+                              const isSelected = selectedSlot?.beginn === slot.beginn;
+                              const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
+                                timeZone: "Europe/Zurich",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              });
+                              return (
+                                <button
+                                  key={slot.beginn}
+                                  onClick={() => setSelectedSlot(isSelected ? null : slot)}
+                                  className={`w-full text-xs py-1.5 rounded-lg font-500 transition-all duration-200 ${
+                                    isSelected
+                                      ? "bg-navy-900 text-white shadow-sm"
+                                      : "bg-surface text-gray-700 hover:bg-navy-50 hover:text-navy-900"
+                                  }`}
+                                >
+                                  {time}
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
 
               {selectedSlot && (
                 <p className="text-xs text-navy-900 bg-navy-50 rounded-xl px-3 py-2 font-500">
                   Gewählt:{" "}
                   {new Date(selectedSlot.beginn).toLocaleDateString("de-CH", {
+                    timeZone: "Europe/Zurich",
                     weekday: "long",
                     day: "numeric",
                     month: "long",
                   })}{" "}
                   um{" "}
                   {new Date(selectedSlot.beginn).toLocaleTimeString("de-CH", {
+                    timeZone: "Europe/Zurich",
                     hour: "2-digit",
                     minute: "2-digit",
                   })}{" "}
@@ -291,6 +342,16 @@ export default function ProbelektionPage() {
   );
 }
 
+/** Zürcher Kalenderdatum (YYYY-MM-DD) – DST-sicher */
+function zurichDateKey(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Zurich",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
 function getMonday(weekOffset: number): Date {
   const now = new Date();
   const day = now.getDay();
@@ -306,8 +367,8 @@ function getDaysInWeek(weekOffset: number) {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday.getTime() + i * 86400000);
     return {
-      dateStr: d.toISOString().split("T")[0],
-      label: d.toLocaleDateString("de-CH", { weekday: "short" }),
+      dateStr: zurichDateKey(d),
+      label: d.toLocaleDateString("de-CH", { timeZone: "Europe/Zurich", weekday: "short" }),
     };
   });
 }
@@ -315,7 +376,7 @@ function getDaysInWeek(weekOffset: number) {
 function groupByDay(slots: PublicSlot[]): Map<string, PublicSlot[]> {
   const map = new Map<string, PublicSlot[]>();
   for (const slot of slots) {
-    const key = slot.beginn.split("T")[0];
+    const key = zurichDateKey(new Date(slot.beginn));
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(slot);
   }

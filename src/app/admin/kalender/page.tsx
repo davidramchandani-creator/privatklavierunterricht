@@ -82,6 +82,11 @@ export default async function AdminKalenderPage({
     terminsByDay.get(dayIndex)?.push(t);
   }
 
+  // Mobile agenda: all entries sorted by day
+  const agendaEntries = [...eintraege].sort(
+    (a, b) => new Date(a.beginn).getTime() - new Date(b.beginn).getTime()
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -105,7 +110,8 @@ export default async function AdminKalenderPage({
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      {/* Desktop: week grid (hidden on mobile) */}
+      <div className="hidden md:block bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <div className="min-w-[700px]">
             {/* Header row */}
@@ -196,6 +202,71 @@ export default async function AdminKalenderPage({
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Mobile: agenda list (hidden on desktop) */}
+      <div className="md:hidden space-y-3">
+        {agendaEntries.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
+            Keine Termine diese Woche
+          </div>
+        ) : (
+          agendaEntries.map((t) => {
+            const s = t.schueler as { vorname: string; nachname: string } | null;
+            const start = new Date(t.beginn);
+            const end = new Date(t.ende);
+            return (
+              <div
+                key={t.id}
+                className={`bg-white rounded-2xl border p-4 space-y-1 ${
+                  t.status === "completed"
+                    ? "border-emerald-200"
+                    : t.status === "angefragt"
+                    ? "border-amber-200"
+                    : "border-gray-200"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-700 text-gray-900 text-sm">
+                    {s ? `${s.vorname} ${s.nachname}` : "—"}
+                  </p>
+                  <span
+                    className={`text-xs font-600 px-2 py-0.5 rounded-full ${
+                      t.status === "completed"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : t.status === "angefragt"
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-[#1C244B]/10 text-[#1C244B]"
+                    }`}
+                  >
+                    {t.status === "angefragt" ? "Anfrage" : t.status === "completed" ? "Abgehalten" : "Gebucht"}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {start.toLocaleDateString("de-CH", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "short",
+                    timeZone: "Europe/Zurich",
+                  })}{" "}
+                  ·{" "}
+                  {start.toLocaleTimeString("de-CH", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    timeZone: "Europe/Zurich",
+                  })}
+                  –
+                  {end.toLocaleTimeString("de-CH", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    timeZone: "Europe/Zurich",
+                  })}{" "}
+                  Uhr
+                </p>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

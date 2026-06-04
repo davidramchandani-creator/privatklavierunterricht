@@ -17,7 +17,7 @@ export default function ProbelektionCTA() {
       <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-white/5 blur-3xl pointer-events-none" />
 
       <div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <p className="text-gold-400 font-600 text-sm uppercase tracking-widest mb-3">
+        <p className="text-white/50 font-600 text-xs uppercase tracking-widest mb-3">
           Jetzt starten
         </p>
         <h2 className="text-3xl sm:text-4xl font-800 text-white mb-6 tracking-tight">
@@ -31,7 +31,7 @@ export default function ProbelektionCTA() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link href="/probelektion">
-            <Button size="lg" variant="gold" className="gap-2 shadow-lg shadow-black/20 w-full sm:w-auto">
+            <Button size="lg" className="gap-2 bg-white text-navy-900 hover:bg-gray-100 shadow-lg shadow-black/20 w-full sm:w-auto font-700">
               <CalendarCheck className="w-5 h-5" />
               Probelektion anfragen
             </Button>

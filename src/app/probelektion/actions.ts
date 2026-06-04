@@ -1,6 +1,16 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
+import {
+  type CalDate,
+  DEFAULT_BUFFER_MIN,
+  addDaysCal,
+  computeAvailableSlots,
+  utcToZonedDate,
+  weekdayOf,
+  zonedToUtc,
+} from "@/lib/booking";
+import { loadAvailabilityContext } from "@/lib/booking-server";
 
 export type PublicSlot = {
   beginn: string;
@@ -8,64 +18,32 @@ export type PublicSlot = {
 };
 
 export async function getPublicSlots(weekOffset: number): Promise<PublicSlot[]> {
-  const supabase = await createClient();
-
-  const { data: verfuegbarkeit } = await supabase
-    .from("admin_verfuegbarkeit")
-    .select("wochentag, beginn_zeit, ende_zeit")
-    .eq("aktiv", true);
-
-  if (!verfuegbarkeit || verfuegbarkeit.length === 0) return [];
-
+  const admin = await createAdminClient();
   const now = new Date();
-  const monday = getMonday(now, weekOffset);
-  const sunday = new Date(monday.getTime() + 7 * 86400000);
 
-  const { data: booked } = await supabase
-    .from("appointments")
-    .select("start_at")
-    .neq("status", "cancelled")
-    .gte("start_at", monday.toISOString())
-    .lt("start_at", sunday.toISOString());
+  // Montag der Zielwoche (Zürcher Kalenderdatum)
+  const todayCal = utcToZonedDate(now);
+  const w = weekdayOf(todayCal); // 0=So … 6=Sa
+  const mondayOffset = w === 0 ? -6 : 1 - w;
+  const fromCal: CalDate = addDaysCal(todayCal, mondayOffset + weekOffset * 7);
 
-  // Also exclude slots already requested via anfragen
-  const { data: requested } = await supabase
-    .from("anfragen")
-    .select("wunschtermin")
-    .eq("status", "neu")
-    .gte("wunschtermin", monday.toISOString())
-    .lt("wunschtermin", sunday.toISOString());
+  const fromInstant = zonedToUtc(fromCal.y, fromCal.m, fromCal.d, 0, 0);
+  const toInstant = new Date(fromInstant.getTime() + 7 * 86400000);
 
-  const bookedSet = new Set([
-    ...(booked?.map((t) => t.start_at) ?? []),
-    ...(requested?.map((a) => a.wunschtermin).filter(Boolean) ?? []),
-  ]);
+  // Kein eingeloggter Schüler → leere studentId; Puffer = Default (15 Min)
+  const ctx = await loadAvailabilityContext(
+    admin,
+    "",
+    DEFAULT_BUFFER_MIN,
+    fromInstant,
+    toInstant,
+    now
+  );
 
-  const slots: PublicSlot[] = [];
-  for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-    const date = new Date(monday.getTime() + dayIndex * 86400000);
-    const jsDay = date.getDay();
-    const daySlots = verfuegbarkeit.filter((v) => v.wochentag === jsDay);
-
-    for (const v of daySlots) {
-      const [beginH, beginM] = v.beginn_zeit.split(":").map(Number);
-      const [endH, endM] = v.ende_zeit.split(":").map(Number);
-      const windowStart = new Date(date);
-      windowStart.setHours(beginH, beginM, 0, 0);
-      const windowEnd = new Date(date);
-      windowEnd.setHours(endH, endM, 0, 0);
-
-      let slotStart = new Date(windowStart);
-      while (slotStart.getTime() + 45 * 60000 <= windowEnd.getTime()) {
-        const slotEnd = new Date(slotStart.getTime() + 45 * 60000);
-        if (slotStart > now && !bookedSet.has(slotStart.toISOString())) {
-          slots.push({ beginn: slotStart.toISOString(), ende: slotEnd.toISOString() });
-        }
-        slotStart = slotEnd;
-      }
-    }
-  }
-  return slots;
+  return computeAvailableSlots(fromCal, 7, ctx).map((s) => ({
+    beginn: s.start.toISOString(),
+    ende: s.end.toISOString(),
+  }));
 }
 
 export async function submitAnfrage(formData: FormData) {
@@ -95,13 +73,4 @@ export async function submitAnfrage(formData: FormData) {
 
   if (error) return { error: "Anfrage konnte nicht gesendet werden. Bitte versuche es erneut." };
   return { success: true };
-}
-
-function getMonday(date: Date, offset: number): Date {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff + offset * 7);
-  d.setHours(0, 0, 0, 0);
-  return d;
 }

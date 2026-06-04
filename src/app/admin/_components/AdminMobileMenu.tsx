@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
 import { AdminNavLinks } from "./AdminNav";
+import { logout } from "@/app/auth/actions";
 
 export default function AdminMobileMenu() {
   const [open, setOpen] = useState(false);
@@ -35,6 +36,17 @@ export default function AdminMobileMenu() {
             </div>
             <div className="flex-1 p-3 space-y-0.5 overflow-y-auto">
               <AdminNavLinks onNavigate={() => setOpen(false)} />
+            </div>
+            <div className="p-3 border-t border-gray-100">
+              <form action={logout}>
+                <button
+                  type="submit"
+                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-500 text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut className="w-4 h-4 flex-shrink-0" />
+                  Abmelden
+                </button>
+              </form>
             </div>
           </nav>
         </div>

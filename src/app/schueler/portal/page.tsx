@@ -9,6 +9,7 @@ import TerminBuchen from "./_components/TerminBuchen";
 import ZahlungenSection from "./_components/ZahlungenSection";
 import ProposalCard from "./_components/ProposalCard";
 import PortalTabs from "./_components/PortalTabs";
+import { CalendarPlus } from "lucide-react";
 import { canBuyNewPackage, type Package as Paket } from "@/lib/packages";
 import { getTwintBaseUrl } from "@/lib/twint";
 
@@ -184,6 +185,29 @@ export default async function SchuelerPortalPage() {
           accent={openPaymentsCount > 0}
         />
       </div>
+
+      {/* Prominent booking CTA – shown first when the student can book */}
+      {canBook && remainingLessons != null && remainingLessons > 0 && (
+        <a
+          href="#termine"
+          className="flex items-center justify-between gap-4 bg-navy-900 text-white rounded-2xl px-5 py-4 hover:bg-navy-800 transition-colors group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+              <CalendarPlus className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-700 text-sm">Nächste Lektion buchen</p>
+              <p className="text-white/60 text-xs mt-0.5">
+                {remainingLessons} Lektion{remainingLessons !== 1 ? "en" : ""} verfügbar
+              </p>
+            </div>
+          </div>
+          <svg className="w-5 h-5 text-white/60 group-hover:text-white group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
+      )}
 
       <div className="space-y-5">
         <SectionHeader title="Mein Paket" />

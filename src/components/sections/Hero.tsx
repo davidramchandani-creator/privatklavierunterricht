@@ -14,7 +14,7 @@ export default function Hero() {
         }}
       />
 
-      {/* Indigo gradient blob top-right */}
+      {/* Gradient blob top-right */}
       <div className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-navy-100 to-navy-50 blur-3xl opacity-60 pointer-events-none" />
 
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-0">
@@ -24,7 +24,7 @@ export default function Hero() {
           <div className="space-y-8 opacity-0 animate-fade-in">
             {/* Overline badge */}
             <div className="inline-flex items-center gap-2 bg-navy-50 border border-navy-100 rounded-full px-4 py-1.5">
-              <span className="w-2 h-2 rounded-full bg-gold-500 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-navy-400 animate-pulse" />
               <span className="text-navy-900 text-sm font-600">
                 Klavierunterricht in Neftenbach & Umgebung
               </span>
@@ -33,7 +33,7 @@ export default function Hero() {
             {/* Headline */}
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-800 text-navy-900 leading-[1.1] tracking-tight">
               Spiel, was du fühlst –{" "}
-              <span className="text-gold-600">ich zeig dir wie.</span>
+              <span className="italic font-700 text-navy-600">ich zeig dir wie.</span>
             </h1>
 
             {/* Subtext */}
@@ -45,7 +45,7 @@ export default function Hero() {
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-3 opacity-0 animate-fade-in delay-200">
               <Link href="/probelektion">
-                <Button size="lg" variant="gold" className="gap-2 shadow-lg shadow-gold-500/20 w-full sm:w-auto">
+                <Button size="lg" className="gap-2 shadow-lg shadow-navy-900/20 w-full sm:w-auto">
                   <CalendarCheck className="w-5 h-5" />
                   Jetzt Probelektion buchen
                 </Button>
@@ -59,7 +59,7 @@ export default function Hero() {
 
             {/* Social proof pills */}
             <div className="flex flex-wrap gap-3 pt-2 opacity-0 animate-fade-in delay-300">
-              <Pill icon={<Star className="w-3.5 h-3.5 fill-gold-500 text-gold-500" />} text="5.0 Sterne" />
+              <Pill icon={<Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />} text="5.0 Sterne" />
               <Pill icon={<Users className="w-3.5 h-3.5 text-navy-900" />} text="200+ Schülerinnen & Schüler" />
               <Pill icon={<Clock className="w-3.5 h-3.5 text-navy-900" />} text="16+ Jahre Erfahrung" />
             </div>
@@ -82,15 +82,15 @@ export default function Hero() {
                 <div className="text-white space-y-2">
                   <p className="text-white/60 text-xs font-600 uppercase tracking-widest">Nächste freie Lektion</p>
                   <p className="text-2xl font-800">Montag, 14:00 Uhr</p>
-                  <p className="text-white/70 text-sm">Bei dir zu Hause · 60 Min.</p>
+                  <p className="text-white/70 text-sm">Bei dir zu Hause · 45 Min.</p>
                 </div>
 
                 <div className="mt-6 bg-white/15 backdrop-blur-sm rounded-2xl px-4 py-3 flex items-center justify-between">
                   <div>
                     <p className="text-white/70 text-xs">Einzellektion ab</p>
-                    <p className="text-white font-800 text-xl">CHF 105</p>
+                    <p className="text-white font-800 text-xl">CHF 85</p>
                   </div>
-                  <div className="bg-gold-500 text-white text-xs font-700 px-3 py-1.5 rounded-full">
+                  <div className="bg-white/20 border border-white/30 text-white text-xs font-600 px-3 py-1.5 rounded-full">
                     Jetzt buchen
                   </div>
                 </div>
@@ -106,7 +106,7 @@ export default function Hero() {
               <div className="absolute -bottom-5 -right-5 bg-white rounded-2xl shadow-lg px-4 py-3 border border-gray-100 flex items-center gap-2">
                 <div className="flex">
                   {[1,2,3,4,5].map((i) => (
-                    <Star key={i} className="w-3.5 h-3.5 fill-gold-500 text-gold-500" />
+                    <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
                 <div>

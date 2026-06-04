@@ -80,7 +80,7 @@ export default function Navbar() {
           onClick={handleAdminSecret}
         >
           <span className="w-9 h-9 rounded-xl bg-navy-900 flex items-center justify-center shadow-sm">
-            <Music className="w-4 h-4 text-gold-400" />
+            <Music className="w-4 h-4 text-white" />
           </span>
           <span className="hidden sm:block tracking-tight">David</span>
         </Link>

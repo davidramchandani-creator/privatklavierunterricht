@@ -175,7 +175,7 @@ export default function Preisrechner() {
     <section id="preise" className="py-24 bg-surface">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         {/* Header */}
-        <p className="text-gold-600 font-600 text-sm uppercase tracking-widest mb-3">
+        <p className="text-gray-400 font-600 text-xs uppercase tracking-widest mb-3">
           Preisrechner
         </p>
         <h2 className="text-3xl sm:text-4xl font-800 text-navy-900 mb-4 tracking-tight">
