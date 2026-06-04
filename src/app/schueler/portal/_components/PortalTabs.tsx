@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LayoutGrid, Calendar, CreditCard } from "lucide-react";
 
 const TABS = [
   { id: "uebersicht", label: "Übersicht", icon: LayoutGrid },
-  { id: "termine", label: "Termine", icon: Calendar },
-  { id: "zahlungen", label: "Zahlungen", icon: CreditCard },
+  { id: "termine",    label: "Termine",   icon: Calendar },
+  { id: "zahlungen",  label: "Zahlungen", icon: CreditCard },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
 
 function isTab(v: string): v is TabId {
-  return v === "uebersicht" || v === "termine" || v === "zahlungen";
+  return TABS.some((t) => t.id === v);
 }
 
 export default function PortalTabs({
@@ -29,34 +29,50 @@ export default function PortalTabs({
   zahlungenBadge?: number;
 }) {
   const [active, setActive] = useState<TabId>("uebersicht");
+  const [animKey, setAnimKey] = useState(0);
+  const [dir, setDir] = useState<"right" | "left">("right");
+  const prevIdxRef = useRef(0);
 
-  // Mit dem URL-Hash synchronisieren (PortalNav-Links nutzen denselben Hash).
   useEffect(() => {
     const apply = () => {
       const h = window.location.hash.replace("#", "");
-      if (isTab(h)) setActive(h);
+      if (isTab(h) && h !== active) {
+        const newIdx = TABS.findIndex((t) => t.id === h);
+        setDir(newIdx > prevIdxRef.current ? "right" : "left");
+        prevIdxRef.current = newIdx;
+        setActive(h);
+        setAnimKey((k) => k + 1);
+      }
     };
     apply();
     window.addEventListener("hashchange", apply);
     return () => window.removeEventListener("hashchange", apply);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function select(id: TabId) {
+    if (id === active) return;
+    const newIdx = TABS.findIndex((t) => t.id === id);
+    setDir(newIdx > prevIdxRef.current ? "right" : "left");
+    prevIdxRef.current = newIdx;
     setActive(id);
+    setAnimKey((k) => k + 1);
     history.replaceState(null, "", `#${id}`);
   }
 
+  const activeIdx = TABS.findIndex((t) => t.id === active);
   const badgeFor = (id: TabId) =>
     id === "termine" ? termineBadge : id === "zahlungen" ? zahlungenBadge : 0;
 
+  const content = active === "uebersicht" ? uebersicht
+    : active === "termine" ? termine
+    : zahlungen;
+
   return (
     <div>
-      {/* Desktop: Sticky segmented control at top */}
-      <div className="hidden sm:block sticky top-16 z-30 -mx-5 px-5 bg-white/85 backdrop-blur-md">
-        <div
-          role="tablist"
-          className="flex gap-1 rounded-2xl bg-gray-50 p-1 border border-gray-100"
-        >
+      {/* ─── Desktop: sticky segmented control ─────────────────────────────── */}
+      <div className="hidden sm:block sticky top-16 z-30 -mx-5 px-5 bg-white/90 backdrop-blur-sm border-b border-gray-100 mb-6">
+        <div role="tablist" className="flex gap-1 py-2">
           {TABS.map((t) => {
             const isActive = active === t.id;
             const badge = badgeFor(t.id);
@@ -67,10 +83,10 @@ export default function PortalTabs({
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => select(t.id)}
-                className={`relative flex-1 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-[13px] font-600 transition-colors ${
+                className={`press relative flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-600 transition-colors ${
                   isActive
-                    ? "bg-white text-navy-900 shadow-sm"
-                    : "text-gray-500 hover:text-navy-900"
+                    ? "bg-navy-900 text-white shadow-sm shadow-navy-900/20"
+                    : "text-gray-500 hover:text-navy-900 hover:bg-gray-100"
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -86,12 +102,24 @@ export default function PortalTabs({
         </div>
       </div>
 
-      {/* Mobile: Fixed bottom navigation bar */}
+      {/* ─── Mobile: fixed bottom tab bar ───────────────────────────────────── */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 sm:hidden bg-white border-t border-gray-200"
+        className="fixed bottom-0 left-0 right-0 z-40 sm:hidden bg-white/95 backdrop-blur-sm border-t border-gray-200/80"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="flex" role="tablist">
+        {/* Sliding indicator pill — translates to active tab */}
+        <div className="relative flex" role="tablist">
+          {/* The moving highlight pill */}
+          <span
+            aria-hidden
+            className="absolute top-0 left-0 h-0.5 bg-navy-900 rounded-full transition-all duration-[280ms]"
+            style={{
+              width: `${100 / TABS.length}%`,
+              transform: `translateX(${activeIdx * 100}%)`,
+              transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
+            }}
+          />
+
           {TABS.map((t) => {
             const isActive = active === t.id;
             const badge = badgeFor(t.id);
@@ -102,26 +130,24 @@ export default function PortalTabs({
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => select(t.id)}
-                className="relative flex-1 flex flex-col items-center justify-center gap-0.5 pt-2 pb-2 min-h-[56px] transition-colors"
+                className="press relative flex-1 flex flex-col items-center justify-center gap-0.5 pt-3 pb-2.5 min-h-[56px]"
               >
-                {/* Active indicator line at top */}
-                {isActive && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-[#1C244B]" />
-                )}
                 <div className="relative">
                   <Icon
-                    className={`w-5 h-5 transition-colors ${
-                      isActive ? "text-[#1C244B]" : "text-gray-400"
-                    }`}
+                    className="w-[22px] h-[22px] transition-[color,transform] duration-200"
+                    style={{
+                      color: isActive ? "#1C244B" : "#9ca3af",
+                      transform: isActive ? "scale(1.1)" : "scale(1)",
+                      transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
+                    }}
                   />
                   {badge > 0 && (
                     <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
                   )}
                 </div>
                 <span
-                  className={`text-[11px] font-600 transition-colors ${
-                    isActive ? "text-[#1C244B]" : "text-gray-400"
-                  }`}
+                  className="text-[10px] font-600 transition-colors duration-200"
+                  style={{ color: isActive ? "#1C244B" : "#9ca3af" }}
                 >
                   {t.label}
                 </span>
@@ -131,11 +157,12 @@ export default function PortalTabs({
         </div>
       </nav>
 
-      {/* Panels */}
-      <div className="mt-8">
-        <div hidden={active !== "uebersicht"}>{uebersicht}</div>
-        <div hidden={active !== "termine"}>{termine}</div>
-        <div hidden={active !== "zahlungen"}>{zahlungen}</div>
+      {/* ─── Panel content ──────────────────────────────────────────────────── */}
+      <div
+        key={animKey}
+        className={dir === "right" ? "animate-tab-right" : "animate-tab-left"}
+      >
+        {content}
       </div>
     </div>
   );
