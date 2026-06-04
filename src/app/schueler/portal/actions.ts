@@ -160,7 +160,10 @@ export async function requestMultipleBookings(desiredStartIsos: string[]) {
   }));
 
   const { error } = await supabase.from("booking_requests").insert(rows);
-  if (error) return { error: "Anfrage konnte nicht gespeichert werden. Bitte erneut versuchen." };
+  if (error) {
+    console.error("[requestMultipleBookings] insert error:", error);
+    return { error: "Anfrage konnte nicht gespeichert werden. Bitte erneut versuchen." };
+  }
 
   const studentName = profile ? `${profile.vorname} ${profile.nachname}` : "Schüler";
   const sortedStarts = [...desiredStartIsos].sort();
