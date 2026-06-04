@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { formatTime, zurichDateKey, zurichHour } from "@/lib/utils";
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8:00–20:00
 const DAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
@@ -63,23 +64,29 @@ export default async function AdminKalenderPage({
   ];
 
   const weekLabel = `${monday.toLocaleDateString("de-CH", {
+    timeZone: "Europe/Zurich",
     day: "numeric",
     month: "long",
   })} – ${sunday.toLocaleDateString("de-CH", {
+    timeZone: "Europe/Zurich",
     day: "numeric",
     month: "long",
     year: "numeric",
   })}`;
 
-  // Group entries by day (0=Mon, ..., 6=Sun)
+  // Zürcher Kalenderdatum (YYYY-MM-DD) für jede Spalte Mo–So.
+  const dayKeys = Array.from({ length: 7 }, (_, i) =>
+    zurichDateKey(new Date(monday.getTime() + i * 86400000))
+  );
+  const todayKey = zurichDateKey(now);
+
+  // Termine pro Tag bündeln – anhand des Zürcher Datums, nicht der Server-Zone.
   const terminsByDay: Map<number, Eintrag[]> = new Map();
   for (let d = 0; d < 7; d++) terminsByDay.set(d, []);
 
   for (const t of eintraege) {
-    const date = new Date(t.beginn);
-    const dow = date.getDay(); // 0=Sun
-    const dayIndex = dow === 0 ? 6 : dow - 1; // 0=Mon
-    terminsByDay.get(dayIndex)?.push(t);
+    const di = dayKeys.indexOf(zurichDateKey(t.beginn));
+    if (di >= 0) terminsByDay.get(di)?.push(t);
   }
 
   // Mobile agenda: all entries sorted by day
@@ -118,9 +125,8 @@ export default async function AdminKalenderPage({
             <div className="grid grid-cols-8 border-b border-gray-100">
               <div className="py-3 px-3 text-xs font-600 text-gray-400" />
               {DAYS.map((day, di) => {
-                const date = new Date(monday.getTime() + di * 86400000);
-                const isToday =
-                  date.toDateString() === now.toDateString();
+                const isToday = dayKeys[di] === todayKey;
+                const dayNum = Number(dayKeys[di].slice(8, 10));
                 return (
                   <div
                     key={day}
@@ -132,7 +138,7 @@ export default async function AdminKalenderPage({
                       {day}
                     </p>
                     <p className={`text-sm font-700 mt-0.5 ${isToday ? "text-[#1C244B]" : "text-gray-700"}`}>
-                      {date.getDate()}
+                      {dayNum}
                     </p>
                   </div>
                 );
@@ -150,13 +156,10 @@ export default async function AdminKalenderPage({
                 </div>
                 {DAYS.map((_, di) => {
                   const dayTermine = terminsByDay.get(di) ?? [];
-                  const thisHourTermine = dayTermine.filter((t) => {
-                    const h = new Date(t.beginn).getHours();
-                    return h === hour;
-                  });
-                  const isToday =
-                    new Date(monday.getTime() + di * 86400000).toDateString() ===
-                    now.toDateString();
+                  const thisHourTermine = dayTermine.filter(
+                    (t) => zurichHour(t.beginn) === hour
+                  );
+                  const isToday = dayKeys[di] === todayKey;
 
                   return (
                     <div
@@ -167,14 +170,8 @@ export default async function AdminKalenderPage({
                         const s = (t.schueler as unknown) as
                           | { vorname: string; nachname: string }
                           | null;
-                        const startTime = new Date(t.beginn).toLocaleTimeString(
-                          "de-CH",
-                          { hour: "2-digit", minute: "2-digit" }
-                        );
-                        const endTime = new Date(t.ende).toLocaleTimeString(
-                          "de-CH",
-                          { hour: "2-digit", minute: "2-digit" }
-                        );
+                        const startTime = formatTime(t.beginn);
+                        const endTime = formatTime(t.ende);
                         return (
                           <div
                             key={t.id}

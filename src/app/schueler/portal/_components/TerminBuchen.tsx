@@ -168,11 +168,12 @@ export default function TerminBuchen({ maxSlots }: { maxSlots: number }) {
                 {displayDays.slice(0, 5).map((d) => {
                   const daySlots = slotsByDay.get(d.dateStr) ?? [];
                   if (daySlots.length === 0) return null;
-                  const dayDate = new Date(d.dateStr + "T12:00:00");
+                  const dayDate = new Date(d.dateStr + "T12:00:00Z");
                   return (
                     <div key={d.dateStr}>
                       <p className="text-xs font-600 text-gray-500 mb-2">
                         {dayDate.toLocaleDateString("de-CH", {
+                          timeZone: "Europe/Zurich",
                           weekday: "long",
                           day: "numeric",
                           month: "short",
@@ -183,6 +184,7 @@ export default function TerminBuchen({ maxSlots }: { maxSlots: number }) {
                           const isSelected = selected.some((s) => s.beginn === slot.beginn);
                           const isDisabled = !isSelected && selected.length >= maxSlots;
                           const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
+                            timeZone: "Europe/Zurich",
                             hour: "2-digit",
                             minute: "2-digit",
                           });
@@ -228,6 +230,7 @@ export default function TerminBuchen({ maxSlots }: { maxSlots: number }) {
                           const isSelected = selected.some((s) => s.beginn === slot.beginn);
                           const isDisabled = !isSelected && selected.length >= maxSlots;
                           const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
+                            timeZone: "Europe/Zurich",
                             hour: "2-digit",
                             minute: "2-digit",
                           });

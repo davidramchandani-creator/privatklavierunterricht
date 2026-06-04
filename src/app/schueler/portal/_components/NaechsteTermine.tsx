@@ -408,11 +408,16 @@ function AnfrageRow({ request }: { request: BookingRequest }) {
 
   const start = new Date(request.desired_start);
   const day = start.toLocaleDateString("de-CH", {
+    timeZone: "Europe/Zurich",
     weekday: "long",
     day: "numeric",
     month: "long",
   });
-  const time = start.toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" });
+  const time = start.toLocaleTimeString("de-CH", {
+    timeZone: "Europe/Zurich",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   const isSeries = request.lessons_count > 1;
 
   function handleWithdraw() {
@@ -492,12 +497,21 @@ function TerminRow({
   const within24h = isWithin24Hours(beginn);
 
   const day = beginn.toLocaleDateString("de-CH", {
+    timeZone: "Europe/Zurich",
     weekday: "long",
     day: "numeric",
     month: "long",
   });
-  const timeFrom = beginn.toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" });
-  const timeTo = ende.toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" });
+  const timeFrom = beginn.toLocaleTimeString("de-CH", {
+    timeZone: "Europe/Zurich",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const timeTo = ende.toLocaleTimeString("de-CH", {
+    timeZone: "Europe/Zurich",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   function handleStornieren() {
     if (within24h) {
@@ -550,9 +564,11 @@ function TerminRow({
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#1C244B]/8 flex flex-col items-center justify-center flex-shrink-0 text-[#1C244B]">
-            <span className="text-xs font-700 leading-none">{beginn.getDate()}</span>
+            <span className="text-xs font-700 leading-none">
+              {beginn.toLocaleDateString("de-CH", { timeZone: "Europe/Zurich", day: "numeric" })}
+            </span>
             <span className="text-[10px] leading-none opacity-70">
-              {beginn.toLocaleDateString("de-CH", { month: "short" })}
+              {beginn.toLocaleDateString("de-CH", { timeZone: "Europe/Zurich", month: "short" })}
             </span>
           </div>
           <div>
@@ -685,10 +701,11 @@ function PendingRescheduleBanner({
   const proposed = reschedule ? new Date(reschedule.proposed_start) : null;
   const proposedLabel = proposed
     ? `${proposed.toLocaleDateString("de-CH", {
+        timeZone: "Europe/Zurich",
         weekday: "short",
         day: "numeric",
         month: "short",
-      })}, ${proposed.toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" })} Uhr`
+      })}, ${proposed.toLocaleTimeString("de-CH", { timeZone: "Europe/Zurich", hour: "2-digit", minute: "2-digit" })} Uhr`
     : null;
 
   function handleWithdraw() {
@@ -833,11 +850,12 @@ function ReschedulePicker({
             {days.map((d) => {
               const daySlots = slotsByDay.get(d.dateStr) ?? [];
               if (daySlots.length === 0) return null;
-              const dayDate = new Date(d.dateStr + "T12:00:00");
+              const dayDate = new Date(d.dateStr + "T12:00:00Z");
               return (
                 <div key={d.dateStr}>
                   <p className="text-xs font-600 text-gray-500 mb-2">
                     {dayDate.toLocaleDateString("de-CH", {
+                      timeZone: "Europe/Zurich",
                       weekday: "long",
                       day: "numeric",
                       month: "short",
@@ -847,6 +865,7 @@ function ReschedulePicker({
                     {daySlots.map((slot) => {
                       const isSelected = selectedSlot?.beginn === slot.beginn;
                       const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
+                        timeZone: "Europe/Zurich",
                         hour: "2-digit",
                         minute: "2-digit",
                       });
@@ -885,6 +904,7 @@ function ReschedulePicker({
                     daySlots.map((slot) => {
                       const isSelected = selectedSlot?.beginn === slot.beginn;
                       const time = new Date(slot.beginn).toLocaleTimeString("de-CH", {
+                        timeZone: "Europe/Zurich",
                         hour: "2-digit",
                         minute: "2-digit",
                       });
@@ -927,8 +947,9 @@ function ReschedulePicker({
         ) : selectedSlot ? (
           `Verschiebung anfragen – ${new Date(selectedSlot.beginn).toLocaleDateString(
             "de-CH",
-            { weekday: "short", day: "numeric", month: "short" }
+            { timeZone: "Europe/Zurich", weekday: "short", day: "numeric", month: "short" }
           )} ${new Date(selectedSlot.beginn).toLocaleTimeString("de-CH", {
+            timeZone: "Europe/Zurich",
             hour: "2-digit",
             minute: "2-digit",
           })} Uhr`

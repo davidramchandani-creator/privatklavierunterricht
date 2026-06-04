@@ -119,6 +119,7 @@ export default function PaketCard({
             <span className="text-gray-500">Gültig bis</span>
             <span className="font-500 text-gray-700">
               {new Date(paket.expires_at).toLocaleDateString("de-CH", {
+                timeZone: "Europe/Zurich",
                 day: "numeric",
                 month: "long",
                 year: "numeric",
@@ -134,11 +135,13 @@ export default function PaketCard({
           <span>
             Kommende Abwesenheit:{" "}
             {new Date(upcomingAbsence.start_date).toLocaleDateString("de-CH", {
+              timeZone: "Europe/Zurich",
               day: "numeric",
               month: "short",
             })}{" "}
             –{" "}
             {new Date(upcomingAbsence.end_date).toLocaleDateString("de-CH", {
+              timeZone: "Europe/Zurich",
               day: "numeric",
               month: "short",
             })}
