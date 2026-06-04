@@ -494,7 +494,10 @@ export async function updateStudentPrices(
     if (!isNaN(v) && v >= 0) update[f] = v;
   }
   const buffer = parseInt(formData.get("buffer_time_minutes") as string);
-  if (buffer === 15 || buffer === 30) update.buffer_time_minutes = buffer;
+  if (!isNaN(buffer) && buffer >= 1 && buffer <= 120) update.buffer_time_minutes = buffer;
+
+  const bm = formData.get("buffer_mode") as string | null;
+  if (bm === "fixed" || bm === "auto") update.buffer_mode = bm;
 
   // Zahlungsart pro Schüler (TWINT oder QR-Rechnung)
   const pm = formData.get("payment_method") as string | null;
@@ -507,6 +510,35 @@ export async function updateStudentPrices(
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
   return { success: true };
+}
+
+/** Berechnet die Fahrzeit vom Admin-Standort zur Schüleradresse via Google Maps. */
+export async function calculateTravelBuffer(
+  studentAddress: string
+): Promise<{ minutes: number } | { error: string }> {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (!apiKey) return { error: "GOOGLE_MAPS_API_KEY nicht konfiguriert." };
+
+  const origin = process.env.ADMIN_HOME_ADDRESS ?? "Sattleracherstrasse 59, 8413 Neftenbach, Schweiz";
+  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(studentAddress)}&mode=driving&language=de&key=${apiKey}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return { error: "Google Maps API nicht erreichbar." };
+    const json = await res.json() as {
+      status: string;
+      rows: Array<{ elements: Array<{ status: string; duration: { value: number; text: string } }> }>;
+    };
+    if (json.status !== "OK") return { error: `Google Maps Fehler: ${json.status}` };
+    const element = json.rows?.[0]?.elements?.[0];
+    if (!element || element.status !== "OK") return { error: "Adresse nicht gefunden." };
+    // Sekunden → Minuten, auf 5 Minuten aufrunden
+    const rawMin = Math.ceil(element.duration.value / 60);
+    const minutes = Math.ceil(rawMin / 5) * 5;
+    return { minutes };
+  } catch {
+    return { error: "Fehler beim Abrufen der Fahrzeit." };
+  }
 }
 
 /** Admin legt einem Schüler ein Paket an (neues Schema). */

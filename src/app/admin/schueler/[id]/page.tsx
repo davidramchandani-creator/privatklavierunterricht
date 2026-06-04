@@ -25,7 +25,7 @@ export default async function SchuelerDetailPage({
   ] = await Promise.all([
     admin
       .from("profiles")
-      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, erstellt_am, price_single, price_10er, price_20er, travel_surcharge, buffer_time_minutes, payment_method")
+      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, erstellt_am, price_single, price_10er, price_20er, travel_surcharge, buffer_time_minutes, buffer_mode, payment_method")
       .eq("id", id)
       .maybeSingle(),
     admin
@@ -78,8 +78,10 @@ export default async function SchuelerDetailPage({
     price_20er: Number(profile.price_20er ?? 65),
     travel_surcharge: Number(profile.travel_surcharge ?? 0),
     buffer_time_minutes: Number(profile.buffer_time_minutes ?? 15),
+    buffer_mode: (profile.buffer_mode as string) ?? "fixed",
     payment_method: (profile.payment_method as string) ?? "qr",
   };
+  const mapsConfigured = !!process.env.GOOGLE_MAPS_API_KEY;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -151,12 +153,15 @@ export default async function SchuelerDetailPage({
         <PreiseForm
           userId={id}
           schuelerId={id}
+          studentAddress={profile.adresse ?? null}
+          mapsConfigured={mapsConfigured}
           initial={{
             price_single: prices.price_single,
             price_10er: prices.price_10er,
             price_20er: prices.price_20er,
             travel_surcharge: prices.travel_surcharge,
             buffer_time_minutes: prices.buffer_time_minutes,
+            buffer_mode: prices.buffer_mode,
             payment_method: prices.payment_method,
           }}
         />
