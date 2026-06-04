@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   DEFAULT_BUFFER_MIN,
+  LESSON_DURATION_MIN,
   generateSeriesStarts,
   slotsFromStarts,
   validateSeries,
@@ -58,7 +59,9 @@ export async function bookSeriesForStudent(
   const desiredStart = new Date(startIso);
   const now = new Date();
   const starts = generateSeriesStarts(desiredStart, lessonsCount, intervalDays);
-  const seriesEnd = new Date(starts[starts.length - 1].getTime() + 3600000);
+  const seriesEnd = new Date(
+    starts[starts.length - 1].getTime() + LESSON_DURATION_MIN * 60000
+  );
 
   const ctx = await loadAvailabilityContext(
     admin,

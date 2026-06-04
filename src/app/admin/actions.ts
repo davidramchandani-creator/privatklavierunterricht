@@ -5,6 +5,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   DEFAULT_BUFFER_MIN,
+  LESSON_DURATION_MIN,
   generateSeriesStarts,
   slotsFromStarts,
   validateSeries,
@@ -393,7 +394,7 @@ export async function acceptReschedule(rescheduleId: string) {
 
   const newStart = new Date(rr.proposed_start);
   const now = new Date();
-  const slotEnd = new Date(newStart.getTime() + 3600000);
+  const slotEnd = new Date(newStart.getTime() + LESSON_DURATION_MIN * 60000);
   const ctx = await loadAvailabilityContext(
     admin,
     rr.student_id,
