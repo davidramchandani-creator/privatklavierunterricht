@@ -5,14 +5,8 @@ import { CalendarCheck, Star, Users, Clock } from "lucide-react";
 export default function Hero() {
   return (
     <section className="relative min-h-screen bg-white flex items-center overflow-hidden">
-      {/* Subtle grid background */}
-      <div
-        className="absolute inset-0 opacity-[0.025]"
-        style={{
-          backgroundImage: `linear-gradient(#1C244B 1px, transparent 1px), linear-gradient(90deg, #1C244B 1px, transparent 1px)`,
-          backgroundSize: "64px 64px",
-        }}
-      />
+      {/* Decorative piano keys — bottom */}
+      <PianoKeysDecor />
 
       {/* Gradient blob top-right */}
       <div className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-navy-100 to-navy-50 blur-3xl opacity-60 pointer-events-none" />
@@ -80,15 +74,15 @@ export default function Hero() {
                 </div>
 
                 <div className="text-white space-y-2">
-                  <p className="text-white/60 text-xs font-600 uppercase tracking-widest">Nächste freie Lektion</p>
-                  <p className="text-2xl font-800">Montag, 14:00 Uhr</p>
+                  <p className="text-white/60 text-xs font-600 uppercase tracking-widest">Verfügbare Termine</p>
+                  <p className="text-2xl font-800">Mo–Do, ab 16:30</p>
                   <p className="text-white/70 text-sm">Bei dir zu Hause · 45 Min.</p>
                 </div>
 
                 <div className="mt-6 bg-white/15 backdrop-blur-sm rounded-2xl px-4 py-3 flex items-center justify-between">
                   <div>
-                    <p className="text-white/70 text-xs">Einzellektion ab</p>
-                    <p className="text-white font-800 text-xl">CHF 85</p>
+                    <p className="text-white/70 text-xs">Im 20er-Paket ab</p>
+                    <p className="text-white font-800 text-xl">CHF 65 / Lektion</p>
                   </div>
                   <div className="bg-white/20 border border-white/30 text-white text-xs font-600 px-3 py-1.5 rounded-full">
                     Jetzt buchen
@@ -127,6 +121,48 @@ function Pill({ icon, text }: { icon: React.ReactNode; text: string }) {
     <div className="inline-flex items-center gap-1.5 bg-surface border border-gray-100 rounded-full px-3 py-1.5 text-xs font-500 text-gray-600">
       {icon}
       {text}
+    </div>
+  );
+}
+
+function PianoKeysDecor() {
+  // 21 white keys across the bottom — purely decorative
+  const whiteKeys = Array.from({ length: 21 });
+  // Black key pattern per octave (7 white keys): gaps after index 0, 1, 3, 4, 5 (no key after 2 and 6)
+  const blackKeyOffsets = [1, 2, 4, 5, 6]; // positions within each octave that have a black key to their right
+  return (
+    <div className="absolute bottom-0 left-0 right-0 h-28 overflow-hidden pointer-events-none select-none" aria-hidden>
+      {/* White keys */}
+      <div className="absolute inset-0 flex">
+        {whiteKeys.map((_, i) => (
+          <div
+            key={i}
+            className="flex-1 bg-navy-900 opacity-[0.07] border-r border-white"
+            style={{ borderRadius: "4px 4px 0 0" }}
+          />
+        ))}
+      </div>
+      {/* Black keys */}
+      <div className="absolute top-0 left-0 right-0" style={{ height: "55%" }}>
+        {whiteKeys.map((_, i) => {
+          const octavePos = i % 7;
+          if (!blackKeyOffsets.includes(octavePos)) return null;
+          const pct = ((i + 0.6) / 21) * 100;
+          return (
+            <div
+              key={i}
+              className="absolute bg-navy-900 opacity-[0.15]"
+              style={{
+                left: `${pct}%`,
+                width: `${(1 / 21) * 100 * 0.55}%`,
+                height: "100%",
+                borderRadius: "0 0 3px 3px",
+                transform: "translateX(-50%)",
+              }}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }
