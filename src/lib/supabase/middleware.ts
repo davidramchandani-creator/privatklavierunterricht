@@ -18,7 +18,16 @@ export async function updateSession(request: NextRequest) {
           );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(
+              name,
+              value,
+              // Gesetzte Session-Cookies mind. 30 Tage halten → dauerhaft
+              // eingeloggt. Leerer value = Löschung (maxAge 0/negativ) → NICHT
+              // verlängern, sonst bleiben veraltete Auth-Chunks liegen.
+              value
+                ? { ...options, maxAge: Math.max(options?.maxAge ?? 0, 60 * 60 * 24 * 30) }
+                : options
+            )
           );
         },
       },

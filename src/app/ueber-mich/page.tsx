@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { Music, Award, Users, Heart, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
@@ -70,16 +71,16 @@ export default function UeberMichPage() {
               Klavierlehrer seit 2008
             </div>
             <h1 className="text-4xl sm:text-5xl font-800 leading-tight">
-              Hallo, ich bin <span className="text-gold-400">David</span>.
+              Hallo, ich bin <span className="italic">David</span>.
             </h1>
             <p className="text-white/70 text-lg leading-relaxed">
               Ich bringe dir das Klavierspielen bei – egal ob du absolute Anfängerin oder fortgeschrittener Spieler bist. Mit Geduld, Humor und echter Leidenschaft.
             </p>
             <div className="flex flex-wrap gap-4 pt-2">
-              <Link href="/#probelektion">
-                <Button variant="gold" size="lg">Probelektion anfragen</Button>
+              <Link href="/probelektion">
+                <Button size="lg" className="bg-white text-navy-900 hover:bg-gray-100 font-700">Probelektion anfragen</Button>
               </Link>
-              <Link href="/#pakete">
+              <Link href="/#angebote">
                 <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10">
                   Angebote ansehen
                 </Button>
@@ -87,14 +88,18 @@ export default function UeberMichPage() {
             </div>
           </div>
 
-          {/* Photo placeholder */}
+          {/* Photo */}
           <div className="flex justify-center md:justify-end">
             <div className="relative w-72 h-80 md:w-80 md:h-96">
-              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-gold-500/30 to-navy-900/50 backdrop-blur-sm border border-white/10 flex items-center justify-center">
-                <div className="text-center text-white/40">
-                  <Music className="w-16 h-16 mx-auto mb-3" />
-                  <p className="text-sm">Foto folgt bald</p>
-                </div>
+              <div className="absolute inset-0 rounded-3xl overflow-hidden bg-surface border border-white/10 shadow-2xl shadow-black/30">
+                <Image
+                  src="/david-ramchandani-portrait-720-762.jpg"
+                  alt="David Ramchandani – Klavierlehrer"
+                  fill
+                  sizes="(max-width: 768px) 18rem, 20rem"
+                  className="object-cover object-top"
+                  priority
+                />
               </div>
               {/* Badge */}
               <div className="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-lg px-4 py-3 text-navy-900">
@@ -172,7 +177,7 @@ export default function UeberMichPage() {
               "Online-Unterricht auf Wunsch",
             ].map((item) => (
               <div key={item} className="flex items-start gap-3 bg-white rounded-xl p-4 border border-[#EAECEF] hover:border-navy-900/20 hover:-translate-y-0.5 transition-all duration-200">
-                <CheckCircle2 className="w-4 h-4 text-gold-600 mt-0.5 flex-shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-navy-600 mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-gray-700">{item}</p>
               </div>
             ))}
@@ -188,8 +193,8 @@ export default function UeberMichPage() {
             <div className="absolute left-3.5 top-2 bottom-2 w-px bg-gray-200" />
             {stationen.map(({ year, title, desc }) => (
               <div key={year} className="relative">
-                <div className="absolute -left-[1.35rem] top-1 w-3 h-3 rounded-full bg-gold-500 border-2 border-white shadow-sm" />
-                <span className="text-xs font-700 text-gold-500 uppercase tracking-widest">{year}</span>
+                <div className="absolute -left-[1.35rem] top-1 w-3 h-3 rounded-full bg-navy-900 border-2 border-white shadow-sm" />
+                <span className="text-xs font-700 text-gray-400 uppercase tracking-widest">{year}</span>
                 <h3 className="font-700 text-navy-900 mt-1">{title}</h3>
                 <p className="text-sm text-gray-500 mt-0.5">{desc}</p>
               </div>
@@ -205,8 +210,8 @@ export default function UeberMichPage() {
           <p className="text-white/70">
             Komm zur kostenlosen Probelektion und erlebe, wie viel Spass Klavierspielen machen kann.
           </p>
-          <Link href="/#probelektion">
-            <Button variant="gold" size="lg">
+          <Link href="/probelektion">
+            <Button size="lg" className="bg-white text-navy-900 hover:bg-gray-100 font-700">
               Jetzt Probelektion anfragen
             </Button>
           </Link>

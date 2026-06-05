@@ -167,10 +167,15 @@ function daysBetween(a: CalDate, b: CalDate): number {
 
 // ── Slot-Erzeugung ─────────────────────────────────────────
 
-/** Kandidaten-Slots (45 Min, 15-Min-Raster) für ein Kalenderdatum. */
+/**
+ * Kandidaten-Slots (15-Min-Raster) für ein Kalenderdatum.
+ * `durationMin` steuert die Lektionsdauer (Default 45; Gruppenkurse ab 3
+ * Teilnehmern nutzen 90). Jeder Slot muss vollständig in ein Fenster passen.
+ */
 export function generateDaySlots(
   date: CalDate,
-  availability: AvailabilityWindows = AVAILABILITY
+  availability: AvailabilityWindows = AVAILABILITY,
+  durationMin: number = LESSON_DURATION_MIN
 ): Slot[] {
   const windows = availability[weekdayOf(date)] ?? [];
   const slots: Slot[] = [];
@@ -180,11 +185,11 @@ export function generateDaySlots(
     const endMin = minutesOf(w.end);
     for (
       let s = startMin;
-      s + LESSON_DURATION_MIN <= endMin;
+      s + durationMin <= endMin;
       s += SLOT_GRID_MIN
     ) {
       const start = zonedToUtc(date.y, date.m, date.d, Math.floor(s / 60), s % 60);
-      const end = new Date(start.getTime() + LESSON_DURATION_MIN * 60000);
+      const end = new Date(start.getTime() + durationMin * 60000);
       slots.push({ start, end });
     }
   }
@@ -301,7 +306,11 @@ export type AvailabilityContext = {
   skipLeadTime?: boolean;
 };
 
-/** Liegt der Slot vollständig in einem Verfügbarkeitsfenster des Wochentags? */
+/**
+ * Liegt der Slot vollständig in einem Verfügbarkeitsfenster des Wochentags?
+ * Die Dauer wird aus dem Slot selbst abgeleitet, damit auch 90-Min-Slots
+ * (Gruppenkurse) korrekt gegen das Fensterende geprüft werden.
+ */
 export function withinAvailability(
   slot: Slot,
   availability: AvailabilityWindows
@@ -312,7 +321,7 @@ export function withinAvailability(
   const startMin =
     (slot.start.getTime() - zonedToUtc(date.y, date.m, date.d, 0, 0).getTime()) /
     60000;
-  const endMin = startMin + LESSON_DURATION_MIN;
+  const endMin = startMin + (slot.end.getTime() - slot.start.getTime()) / 60000;
   return windows.some(
     (w) => startMin >= minutesOf(w.start) && endMin <= minutesOf(w.end)
   );
@@ -353,13 +362,14 @@ export function isSlotBookable(slot: Slot, ctx: AvailabilityContext): boolean {
 export function computeAvailableSlots(
   fromDate: CalDate,
   days: number,
-  ctx: AvailabilityContext
+  ctx: AvailabilityContext,
+  durationMin: number = LESSON_DURATION_MIN
 ): Slot[] {
   const windows = ctx.availabilityWindows ?? AVAILABILITY;
   const result: Slot[] = [];
   for (let i = 0; i < days; i++) {
     const date = addDaysCal(fromDate, i);
-    for (const slot of generateDaySlots(date, windows)) {
+    for (const slot of generateDaySlots(date, windows, durationMin)) {
       if (isSlotBookable(slot, ctx)) result.push(slot);
     }
   }
@@ -389,11 +399,14 @@ export function generateSeriesStarts(
   return starts;
 }
 
-/** Slots aus Startzeitpunkten (jeweils 45 Min). */
-export function slotsFromStarts(starts: Date[]): Slot[] {
+/** Slots aus Startzeitpunkten (Default 45 Min; Gruppenkurse ggf. 90). */
+export function slotsFromStarts(
+  starts: Date[],
+  durationMin: number = LESSON_DURATION_MIN
+): Slot[] {
   return starts.map((start) => ({
     start,
-    end: new Date(start.getTime() + LESSON_DURATION_MIN * 60000),
+    end: new Date(start.getTime() + durationMin * 60000),
   }));
 }
 
@@ -410,10 +423,12 @@ export function validateSeries(
   firstStart: Date,
   lessonsCount: number,
   intervalDays: number,
-  ctx: AvailabilityContext
+  ctx: AvailabilityContext,
+  durationMin: number = LESSON_DURATION_MIN
 ): SeriesValidation {
   const slots = slotsFromStarts(
-    generateSeriesStarts(firstStart, lessonsCount, intervalDays)
+    generateSeriesStarts(firstStart, lessonsCount, intervalDays),
+    durationMin
   );
   const conflicts = slots.filter((s) => !isSlotBookable(s, ctx));
   return { ok: conflicts.length === 0, conflicts };

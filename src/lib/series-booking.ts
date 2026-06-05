@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   DEFAULT_BUFFER_MIN,
+  LESSON_DURATION_MIN,
   generateSeriesStarts,
   slotsFromStarts,
   validateSeries,
@@ -12,7 +13,6 @@ import {
   canBuyNewPackage,
   computePackageState,
 } from "@/lib/packages";
-import { getTwintBaseUrl } from "@/lib/twint";
 import { syncAppointmentToCalendar } from "@/lib/google-calendar";
 
 /**
@@ -58,7 +58,9 @@ export async function bookSeriesForStudent(
   const desiredStart = new Date(startIso);
   const now = new Date();
   const starts = generateSeriesStarts(desiredStart, lessonsCount, intervalDays);
-  const seriesEnd = new Date(starts[starts.length - 1].getTime() + 3600000);
+  const seriesEnd = new Date(
+    starts[starts.length - 1].getTime() + LESSON_DURATION_MIN * 60000
+  );
 
   const ctx = await loadAvailabilityContext(
     admin,
@@ -136,15 +138,8 @@ export async function bookSeriesForStudent(
       if (paymentMethod === "qr") {
         await enqueueEmail(admin, "qr_invoice", basePayload, sendAt);
       } else {
-        await enqueueEmail(
-          admin,
-          "twint_payment_request",
-          {
-            ...basePayload,
-            twint_link: getTwintBaseUrl(),
-          },
-          sendAt
-        );
+        // twint_link wird beim Versand aus Betrag + Lektionsdatum gebaut.
+        await enqueueEmail(admin, "twint_payment_request", basePayload, sendAt);
       }
     }
   }

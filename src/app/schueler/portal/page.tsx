@@ -9,9 +9,13 @@ import TerminBuchen from "./_components/TerminBuchen";
 import ZahlungenSection from "./_components/ZahlungenSection";
 import ProposalCard from "./_components/ProposalCard";
 import PortalTabs from "./_components/PortalTabs";
+import PullToRefresh from "@/components/PullToRefresh";
+import RealtimeRefresh from "@/components/RealtimeRefresh";
 import { CalendarPlus } from "lucide-react";
 import { canBuyNewPackage, type Package as Paket } from "@/lib/packages";
-import { getTwintBaseUrl } from "@/lib/twint";
+import { buildLessonTwintLink } from "@/lib/twint";
+import Gruppenkurse from "./_components/Gruppenkurse";
+import { getGroupCourses } from "./actions";
 
 export default async function SchuelerPortalPage() {
   const supabase = await createClient();
@@ -70,7 +74,7 @@ export default async function SchuelerPortalPage() {
 
   const { data: naechsteAppointments } = await supabase
     .from("appointments")
-    .select("id, start_at, end_at, status")
+    .select("id, start_at, end_at, status, group_session_id")
     .eq("student_id", user.id)
     .in("status", ["booked", "completed"])
     .gte("start_at", new Date().toISOString())
@@ -125,12 +129,17 @@ export default async function SchuelerPortalPage() {
       return lessonEnd <= nowMs;
     }).length ?? 0;
 
-  // Offizieller TWINT-Acquirer-Link (serverseitig, nie im Client hartcodiert).
-  const twintBase = getTwintBaseUrl();
+  // TWINT-Deep-Link je Rechnung mit Betrag + Zahlungszweck (gehaltene Lektion),
+  // serverseitig gebaut (Spec §6 – trxInfo = Lektionsinfo).
   const invoicesForPortal = (invoices ?? []).map((inv) => ({
     ...inv,
-    twint_link: inv.method === "twint" ? twintBase : null,
+    twint_link:
+      inv.method === "twint"
+        ? buildLessonTwintLink(Number(inv.amount ?? 0), inv.lesson_date)
+        : null,
   }));
+
+  const groupCourses = await getGroupCourses();
 
   if (!profile) {
     return (
@@ -237,6 +246,10 @@ export default async function SchuelerPortalPage() {
           <TerminBuchen maxSlots={remainingLessons} />
         </div>
       )}
+      <div className="pt-2">
+        <h2 className="text-base font-700 text-navy-900 tracking-tight mb-4">Gruppenkurse</h2>
+        <Gruppenkurse courses={groupCourses} />
+      </div>
     </div>
   );
 
@@ -248,24 +261,27 @@ export default async function SchuelerPortalPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <RealtimeRefresh />
       <PortalNav vorname={vorname} />
 
-      <main className="max-w-4xl mx-auto px-5 py-8 sm:py-10 pb-24 sm:pb-10">
-        <div className="mb-6">
-          <p className="text-[13px] font-500 text-gray-400">Schön, dass du da bist</p>
-          <h1 className="mt-1 text-2xl sm:text-3xl font-700 text-navy-900 tracking-tight">
-            Hallo, {vorname}
-          </h1>
-        </div>
+      <PullToRefresh>
+        <main className="max-w-4xl mx-auto px-5 py-8 sm:py-10 pb-28 sm:pb-10">
+          <div className="mb-6">
+            <p className="text-[13px] font-500 text-gray-400">Schön, dass du da bist</p>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-700 text-navy-900 tracking-tight">
+              Hallo, {vorname}
+            </h1>
+          </div>
 
-        <PortalTabs
-          uebersicht={uebersicht}
-          termine={termine}
-          zahlungen={zahlungen}
-          termineBadge={offeneProposals?.length ?? 0}
-          zahlungenBadge={openPaymentsCount}
-        />
-      </main>
+          <PortalTabs
+            uebersicht={uebersicht}
+            termine={termine}
+            zahlungen={zahlungen}
+            termineBadge={offeneProposals?.length ?? 0}
+            zahlungenBadge={openPaymentsCount}
+          />
+        </main>
+      </PullToRefresh>
     </div>
   );
 }

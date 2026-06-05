@@ -16,11 +16,16 @@ function fmt(iso: string): { day: string; time: string } {
   const d = new Date(iso);
   return {
     day: d.toLocaleDateString("de-CH", {
+      timeZone: "Europe/Zurich",
       weekday: "long",
       day: "numeric",
       month: "long",
     }),
-    time: d.toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" }),
+    time: d.toLocaleTimeString("de-CH", {
+      timeZone: "Europe/Zurich",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
   };
 }
 

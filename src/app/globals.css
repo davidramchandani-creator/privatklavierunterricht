@@ -92,6 +92,12 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
 }
 
+/* iOS-artige Easing-Kurven für ein „cleanes" Gefühl */
+:root {
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);      /* spring-y, sanftes Ausrollen */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1); /* schnell rein, weich raus */
+}
+
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -107,18 +113,160 @@ h1, h2, h3, h4, h5, h6 {
   to   { opacity: 1; transform: scale(1); }
 }
 
-.animate-fade-in  { animation: fade-in 0.5s ease-out forwards; }
-.animate-slide-in { animation: slide-in 0.4s ease-out forwards; }
-.animate-scale-in { animation: scale-in 0.3s ease-out forwards; }
+/* Sanftes Hochgleiten (für Step-/Tab-Wechsel) */
+@keyframes enter-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Dezentes Einschweben von rechts (für Listen-/Slot-Wechsel) */
+@keyframes enter-right {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fade-in  { animation: fade-in 0.5s var(--ease-out-soft) forwards; }
+.animate-slide-in { animation: slide-in 0.4s var(--ease-out-soft) forwards; }
+.animate-scale-in { animation: scale-in 0.3s var(--ease-out-soft) forwards; }
+.animate-enter-up    { animation: enter-up 0.28s var(--ease-out-soft) forwards; }
+.animate-enter-right { animation: enter-right 0.4s var(--ease-ios) forwards; }
 .opacity-0        { opacity: 0; }
 
+.delay-75  { animation-delay: 75ms; }
 .delay-100 { animation-delay: 100ms; }
+.delay-150 { animation-delay: 150ms; }
 .delay-200 { animation-delay: 200ms; }
 .delay-300 { animation-delay: 300ms; }
 .delay-400 { animation-delay: 400ms; }
 .delay-500 { animation-delay: 500ms; }
 
-/* Card hover-lift helper */
+/* Sanfte, „premium" Interaktion: leichtes Eindrücken beim Tippen */
+.press {
+  transition: transform 0.12s var(--ease-out-soft), box-shadow 0.2s var(--ease-out-soft),
+    background-color 0.2s var(--ease-out-soft), color 0.2s var(--ease-out-soft);
+}
+.press:active { transform: scale(0.96); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Liquid Glass (iOS 26 Stil)
+   Echtes Glas-Material: klar-transparent, kräftige Lichtbrechung am Rand
+   (spekulare Highlights oben/links, weiches Abklingen unten/rechts), starker
+   Backdrop-Blur mit Sättigungs-/Helligkeitsboost und weicher Schwebeschatten.
+   ───────────────────────────────────────────────────────────────────────── */
+.liquid-glass {
+  position: relative;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.28) 48%,
+      rgba(255, 255, 255, 0.4) 100%
+    );
+  backdrop-filter: blur(24px) saturate(190%) brightness(1.08);
+  -webkit-backdrop-filter: blur(24px) saturate(190%) brightness(1.08);
+  box-shadow:
+    /* Schwebeschatten */
+    0 10px 32px -8px rgba(28, 36, 75, 0.22),
+    0 4px 12px -6px rgba(28, 36, 75, 0.16),
+    /* spekularer Rand oben (Lichtkante) */
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 0.5px 0 0 rgba(255, 255, 255, 1),
+    /* weiches Abklingen unten */
+    inset 0 -1px 1px 0 rgba(255, 255, 255, 0.35);
+}
+/* Brechungs-Ring: hauchdünne, an der Lichtseite hellere Kante */
+.liquid-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.15) 38%,
+    rgba(255, 255, 255, 0.05) 60%,
+    rgba(255, 255, 255, 0.5) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Vollbreite Glas-Leiste (obere Header) – kein seitlicher Rand, nur
+   Lichtkante oben und feine Trennlinie unten. */
+.liquid-glass-bar {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.62) 0%,
+    rgba(255, 255, 255, 0.42) 100%
+  );
+  backdrop-filter: blur(24px) saturate(190%) brightness(1.06);
+  -webkit-backdrop-filter: blur(24px) saturate(190%) brightness(1.06);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9),
+    0 1px 0 0 rgba(28, 36, 75, 0.06),
+    0 6px 20px -12px rgba(28, 36, 75, 0.18);
+}
+.liquid-glass-bar--bottom {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9),
+    0 -1px 0 0 rgba(28, 36, 75, 0.06),
+    0 -6px 20px -12px rgba(28, 36, 75, 0.18);
+}
+
+/* Aktive „Glas-Linse" hinter dem gewählten Tab */
+.liquid-lozenge {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.75) 0%,
+      rgba(255, 255, 255, 0.42) 100%
+    );
+  box-shadow:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 2px 0 rgba(28, 36, 75, 0.06),
+    0 4px 12px -4px rgba(28, 36, 75, 0.18);
+}
+
+/* Horizontale Scroll-Leiste ohne sichtbaren Scrollbalken (Filter-Chips) */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Spinner für Pull-to-Refresh */
+@keyframes ptr-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Respektiere System-Einstellung „Bewegung reduzieren" */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Tab-Wechsel: richtungsabhängiges Ein-/Ausschweben ───────────────────── */
+@keyframes tab-enter-right {
+  from { opacity: 0; transform: translateX(14px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes tab-enter-left {
+  from { opacity: 0; transform: translateX(-14px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-tab-right { animation: tab-enter-right 0.26s var(--ease-ios) forwards; }
+.animate-tab-left  { animation: tab-enter-left  0.26s var(--ease-ios) forwards; }
 .card-hover {
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }

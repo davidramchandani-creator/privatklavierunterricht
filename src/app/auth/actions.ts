@@ -1,7 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { sendEmail } from "@/lib/email-sender";
+import { renderEmail } from "@/lib/email-templates";
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
@@ -60,14 +62,57 @@ export async function setPassword(formData: FormData) {
 }
 
 export async function requestPasswordReset(formData: FormData) {
-  const supabase = await createClient();
   const email = formData.get("email") as string;
   const origin = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.ch";
 
-  await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback?next=/auth/passwort-setzen`,
+  // Admin-Client verwenden, damit wir den token_hash selbst erhalten und die
+  // E-Mail über Resend (branded Template) versenden können – statt via
+  // Supabases eigenem Mailer. Ausserdem verhindert die /auth/bestaetigen-URL,
+  // dass iOS-Mail-Vorschauen den Einmal-Token schon beim Vorladen verbrennen.
+  const adminClient = createAdminClient();
+  const { data, error } = await adminClient.auth.admin.generateLink({
+    type: "recovery",
+    email,
+    options: {
+      redirectTo: `${origin}/auth/passwort-setzen`,
+    },
   });
 
-  // Immer Erfolg zurückgeben (kein User-Enumeration)
+  // Auch bei Fehler/unbekannter E-Mail immer Erfolg melden (kein User-Enumeration).
+  if (!error && data?.properties?.hashed_token) {
+    const tokenHash = data.properties.hashed_token;
+    const resetUrl = `${origin}/auth/bestaetigen?token_hash=${tokenHash}&type=recovery&next=/auth/passwort-setzen`;
+    const rendered = renderEmail("password_reset", { reset_url: resetUrl });
+    if (rendered) {
+      await sendEmail({ to: email, subject: rendered.subject, html: rendered.html }).catch(() => {});
+    }
+  }
+
   return { success: true };
+}
+
+/**
+ * Löst den Recovery-/Invite-Token aus einem E-Mail-Link erst NACH einem echten
+ * Klick ein. Wichtig gegen iOS-Mail-Vorschau & Link-Scanner, die den Link
+ * automatisch laden und so den Einmal-Token verbrennen würden (siehe
+ * /auth/bestaetigen). Der Token wird hier per token_hash übergeben, NICHT über
+ * Supabases /verify-Endpoint, der schon beim Vorschau-Laden konsumieren würde.
+ */
+export async function confirmEmailToken(tokenHash: string, type: string, next: string) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.verifyOtp({
+    token_hash: tokenHash,
+    type: type as "recovery" | "invite" | "email",
+  });
+
+  if (error) {
+    // Falls der Token bereits eingelöst wurde (z. B. Doppelklick), die Session
+    // aber bereits steht, trotzdem weiterleiten statt einen Fehler zu zeigen.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) redirect(next);
+    return { error: "Dieser Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an." };
+  }
+
+  redirect(next);
 }

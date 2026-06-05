@@ -5,6 +5,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   DEFAULT_BUFFER_MIN,
+  LESSON_DURATION_MIN,
   generateSeriesStarts,
   slotsFromStarts,
   validateSeries,
@@ -22,8 +23,7 @@ import {
   computeCancellationSettlement,
   computePackageState,
 } from "@/lib/packages";
-import { addMonths } from "@/lib/utils";
-import { getTwintBaseUrl } from "@/lib/twint";
+import { addMonths, zurichLocalToIso } from "@/lib/utils";
 import {
   syncAppointmentToCalendar,
   deleteCalendarEvent,
@@ -393,7 +393,7 @@ export async function acceptReschedule(rescheduleId: string) {
 
   const newStart = new Date(rr.proposed_start);
   const now = new Date();
-  const slotEnd = new Date(newStart.getTime() + 3600000);
+  const slotEnd = new Date(newStart.getTime() + LESSON_DURATION_MIN * 60000);
   const ctx = await loadAvailabilityContext(
     admin,
     rr.student_id,
@@ -1226,10 +1226,8 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
       if (paymentMethod === "qr") {
         await enqueueEmail(admin, "qr_invoice", basePayload);
       } else {
-        await enqueueEmail(admin, "twint_payment_request", {
-          ...basePayload,
-          twint_link: getTwintBaseUrl(),
-        });
+        // twint_link wird beim Versand aus Betrag + Lektionsdatum gebaut.
+        await enqueueEmail(admin, "twint_payment_request", basePayload);
       }
     }
   }
@@ -1318,14 +1316,22 @@ export async function confirmInvoicePayment(invoiceId: string) {
     .maybeSingle();
 
   if (profile?.email) {
-    await sendEmailNow(admin, "payment_confirmed", {
-      to: profile.email,
-      student_name: `${profile.vorname} ${profile.nachname}`,
-      student_id: inv.student_id,
-      lesson_date: inv.lesson_date,
-      amount: inv.amount,
-      invoice_number: inv.invoice_number,
-    });
+    const isSettlement = !inv.lesson_date;
+    if (isSettlement) {
+      await sendEmailNow(admin, "package_settlement_paid", {
+        student_id: inv.student_id,
+        amount: inv.amount,
+      });
+    } else {
+      await sendEmailNow(admin, "payment_confirmed", {
+        to: profile.email,
+        student_name: `${profile.vorname} ${profile.nachname}`,
+        student_id: inv.student_id,
+        lesson_date: inv.lesson_date,
+        amount: inv.amount,
+        invoice_number: inv.invoice_number,
+      });
+    }
   }
 
   revalidatePath("/admin/zahlungen");
@@ -1414,13 +1420,13 @@ export async function resendPaymentEmail(invoiceId: string) {
       invoice_id: invoiceId,
     });
   } else {
+    // twint_link wird beim Versand aus Betrag + Lektionsdatum gebaut.
     await sendEmailNow(admin, "twint_payment_request", {
       to: profile.email,
       student_name: studentName,
       student_id: inv.student_id,
       lesson_date: inv.lesson_date,
       amount: inv.amount,
-      twint_link: getTwintBaseUrl(),
       invoice_number: inv.invoice_number,
       invoice_id: invoiceId,
     });
@@ -1552,5 +1558,216 @@ export async function updateAnfrageStatus(id: string, status: string) {
     .eq("id", id);
   if (error) return { error: "Status konnte nicht aktualisiert werden." };
   revalidatePath("/admin/anfragen");
+  return { success: true };
+}
+
+// ── Gruppenkurse ─────────────────────────────────────────────────────────────
+
+import {
+  recomputeSessionDuration,
+  adminCreateGroupSessions,
+} from "@/lib/group-booking";
+import { normalizePriceTiers } from "@/lib/group-courses";
+
+export async function createGroupCourse(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const title = (formData.get("title") as string)?.trim();
+  if (!title) return { error: "Titel erforderlich." };
+
+  const maxParticipants = Number(formData.get("max_participants") ?? 4);
+  const longDurationFrom = Number(formData.get("long_duration_from") ?? 3);
+  const shortMinutes = Number(formData.get("short_minutes") ?? 45);
+  const longMinutes = Number(formData.get("long_minutes") ?? 90);
+  const description = (formData.get("description") as string)?.trim() || null;
+
+  let priceTiers: Record<string, number>;
+  try {
+    priceTiers = normalizePriceTiers(JSON.parse(formData.get("price_tiers") as string ?? "{}"));
+  } catch {
+    return { error: "Ungültige Preis-Tiers (JSON erwartet)." };
+  }
+  if (Object.keys(priceTiers).length === 0) return { error: "Mindestens ein Preis-Tier erforderlich." };
+
+  const admin = await createAdminClient();
+  const { error } = await admin.from("group_courses").insert({
+    title,
+    description,
+    max_participants: maxParticipants,
+    long_duration_from: longDurationFrom,
+    short_minutes: shortMinutes,
+    long_minutes: longMinutes,
+    price_tiers: priceTiers,
+    status: "active",
+  });
+  if (error) return { error: "Kurs konnte nicht erstellt werden." };
+
+  revalidatePath("/admin/gruppenkurse");
+  return { success: true };
+}
+
+export async function updateGroupCourse(courseId: string, formData: FormData) {
+  const title = (formData.get("title") as string)?.trim();
+  if (!title) return { error: "Titel erforderlich." };
+
+  let priceTiers: Record<string, number>;
+  try {
+    priceTiers = normalizePriceTiers(JSON.parse(formData.get("price_tiers") as string ?? "{}"));
+  } catch {
+    return { error: "Ungültige Preis-Tiers (JSON erwartet)." };
+  }
+
+  const admin = await createAdminClient();
+  const { error } = await admin.from("group_courses").update({
+    title,
+    description: (formData.get("description") as string)?.trim() || null,
+    max_participants: Number(formData.get("max_participants")),
+    long_duration_from: Number(formData.get("long_duration_from")),
+    short_minutes: Number(formData.get("short_minutes")),
+    long_minutes: Number(formData.get("long_minutes")),
+    price_tiers: priceTiers,
+  }).eq("id", courseId);
+  if (error) return { error: "Kurs konnte nicht aktualisiert werden." };
+
+  revalidatePath("/admin/gruppenkurse");
+  revalidatePath(`/admin/gruppenkurse/${courseId}`);
+  return { success: true };
+}
+
+export async function archiveGroupCourse(courseId: string) {
+  const admin = await createAdminClient();
+  const { error } = await admin.from("group_courses").update({ status: "archived" }).eq("id", courseId);
+  if (error) return { error: "Kurs konnte nicht archiviert werden." };
+  revalidatePath("/admin/gruppenkurse");
+  return { success: true };
+}
+
+export async function planGroupSessions(courseId: string, formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const date = (formData.get("date") as string)?.trim();
+  const time = (formData.get("time") as string)?.trim();
+  if (!date || !time) return { error: "Datum und Uhrzeit erforderlich." };
+
+  // Lokale Zürcher Zeit → UTC-Instant.
+  const startIso = zurichLocalToIso(date, time);
+  if (!startIso) return { error: "Ungültiges Datum/Uhrzeit." };
+
+  const count = Math.max(1, Math.min(52, Number(formData.get("count") ?? 1)));
+  const intervalDays = Number(formData.get("interval_days") ?? 7) === 14 ? 14 : 7;
+
+  const admin = await createAdminClient();
+  const result = await adminCreateGroupSessions(admin, courseId, startIso, count, intervalDays);
+  if ("error" in result) return result;
+
+  revalidatePath("/admin/gruppenkurse");
+  revalidatePath(`/admin/gruppenkurse/${courseId}`);
+  return result;
+}
+
+export async function adminCancelGroupSession(sessionId: string) {
+  const admin = await createAdminClient();
+
+  // Teilnehmer-Termine laden.
+  const { data: appts } = await admin
+    .from("appointments")
+    .select("id, student_id, google_event_id")
+    .eq("group_session_id", sessionId)
+    .in("status", ["booked", "pending"]);
+
+  // Alle Teilnehmer-Termine absagen.
+  for (const a of appts ?? []) {
+    await admin.from("appointments").update({ status: "cancelled" }).eq("id", a.id);
+    if (a.google_event_id) {
+      await deleteCalendarEvent(admin, a.id).catch(() => null);
+    }
+  }
+
+  // Pending Payment-Mails canceln.
+  await admin
+    .from("scheduled_emails")
+    .update({ status: "cancelled" })
+    .eq("status", "pending")
+    .contains("payload", { group_session_id: sessionId });
+
+  // Session absagen.
+  const { error } = await admin
+    .from("group_sessions")
+    .update({ status: "cancelled" })
+    .eq("id", sessionId);
+  if (error) return { error: "Session konnte nicht abgesagt werden." };
+
+  // Teilnehmer benachrichtigen.
+  for (const a of appts ?? []) {
+    await sendEmailNow(admin, "appointment_cancelled_by_admin", {
+      student_id: a.student_id,
+    }).catch(() => null);
+  }
+
+  revalidatePath("/admin/gruppenkurse");
+  return { success: true };
+}
+
+export async function adminRemoveParticipant(appointmentId: string) {
+  const admin = await createAdminClient();
+
+  const { data: appt } = await admin
+    .from("appointments")
+    .select("id, student_id, group_session_id, google_event_id")
+    .eq("id", appointmentId)
+    .maybeSingle();
+  if (!appt?.group_session_id) return { error: "Termin nicht gefunden." };
+
+  const sessionId = appt.group_session_id as string;
+
+  // Termin absagen.
+  await admin.from("appointments").update({ status: "cancelled" }).eq("id", appointmentId);
+
+  // Google-Kalender-Event löschen.
+  if (appt.google_event_id) {
+    await deleteCalendarEvent(admin, appointmentId).catch(() => null);
+  }
+
+  // Pending Payment-Mail für diesen Termin canceln.
+  await admin
+    .from("scheduled_emails")
+    .update({ status: "cancelled" })
+    .eq("status", "pending")
+    .contains("payload", { appointment_id: appointmentId });
+
+  // Session + andere Teilnehmer-Termine neu berechnen.
+  const { data: session } = await admin
+    .from("group_sessions")
+    .select("id, course_id, start_at, end_at, status")
+    .eq("id", sessionId)
+    .maybeSingle();
+  const { data: course } = session
+    ? await admin.from("group_courses").select("*").eq("id", session.course_id).maybeSingle()
+    : { data: null };
+
+  if (session && course) {
+    const remaining = await admin
+      .from("appointments")
+      .select("id", { count: "exact", head: true })
+      .eq("group_session_id", sessionId)
+      .in("status", ["booked", "completed"]);
+
+    if ((remaining.count ?? 0) === 0) {
+      await admin.from("group_sessions").update({ status: "cancelled" }).eq("id", sessionId);
+    } else {
+      await recomputeSessionDuration(admin, session as Parameters<typeof recomputeSessionDuration>[1], course as Parameters<typeof recomputeSessionDuration>[2]);
+    }
+  }
+
+  // Schüler benachrichtigen.
+  await sendEmailNow(admin, "appointment_cancelled_by_admin", {
+    student_id: appt.student_id,
+  }).catch(() => null);
+
+  revalidatePath("/admin/gruppenkurse");
   return { success: true };
 }

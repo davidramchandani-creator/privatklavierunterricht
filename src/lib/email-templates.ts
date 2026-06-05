@@ -555,6 +555,172 @@ export function renderEmail(
       return { subject, html: baseWrapper(content) };
     }
 
+    case "group_session_created": {
+      const courseTitle = String(payload.course_title ?? "Gruppenkurs");
+      const startAt = String(payload.start_at ?? "");
+      const subject = `Gruppenlektion eröffnet – ${courseTitle}`;
+      const content = `
+        <p style="margin:0 0 16px;">Hallo,</p>
+        <p style="margin:0 0 16px;">
+          du hast eine Gruppenlektion für <strong>${courseTitle}</strong> eröffnet:
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Termin</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${startAt ? fmtDateTime(startAt) : "–"}</td>
+          </tr>
+        </table>
+        <p style="margin:0 0 16px;">
+          Andere Schüler können dieser Lektion noch beitreten. Je mehr Teilnehmer,
+          desto günstiger wird der Preis pro Person. Den Betrag erhältst du erst
+          nach der Lektion.
+        </p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Liebe Grüsse<br/>David Ramchandani
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "group_session_joined": {
+      const courseTitle = String(payload.course_title ?? "Gruppenkurs");
+      const startAt = String(payload.start_at ?? "");
+      const subject = `Anmeldung bestätigt – ${courseTitle}`;
+      const content = `
+        <p style="margin:0 0 16px;">Hallo,</p>
+        <p style="margin:0 0 16px;">
+          du bist für die Gruppenlektion <strong>${courseTitle}</strong> angemeldet:
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Termin</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${startAt ? fmtDateTime(startAt) : "–"}</td>
+          </tr>
+        </table>
+        <p style="margin:0 0 16px;">
+          Den Betrag (abhängig von der Teilnehmerzahl) erhältst du erst nach der Lektion.
+        </p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Liebe Grüsse<br/>David Ramchandani
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "group_session_left": {
+      const startAt = String(payload.start_at ?? "");
+      const subject = "Abmeldung bestätigt – Gruppenlektion";
+      const content = `
+        <p style="margin:0 0 16px;">Hallo,</p>
+        <p style="margin:0 0 16px;">
+          deine Abmeldung von der Gruppenlektion${startAt ? ` am <strong>${fmtDateTime(startAt)}</strong>` : ""} ist bestätigt.
+          Es entstehen dir dafür keine Kosten.
+        </p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Liebe Grüsse<br/>David Ramchandani
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "group_session_admin": {
+      const studentName = String(payload.student_name ?? "Ein Schüler");
+      const courseTitle = payload.course_title ? String(payload.course_title) : null;
+      const startAt = String(payload.start_at ?? "");
+      const kind = String(payload.kind ?? "");
+      const verb =
+        kind === "created"
+          ? "hat eine Gruppenlektion eröffnet"
+          : kind === "joined"
+            ? "ist einer Gruppenlektion beigetreten"
+            : "hat sich von einer Gruppenlektion abgemeldet";
+      const subject = `Gruppenkurs – ${studentName} ${verb}`;
+      const content = `
+        <p style="margin:0 0 16px;">Hallo David,</p>
+        <p style="margin:0 0 16px;">
+          <strong>${studentName}</strong> ${verb}${courseTitle ? ` (${courseTitle})` : ""}:
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Termin</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${startAt ? fmtDateTime(startAt) : "–"}</td>
+          </tr>
+        </table>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "group_payment_request": {
+      const studentName = String(payload.student_name ?? "");
+      const courseTitle = String(payload.course_title ?? "Gruppenkurs");
+      const lessonDate = String(payload.lesson_date ?? "");
+      const amount = Number(payload.amount ?? 0);
+      const method = String(payload.method ?? "qr");
+      const invoiceNumber = payload.invoice_number ? String(payload.invoice_number) : "";
+      const participantCount = payload.participant_count != null ? Number(payload.participant_count) : null;
+      const chf = amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      const detailRows = `
+        <tr>
+          <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Gruppenkurs</td>
+          <td style="padding:6px 0;font-weight:600;font-size:14px;">${courseTitle}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0;color:#6b7280;font-size:14px;">Lektion</td>
+          <td style="padding:6px 0;font-weight:600;font-size:14px;">${lessonDate ? fmtDateTime(lessonDate) : "–"}</td>
+        </tr>
+        ${participantCount != null ? `<tr>
+          <td style="padding:6px 0;color:#6b7280;font-size:14px;">Teilnehmer</td>
+          <td style="padding:6px 0;font-size:14px;">${participantCount}</td>
+        </tr>` : ""}
+        <tr>
+          <td style="padding:6px 0;color:#6b7280;font-size:14px;">Betrag</td>
+          <td style="padding:6px 0;font-weight:700;font-size:16px;color:#1C244B;">CHF ${chf}</td>
+        </tr>
+        ${invoiceNumber ? `<tr>
+          <td style="padding:6px 0;color:#6b7280;font-size:14px;">Referenz</td>
+          <td style="padding:6px 0;font-size:14px;">${invoiceNumber}</td>
+        </tr>` : ""}
+      `;
+
+      const payBlock =
+        method === "twint"
+          ? `<p style="margin:0 0 24px;">
+              <a href="${String(payload.twint_link ?? "#")}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
+                <img alt="Mit TWINT bezahlen" src="https://go.twint.ch/static/img/button_dark_en.svg" style="height:58px;width:auto;border:none;" />
+              </a>
+            </p>`
+          : `<p style="margin:0 0 24px;">
+              <a href="${String(payload.pdf_link ?? "#")}"
+                 style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-size:15px;font-weight:700;">
+                Rechnung als PDF herunterladen
+              </a>
+            </p>`;
+
+      const subject = `Zahlungsaufforderung – Gruppenlektion ${courseTitle}`;
+      const content = `
+        <p style="margin:0 0 16px;">Hallo ${studentName ? studentName.split(" ")[0] : ""},</p>
+        <p style="margin:0 0 16px;">
+          deine Gruppenlektion hat stattgefunden – vielen Dank! Bitte begleiche den Betrag.
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
+          ${detailRows}
+        </table>
+        ${payBlock}
+        <p style="margin:0 0 16px;">Nach der Zahlung bitte im Portal bestätigen:</p>
+        <p style="margin:0 0 24px;">
+          <a href="${APP_URL}/schueler/portal#zahlungen"
+             style="display:inline-block;background-color:#f3f5f8;color:#1C244B;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;border:1px solid #e5e7eb;">
+            Zahlung bestätigen
+          </a>
+        </p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Liebe Grüsse<br/>David Ramchandani
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
     case "payment_confirmed": {
       const studentName = String(payload.student_name ?? "");
       const lessonDate = String(payload.lesson_date ?? "");
@@ -806,6 +972,31 @@ export function renderEmail(
         <p style="margin:0;color:#6b7280;font-size:13px;">
           Liebe Grüsse<br/>David Ramchandani
         </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "password_reset": {
+      const resetUrl = String(payload.reset_url ?? "");
+      const subject = "Passwort zurücksetzen";
+      const content = `
+        <p style="margin:0 0 16px;">Hallo,</p>
+        <p style="margin:0 0 24px;">
+          wir haben eine Anfrage erhalten, dein Passwort zurückzusetzen.
+          Klicke auf den Button, um ein neues Passwort festzulegen:
+        </p>
+        <p style="text-align:center;margin:0 0 24px;">
+          <a href="${resetUrl}"
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;
+                    padding:13px 32px;border-radius:8px;font-size:15px;font-weight:600;">
+            Passwort zurücksetzen
+          </a>
+        </p>
+        <p style="margin:0 0 16px;font-size:13px;color:#6b7280;">
+          Der Link ist <strong>60 Minuten</strong> gültig. Falls du keine Zurücksetzung
+          angefragt hast, kannst du diese E-Mail ignorieren – dein Passwort bleibt unverändert.
+        </p>
+        <p style="margin:0;">Liebe Grüsse<br/>David Ramchandani</p>
       `;
       return { subject, html: baseWrapper(content) };
     }

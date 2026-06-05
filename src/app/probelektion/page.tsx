@@ -7,10 +7,10 @@ import {
   Calendar,
   CheckCircle2,
   Loader2,
-  Music,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import Logo from "@/components/layout/Logo";
 import { getPublicSlots, submitAnfrage, type PublicSlot } from "./actions";
 
 export default function ProbelektionPage() {
@@ -53,21 +53,22 @@ export default function ProbelektionPage() {
   return (
     <div className="min-h-screen bg-surface">
       {/* Header */}
-      <header className="bg-white/90 backdrop-blur-md border-b border-[#EAECEF] sticky top-0 z-40">
+      <header className="bg-white border-b border-[#EAECEF] sticky top-0 z-40">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 text-navy-900">
-            <span className="w-9 h-9 rounded-xl bg-navy-900 flex items-center justify-center shadow-sm">
-              <Music className="w-4 h-4 text-white" />
-            </span>
-            <span className="font-800 text-base hidden sm:block tracking-tight">David</span>
+          <Link href="/" className="flex items-center text-navy-900 hover:opacity-80 transition-opacity">
+            <Logo className="h-6 w-auto" />
           </Link>
-          <Link href="/" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
-            ← Zurück zur Startseite
+          <Link
+            href="/"
+            className="press inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-navy-900 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Zur Startseite
           </Link>
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-10 space-y-8">
+      <main key={step} className="max-w-3xl mx-auto px-4 py-10 space-y-8 animate-enter-up">
         {step === "done" ? (
           <div className="bg-white rounded-2xl border border-[#EAECEF] shadow-sm p-10 text-center space-y-4">
             <div className="w-16 h-16 bg-status-paid/10 rounded-2xl flex items-center justify-center mx-auto">
@@ -127,14 +128,16 @@ export default function ProbelektionPage() {
                 <button
                   onClick={() => setWeekOffset((w) => w - 1)}
                   disabled={weekOffset <= 0}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                  className="press p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                  aria-label="Vorherige Woche"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="text-sm font-500 text-gray-600">{weekLabel}</span>
+                <span key={weekOffset} className="text-sm font-600 text-navy-900 animate-fade-in">{weekLabel}</span>
                 <button
                   onClick={() => setWeekOffset((w) => w + 1)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="press p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                  aria-label="Nächste Woche"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -151,7 +154,7 @@ export default function ProbelektionPage() {
                   <p className="text-xs mt-1">Nächste Woche versuchen →</p>
                 </div>
               ) : (
-                <>
+                <div key={weekOffset} className="animate-enter-right">
                   {/* Mobile: flat list grouped by day */}
                   <div className="sm:hidden space-y-4">
                     {days.slice(0, 5).map((d) => {
@@ -179,9 +182,9 @@ export default function ProbelektionPage() {
                                 <button
                                   key={slot.beginn}
                                   onClick={() => setSelectedSlot(isSelected ? null : slot)}
-                                  className={`text-sm py-2.5 px-3 rounded-xl font-500 transition-colors ${
+                                  className={`press text-sm py-2.5 px-3 rounded-xl font-500 ${
                                     isSelected
-                                      ? "bg-navy-900 text-white shadow-sm"
+                                      ? "bg-navy-900 text-white shadow-md shadow-navy-900/20"
                                       : "bg-surface text-gray-700 hover:bg-navy-50 hover:text-navy-900"
                                   }`}
                                 >
@@ -221,9 +224,9 @@ export default function ProbelektionPage() {
                                 <button
                                   key={slot.beginn}
                                   onClick={() => setSelectedSlot(isSelected ? null : slot)}
-                                  className={`w-full text-xs py-1.5 rounded-lg font-500 transition-all duration-200 ${
+                                  className={`press w-full text-xs py-1.5 rounded-lg font-500 ${
                                     isSelected
-                                      ? "bg-navy-900 text-white shadow-sm"
+                                      ? "bg-navy-900 text-white shadow-md shadow-navy-900/20"
                                       : "bg-surface text-gray-700 hover:bg-navy-50 hover:text-navy-900"
                                   }`}
                                 >
@@ -236,11 +239,11 @@ export default function ProbelektionPage() {
                       );
                     })}
                   </div>
-                </>
+                </div>
               )}
 
               {selectedSlot && (
-                <p className="text-xs text-navy-900 bg-navy-50 rounded-xl px-3 py-2 font-500">
+                <p className="text-xs text-navy-900 bg-navy-50 rounded-xl px-3 py-2 font-500 animate-scale-in">
                   Gewählt:{" "}
                   {new Date(selectedSlot.beginn).toLocaleDateString("de-CH", {
                     timeZone: "Europe/Zurich",

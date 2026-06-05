@@ -21,5 +21,11 @@ export async function GET(request: Request) {
     if (!error) return NextResponse.redirect(`${origin}${next}`);
   }
 
+  // Fällt der Token-Tausch fehl (z. B. weil eine iOS-Mail-Vorschau den Einmal-
+  // Token bereits konsumiert hat), aber es besteht schon eine gültige Session,
+  // leiten wir trotzdem weiter statt einen Fehler anzuzeigen.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) return NextResponse.redirect(`${origin}${next}`);
+
   return NextResponse.redirect(`${origin}/auth/login?error=link_ungueltig`);
 }

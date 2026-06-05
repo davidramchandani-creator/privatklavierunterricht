@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Music, Eye, EyeOff, Loader2, CheckCircle2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, CheckCircle2 } from "lucide-react";
+import Logo from "@/components/layout/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,11 +63,8 @@ export default function PasswortSetzenPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2.5 text-navy-900 hover:opacity-80 transition-opacity">
-            <span className="w-11 h-11 rounded-xl bg-navy-900 flex items-center justify-center shadow-sm">
-              <Music className="w-5 h-5 text-gold-400" />
-            </span>
-            <span className="font-800 text-xl tracking-tight">David</span>
+          <Link href="/" className="inline-flex items-center text-navy-900 hover:opacity-80 transition-opacity">
+            <Logo className="h-9 w-auto" withText textClassName="text-lg" />
           </Link>
           <h1 className="mt-6 text-2xl font-800 text-navy-900 tracking-tight">Passwort festlegen</h1>
           <p className="text-gray-500 text-sm mt-1">Wähle ein sicheres Passwort für dein Konto</p>

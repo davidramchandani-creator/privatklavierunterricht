@@ -1,6 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Music } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export default function UeberMichTeaser() {
   return (
@@ -9,15 +10,15 @@ export default function UeberMichTeaser() {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Bild */}
           <div className="relative order-2 lg:order-1">
-            <div className="relative aspect-[4/5] max-w-md mx-auto lg:mx-0 rounded-3xl overflow-hidden bg-gray-100 ring-1 ring-[#EAECEF]">
-                {/* Gradient placeholder – replace with Image once david.jpg is in /public */}
-              {/* <Image src="/david.jpg" alt="David – Klavierlehrer" fill className="object-cover" /> */}
-              <div className="absolute inset-0 bg-gradient-to-br from-navy-900 to-navy-700 flex items-center justify-center">
-                <div className="text-center text-white/40">
-                  <Music className="w-16 h-16 mx-auto mb-3" />
-                  <p className="text-sm">Foto kommt</p>
-                </div>
-              </div>
+            <div className="relative aspect-[4/5] max-w-md mx-auto lg:mx-0 rounded-3xl overflow-hidden bg-surface ring-1 ring-[#EAECEF]">
+              <Image
+                src="/david-ramchandani-portrait-720-762.jpg"
+                alt="David Ramchandani – dein Klavierlehrer"
+                fill
+                sizes="(max-width: 1024px) 100vw, 28rem"
+                className="object-cover object-top"
+                priority
+              />
             </div>
 
             {/* Floating stat */}

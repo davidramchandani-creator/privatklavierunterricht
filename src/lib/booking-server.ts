@@ -25,7 +25,11 @@ export async function loadAvailabilityContext(
   fromInstant: Date,
   toInstant: Date,
   now: Date = new Date(),
-  opts: { skipLeadTime?: boolean; excludeAppointmentId?: string } = {}
+  opts: {
+    skipLeadTime?: boolean;
+    excludeAppointmentId?: string;
+    excludeAppointmentIds?: string[];
+  } = {}
 ): Promise<AvailabilityContext> {
   // Termine etwas grosszügiger laden, damit Puffer an den Rändern greifen.
   const apptFrom = new Date(fromInstant.getTime() - 86400000).toISOString();
@@ -44,8 +48,15 @@ export async function loadAvailabilityContext(
   if (opts.excludeAppointmentId) {
     apptQuery = apptQuery.neq("id", opts.excludeAppointmentId);
   }
+  if (opts.excludeAppointmentIds?.length) {
+    apptQuery = apptQuery.not(
+      "id",
+      "in",
+      `(${opts.excludeAppointmentIds.join(",")})`
+    );
+  }
 
-  const [apptRes, absRes, blockRes, ruleRes, availRes] = await Promise.all([
+  const [apptRes, absRes, blockRes, ruleRes, availRes, groupSessionRes] = await Promise.all([
     apptQuery,
     admin
       .from("absences")
@@ -63,6 +74,13 @@ export async function loadAvailabilityContext(
     admin
       .from("admin_verfuegbarkeit")
       .select("wochentag, beginn_zeit, ende_zeit, aktiv"),
+    // Admin-geplante Gruppensessions blockieren Zeitslots auch ohne Teilnehmer.
+    admin
+      .from("group_sessions")
+      .select("start_at, end_at")
+      .in("status", ["open", "full"])
+      .gte("start_at", apptFrom)
+      .lte("start_at", apptTo),
   ]);
 
   // Vom Admin gepflegte Verfügbarkeit → Fenster-Map (nur aktive Tage).
@@ -84,16 +102,22 @@ export async function loadAvailabilityContext(
     }
   }
 
-  const appointments: ExistingAppointment[] = (apptRes.data ?? []).map(
-    (a: Record<string, unknown>) => {
+  const appointments: ExistingAppointment[] = [
+    ...(apptRes.data ?? []).map((a: Record<string, unknown>) => {
       const prof = a.profiles as { buffer_time_minutes?: number } | null;
       return {
         start_at: a.start_at as string,
         end_at: a.end_at as string,
         bufferMinutes: prof?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN,
       };
-    }
-  );
+    }),
+    // Geplante Gruppensessions ohne Teilnehmer als Blocker eintragen.
+    ...(groupSessionRes.data ?? []).map((s: Record<string, unknown>) => ({
+      start_at: s.start_at as string,
+      end_at: s.end_at as string,
+      bufferMinutes: DEFAULT_BUFFER_MIN,
+    })),
+  ];
 
   return {
     studentId,
