@@ -79,6 +79,14 @@
   border-color: hsl(var(--border));
 }
 
+/* iOS-Zoom-Fix: Safari zoomt automatisch rein wenn font-size < 16px.
+   Nur auf Touch-Geräten aktiv, damit Desktop-Styling unverändert bleibt. */
+@supports (-webkit-touch-callout: none) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
