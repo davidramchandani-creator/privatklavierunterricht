@@ -1,0 +1,38 @@
+{
+  "name": "Privatklavierunterricht David Ramchandani",
+  "short_name": "Klavierunterricht",
+  "description": "Schülerportal & Admin – Privatklavierunterricht David Ramchandani",
+  "start_url": "/schueler/portal",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F3F5F8",
+  "theme_color": "#1C244B",
+  "lang": "de",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Schülerportal",
+      "url": "/schueler/portal",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Admin",
+      "url": "/admin",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

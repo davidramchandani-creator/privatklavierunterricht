@@ -1,6 +1,18 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LogOut } from "lucide-react";
+import type { Metadata } from "next";
+import PwaInit from "@/components/PwaInit";
+
+export const metadata: Metadata = {
+  manifest: "/manifest.json",
+  themeColor: "#1C244B",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Admin – Klavierunterricht",
+  },
+};
 import { logout } from "@/app/auth/actions";
 import Logo from "@/components/layout/Logo";
 import AdminMobileMenu from "./_components/AdminMobileMenu";
@@ -29,6 +41,8 @@ export default async function AdminLayout({
   if (profile?.role !== "admin") redirect("/");
 
   return (
+    <>
+    <PwaInit />
     <div className="min-h-screen bg-gray-50 flex">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-60 bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-30">
@@ -88,5 +102,6 @@ export default async function AdminLayout({
 
       <AdminBottomNav />
     </div>
+    </>
   );
 }
