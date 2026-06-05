@@ -89,29 +89,29 @@ export default async function ZahlungenPage({
     .reduce((sum, i) => sum + Number(i.amount ?? 0), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-2xl font-800 text-[#1C244B]">Zahlungen</h1>
         <BulkDeleteArchivedButton count={archivedCount ?? 0} />
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-4 max-w-2xl">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-          <p className="text-xs text-gray-400 font-600 uppercase tracking-wide mb-1">Offen</p>
-          <p className="text-xl font-800 text-amber-600">{fmtCHF(totalOpen)}</p>
+      <div className="grid grid-cols-3 gap-2.5 sm:gap-4 max-w-2xl">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3 sm:p-4 min-w-0">
+          <p className="text-[10px] sm:text-xs text-gray-400 font-600 uppercase tracking-wide mb-1 truncate">Offen</p>
+          <p className="text-base sm:text-xl font-800 text-amber-600 leading-tight tabular-nums">{fmtCHF(totalOpen)}</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-          <p className="text-xs text-gray-400 font-600 uppercase tracking-wide mb-1">Wird geprüft</p>
-          <p className="text-xl font-800 text-blue-600">{fmtCHF(totalPending)}</p>
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3 sm:p-4 min-w-0">
+          <p className="text-[10px] sm:text-xs text-gray-400 font-600 uppercase tracking-wide mb-1 truncate">Wird geprüft</p>
+          <p className="text-base sm:text-xl font-800 text-blue-600 leading-tight tabular-nums">{fmtCHF(totalPending)}</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-          <p className="text-xs text-gray-400 font-600 uppercase tracking-wide mb-1">Bezahlt</p>
-          <p className="text-xl font-800 text-emerald-600">{fmtCHF(totalPaid)}</p>
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3 sm:p-4 min-w-0">
+          <p className="text-[10px] sm:text-xs text-gray-400 font-600 uppercase tracking-wide mb-1 truncate">Bezahlt</p>
+          <p className="text-base sm:text-xl font-800 text-emerald-600 leading-tight tabular-nums">{fmtCHF(totalPaid)}</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5 min-w-0">
         {/* Filter tabs */}
         <div className="flex flex-wrap gap-2 mb-5">
           {FILTERS.map((f) => (

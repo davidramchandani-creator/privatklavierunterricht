@@ -15,7 +15,6 @@ export const metadata: Metadata = {
 };
 import { logout } from "@/app/auth/actions";
 import Logo from "@/components/layout/Logo";
-import AdminMobileMenu from "./_components/AdminMobileMenu";
 import { AdminNavLinks } from "./_components/AdminNav";
 import AdminBottomNav from "./_components/AdminBottomNav";
 import AdminPageTransition from "./_components/AdminPageTransition";
@@ -69,19 +68,7 @@ export default async function AdminLayout({
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 md:ml-60 flex flex-col min-h-screen">
-        {/* Top bar (mobile) */}
-        <header
-          className="liquid-glass-bar md:hidden sticky top-0 z-20 min-h-14 flex items-center justify-between px-4"
-          style={{ paddingTop: "env(safe-area-inset-top)" }}
-        >
-          <div className="flex items-center gap-2 text-[#1C244B]">
-            <Logo className="h-6 w-auto" />
-            <span className="font-700 text-[#1C244B] text-sm">Admin</span>
-          </div>
-          <AdminMobileMenu />
-        </header>
-
+      <div className="flex-1 min-w-0 md:ml-60 flex flex-col min-h-screen">
         {/* Desktop top bar */}
         <header className="hidden md:flex bg-white border-b border-gray-200 h-14 items-center justify-between px-6 sticky top-0 z-20">
           <span className="text-sm font-500 text-gray-400">
@@ -98,7 +85,7 @@ export default async function AdminLayout({
           </form>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 pb-28 md:pb-6">
+        <main className="flex-1 px-4 md:px-6 pb-28 md:pb-6 pt-[max(env(safe-area-inset-top),1rem)] md:pt-6">
           <AdminPageTransition>{children}</AdminPageTransition>
         </main>
       </div>
