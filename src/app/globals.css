@@ -232,6 +232,15 @@ h1, h2, h3, h4, h5, h6 {
     0 4px 12px -4px rgba(28, 36, 75, 0.18);
 }
 
+/* Horizontale Scroll-Leiste ohne sichtbaren Scrollbalken (Filter-Chips) */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Spinner für Pull-to-Refresh */
 @keyframes ptr-spin {
   to { transform: rotate(360deg); }

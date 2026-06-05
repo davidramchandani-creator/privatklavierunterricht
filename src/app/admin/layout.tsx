@@ -19,6 +19,7 @@ import { AdminNavLinks } from "./_components/AdminNav";
 import AdminBottomNav from "./_components/AdminBottomNav";
 import AdminPageTransition from "./_components/AdminPageTransition";
 import PullToRefresh from "@/components/PullToRefresh";
+import RealtimeRefresh from "@/components/RealtimeRefresh";
 
 export default async function AdminLayout({
   children,
@@ -43,6 +44,7 @@ export default async function AdminLayout({
   return (
     <>
     <PwaInit />
+    <RealtimeRefresh />
     <div className="min-h-screen bg-gray-50 flex">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-60 bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-30">

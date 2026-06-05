@@ -10,6 +10,7 @@ import ZahlungenSection from "./_components/ZahlungenSection";
 import ProposalCard from "./_components/ProposalCard";
 import PortalTabs from "./_components/PortalTabs";
 import PullToRefresh from "@/components/PullToRefresh";
+import RealtimeRefresh from "@/components/RealtimeRefresh";
 import { CalendarPlus } from "lucide-react";
 import { canBuyNewPackage, type Package as Paket } from "@/lib/packages";
 import { buildLessonTwintLink } from "@/lib/twint";
@@ -260,6 +261,7 @@ export default async function SchuelerPortalPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <RealtimeRefresh />
       <PortalNav vorname={vorname} />
 
       <PullToRefresh>
