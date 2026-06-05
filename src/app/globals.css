@@ -232,6 +232,11 @@ h1, h2, h3, h4, h5, h6 {
     0 4px 12px -4px rgba(28, 36, 75, 0.18);
 }
 
+/* Spinner für Pull-to-Refresh */
+@keyframes ptr-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Respektiere System-Einstellung „Bewegung reduzieren" */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

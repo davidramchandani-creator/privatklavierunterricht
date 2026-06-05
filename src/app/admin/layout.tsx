@@ -18,6 +18,7 @@ import Logo from "@/components/layout/Logo";
 import { AdminNavLinks } from "./_components/AdminNav";
 import AdminBottomNav from "./_components/AdminBottomNav";
 import AdminPageTransition from "./_components/AdminPageTransition";
+import PullToRefresh from "@/components/PullToRefresh";
 
 export default async function AdminLayout({
   children,
@@ -86,7 +87,9 @@ export default async function AdminLayout({
         </header>
 
         <main className="flex-1 px-4 md:px-6 pb-28 md:pb-6 pt-[max(env(safe-area-inset-top),1rem)] md:pt-6">
-          <AdminPageTransition>{children}</AdminPageTransition>
+          <PullToRefresh>
+            <AdminPageTransition>{children}</AdminPageTransition>
+          </PullToRefresh>
         </main>
       </div>
 
