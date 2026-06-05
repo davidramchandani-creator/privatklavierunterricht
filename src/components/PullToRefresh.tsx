@@ -19,6 +19,7 @@ export default function PullToRefresh({ children }: { children: React.ReactNode 
   const [isPending, startTransition] = useTransition();
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [atRest, setAtRest] = useState(true);
 
   const pullRef = useRef(0);
   const startY = useRef<number | null>(null);
@@ -29,6 +30,7 @@ export default function PullToRefresh({ children }: { children: React.ReactNode 
     function setPullValue(v: number) {
       pullRef.current = v;
       setPull(v);
+      if (v > 0) setAtRest(false);
     }
 
     function onStart(e: TouchEvent) {
@@ -127,10 +129,19 @@ export default function PullToRefresh({ children }: { children: React.ReactNode 
         </div>
       </div>
 
-      {/* Inhalt federt mit dem Zug nach unten */}
+      {/* Inhalt federt mit dem Zug nach unten.
+          WICHTIG: Im Ruhezustand KEIN transform setzen – ein transformierter
+          Vorfahre würde sonst position:fixed-Elemente (Modals, Action-Sheets)
+          an sich binden statt ans Viewport und damit zerschiessen. */}
       <div
+        onTransitionEnd={() => {
+          if (pullRef.current === 0 && !refreshingRef.current) setAtRest(true);
+        }}
         style={{
-          transform: `translateY(${refreshing ? TRIGGER * 0.5 : pull}px)`,
+          transform:
+            atRest && !refreshing
+              ? undefined
+              : `translateY(${refreshing ? TRIGGER * 0.5 : pull}px)`,
           transition: active.current ? "none" : "transform 0.28s cubic-bezier(0.32,0.72,0,1)",
         }}
       >

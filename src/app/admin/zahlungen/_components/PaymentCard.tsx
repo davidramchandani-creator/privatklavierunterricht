@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   Check,
@@ -69,6 +70,8 @@ type SheetAction = {
 
 export default function PaymentCard({ invoice }: { invoice: Invoice }) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [isPending, startTransition] = useTransition();
   const [sheet, setSheet] = useState<null | "more" | "reject">(null);
   const [reason, setReason] = useState("");
@@ -196,13 +199,13 @@ export default function PaymentCard({ invoice }: { invoice: Invoice }) {
           <>
             <button
               onClick={() => run(() => confirmInvoicePayment(id), "Bestätigt")}
-              className="press flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-700 text-emerald-600 active:bg-emerald-50"
+              className="press flex-1 flex items-center justify-center gap-1.5 py-3.5 text-sm font-700 text-emerald-600 active:bg-emerald-50"
             >
               <Check className="w-4 h-4" /> Bestätigen
             </button>
             <button
               onClick={() => setSheet("reject")}
-              className="press flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-700 text-red-500 active:bg-red-50"
+              className="press flex-1 flex items-center justify-center gap-1.5 py-3.5 text-sm font-700 text-red-500 active:bg-red-50"
             >
               <X className="w-4 h-4" /> Ablehnen
             </button>
@@ -212,7 +215,7 @@ export default function PaymentCard({ invoice }: { invoice: Invoice }) {
         {(status === "unpaid" || status === "rejected") && (
           <button
             onClick={() => run(() => resendPaymentEmail(id), "Erinnert")}
-            className="press flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-700 text-navy-900 active:bg-navy-50"
+            className="press flex-1 flex items-center justify-center gap-1.5 py-3.5 text-sm font-700 text-navy-900 active:bg-navy-50"
           >
             <Bell className="w-4 h-4" /> Erinnern
           </button>
@@ -221,7 +224,7 @@ export default function PaymentCard({ invoice }: { invoice: Invoice }) {
         {status === "paid" && (
           <button
             onClick={() => run(() => archiveInvoice(id), "Archiviert")}
-            className="press flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-600 text-gray-500 active:bg-gray-50"
+            className="press flex-1 flex items-center justify-center gap-1.5 py-3.5 text-sm font-600 text-gray-500 active:bg-gray-50"
           >
             <Archive className="w-4 h-4" /> Archivieren
           </button>
@@ -230,7 +233,7 @@ export default function PaymentCard({ invoice }: { invoice: Invoice }) {
         {(status === "archived" || status === "cancelled") && (
           <button
             onClick={() => run(() => hardDeleteInvoice(id), "Gelöscht")}
-            className="press flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-600 text-red-500 active:bg-red-50"
+            className="press flex-1 flex items-center justify-center gap-1.5 py-3.5 text-sm font-600 text-red-500 active:bg-red-50"
           >
             <Trash2 className="w-4 h-4" /> Löschen
           </button>
@@ -248,12 +251,13 @@ export default function PaymentCard({ invoice }: { invoice: Invoice }) {
         ) : null}
       </div>
 
-      {/* Bottom sheets */}
-      {sheet && (
-        <div className="fixed inset-0 z-50" onClick={() => setSheet(null)}>
+      {/* Bottom sheets – via Portal an document.body, damit sie nicht von
+          transformierten/overflow-hidden-Vorfahren zerschossen werden. */}
+      {mounted && sheet && createPortal(
+        <div className="fixed inset-0 z-[100]" onClick={() => setSheet(null)}>
           <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] animate-fade-in" />
           <div
-            className="liquid-glass-bar liquid-glass-bar--bottom absolute bottom-0 left-0 right-0 rounded-t-[28px] animate-slide-in"
+            className="liquid-glass-bar liquid-glass-bar--bottom absolute bottom-0 left-0 right-0 mx-auto max-w-lg rounded-t-[28px] sm:bottom-4 sm:rounded-[28px] animate-slide-in"
             style={{ paddingBottom: "max(env(safe-area-inset-bottom), 12px)" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -315,7 +319,8 @@ export default function PaymentCard({ invoice }: { invoice: Invoice }) {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
