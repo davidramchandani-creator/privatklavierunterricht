@@ -71,16 +71,8 @@ export default function PortalTabs({
   return (
     <div>
       {/* ─── Desktop: sticky segmented control ─────────────────────────────── */}
-      <div
-        className="hidden sm:block sticky top-16 z-30 -mx-5 px-5 mb-6"
-        style={{
-          background: "linear-gradient(180deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.62) 100%)",
-          backdropFilter: "blur(40px) saturate(180%)",
-          WebkitBackdropFilter: "blur(40px) saturate(180%)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.92), 0 1px 0 rgba(0,0,0,0.05), 0 4px 24px rgba(0,0,0,0.04)",
-        }}
-      >
-        <div role="tablist" className="flex gap-1 py-2">
+      <div className="hidden sm:block sticky top-[88px] z-30 mb-6">
+        <div role="tablist" className="liquid-glass inline-flex gap-1 rounded-2xl p-1.5">
           {TABS.map((t) => {
             const isActive = active === t.id;
             const badge = badgeFor(t.id);
@@ -110,66 +102,69 @@ export default function PortalTabs({
         </div>
       </div>
 
-      {/* ─── Mobile: fixed bottom tab bar ───────────────────────────────────── */}
-      <nav
-        className="fixed bottom-0 left-0 right-0 z-40 sm:hidden"
-        style={{
-          paddingBottom: "max(env(safe-area-inset-bottom), 8px)",
-          background: "linear-gradient(0deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.62) 100%)",
-          backdropFilter: "blur(40px) saturate(180%)",
-          WebkitBackdropFilter: "blur(40px) saturate(180%)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.92), 0 -1px 0 rgba(0,0,0,0.05), 0 -4px 24px rgba(0,0,0,0.04)",
-        }}
+      {/* ─── Mobile: floating Liquid-Glass capsule ──────────────────────────── */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-40 sm:hidden flex justify-center px-4 pointer-events-none"
+        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 14px)" }}
       >
-        {/* Sliding indicator pill — translates to active tab */}
-        <div className="relative flex" role="tablist">
-          {/* The moving highlight pill */}
-          <span
-            aria-hidden
-            className="absolute top-0 left-0 h-0.5 bg-navy-900 rounded-full transition-all duration-[280ms]"
-            style={{
-              width: `${100 / TABS.length}%`,
-              transform: `translateX(${activeIdx * 100}%)`,
-              transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
-            }}
-          />
+        <nav
+          role="tablist"
+          className="liquid-glass pointer-events-auto w-full max-w-sm rounded-[26px] overflow-hidden"
+        >
+          <div className="relative flex">
+            {/* Gleitende Glas-Linse hinter dem aktiven Tab */}
+            <span
+              aria-hidden
+              className="liquid-lozenge absolute rounded-[18px] transition-all duration-[340ms]"
+              style={{
+                top: 7,
+                bottom: 7,
+                left: `calc(${activeIdx} * (100% / ${TABS.length}) + 6px)`,
+                width: `calc(100% / ${TABS.length} - 12px)`,
+                transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
+              }}
+            />
 
-          {TABS.map((t) => {
-            const isActive = active === t.id;
-            const badge = badgeFor(t.id);
-            const Icon = t.icon;
-            return (
-              <button
-                key={t.id}
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => select(t.id)}
-                className="press relative flex-1 flex flex-col items-center justify-center gap-0.5 pt-3 pb-3 min-h-[60px]"
-              >
-                <div className="relative">
-                  <Icon
-                    className="w-[22px] h-[22px] transition-[color,transform] duration-200"
-                    style={{
-                      color: isActive ? "#1C244B" : "#9ca3af",
-                      transform: isActive ? "scale(1.1)" : "scale(1)",
-                      transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
-                    }}
-                  />
-                  {badge > 0 && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
-                  )}
-                </div>
-                <span
-                  className="text-[10px] font-600 transition-colors duration-200"
-                  style={{ color: isActive ? "#1C244B" : "#9ca3af" }}
+            {TABS.map((t) => {
+              const isActive = active === t.id;
+              const badge = badgeFor(t.id);
+              const Icon = t.icon;
+              return (
+                <button
+                  key={t.id}
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => select(t.id)}
+                  className="press relative z-10 flex-1 flex flex-col items-center justify-center gap-0.5 pt-2.5 pb-2.5 min-h-[58px]"
                 >
-                  {t.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+                  <div className="relative">
+                    <Icon
+                      className="w-[22px] h-[22px] transition-[color,transform] duration-200"
+                      style={{
+                        color: isActive ? "#1C244B" : "#6b7280",
+                        transform: isActive ? "scale(1.08)" : "scale(1)",
+                        transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
+                      }}
+                    />
+                    {badge > 0 && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white/70" />
+                    )}
+                  </div>
+                  <span
+                    className="text-[10px] transition-colors duration-200"
+                    style={{
+                      color: isActive ? "#1C244B" : "#6b7280",
+                      fontWeight: isActive ? 700 : 600,
+                    }}
+                  >
+                    {t.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      </div>
 
       {/* ─── Panel content ──────────────────────────────────────────────────── */}
       <div

@@ -72,14 +72,8 @@ export default async function AdminLayout({
       <div className="flex-1 md:ml-60 flex flex-col min-h-screen">
         {/* Top bar (mobile) */}
         <header
-          className="md:hidden sticky top-0 z-20 min-h-14 flex items-center justify-between px-4"
-          style={{
-            paddingTop: "env(safe-area-inset-top)",
-            background: "linear-gradient(180deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.62) 100%)",
-            backdropFilter: "blur(40px) saturate(180%)",
-            WebkitBackdropFilter: "blur(40px) saturate(180%)",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.92), 0 1px 0 rgba(0,0,0,0.05), 0 4px 24px rgba(0,0,0,0.04)",
-          }}
+          className="liquid-glass-bar md:hidden sticky top-0 z-20 min-h-14 flex items-center justify-between px-4"
+          style={{ paddingTop: "env(safe-area-inset-top)" }}
         >
           <div className="flex items-center gap-2 text-[#1C244B]">
             <Logo className="h-6 w-auto" />
@@ -104,7 +98,7 @@ export default async function AdminLayout({
           </form>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6">
+        <main className="flex-1 p-4 md:p-6 pb-28 md:pb-6">
           <AdminPageTransition>{children}</AdminPageTransition>
         </main>
       </div>

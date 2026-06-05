@@ -10,14 +10,8 @@ import Logo from "@/components/layout/Logo";
 export default function PortalNav({ vorname }: { vorname?: string }) {
   return (
     <header
-      className="sticky top-0 z-40"
-      style={{
-        paddingTop: "env(safe-area-inset-top)",
-        background: "linear-gradient(180deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.62) 100%)",
-        backdropFilter: "blur(40px) saturate(180%)",
-        WebkitBackdropFilter: "blur(40px) saturate(180%)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.92), 0 1px 0 rgba(0,0,0,0.05), 0 4px 24px rgba(0,0,0,0.04)",
-      }}
+      className="liquid-glass-bar sticky top-0 z-40"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <div className="max-w-4xl mx-auto px-5 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 text-navy-900">
