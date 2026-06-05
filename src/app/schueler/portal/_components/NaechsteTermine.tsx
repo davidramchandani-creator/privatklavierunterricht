@@ -22,6 +22,7 @@ import {
   withdrawGroupBookingRequests,
   requestReschedule,
   withdrawReschedule,
+  leaveGroupSessionAction,
   getVerfuegbareSlots,
   type AvailableSlot,
 } from "../actions";
@@ -31,6 +32,7 @@ type Appointment = {
   start_at: string;
   end_at: string;
   status: string;
+  group_session_id?: string | null;
 };
 
 type BookingRequest = {
@@ -515,12 +517,21 @@ function TerminRow({
 
   function handleStornieren() {
     if (within24h) {
-      setError("Lektionen können nur bis 24 Stunden vorher abgesagt werden.");
+      setError(
+        appointment.group_session_id
+          ? "Session kann nur bis 24 Stunden vorher verlassen werden."
+          : "Lektionen können nur bis 24 Stunden vorher abgesagt werden."
+      );
       return;
     }
     startTransition(async () => {
-      const result = await cancelAppointment(appointment.id);
-      if (result?.error) setError(result.error);
+      let result: { error?: string } | { success: boolean } | undefined;
+      if (appointment.group_session_id) {
+        result = await leaveGroupSessionAction(appointment.group_session_id);
+      } else {
+        result = await cancelAppointment(appointment.id);
+      }
+      if (result && "error" in result && result.error) setError(result.error);
       else setCancelled(true);
     });
   }
@@ -572,7 +583,14 @@ function TerminRow({
             </span>
           </div>
           <div>
-            <p className="font-600 text-gray-900 text-sm">{day}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-600 text-gray-900 text-sm">{day}</p>
+              {appointment.group_session_id && (
+                <span className="text-[10px] font-600 bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-full">
+                  Gruppenkurs
+                </span>
+              )}
+            </div>
             <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
               <Clock className="w-3 h-3" /> {timeFrom} – {timeTo} Uhr
             </p>
@@ -586,7 +604,7 @@ function TerminRow({
           >
             <Download className="w-4 h-4" />
           </button>
-          {!hasPendingReschedule && (
+          {!appointment.group_session_id && !hasPendingReschedule && (
             <button
               onClick={() => {
                 if (within24h) {
@@ -606,7 +624,11 @@ function TerminRow({
           <button
             onClick={() => {
               if (within24h) {
-                setError("Lektionen können nur bis 24 Stunden vorher abgesagt werden.");
+                setError(
+                  appointment.group_session_id
+                    ? "Session kann nur bis 24 Stunden vorher verlassen werden."
+                    : "Lektionen können nur bis 24 Stunden vorher abgesagt werden."
+                );
                 return;
               }
               setError(null);
@@ -614,7 +636,15 @@ function TerminRow({
             }}
             disabled={isPending || within24h}
             className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            title={within24h ? "Absage weniger als 24h vorher nicht möglich" : "Lektion absagen"}
+            title={
+              within24h
+                ? appointment.group_session_id
+                  ? "Verlassen weniger als 24h vorher nicht möglich"
+                  : "Absage weniger als 24h vorher nicht möglich"
+                : appointment.group_session_id
+                  ? "Session verlassen"
+                  : "Lektion absagen"
+            }
           >
             <X className="w-4 h-4" />
           </button>
@@ -623,10 +653,13 @@ function TerminRow({
 
       {confirmCancel && (
         <div className="mt-3 rounded-xl border border-red-100 bg-red-50/60 p-3">
-          <p className="text-sm font-600 text-gray-900">Lektion wirklich absagen?</p>
+          <p className="text-sm font-600 text-gray-900">
+            {appointment.group_session_id ? "Session wirklich verlassen?" : "Lektion wirklich absagen?"}
+          </p>
           <p className="text-xs text-gray-500 mt-0.5">
-            Das kann nicht rückgängig gemacht werden. Du erhältst eine Bestätigung
-            per E-Mail.
+            {appointment.group_session_id
+              ? "Du verlässt die Gruppensession. Das kann nicht rückgängig gemacht werden."
+              : "Das kann nicht rückgängig gemacht werden. Du erhältst eine Bestätigung per E-Mail."}
           </p>
           <div className="mt-3 flex gap-2">
             <button
@@ -634,7 +667,10 @@ function TerminRow({
               disabled={isPending}
               className="text-xs font-600 text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
             >
-              {isPending ? "Wird abgesagt …" : "Ja, absagen"}
+              {isPending
+                ? appointment.group_session_id ? "Wird verlassen …" : "Wird abgesagt …"
+                : appointment.group_session_id ? "Ja, verlassen" : "Ja, absagen"
+              }
             </button>
             <button
               onClick={() => setConfirmCancel(false)}

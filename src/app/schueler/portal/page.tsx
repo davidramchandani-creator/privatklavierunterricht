@@ -12,6 +12,8 @@ import PortalTabs from "./_components/PortalTabs";
 import { CalendarPlus } from "lucide-react";
 import { canBuyNewPackage, type Package as Paket } from "@/lib/packages";
 import { getTwintBaseUrl } from "@/lib/twint";
+import Gruppenkurse from "./_components/Gruppenkurse";
+import { getGroupCourses } from "./actions";
 
 export default async function SchuelerPortalPage() {
   const supabase = await createClient();
@@ -70,7 +72,7 @@ export default async function SchuelerPortalPage() {
 
   const { data: naechsteAppointments } = await supabase
     .from("appointments")
-    .select("id, start_at, end_at, status")
+    .select("id, start_at, end_at, status, group_session_id")
     .eq("student_id", user.id)
     .in("status", ["booked", "completed"])
     .gte("start_at", new Date().toISOString())
@@ -131,6 +133,8 @@ export default async function SchuelerPortalPage() {
     ...inv,
     twint_link: inv.method === "twint" ? twintBase : null,
   }));
+
+  const groupCourses = await getGroupCourses();
 
   if (!profile) {
     return (
@@ -237,6 +241,10 @@ export default async function SchuelerPortalPage() {
           <TerminBuchen maxSlots={remainingLessons} />
         </div>
       )}
+      <div className="pt-2">
+        <h2 className="text-base font-700 text-navy-900 tracking-tight mb-4">Gruppenkurse</h2>
+        <Gruppenkurse courses={groupCourses} />
+      </div>
     </div>
   );
 

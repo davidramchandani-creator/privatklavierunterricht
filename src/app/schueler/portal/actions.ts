@@ -28,6 +28,16 @@ import { loadAvailabilityContext } from "@/lib/booking-server";
 import { sendEmailNow } from "@/lib/emails-outbox";
 import { deleteCalendarEvent } from "@/lib/google-calendar";
 import { bookSeriesForStudent } from "@/lib/series-booking";
+import {
+  createGroupSession,
+  joinGroupSession,
+  leaveGroupSession,
+} from "@/lib/group-booking";
+import {
+  type GroupCourse,
+  durationMinFor,
+  pricePerPersonFor,
+} from "@/lib/group-courses";
 
 export type AvailableSlot = {
   beginn: string;
@@ -711,6 +721,205 @@ export async function buyPackage(type: "10er" | "20er", agbAccepted: boolean) {
   if (error) {
     return { error: "Paket konnte nicht gebucht werden. Bitte versuche es erneut." };
   }
+
+  revalidatePath("/schueler/portal");
+  return { success: true };
+}
+
+// ── Gruppenkurse ───────────────────────────────────────────────────────────
+
+export type GroupSessionVM = {
+  id: string;
+  start_at: string;
+  end_at: string;
+  status: string;
+  participant_count: number;
+  max_participants: number;
+  free_seats: number;
+  /** Preis pro Person, wenn ich beitrete (count + 1). */
+  join_price: number;
+  is_mine: boolean;
+};
+
+export type GroupCourseVM = {
+  id: string;
+  title: string;
+  description: string | null;
+  max_participants: number;
+  long_duration_from: number;
+  long_minutes: number;
+  short_minutes: number;
+  min_price_per_person: number;
+  price_tiers: Record<string, number>;
+  open_sessions: GroupSessionVM[];
+};
+
+/** Aktive Gruppenkurse + ihre offenen Sessionen (mit Teilnehmerzahl/Preis). */
+export async function getGroupCourses(): Promise<GroupCourseVM[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const admin = await createAdminClient();
+  const { data: courses } = await admin
+    .from("group_courses")
+    .select("*")
+    .eq("status", "active")
+    .order("title", { ascending: true });
+  if (!courses?.length) return [];
+
+  const nowIso = new Date().toISOString();
+  const { data: sessions } = await admin
+    .from("group_sessions")
+    .select("id, course_id, start_at, end_at, status")
+    .in("status", ["open", "full"])
+    .gte("start_at", nowIso)
+    .order("start_at", { ascending: true });
+
+  // Teilnehmer je Session (booked/completed) zählen.
+  const sessionIds = (sessions ?? []).map((s) => s.id);
+  const countBySession = new Map<string, number>();
+  const mineSessions = new Set<string>();
+  if (sessionIds.length) {
+    const { data: appts } = await admin
+      .from("appointments")
+      .select("group_session_id, student_id")
+      .in("group_session_id", sessionIds)
+      .in("status", ["booked", "completed"]);
+    for (const a of appts ?? []) {
+      const sid = a.group_session_id as string;
+      countBySession.set(sid, (countBySession.get(sid) ?? 0) + 1);
+      if (a.student_id === user.id) mineSessions.add(sid);
+    }
+  }
+
+  return (courses as GroupCourse[]).map((c) => {
+    const open = (sessions ?? [])
+      .filter((s) => s.course_id === c.id)
+      .map((s) => {
+        const count = countBySession.get(s.id) ?? 0;
+        return {
+          id: s.id,
+          start_at: s.start_at,
+          end_at: s.end_at,
+          status: s.status,
+          participant_count: count,
+          max_participants: c.max_participants,
+          free_seats: c.max_participants - count,
+          join_price: pricePerPersonFor(c, count + 1),
+          is_mine: mineSessions.has(s.id),
+        };
+      })
+      // Volle Sessionen, bei denen ich nicht dabei bin, ausblenden.
+      .filter((s) => s.is_mine || s.participant_count < c.max_participants);
+    return {
+      id: c.id,
+      title: c.title,
+      description: c.description,
+      max_participants: c.max_participants,
+      long_duration_from: c.long_duration_from,
+      long_minutes: c.long_minutes,
+      short_minutes: c.short_minutes,
+      min_price_per_person: pricePerPersonFor(c, 1),
+      price_tiers: c.price_tiers,
+      open_sessions: open,
+    };
+  });
+}
+
+/** Freie 45-Min-Slots einer Woche, um eine neue Gruppen-Session zu eröffnen. */
+export async function getGroupSlots(
+  courseId: string,
+  weekOffset: number
+): Promise<AvailableSlot[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const admin = await createAdminClient();
+  const { data: course } = await admin
+    .from("group_courses")
+    .select("*")
+    .eq("id", courseId)
+    .maybeSingle();
+  if (!course || course.status !== "active") return [];
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("buffer_time_minutes")
+    .eq("id", user.id)
+    .maybeSingle();
+  const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
+
+  const now = new Date();
+  const todayCal = utcToZonedDate(now);
+  const w = weekdayOf(todayCal);
+  const mondayOffset = w === 0 ? -6 : 1 - w;
+  const fromCal: CalDate = addDaysCal(todayCal, mondayOffset + weekOffset * 7);
+  const fromInstant = zonedToUtc(fromCal.y, fromCal.m, fromCal.d, 0, 0);
+  const toInstant = new Date(fromInstant.getTime() + 7 * 86400000);
+
+  const ctx = await loadAvailabilityContext(
+    admin,
+    user.id,
+    bufferMin,
+    fromInstant,
+    toInstant,
+    now
+  );
+
+  // Neue Session startet mit 1 Person → 45 Min.
+  const duration = durationMinFor(course as GroupCourse, 1);
+  return computeAvailableSlots(fromCal, 7, ctx, duration).map((s) => ({
+    beginn: s.start.toISOString(),
+    ende: s.end.toISOString(),
+  }));
+}
+
+export async function createGroupSessionAction(courseId: string, startIso: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const admin = await createAdminClient();
+  const result = await createGroupSession(admin, user.id, courseId, startIso);
+  if ("error" in result) return result;
+
+  revalidatePath("/schueler/portal");
+  return { success: true };
+}
+
+export async function joinGroupSessionAction(sessionId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const admin = await createAdminClient();
+  const result = await joinGroupSession(admin, user.id, sessionId);
+  if ("error" in result) return result;
+
+  revalidatePath("/schueler/portal");
+  return { success: true };
+}
+
+export async function leaveGroupSessionAction(sessionId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const admin = await createAdminClient();
+  const result = await leaveGroupSession(admin, user.id, sessionId);
+  if ("error" in result) return result;
 
   revalidatePath("/schueler/portal");
   return { success: true };
