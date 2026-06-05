@@ -72,6 +72,52 @@ export function zurichHour(date: string | Date): number {
   );
 }
 
+/** Offset (ms) von Europe/Zurich gegenüber UTC zum gegebenen Instant. */
+function zurichOffsetMs(instant: Date): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: APP_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(instant);
+  const m: Record<string, number> = {};
+  for (const p of parts) if (p.type !== "literal") m[p.type] = Number(p.value);
+  const asUTC = Date.UTC(
+    m.year,
+    m.month - 1,
+    m.day,
+    m.hour === 24 ? 0 : m.hour,
+    m.minute,
+    m.second
+  );
+  return asUTC - instant.getTime();
+}
+
+/**
+ * Wandelt eine Zürcher Wandzeit (Datum + Uhrzeit) in einen UTC-ISO-Instant um.
+ * DST-sicher (berücksichtigt Sommer-/Winterzeit-Übergänge).
+ * @param dateStr "YYYY-MM-DD"
+ * @param timeStr "HH:MM"
+ */
+export function zurichLocalToIso(dateStr: string, timeStr: string): string | null {
+  const [y, mo, d] = dateStr.split("-").map(Number);
+  const [hh, mm] = timeStr.split(":").map(Number);
+  if (!y || !mo || !d || hh == null || mm == null || isNaN(hh) || isNaN(mm)) {
+    return null;
+  }
+  const utcGuess = Date.UTC(y, mo - 1, d, hh, mm);
+  const offset1 = zurichOffsetMs(new Date(utcGuess));
+  let instant = utcGuess - offset1;
+  // Einmal verfeinern für DST-Grenzfälle.
+  const offset2 = zurichOffsetMs(new Date(instant));
+  if (offset2 !== offset1) instant = utcGuess - offset2;
+  return new Date(instant).toISOString();
+}
+
 export function addMonths(date: Date, months: number): Date {
   const result = new Date(date);
   result.setMonth(result.getMonth() + months);

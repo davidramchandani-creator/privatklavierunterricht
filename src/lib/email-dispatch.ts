@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendEmail } from "@/lib/email-sender";
 import { renderEmail } from "@/lib/email-templates";
 import { generateQRInvoicePdf, buildSpcData } from "@/lib/qr-invoice";
-import { getTwintBaseUrl } from "@/lib/twint";
+import { buildLessonTwintLink } from "@/lib/twint";
 import { pricePerPersonFor } from "@/lib/group-courses";
 
 export const ADMIN_RECIPIENT_TYPES = [
@@ -92,9 +92,13 @@ export async function dispatchEmail(
     if (link) extraContext.pdf_link = link;
   }
 
-  // TWINT: Acquirer-Link setzen
-  if (type === "twint_payment_request" && !payload.twint_link) {
-    extraContext.twint_link = getTwintBaseUrl();
+  // TWINT: Deep-Link mit Betrag + Zahlungszweck (gehaltene Lektion) bauen.
+  // Überschreibt einen evtl. im Payload gesetzten Basis-Link (Spec §6).
+  if (type === "twint_payment_request") {
+    extraContext.twint_link = buildLessonTwintLink(
+      Number(payload.amount ?? 0),
+      payload.lesson_date ? String(payload.lesson_date) : null
+    );
   }
 
   // Gruppenkurs-Zahlung: Preis dynamisch aus der finalen Teilnehmerzahl
@@ -263,7 +267,7 @@ async function prepareGroupPayment(
     participant_count: participantCount,
   };
   if (method === "twint") {
-    ctx.twint_link = getTwintBaseUrl();
+    ctx.twint_link = buildLessonTwintLink(amount, appt.start_at, course.title);
   } else if (invoiceId) {
     const link = await ensureInvoicePdfLink(admin, invoiceId);
     if (link) ctx.pdf_link = link;

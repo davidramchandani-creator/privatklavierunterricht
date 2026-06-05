@@ -29,13 +29,11 @@ import { sendEmailNow } from "@/lib/emails-outbox";
 import { deleteCalendarEvent } from "@/lib/google-calendar";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
-  createGroupSession,
   joinGroupSession,
   leaveGroupSession,
 } from "@/lib/group-booking";
 import {
   type GroupCourse,
-  durationMinFor,
   pricePerPersonFor,
 } from "@/lib/group-courses";
 
@@ -827,72 +825,6 @@ export async function getGroupCourses(): Promise<GroupCourseVM[]> {
       open_sessions: open,
     };
   });
-}
-
-/** Freie 45-Min-Slots einer Woche, um eine neue Gruppen-Session zu eröffnen. */
-export async function getGroupSlots(
-  courseId: string,
-  weekOffset: number
-): Promise<AvailableSlot[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
-
-  const admin = await createAdminClient();
-  const { data: course } = await admin
-    .from("group_courses")
-    .select("*")
-    .eq("id", courseId)
-    .maybeSingle();
-  if (!course || course.status !== "active") return [];
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("buffer_time_minutes")
-    .eq("id", user.id)
-    .maybeSingle();
-  const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
-
-  const now = new Date();
-  const todayCal = utcToZonedDate(now);
-  const w = weekdayOf(todayCal);
-  const mondayOffset = w === 0 ? -6 : 1 - w;
-  const fromCal: CalDate = addDaysCal(todayCal, mondayOffset + weekOffset * 7);
-  const fromInstant = zonedToUtc(fromCal.y, fromCal.m, fromCal.d, 0, 0);
-  const toInstant = new Date(fromInstant.getTime() + 7 * 86400000);
-
-  const ctx = await loadAvailabilityContext(
-    admin,
-    user.id,
-    bufferMin,
-    fromInstant,
-    toInstant,
-    now
-  );
-
-  // Neue Session startet mit 1 Person → 45 Min.
-  const duration = durationMinFor(course as GroupCourse, 1);
-  return computeAvailableSlots(fromCal, 7, ctx, duration).map((s) => ({
-    beginn: s.start.toISOString(),
-    ende: s.end.toISOString(),
-  }));
-}
-
-export async function createGroupSessionAction(courseId: string, startIso: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Nicht angemeldet." };
-
-  const admin = await createAdminClient();
-  const result = await createGroupSession(admin, user.id, courseId, startIso);
-  if ("error" in result) return result;
-
-  revalidatePath("/schueler/portal");
-  return { success: true };
 }
 
 export async function joinGroupSessionAction(sessionId: string) {

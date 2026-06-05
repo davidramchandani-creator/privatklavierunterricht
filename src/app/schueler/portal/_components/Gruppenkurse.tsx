@@ -1,13 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Users, ChevronDown, ChevronUp, Loader2, UserPlus, X, CheckCircle2 } from "lucide-react";
-import GruppenSlotPicker from "./GruppenSlotPicker";
+import { Users, Loader2, UserPlus, CheckCircle2 } from "lucide-react";
 import {
-  createGroupSessionAction,
   joinGroupSessionAction,
   type GroupCourseVM,
-  type AvailableSlot,
 } from "../actions";
 
 export default function Gruppenkurse({ courses }: { courses: GroupCourseVM[] }) {
@@ -30,8 +27,6 @@ export default function Gruppenkurse({ courses }: { courses: GroupCourseVM[] }) 
 }
 
 function KursCard({ course }: { course: GroupCourseVM }) {
-  const [showPicker, setShowPicker] = useState(false);
-
   return (
     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
       {/* Header */}
@@ -67,30 +62,14 @@ function KursCard({ course }: { course: GroupCourseVM }) {
       {/* Open sessions */}
       <div className="px-5 py-4 space-y-2.5">
         {course.open_sessions.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-2">Keine offenen Sessions – erstelle die erste!</p>
+          <p className="text-xs text-gray-400 text-center py-3">
+            Aktuell keine Termine geplant – schau bald wieder vorbei.
+          </p>
         ) : (
           course.open_sessions.map((session) => (
             <SessionRow key={session.id} session={session} />
           ))
         )}
-
-        {/* Create new session disclosure */}
-        <div className="pt-1">
-          {!showPicker ? (
-            <button
-              onClick={() => setShowPicker(true)}
-              className="flex items-center gap-2 text-xs font-600 text-[#1C244B] px-3 py-2 rounded-xl border border-[#1C244B]/20 hover:bg-[#1C244B]/5 transition-colors w-full justify-center"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              Neue Session eröffnen
-            </button>
-          ) : (
-            <CreateSessionFlow
-              course={course}
-              onClose={() => setShowPicker(false)}
-            />
-          )}
-        </div>
       </div>
     </div>
   );
@@ -183,58 +162,6 @@ function SessionRow({
           </button>
         )}
       </div>
-    </div>
-  );
-}
-
-function CreateSessionFlow({
-  course,
-  onClose,
-}: {
-  course: GroupCourseVM;
-  onClose: () => void;
-}) {
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-
-  function handleSelect(slot: AvailableSlot) {
-    setError(null);
-    startTransition(async () => {
-      const result = await createGroupSessionAction(course.id, slot.beginn);
-      if (result && "error" in result) setError(result.error);
-      else setSuccess(true);
-    });
-  }
-
-  if (success) {
-    return (
-      <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 text-xs text-emerald-700 font-500">
-        <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-        Session eröffnet! Du wirst per E-Mail bestätigt.
-      </div>
-    );
-  }
-
-  const priceHint = `Als erste Person zahlst du CHF ${course.min_price_per_person}.–/Lektion – der Preis sinkt, wenn andere beitreten.`;
-
-  return (
-    <div>
-      {isPending ? (
-        <div className="flex items-center justify-center py-6">
-          <Loader2 className="w-5 h-5 animate-spin text-[#1C244B]" />
-        </div>
-      ) : (
-        <GruppenSlotPicker
-          courseId={course.id}
-          priceHint={priceHint}
-          onSelect={handleSelect}
-          onClose={onClose}
-        />
-      )}
-      {error && (
-        <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mt-2">{error}</p>
-      )}
     </div>
   );
 }

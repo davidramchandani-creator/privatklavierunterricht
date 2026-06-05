@@ -23,8 +23,7 @@ import {
   computeCancellationSettlement,
   computePackageState,
 } from "@/lib/packages";
-import { addMonths } from "@/lib/utils";
-import { getTwintBaseUrl } from "@/lib/twint";
+import { addMonths, zurichLocalToIso } from "@/lib/utils";
 import {
   syncAppointmentToCalendar,
   deleteCalendarEvent,
@@ -1227,10 +1226,8 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
       if (paymentMethod === "qr") {
         await enqueueEmail(admin, "qr_invoice", basePayload);
       } else {
-        await enqueueEmail(admin, "twint_payment_request", {
-          ...basePayload,
-          twint_link: getTwintBaseUrl(),
-        });
+        // twint_link wird beim Versand aus Betrag + Lektionsdatum gebaut.
+        await enqueueEmail(admin, "twint_payment_request", basePayload);
       }
     }
   }
@@ -1423,13 +1420,13 @@ export async function resendPaymentEmail(invoiceId: string) {
       invoice_id: invoiceId,
     });
   } else {
+    // twint_link wird beim Versand aus Betrag + Lektionsdatum gebaut.
     await sendEmailNow(admin, "twint_payment_request", {
       to: profile.email,
       student_name: studentName,
       student_id: inv.student_id,
       lesson_date: inv.lesson_date,
       amount: inv.amount,
-      twint_link: getTwintBaseUrl(),
       invoice_number: inv.invoice_number,
       invoice_id: invoiceId,
     });
@@ -1568,6 +1565,7 @@ export async function updateAnfrageStatus(id: string, status: string) {
 
 import {
   recomputeSessionDuration,
+  adminCreateGroupSessions,
 } from "@/lib/group-booking";
 import { normalizePriceTiers } from "@/lib/group-courses";
 
@@ -1644,6 +1642,31 @@ export async function archiveGroupCourse(courseId: string) {
   if (error) return { error: "Kurs konnte nicht archiviert werden." };
   revalidatePath("/admin/gruppenkurse");
   return { success: true };
+}
+
+export async function planGroupSessions(courseId: string, formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const date = (formData.get("date") as string)?.trim();
+  const time = (formData.get("time") as string)?.trim();
+  if (!date || !time) return { error: "Datum und Uhrzeit erforderlich." };
+
+  // Lokale Zürcher Zeit → UTC-Instant.
+  const startIso = zurichLocalToIso(date, time);
+  if (!startIso) return { error: "Ungültiges Datum/Uhrzeit." };
+
+  const count = Math.max(1, Math.min(52, Number(formData.get("count") ?? 1)));
+  const intervalDays = Number(formData.get("interval_days") ?? 7) === 14 ? 14 : 7;
+
+  const admin = await createAdminClient();
+  const result = await adminCreateGroupSessions(admin, courseId, startIso, count, intervalDays);
+  if ("error" in result) return result;
+
+  revalidatePath("/admin/gruppenkurse");
+  revalidatePath(`/admin/gruppenkurse/${courseId}`);
+  return result;
 }
 
 export async function adminCancelGroupSession(sessionId: string) {

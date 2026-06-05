@@ -7,6 +7,7 @@ import { pricePerPersonFor } from "@/lib/group-courses";
 import KursForm from "../_components/KursForm";
 import { CancelSessionButton, RemoveParticipantButton } from "./_components/SessionActions";
 import { ArchiveButton } from "./_components/ArchiveButton";
+import SessionPlanForm from "./_components/SessionPlanForm";
 
 export default async function GruppenkurseDetailPage({
   params,
@@ -139,6 +140,14 @@ export default async function GruppenkurseDetailPage({
           Ab {c.long_duration_from} Pers. → {c.long_minutes} Min. (sonst {c.short_minutes} Min.)
         </p>
       </div>
+
+      {/* Termine planen */}
+      {c.status === "active" && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <h2 className="text-lg font-700 text-[#1C244B] mb-4">Termine planen</h2>
+          <SessionPlanForm courseId={c.id} />
+        </div>
+      )}
 
       {/* Aktive Sessionen */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">

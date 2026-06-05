@@ -16,6 +16,43 @@ export function buildTwintLink(amount: number, trxInfo: string): string {
   return `${TWINT_BASE_URL}&trxInfo=${encodeURIComponent(trxInfo)}&amount=${amount.toFixed(2)}`;
 }
 
+/**
+ * Baut den Zahlungszweck (trxInfo) für eine gehaltene Lektion.
+ * Erscheint in der TWINT-App als Verwendungszweck.
+ * @param lessonDate ISO-Datum der Lektion (oder null für Sonderzahlungen)
+ * @param label      optionaler Präfix (z.B. Kursname für Gruppenkurse)
+ */
+export function buildLessonTrxInfo(
+  lessonDate: string | null,
+  label?: string
+): string {
+  const prefix = label ?? "Klavierlektion";
+  if (!lessonDate) return prefix;
+  let datum = lessonDate;
+  try {
+    datum = new Intl.DateTimeFormat("de-CH", {
+      timeZone: "Europe/Zurich",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(new Date(lessonDate));
+  } catch {
+    // Fallback: roher Wert
+  }
+  return `${prefix} vom ${datum}`;
+}
+
+/**
+ * Vollständiger TWINT-Link für eine Lektion (Betrag + Zahlungszweck).
+ */
+export function buildLessonTwintLink(
+  amount: number,
+  lessonDate: string | null,
+  label?: string
+): string {
+  return buildTwintLink(amount, buildLessonTrxInfo(lessonDate, label));
+}
+
 /** Reiner TWINT-Acquirer-Link (für den offiziellen TWINT-Button). */
 export function getTwintBaseUrl(): string {
   return TWINT_BASE_URL;

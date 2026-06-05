@@ -13,7 +13,6 @@ import {
   canBuyNewPackage,
   computePackageState,
 } from "@/lib/packages";
-import { getTwintBaseUrl } from "@/lib/twint";
 import { syncAppointmentToCalendar } from "@/lib/google-calendar";
 
 /**
@@ -139,15 +138,8 @@ export async function bookSeriesForStudent(
       if (paymentMethod === "qr") {
         await enqueueEmail(admin, "qr_invoice", basePayload, sendAt);
       } else {
-        await enqueueEmail(
-          admin,
-          "twint_payment_request",
-          {
-            ...basePayload,
-            twint_link: getTwintBaseUrl(),
-          },
-          sendAt
-        );
+        // twint_link wird beim Versand aus Betrag + Lektionsdatum gebaut.
+        await enqueueEmail(admin, "twint_payment_request", basePayload, sendAt);
       }
     }
   }

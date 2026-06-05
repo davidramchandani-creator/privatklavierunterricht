@@ -11,7 +11,7 @@ import ProposalCard from "./_components/ProposalCard";
 import PortalTabs from "./_components/PortalTabs";
 import { CalendarPlus } from "lucide-react";
 import { canBuyNewPackage, type Package as Paket } from "@/lib/packages";
-import { getTwintBaseUrl } from "@/lib/twint";
+import { buildLessonTwintLink } from "@/lib/twint";
 import Gruppenkurse from "./_components/Gruppenkurse";
 import { getGroupCourses } from "./actions";
 
@@ -127,11 +127,14 @@ export default async function SchuelerPortalPage() {
       return lessonEnd <= nowMs;
     }).length ?? 0;
 
-  // Offizieller TWINT-Acquirer-Link (serverseitig, nie im Client hartcodiert).
-  const twintBase = getTwintBaseUrl();
+  // TWINT-Deep-Link je Rechnung mit Betrag + Zahlungszweck (gehaltene Lektion),
+  // serverseitig gebaut (Spec §6 – trxInfo = Lektionsinfo).
   const invoicesForPortal = (invoices ?? []).map((inv) => ({
     ...inv,
-    twint_link: inv.method === "twint" ? twintBase : null,
+    twint_link:
+      inv.method === "twint"
+        ? buildLessonTwintLink(Number(inv.amount ?? 0), inv.lesson_date)
+        : null,
   }));
 
   const groupCourses = await getGroupCourses();

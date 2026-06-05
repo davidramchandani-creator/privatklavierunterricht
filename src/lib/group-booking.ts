@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   DEFAULT_BUFFER_MIN,
   isAtLeast24hAway,
+  generateSeriesStarts,
   slotsFromStarts,
   validateSeries,
   type Slot,
@@ -127,116 +128,81 @@ async function recomputeSessionDuration(
 }
 
 /**
- * Schüler eröffnet eine neue Gruppen-Session durch Slot-Wahl. Startet mit einer
- * Person → 45 Min. Validiert gegen die Buchungs-Engine (24h-Regel gilt). Legt
- * Session + erste Teilnehmer-Termin-Zeile an und plant die Zahlungsmail auf
- * end_at. Rechnung wird erst beim Versand erstellt (dynamischer Preis).
+ * Admin plant feste Sessions für einen Kurs (einzeln oder als Serie). Legt leere
+ * `group_sessions` an (0 Teilnehmer, Dauer = Kurz-Dauer des Kurses); Schüler
+ * treten später bei. Jeder geplante Termin wird gegen die Buchungs-Engine
+ * geprüft (Verfügbarkeitsfenster, Admin-Abwesenheiten, Zeitblöcke, Kollisionen
+ * mit bestehenden Terminen). Belegte/ungültige Zeitpunkte werden übersprungen.
  */
-export async function createGroupSession(
+export async function adminCreateGroupSessions(
   admin: SupabaseClient,
-  studentId: string,
   courseId: string,
-  startIso: string
-): Promise<Result> {
+  startIso: string,
+  count: number,
+  intervalDays: number
+): Promise<{ success: true; created: number; skipped: number } | { error: string }> {
   const { data: course } = await admin
     .from("group_courses")
     .select("*")
     .eq("id", courseId)
     .maybeSingle();
-  if (!course || course.status !== "active") {
-    return { error: "Kurs nicht gefunden oder nicht aktiv." };
-  }
+  if (!course) return { error: "Kurs nicht gefunden." };
 
-  const start = new Date(startIso);
+  const first = new Date(startIso);
+  if (isNaN(first.getTime())) return { error: "Ungültiger Startzeitpunkt." };
+
   const now = new Date();
-  if (!isAtLeast24hAway(start, now)) {
-    return { error: "Gruppenlektionen können nur mindestens 24 Stunden im Voraus gebucht werden." };
-  }
+  const duration = (course as GroupCourse).short_minutes ?? 45;
+  const starts = generateSeriesStarts(first, Math.max(1, count), intervalDays);
 
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("buffer_time_minutes, vorname, nachname, email")
-    .eq("id", studentId)
-    .maybeSingle();
-  const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
+  // Platzhalter-Student-ID: so greift keine schülerspezifische Abwesenheit;
+  // Admin-Abwesenheiten, Zeitblöcke und Kollisionen werden weiterhin geprüft.
+  const NO_STUDENT = "00000000-0000-0000-0000-000000000000";
 
-  const duration = durationMinFor(course as GroupCourse, 1);
-  const [slot] = slotsFromStarts([start], duration);
+  let created = 0;
+  let skipped = 0;
+  for (const start of starts) {
+    if (start.getTime() <= now.getTime()) {
+      skipped++;
+      continue;
+    }
+    const [slot] = slotsFromStarts([start], duration);
+    const ctx = await loadAvailabilityContext(
+      admin,
+      NO_STUDENT,
+      DEFAULT_BUFFER_MIN,
+      slot.start,
+      slot.end,
+      now,
+      { skipLeadTime: true }
+    );
+    const ok = validateSeries(slot.start, 1, intervalDays, ctx, duration).ok;
+    if (!ok) {
+      skipped++;
+      continue;
+    }
 
-  const ok = await slotBookableForStudent(admin, studentId, bufferMin, slot, now, [], false);
-  if (!ok) {
-    return { error: "Dieser Zeitpunkt ist leider nicht verfügbar. Bitte wähle einen anderen." };
-  }
-
-  const { data: session, error: sessErr } = await admin
-    .from("group_sessions")
-    .insert({
+    const { error } = await admin.from("group_sessions").insert({
       course_id: courseId,
       start_at: slot.start.toISOString(),
       end_at: slot.end.toISOString(),
       status: "open",
-      created_by: studentId,
-    })
-    .select("id, start_at, end_at")
-    .single();
-  if (sessErr || !session) {
-    return { error: "Session konnte nicht erstellt werden." };
+      created_by: null,
+    });
+    if (error) {
+      skipped++;
+      continue;
+    }
+    created++;
   }
 
-  const { data: appt, error: apptErr } = await admin
-    .from("appointments")
-    .insert({
-      student_id: studentId,
-      package_id: null,
-      group_session_id: session.id,
-      start_at: slot.start.toISOString(),
-      end_at: slot.end.toISOString(),
-      status: "booked",
-      source: "group",
-    })
-    .select("id")
-    .single();
-  if (apptErr || !appt) {
-    // Session ohne Teilnehmer wieder entfernen.
-    await admin.from("group_sessions").delete().eq("id", session.id);
-    return { error: "Anmeldung konnte nicht gespeichert werden." };
+  if (created === 0) {
+    return {
+      error:
+        "Keine Sessions erstellt – die gewählten Zeiten liegen ausserhalb der Verfügbarkeit, sind belegt oder in der Vergangenheit.",
+    };
   }
-
-  if (profile?.email) {
-    await enqueueEmail(
-      admin,
-      "group_payment_request",
-      {
-        to: profile.email,
-        student_id: studentId,
-        group_session_id: session.id,
-        appointment_id: appt.id,
-      },
-      new Date(session.end_at)
-    );
-  }
-
-  await syncAppointmentToCalendar(admin, appt.id);
-
-  // Wenn Kurs schon mit 1 Person voll wäre (max_participants=1), markieren.
-  if (isSessionFull(course as GroupCourse, 1)) {
-    await admin.from("group_sessions").update({ status: "full" }).eq("id", session.id);
-  }
-
-  await sendEmailNow(admin, "group_session_created", {
-    to: profile?.email,
-    student_id: studentId,
-    course_title: course.title,
-    start_at: session.start_at,
-  });
-  await sendEmailNow(admin, "group_session_admin", {
-    student_name: profile ? `${profile.vorname} ${profile.nachname}` : "Schüler",
-    course_title: course.title,
-    start_at: session.start_at,
-    kind: "created",
-  });
-
-  return { success: true, sessionId: session.id };
+  return { success: true, created, skipped };
 }
 
 /**
