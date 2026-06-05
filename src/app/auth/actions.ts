@@ -71,3 +71,29 @@ export async function requestPasswordReset(formData: FormData) {
   // Immer Erfolg zurückgeben (kein User-Enumeration)
   return { success: true };
 }
+
+/**
+ * Löst den Recovery-/Invite-Token aus einem E-Mail-Link erst NACH einem echten
+ * Klick ein. Wichtig gegen iOS-Mail-Vorschau & Link-Scanner, die den Link
+ * automatisch laden und so den Einmal-Token verbrennen würden (siehe
+ * /auth/bestaetigen). Der Token wird hier per token_hash übergeben, NICHT über
+ * Supabases /verify-Endpoint, der schon beim Vorschau-Laden konsumieren würde.
+ */
+export async function confirmEmailToken(tokenHash: string, type: string, next: string) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.verifyOtp({
+    token_hash: tokenHash,
+    type: type as "recovery" | "invite" | "email",
+  });
+
+  if (error) {
+    // Falls der Token bereits eingelöst wurde (z. B. Doppelklick), die Session
+    // aber bereits steht, trotzdem weiterleiten statt einen Fehler zu zeigen.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) redirect(next);
+    return { error: "Dieser Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an." };
+  }
+
+  redirect(next);
+}
