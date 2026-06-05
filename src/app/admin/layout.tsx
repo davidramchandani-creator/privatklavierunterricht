@@ -71,7 +71,10 @@ export default async function AdminLayout({
       {/* Main content */}
       <div className="flex-1 md:ml-60 flex flex-col min-h-screen">
         {/* Top bar (mobile) */}
-        <header className="md:hidden bg-white border-b border-gray-200 sticky top-0 z-20 h-14 flex items-center justify-between px-4">
+        <header
+          className="md:hidden bg-white border-b border-gray-200 sticky top-0 z-20 min-h-14 flex items-center justify-between px-4"
+          style={{ paddingTop: "env(safe-area-inset-top)" }}
+        >
           <div className="flex items-center gap-2 text-[#1C244B]">
             <Logo className="h-6 w-auto" />
             <span className="font-700 text-[#1C244B] text-sm">Admin</span>

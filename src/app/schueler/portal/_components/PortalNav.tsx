@@ -9,7 +9,10 @@ import Logo from "@/components/layout/Logo";
  */
 export default function PortalNav({ vorname }: { vorname?: string }) {
   return (
-    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100">
+    <header
+      className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
       <div className="max-w-4xl mx-auto px-5 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 text-navy-900">
           <Logo className="h-7 w-auto" />
