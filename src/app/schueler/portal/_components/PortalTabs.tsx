@@ -71,7 +71,15 @@ export default function PortalTabs({
   return (
     <div>
       {/* ─── Desktop: sticky segmented control ─────────────────────────────── */}
-      <div className="hidden sm:block sticky top-16 z-30 -mx-5 px-5 bg-white/90 backdrop-blur-sm border-b border-gray-100 mb-6">
+      <div
+        className="hidden sm:block sticky top-16 z-30 -mx-5 px-5 mb-6"
+        style={{
+          background: "linear-gradient(180deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.62) 100%)",
+          backdropFilter: "blur(40px) saturate(180%)",
+          WebkitBackdropFilter: "blur(40px) saturate(180%)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.92), 0 1px 0 rgba(0,0,0,0.05), 0 4px 24px rgba(0,0,0,0.04)",
+        }}
+      >
         <div role="tablist" className="flex gap-1 py-2">
           {TABS.map((t) => {
             const isActive = active === t.id;
@@ -104,8 +112,14 @@ export default function PortalTabs({
 
       {/* ─── Mobile: fixed bottom tab bar ───────────────────────────────────── */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 sm:hidden bg-white/95 backdrop-blur-sm border-t border-gray-200/80"
-        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}
+        className="fixed bottom-0 left-0 right-0 z-40 sm:hidden"
+        style={{
+          paddingBottom: "max(env(safe-area-inset-bottom), 8px)",
+          background: "linear-gradient(0deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.62) 100%)",
+          backdropFilter: "blur(40px) saturate(180%)",
+          WebkitBackdropFilter: "blur(40px) saturate(180%)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.92), 0 -1px 0 rgba(0,0,0,0.05), 0 -4px 24px rgba(0,0,0,0.04)",
+        }}
       >
         {/* Sliding indicator pill — translates to active tab */}
         <div className="relative flex" role="tablist">

@@ -45,8 +45,14 @@ export default function AdminBottomNav() {
     <>
       {/* Bottom nav bar */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white border-t border-gray-200"
-        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}
+        className="fixed bottom-0 left-0 right-0 z-40 md:hidden"
+        style={{
+          paddingBottom: "max(env(safe-area-inset-bottom), 8px)",
+          background: "linear-gradient(0deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.62) 100%)",
+          backdropFilter: "blur(40px) saturate(180%)",
+          WebkitBackdropFilter: "blur(40px) saturate(180%)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.92), 0 -1px 0 rgba(0,0,0,0.05), 0 -4px 24px rgba(0,0,0,0.04)",
+        }}
       >
         <div className="flex" role="tablist">
           {MAIN_TABS.map((tab) => {
@@ -94,8 +100,14 @@ export default function AdminBottomNav() {
         <div className="fixed inset-0 z-50 md:hidden" onClick={() => setMoreOpen(false)}>
           <div className="absolute inset-0 bg-black/30" />
           <div
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-xl"
-            style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}
+            className="absolute bottom-0 left-0 right-0 rounded-t-2xl"
+            style={{
+              paddingBottom: "max(env(safe-area-inset-bottom), 8px)",
+              background: "linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.78) 100%)",
+              backdropFilter: "blur(48px) saturate(180%)",
+              WebkitBackdropFilter: "blur(48px) saturate(180%)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.92), 0 -4px 40px rgba(0,0,0,0.14)",
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Handle */}
