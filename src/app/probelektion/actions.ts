@@ -11,6 +11,8 @@ import {
   zonedToUtc,
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
+import { sendEmail } from "@/lib/email-sender";
+import { renderEmail } from "@/lib/email-templates";
 
 export type PublicSlot = {
   beginn: string;
@@ -105,5 +107,27 @@ export async function submitAnfrage(formData: FormData) {
   });
 
   if (error) return { error: "Anfrage konnte nicht gesendet werden. Bitte versuche es erneut." };
+
+  const mailPayload = { vorname, nachname, email, telefon, nachricht, wunschtermin };
+
+  // Bestätigungs-Mail an den Anfragenden.
+  const confirmTpl = renderEmail("anfrage_received", mailPayload);
+  if (confirmTpl) {
+    await sendEmail({ to: email, subject: confirmTpl.subject, html: confirmTpl.html }).catch(
+      () => null
+    );
+  }
+
+  // Benachrichtigungs-Mail an den Admin.
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (adminEmail) {
+    const adminTpl = renderEmail("anfrage_admin", mailPayload);
+    if (adminTpl) {
+      await sendEmail({ to: adminEmail, subject: adminTpl.subject, html: adminTpl.html }).catch(
+        () => null
+      );
+    }
+  }
+
   return { success: true };
 }

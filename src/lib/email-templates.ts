@@ -1001,6 +1001,87 @@ export function renderEmail(
       return { subject, html: baseWrapper(content) };
     }
 
+    case "anfrage_received": {
+      const vorname = String(payload.vorname ?? "");
+      const wunschtermin = payload.wunschtermin ? String(payload.wunschtermin) : null;
+      const subject = "Deine Probestunden-Anfrage ist eingegangen";
+      const content = `
+        <p style="margin:0 0 16px;">Hallo ${vorname},</p>
+        <p style="margin:0 0 16px;">
+          vielen Dank für deine Anfrage! Ich habe sie erhalten und melde mich so bald wie möglich bei dir.
+        </p>
+        ${wunschtermin ? `
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:20px;background:#f8f9fa;border-radius:8px;">
+          <tr>
+            <td style="padding:14px 18px;">
+              <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Dein Wunschtermin</p>
+              <p style="margin:0;font-size:15px;color:#1C244B;font-weight:600;">${wunschtermin}</p>
+            </td>
+          </tr>
+        </table>
+        ` : ""}
+        <p style="margin:0 0 24px;">
+          Die Probelektion dauert ca. 45 Minuten und gibt dir einen ersten Eindruck davon, wie der Unterricht bei mir läuft.
+          Ich freue mich darauf, dich kennenzulernen!
+        </p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Liebe Grüsse<br/>David Ramchandani<br/>
+          <a href="${APP_URL}" style="color:#6b7280;">privatklavierunterricht.ch</a>
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "anfrage_admin": {
+      const vorname = String(payload.vorname ?? "");
+      const nachname = String(payload.nachname ?? "");
+      const email = String(payload.email ?? "");
+      const telefon = payload.telefon ? String(payload.telefon) : null;
+      const nachricht = payload.nachricht ? String(payload.nachricht) : null;
+      const wunschtermin = payload.wunschtermin ? String(payload.wunschtermin) : null;
+      const subject = `Neue Probestunden-Anfrage – ${vorname} ${nachname}`;
+      const content = `
+        <p style="margin:0 0 16px;">Es liegt eine neue Probestunden-Anfrage vor:</p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:20px;background:#f8f9fa;border-radius:8px;">
+          <tr>
+            <td style="padding:14px 18px;">
+              <table cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+                <tr>
+                  <td style="padding:4px 0;color:#6b7280;font-size:13px;width:130px;">Name</td>
+                  <td style="padding:4px 0;color:#1f2937;font-size:14px;font-weight:600;">${vorname} ${nachname}</td>
+                </tr>
+                <tr>
+                  <td style="padding:4px 0;color:#6b7280;font-size:13px;">E-Mail</td>
+                  <td style="padding:4px 0;font-size:14px;"><a href="mailto:${email}" style="color:#1C244B;">${email}</a></td>
+                </tr>
+                ${telefon ? `<tr>
+                  <td style="padding:4px 0;color:#6b7280;font-size:13px;">Telefon</td>
+                  <td style="padding:4px 0;color:#1f2937;font-size:14px;">${telefon}</td>
+                </tr>` : ""}
+                ${wunschtermin ? `<tr>
+                  <td style="padding:4px 0;color:#6b7280;font-size:13px;">Wunschtermin</td>
+                  <td style="padding:4px 0;color:#1C244B;font-size:14px;font-weight:600;">${wunschtermin}</td>
+                </tr>` : ""}
+              </table>
+            </td>
+          </tr>
+        </table>
+        ${nachricht ? `
+        <div style="background:#fffbeb;border-left:3px solid #f59e0b;padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:20px;">
+          <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:#92400e;text-transform:uppercase;letter-spacing:0.5px;">Nachricht</p>
+          <p style="margin:0;color:#1f2937;font-size:14px;">${nachricht}</p>
+        </div>
+        ` : ""}
+        <p style="margin:0 0 24px;">
+          <a href="${APP_URL}/admin/anfragen"
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+            Anfrage öffnen
+          </a>
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
     default:
       return null;
   }
