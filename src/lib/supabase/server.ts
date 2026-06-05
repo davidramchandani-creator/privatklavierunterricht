@@ -2,6 +2,23 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
+/**
+ * Verlängert die Lebensdauer von Session-Cookies auf mind. 30 Tage, damit
+ * Nutzer dauerhaft eingeloggt bleiben. WICHTIG: Nur auf gesetzte Cookies
+ * anwenden – bei leerem `value` will Supabase das Cookie löschen
+ * (maxAge 0/negativ); diese Löschung darf NICHT verlängert werden, sonst
+ * bleiben veraltete Auth-Cookie-Chunks liegen und zerstören u. a. den
+ * Passwort-Reset-Flow.
+ */
+type CookieOptions = Parameters<
+  Awaited<ReturnType<typeof cookies>>["set"]
+>[2];
+
+function withPersistence(value: string, options: CookieOptions): CookieOptions {
+  if (!value) return options;
+  return { ...options, maxAge: Math.max(options?.maxAge ?? 0, 60 * 60 * 24 * 30) };
+}
+
 export async function createClient() {
   const cookieStore = await cookies();
 
@@ -16,10 +33,7 @@ export async function createClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, {
-                ...options,
-                maxAge: Math.max(options?.maxAge ?? 0, 60 * 60 * 24 * 30),
-              })
+              cookieStore.set(name, value, withPersistence(value, options))
             );
           } catch {
             // Called from Server Component – middleware handles session refresh
