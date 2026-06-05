@@ -115,7 +115,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Sanftes Hochgleiten (für Step-/Tab-Wechsel) */
 @keyframes enter-up {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
@@ -128,7 +128,7 @@ h1, h2, h3, h4, h5, h6 {
 .animate-fade-in  { animation: fade-in 0.5s var(--ease-out-soft) forwards; }
 .animate-slide-in { animation: slide-in 0.4s var(--ease-out-soft) forwards; }
 .animate-scale-in { animation: scale-in 0.3s var(--ease-out-soft) forwards; }
-.animate-enter-up    { animation: enter-up 0.45s var(--ease-ios) forwards; }
+.animate-enter-up    { animation: enter-up 0.28s var(--ease-out-soft) forwards; }
 .animate-enter-right { animation: enter-right 0.4s var(--ease-ios) forwards; }
 .opacity-0        { opacity: 0; }
 

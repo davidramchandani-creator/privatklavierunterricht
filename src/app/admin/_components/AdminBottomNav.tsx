@@ -46,7 +46,7 @@ export default function AdminBottomNav() {
       {/* Bottom nav bar */}
       <nav
         className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white border-t border-gray-200"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}
       >
         <div className="flex" role="tablist">
           {MAIN_TABS.map((tab) => {
@@ -58,7 +58,7 @@ export default function AdminBottomNav() {
                 href={tab.href}
                 role="tab"
                 aria-selected={active}
-                className="relative flex-1 flex flex-col items-center justify-center gap-0.5 pt-2 pb-2 min-h-[56px] transition-colors"
+                className="relative flex-1 flex flex-col items-center justify-center gap-0.5 pt-3 pb-3 min-h-[60px] transition-colors"
               >
                 {active && (
                   <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-[#1C244B]" />
@@ -76,7 +76,7 @@ export default function AdminBottomNav() {
             role="tab"
             aria-selected={moreActive || moreOpen}
             onClick={() => setMoreOpen((v) => !v)}
-            className="relative flex-1 flex flex-col items-center justify-center gap-0.5 pt-2 pb-2 min-h-[56px] transition-colors"
+            className="relative flex-1 flex flex-col items-center justify-center gap-0.5 pt-3 pb-3 min-h-[60px] transition-colors"
           >
             {(moreActive || moreOpen) && (
               <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-[#1C244B]" />
@@ -95,7 +95,7 @@ export default function AdminBottomNav() {
           <div className="absolute inset-0 bg-black/30" />
           <div
             className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-xl"
-            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+            style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Handle */}

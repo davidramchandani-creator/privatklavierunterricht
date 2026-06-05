@@ -18,7 +18,12 @@ export async function updateSession(request: NextRequest) {
           );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, {
+              ...options,
+              // Refresh-token cookies leben mindestens 30 Tage → Nutzer bleiben
+              // auch nach längerer Inaktivität eingeloggt.
+              maxAge: Math.max(options?.maxAge ?? 0, 60 * 60 * 24 * 30),
+            })
           );
         },
       },

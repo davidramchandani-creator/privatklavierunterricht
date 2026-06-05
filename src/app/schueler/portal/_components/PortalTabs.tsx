@@ -105,7 +105,7 @@ export default function PortalTabs({
       {/* ─── Mobile: fixed bottom tab bar ───────────────────────────────────── */}
       <nav
         className="fixed bottom-0 left-0 right-0 z-40 sm:hidden bg-white/95 backdrop-blur-sm border-t border-gray-200/80"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}
       >
         {/* Sliding indicator pill — translates to active tab */}
         <div className="relative flex" role="tablist">
@@ -130,7 +130,7 @@ export default function PortalTabs({
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => select(t.id)}
-                className="press relative flex-1 flex flex-col items-center justify-center gap-0.5 pt-3 pb-2.5 min-h-[56px]"
+                className="press relative flex-1 flex flex-col items-center justify-center gap-0.5 pt-3 pb-3 min-h-[60px]"
               >
                 <div className="relative">
                   <Icon

@@ -43,7 +43,7 @@ function LoginForm() {
             type="email"
             placeholder="deine@email.ch"
             required
-            autoComplete="email"
+            autoComplete="username email"
           />
         </div>
 
