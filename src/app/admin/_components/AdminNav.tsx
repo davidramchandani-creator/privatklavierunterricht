@@ -6,6 +6,7 @@ import { useState } from "react";
 import {
   LayoutDashboard,
   Users,
+  UsersRound,
   Calendar,
   CalendarClock,
   CalendarOff,
@@ -48,6 +49,7 @@ export const navEntries: NavEntry[] = [
       { href: "/admin/verfuegbarkeit", label: "Verfügbarkeit", icon: Clock },
     ],
   },
+  { href: "/admin/gruppenkurse", label: "Gruppenkurse", icon: UsersRound },
   { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
   { href: "/admin/einstellungen", label: "Einstellungen", icon: Settings },
 ];

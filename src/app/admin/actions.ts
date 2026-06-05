@@ -1563,3 +1563,188 @@ export async function updateAnfrageStatus(id: string, status: string) {
   revalidatePath("/admin/anfragen");
   return { success: true };
 }
+
+// ── Gruppenkurse ─────────────────────────────────────────────────────────────
+
+import {
+  recomputeSessionDuration,
+} from "@/lib/group-booking";
+import { normalizePriceTiers } from "@/lib/group-courses";
+
+export async function createGroupCourse(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const title = (formData.get("title") as string)?.trim();
+  if (!title) return { error: "Titel erforderlich." };
+
+  const maxParticipants = Number(formData.get("max_participants") ?? 4);
+  const longDurationFrom = Number(formData.get("long_duration_from") ?? 3);
+  const shortMinutes = Number(formData.get("short_minutes") ?? 45);
+  const longMinutes = Number(formData.get("long_minutes") ?? 90);
+  const description = (formData.get("description") as string)?.trim() || null;
+
+  let priceTiers: Record<string, number>;
+  try {
+    priceTiers = normalizePriceTiers(JSON.parse(formData.get("price_tiers") as string ?? "{}"));
+  } catch {
+    return { error: "Ungültige Preis-Tiers (JSON erwartet)." };
+  }
+  if (Object.keys(priceTiers).length === 0) return { error: "Mindestens ein Preis-Tier erforderlich." };
+
+  const admin = await createAdminClient();
+  const { error } = await admin.from("group_courses").insert({
+    title,
+    description,
+    max_participants: maxParticipants,
+    long_duration_from: longDurationFrom,
+    short_minutes: shortMinutes,
+    long_minutes: longMinutes,
+    price_tiers: priceTiers,
+    status: "active",
+  });
+  if (error) return { error: "Kurs konnte nicht erstellt werden." };
+
+  revalidatePath("/admin/gruppenkurse");
+  return { success: true };
+}
+
+export async function updateGroupCourse(courseId: string, formData: FormData) {
+  const title = (formData.get("title") as string)?.trim();
+  if (!title) return { error: "Titel erforderlich." };
+
+  let priceTiers: Record<string, number>;
+  try {
+    priceTiers = normalizePriceTiers(JSON.parse(formData.get("price_tiers") as string ?? "{}"));
+  } catch {
+    return { error: "Ungültige Preis-Tiers (JSON erwartet)." };
+  }
+
+  const admin = await createAdminClient();
+  const { error } = await admin.from("group_courses").update({
+    title,
+    description: (formData.get("description") as string)?.trim() || null,
+    max_participants: Number(formData.get("max_participants")),
+    long_duration_from: Number(formData.get("long_duration_from")),
+    short_minutes: Number(formData.get("short_minutes")),
+    long_minutes: Number(formData.get("long_minutes")),
+    price_tiers: priceTiers,
+  }).eq("id", courseId);
+  if (error) return { error: "Kurs konnte nicht aktualisiert werden." };
+
+  revalidatePath("/admin/gruppenkurse");
+  revalidatePath(`/admin/gruppenkurse/${courseId}`);
+  return { success: true };
+}
+
+export async function archiveGroupCourse(courseId: string) {
+  const admin = await createAdminClient();
+  const { error } = await admin.from("group_courses").update({ status: "archived" }).eq("id", courseId);
+  if (error) return { error: "Kurs konnte nicht archiviert werden." };
+  revalidatePath("/admin/gruppenkurse");
+  return { success: true };
+}
+
+export async function adminCancelGroupSession(sessionId: string) {
+  const admin = await createAdminClient();
+
+  // Teilnehmer-Termine laden.
+  const { data: appts } = await admin
+    .from("appointments")
+    .select("id, student_id, google_event_id")
+    .eq("group_session_id", sessionId)
+    .in("status", ["booked", "pending"]);
+
+  // Alle Teilnehmer-Termine absagen.
+  for (const a of appts ?? []) {
+    await admin.from("appointments").update({ status: "cancelled" }).eq("id", a.id);
+    if (a.google_event_id) {
+      await deleteCalendarEvent(admin, a.id).catch(() => null);
+    }
+  }
+
+  // Pending Payment-Mails canceln.
+  await admin
+    .from("scheduled_emails")
+    .update({ status: "cancelled" })
+    .eq("status", "pending")
+    .contains("payload", { group_session_id: sessionId });
+
+  // Session absagen.
+  const { error } = await admin
+    .from("group_sessions")
+    .update({ status: "cancelled" })
+    .eq("id", sessionId);
+  if (error) return { error: "Session konnte nicht abgesagt werden." };
+
+  // Teilnehmer benachrichtigen.
+  for (const a of appts ?? []) {
+    await sendEmailNow(admin, "appointment_cancelled_by_admin", {
+      student_id: a.student_id,
+    }).catch(() => null);
+  }
+
+  revalidatePath("/admin/gruppenkurse");
+  return { success: true };
+}
+
+export async function adminRemoveParticipant(appointmentId: string) {
+  const admin = await createAdminClient();
+
+  const { data: appt } = await admin
+    .from("appointments")
+    .select("id, student_id, group_session_id, google_event_id")
+    .eq("id", appointmentId)
+    .maybeSingle();
+  if (!appt?.group_session_id) return { error: "Termin nicht gefunden." };
+
+  const sessionId = appt.group_session_id as string;
+
+  // Termin absagen.
+  await admin.from("appointments").update({ status: "cancelled" }).eq("id", appointmentId);
+
+  // Google-Kalender-Event löschen.
+  if (appt.google_event_id) {
+    await deleteCalendarEvent(admin, appointmentId).catch(() => null);
+  }
+
+  // Pending Payment-Mail für diesen Termin canceln.
+  await admin
+    .from("scheduled_emails")
+    .update({ status: "cancelled" })
+    .eq("status", "pending")
+    .contains("payload", { appointment_id: appointmentId });
+
+  // Session + andere Teilnehmer-Termine neu berechnen.
+  const { data: session } = await admin
+    .from("group_sessions")
+    .select("id, course_id, start_at, end_at, status")
+    .eq("id", sessionId)
+    .maybeSingle();
+  const { data: course } = session
+    ? await admin.from("group_courses").select("*").eq("id", session.course_id).maybeSingle()
+    : { data: null };
+
+  if (session && course) {
+    const remaining = await admin
+      .from("appointments")
+      .select("id", { count: "exact", head: true })
+      .eq("group_session_id", sessionId)
+      .in("status", ["booked", "completed"]);
+
+    if ((remaining.count ?? 0) === 0) {
+      await admin.from("group_sessions").update({ status: "cancelled" }).eq("id", sessionId);
+    } else {
+      await recomputeSessionDuration(admin, session as Parameters<typeof recomputeSessionDuration>[1], course as Parameters<typeof recomputeSessionDuration>[2]);
+    }
+  }
+
+  // Schüler benachrichtigen.
+  await sendEmailNow(admin, "appointment_cancelled_by_admin", {
+    student_id: appt.student_id,
+  }).catch(() => null);
+
+  revalidatePath("/admin/gruppenkurse");
+  return { success: true };
+}
