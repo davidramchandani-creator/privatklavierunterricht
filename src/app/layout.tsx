@@ -25,6 +25,22 @@ export const metadata: Metadata = {
   description:
     "Individueller Klavierunterricht mit David in Neftenbach. Ohne Noten, ohne Schema F – mit Gefühl und Verstand. Probelektion buchen.",
   keywords: ["Klavierunterricht", "Neftenbach", "Winterthur", "Klavier", "Privatunterricht"],
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Klavierunterricht",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+  },
   openGraph: {
     title: "Spiel, was du fühlst – ich zeig dir wie.",
     description: "Individueller Klavierunterricht mit David, ganz ohne Schema F.",

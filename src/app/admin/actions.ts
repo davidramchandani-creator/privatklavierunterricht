@@ -1771,3 +1771,24 @@ export async function adminRemoveParticipant(appointmentId: string) {
   revalidatePath("/admin/gruppenkurse");
   return { success: true };
 }
+
+export async function deleteGroupSession(sessionId: string) {
+  const admin = await createAdminClient();
+
+  const { data: session } = await admin
+    .from("group_sessions")
+    .select("id, status, course_id")
+    .eq("id", sessionId)
+    .maybeSingle();
+
+  if (!session) return { error: "Session nicht gefunden." };
+  if (session.status === "open" || session.status === "full") {
+    return { error: "Aktive Sessionen können nicht gelöscht werden. Bitte zuerst absagen." };
+  }
+
+  const { error } = await admin.from("group_sessions").delete().eq("id", sessionId);
+  if (error) return { error: "Löschen fehlgeschlagen." };
+
+  revalidatePath(`/admin/gruppenkurse/${session.course_id}`);
+  return { success: true };
+}
