@@ -1,7 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { sendEmail } from "@/lib/email-sender";
+import { renderEmail } from "@/lib/email-templates";
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
@@ -60,15 +62,32 @@ export async function setPassword(formData: FormData) {
 }
 
 export async function requestPasswordReset(formData: FormData) {
-  const supabase = await createClient();
   const email = formData.get("email") as string;
   const origin = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.ch";
 
-  await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback?next=/auth/passwort-setzen`,
+  // Admin-Client verwenden, damit wir den token_hash selbst erhalten und die
+  // E-Mail über Resend (branded Template) versenden können – statt via
+  // Supabases eigenem Mailer. Ausserdem verhindert die /auth/bestaetigen-URL,
+  // dass iOS-Mail-Vorschauen den Einmal-Token schon beim Vorladen verbrennen.
+  const adminClient = createAdminClient();
+  const { data, error } = await adminClient.auth.admin.generateLink({
+    type: "recovery",
+    email,
+    options: {
+      redirectTo: `${origin}/auth/passwort-setzen`,
+    },
   });
 
-  // Immer Erfolg zurückgeben (kein User-Enumeration)
+  // Auch bei Fehler/unbekannter E-Mail immer Erfolg melden (kein User-Enumeration).
+  if (!error && data?.properties?.hashed_token) {
+    const tokenHash = data.properties.hashed_token;
+    const resetUrl = `${origin}/auth/bestaetigen?token_hash=${tokenHash}&type=recovery&next=/auth/passwort-setzen`;
+    const rendered = renderEmail("password_reset", { reset_url: resetUrl });
+    if (rendered) {
+      await sendEmail({ to: email, subject: rendered.subject, html: rendered.html }).catch(() => {});
+    }
+  }
+
   return { success: true };
 }
 

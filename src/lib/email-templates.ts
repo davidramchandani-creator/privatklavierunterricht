@@ -976,6 +976,31 @@ export function renderEmail(
       return { subject, html: baseWrapper(content) };
     }
 
+    case "password_reset": {
+      const resetUrl = String(payload.reset_url ?? "");
+      const subject = "Passwort zurücksetzen";
+      const content = `
+        <p style="margin:0 0 16px;">Hallo,</p>
+        <p style="margin:0 0 24px;">
+          wir haben eine Anfrage erhalten, dein Passwort zurückzusetzen.
+          Klicke auf den Button, um ein neues Passwort festzulegen:
+        </p>
+        <p style="text-align:center;margin:0 0 24px;">
+          <a href="${resetUrl}"
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;
+                    padding:13px 32px;border-radius:8px;font-size:15px;font-weight:600;">
+            Passwort zurücksetzen
+          </a>
+        </p>
+        <p style="margin:0 0 16px;font-size:13px;color:#6b7280;">
+          Der Link ist <strong>60 Minuten</strong> gültig. Falls du keine Zurücksetzung
+          angefragt hast, kannst du diese E-Mail ignorieren – dein Passwort bleibt unverändert.
+        </p>
+        <p style="margin:0;">Liebe Grüsse<br/>David Ramchandani</p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
     default:
       return null;
   }
