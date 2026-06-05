@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import SiteChrome from "@/components/layout/SiteChrome";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const jakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -62,6 +63,7 @@ export default function RootLayout({
     <html lang="de" className={`${jakartaSans.variable} h-full`}>
       <body className="min-h-full flex flex-col font-sans antialiased">
         <SiteChrome>{children}</SiteChrome>
+        <SpeedInsights />
       </body>
     </html>
   );
