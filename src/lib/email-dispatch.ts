@@ -45,11 +45,25 @@ export const STUDENT_LOOKUP_TYPES = [
  * Wirft bei Fehlern (kein Empfänger, fehlendes Template, Senderfehler).
  * Wird sowohl für Sofortversand als auch vom Cron-Job genutzt.
  */
+async function getDisabledEmailTypes(admin: SupabaseClient): Promise<string[]> {
+  const { data } = await admin
+    .from("app_settings")
+    .select("value")
+    .eq("key", "email_disabled_types")
+    .maybeSingle();
+  if (!data?.value) return [];
+  return Array.isArray(data.value) ? (data.value as string[]) : [];
+}
+
 export async function dispatchEmail(
   admin: SupabaseClient,
   type: string,
   payload: Record<string, unknown>
 ): Promise<void> {
+  // Deaktivierte E-Mail-Typen überspringen.
+  const disabled = await getDisabledEmailTypes(admin);
+  if (disabled.includes(type)) return;
+
   let to: string | null = null;
   const extraContext: Record<string, unknown> = {};
 

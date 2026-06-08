@@ -21,6 +21,7 @@ import {
   extendPackage,
   cancelPackage,
   calculateTravelBuffer,
+  adjustPackageLessons,
 } from "../../../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,7 @@ import {
   CANCELLATION_SINGLE_BASE,
   CANCELLATION_SINGLE_THRESHOLD,
 } from "@/lib/packages";
-import { Loader2, Pencil, Trash2, UserX, XCircle, CheckCircle2, Plus, Mail, AlertTriangle, Calendar, Pause, Play, Clock, Ban, Send } from "lucide-react";
+import { Loader2, Pencil, Trash2, UserX, XCircle, CheckCircle2, Plus, Mail, AlertTriangle, Calendar, Pause, Play, Clock, Ban, Send, SlidersHorizontal } from "lucide-react";
 
 type Profile = {
   id: string;
@@ -1110,8 +1111,126 @@ function PackageTimerActions({
   );
 }
 
+function AdjustLessonsButton({
+  packageId,
+  currentTotal,
+  currentUsed,
+}: {
+  packageId: string;
+  currentTotal: number;
+  currentUsed: number;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [delta, setDelta] = useState<number>(1);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const preview = currentTotal + delta;
+
+  function handle() {
+    if (delta === 0) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await adjustPackageLessons(packageId, delta);
+      if (result?.error) {
+        setError(result.error);
+      } else {
+        setOpen(false);
+        setDelta(1);
+        router.refresh();
+      }
+    });
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="p-1.5 rounded-lg hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 transition-colors"
+        title="Lektionen anpassen"
+      >
+        <SlidersHorizontal className="w-3.5 h-3.5" />
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4">
+            <h3 className="font-700 text-gray-900">Lektionen anpassen</h3>
+            <p className="text-sm text-gray-500">
+              Aktuell: <span className="font-600 text-gray-900">{currentTotal}</span> Lektionen
+              ({currentUsed} verbraucht)
+            </p>
+
+            <div className="space-y-2">
+              <label className="text-sm font-500 text-gray-700">Anpassung (+ hinzufügen / − abziehen)</label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDelta((d) => d - 1)}
+                  className="w-9 h-9 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-700 text-lg flex items-center justify-center"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  value={delta}
+                  onChange={(e) => setDelta(parseInt(e.target.value) || 0)}
+                  className="flex-1 text-center border border-gray-200 rounded-xl py-2 text-sm font-600 focus:outline-none focus:ring-2 focus:ring-[#1C244B]/20"
+                />
+                <button
+                  type="button"
+                  onClick={() => setDelta((d) => d + 1)}
+                  className="w-9 h-9 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-700 text-lg flex items-center justify-center"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            {delta !== 0 && (
+              <div className={`rounded-xl p-3 text-sm ${
+                preview < currentUsed || preview < 1
+                  ? "bg-red-50 text-red-700"
+                  : "bg-indigo-50 text-indigo-700"
+              }`}>
+                {preview < 1 || preview < currentUsed
+                  ? "Ungültig – Mindestanzahl unterschritten."
+                  : `Neu: ${currentTotal} → ${preview} Lektionen`}
+              </div>
+            )}
+
+            {error && (
+              <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+            )}
+
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => { setOpen(false); setDelta(1); setError(null); }}
+                disabled={isPending}
+                className="px-4 py-2 text-sm font-500 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handle}
+                disabled={isPending || delta === 0 || preview < 1 || preview < currentUsed}
+                className="px-4 py-2 text-sm font-600 text-white bg-[#1C244B] hover:bg-[#1C244B]/90 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                Speichern
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export {
   PackageTimerActions,
+  AdjustLessonsButton,
   InvoiceAction,
   PreiseForm,
   PackageFormNew,

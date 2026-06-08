@@ -78,6 +78,56 @@ export async function inviteSchueler(formData: FormData) {
   return { success: true };
 }
 
+export async function createSchuelerDirekt(formData: FormData) {
+  const email = (formData.get("email") as string)?.trim();
+  const vorname = (formData.get("vorname") as string)?.trim();
+  const nachname = (formData.get("nachname") as string)?.trim();
+  const password = formData.get("password") as string;
+  const telefon = (formData.get("telefon") as string) || null;
+  const adresse = (formData.get("adresse") as string) || null;
+
+  if (!email || !vorname || !nachname) {
+    return { error: "E-Mail, Vorname und Nachname sind Pflichtfelder." };
+  }
+  if (!password || password.length < 8) {
+    return { error: "Passwort muss mindestens 8 Zeichen haben." };
+  }
+
+  const adminClient = await createAdminClient();
+
+  const { data: userData, error: createError } = await adminClient.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { vorname, nachname },
+  });
+
+  if (createError) {
+    return { error: createError.message };
+  }
+
+  const userId = userData.user.id;
+
+  const { error: profileError } = await adminClient.from("profiles").upsert({
+    id: userId,
+    role: "student",
+    vorname,
+    nachname,
+    email,
+    telefon,
+    adresse,
+    aktiv: true,
+  }, { onConflict: "id" });
+
+  if (profileError) {
+    await adminClient.auth.admin.deleteUser(userId).catch(() => null);
+    return { error: "Profil konnte nicht erstellt werden: " + profileError.message };
+  }
+
+  revalidatePath("/admin/schueler");
+  return { success: true };
+}
+
 export async function updateSchueler(id: string, formData: FormData) {
   const adminClient = await createAdminClient();
 
@@ -1790,5 +1840,57 @@ export async function deleteGroupSession(sessionId: string) {
   if (error) return { error: "Löschen fehlgeschlagen." };
 
   revalidatePath(`/admin/gruppenkurse/${session.course_id}`);
+  return { success: true };
+}
+
+// ── Lektionen manuell anpassen ────────────────────────────────────────────────
+
+export async function adjustPackageLessons(packageId: string, delta: number) {
+  if (!Number.isInteger(delta) || delta === 0) {
+    return { error: "Ungültige Anpassung." };
+  }
+
+  const admin = await createAdminClient();
+
+  const { data: pkg } = await admin
+    .from("packages")
+    .select("id, student_id, lessons_total, lessons_used, status")
+    .eq("id", packageId)
+    .maybeSingle();
+
+  if (!pkg) return { error: "Paket nicht gefunden." };
+
+  const newTotal = pkg.lessons_total + delta;
+
+  if (newTotal < 1) {
+    return { error: "Gesamtlektionen können nicht unter 1 fallen." };
+  }
+  if (newTotal < pkg.lessons_used) {
+    return { error: `Kann nicht auf ${newTotal} reduzieren – bereits ${pkg.lessons_used} Lektionen verbraucht.` };
+  }
+
+  let newStatus = pkg.status;
+  if (pkg.status === "exhausted" && delta > 0) newStatus = "active";
+  if (newTotal <= pkg.lessons_used && pkg.status === "active") newStatus = "exhausted";
+
+  const { error } = await admin
+    .from("packages")
+    .update({ lessons_total: newTotal, status: newStatus })
+    .eq("id", packageId);
+
+  if (error) return { error: "Anpassung fehlgeschlagen." };
+
+  revalidatePath(`/admin/schueler/${pkg.student_id}`);
+  return { success: true, newTotal };
+}
+
+// ── E-Mail-Einstellungen ──────────────────────────────────────────────────────
+
+export async function saveEmailSettings(disabledTypes: string[]) {
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("app_settings")
+    .upsert({ key: "email_disabled_types", value: disabledTypes, updated_at: new Date().toISOString() });
+  if (error) return { error: "Einstellungen konnten nicht gespeichert werden." };
   return { success: true };
 }
