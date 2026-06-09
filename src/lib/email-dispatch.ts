@@ -40,11 +40,6 @@ export const STUDENT_LOOKUP_TYPES = [
   "package_settlement_paid",
 ];
 
-/**
- * Löst Empfänger auf, rendert das Template und sendet die Mail via Resend.
- * Wirft bei Fehlern (kein Empfänger, fehlendes Template, Senderfehler).
- * Wird sowohl für Sofortversand als auch vom Cron-Job genutzt.
- */
 async function getDisabledEmailTypes(admin: SupabaseClient): Promise<string[]> {
   const { data } = await admin
     .from("app_settings")
@@ -55,6 +50,8 @@ async function getDisabledEmailTypes(admin: SupabaseClient): Promise<string[]> {
   return Array.isArray(data.value) ? (data.value as string[]) : [];
 }
 
+const PAYMENT_TYPES = ["twint_payment_request", "qr_invoice", "group_payment_request"];
+
 export async function dispatchEmail(
   admin: SupabaseClient,
   type: string,
@@ -63,6 +60,29 @@ export async function dispatchEmail(
   // Deaktivierte E-Mail-Typen überspringen.
   const disabled = await getDisabledEmailTypes(admin);
   if (disabled.includes(type)) return;
+
+  // Zahlungsmails: Termin muss noch existieren und gebucht/abgeschlossen sein.
+  // Verhindert Versand nach Stornierung oder Löschung des Schülers.
+  if (PAYMENT_TYPES.includes(type) && payload.appointment_id) {
+    const { data: appt } = await admin
+      .from("appointments")
+      .select("status")
+      .eq("id", payload.appointment_id as string)
+      .maybeSingle();
+    if (!appt || !["booked", "completed"].includes(appt.status as string)) {
+      return;
+    }
+    if (payload.invoice_id) {
+      const { data: inv } = await admin
+        .from("invoices")
+        .select("status")
+        .eq("id", payload.invoice_id as string)
+        .maybeSingle();
+      if (inv && ["paid", "archived", "cancelled"].includes(inv.status as string)) {
+        return;
+      }
+    }
+  }
 
   let to: string | null = null;
   const extraContext: Record<string, unknown> = {};

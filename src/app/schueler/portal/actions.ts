@@ -309,9 +309,15 @@ export async function cancelAppointment(appointmentId: string) {
     .in("status", ["unpaid", "pending_confirmation", "rejected"])
     .select("id");
 
+  // Zahlungsmails via appointment_id abbrechen (deckt auch Fälle ohne invoice_id ab).
+  await admin
+    .from("scheduled_emails")
+    .update({ status: "cancelled" })
+    .eq("status", "pending")
+    .contains("payload", { appointment_id: appointmentId });
+
   if (cancelledInvoices?.length) {
     const invoiceIds = cancelledInvoices.map((i: { id: string }) => i.id);
-    // Geplante Zahlungsmails für diese Rechnungen abbrechen
     for (const invId of invoiceIds) {
       await admin
         .from("scheduled_emails")

@@ -152,6 +152,12 @@ export async function updateSchueler(id: string, formData: FormData) {
 
 export async function deleteSchueler(id: string) {
   const adminClient = await createAdminClient();
+  // Pending Zahlungsmails abbrechen (scheduled_emails hat kein FK zum Schüler).
+  await adminClient
+    .from("scheduled_emails")
+    .update({ status: "cancelled" })
+    .eq("status", "pending")
+    .contains("payload", { student_id: id });
   const { error } = await adminClient.from("profiles").update({ aktiv: false }).eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/admin/schueler");
@@ -171,7 +177,27 @@ export async function reactivateSchueler(id: string) {
 export async function hardDeleteSchueler(id: string) {
   const adminClient = await createAdminClient();
 
-  // Deleting the auth user cascades to profiles (and all linked data via FK)
+  // Vor dem Löschen aufräumen: scheduled_emails hat kein FK → würde sonst ins Leere senden.
+  await adminClient
+    .from("scheduled_emails")
+    .update({ status: "cancelled" })
+    .eq("status", "pending")
+    .contains("payload", { student_id: id });
+
+  await adminClient
+    .from("invoices")
+    .update({ status: "archived" })
+    .eq("student_id", id)
+    .in("status", ["unpaid", "pending_confirmation", "rejected"]);
+
+  await adminClient
+    .from("appointments")
+    .update({ status: "cancelled" })
+    .eq("student_id", id)
+    .eq("status", "booked")
+    .gte("start_at", new Date().toISOString());
+
+  // Auth-User löschen cascaded auf profiles + alle FK-Tabellen.
   const { error } = await adminClient.auth.admin.deleteUser(id);
   if (error) return { error: error.message };
 
@@ -475,6 +501,14 @@ export async function acceptReschedule(rescheduleId: string) {
 
   // Google Calendar: verschobenen Termin aktualisieren
   await syncAppointmentToCalendar(admin, rr.appointment_id);
+
+  // Geplante Zahlungsmail auf neues end_at verschieben, damit sie nicht
+  // vor der verschobenen Lektion feuert.
+  await admin
+    .from("scheduled_emails")
+    .update({ send_at: newEnd.toISOString() })
+    .eq("status", "pending")
+    .contains("payload", { appointment_id: rr.appointment_id });
 
   await admin
     .from("reschedule_requests")
@@ -809,6 +843,13 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
     .eq("appointment_id", id)
     .in("status", ["unpaid", "pending_confirmation", "rejected"])
     .select("id");
+
+  // Zahlungsmails via appointment_id abbrechen (deckt auch Fälle ohne invoice_id ab).
+  await admin
+    .from("scheduled_emails")
+    .update({ status: "cancelled" })
+    .eq("status", "pending")
+    .contains("payload", { appointment_id: id });
 
   if (cancelledInvoices?.length) {
     for (const inv of cancelledInvoices) {
