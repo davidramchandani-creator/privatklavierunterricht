@@ -444,18 +444,27 @@ export function renderEmail(
       const invoiceNumber = String(payload.invoice_number ?? "");
       const lessonsRemaining = payload.lessons_remaining != null ? Number(payload.lessons_remaining) : null;
       const packageType = payload.package_type ? String(payload.package_type) : null;
+      // Paket-Rechnung im Voraus: description (z.B. "10er-Paket") + Fälligkeit.
+      const description = payload.description ? String(payload.description) : null;
+      const dueDate = payload.due_date ? String(payload.due_date) : null;
+      const isPackage = !lessonDate && !!description;
 
       const chf = amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const subject = `Zahlungsaufforderung – Klavierstunde vom ${lessonDate ? fmtDate(lessonDate) : ""}`;
+      const subject = isPackage
+        ? `Zahlungsaufforderung – ${description}`
+        : `Zahlungsaufforderung – Klavierstunde vom ${lessonDate ? fmtDate(lessonDate) : ""}`;
+      const introText = isPackage
+        ? `vielen Dank für deine Buchung! Bitte überweise den Betrag für dein ${description} per TWINT.`
+        : `deine Klavierstunde hat stattgefunden – vielen Dank! Bitte überweise den Betrag per TWINT.`;
       const content = `
         <p style="margin:0 0 16px;">Hallo ${studentName ? studentName.split(" ")[0] : ""},</p>
         <p style="margin:0 0 16px;">
-          deine Klavierstunde hat stattgefunden – vielen Dank! Bitte überweise den Betrag per TWINT.
+          ${introText}
         </p>
         <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
           <tr>
-            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Lektion</td>
-            <td style="padding:6px 0;font-weight:600;font-size:14px;">${lessonDate ? fmtDateTime(lessonDate) : "–"}</td>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">${isPackage ? "Paket" : "Lektion"}</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${isPackage ? description : (lessonDate ? fmtDateTime(lessonDate) : "–")}</td>
           </tr>
           <tr>
             <td style="padding:6px 0;color:#6b7280;font-size:14px;">Betrag</td>
@@ -465,7 +474,11 @@ export function renderEmail(
             <td style="padding:6px 0;color:#6b7280;font-size:14px;">Referenz</td>
             <td style="padding:6px 0;font-size:14px;">${invoiceNumber}</td>
           </tr>` : ""}
-          ${lessonsRemaining != null && packageType ? `<tr>
+          ${isPackage && dueDate ? `<tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Zahlbar bis</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${fmtDate(dueDate)}</td>
+          </tr>` : ""}
+          ${!isPackage && lessonsRemaining != null && packageType ? `<tr>
             <td style="padding:6px 0;color:#6b7280;font-size:14px;">Verbleibende Lektionen</td>
             <td style="padding:6px 0;font-size:14px;">${lessonsRemaining} ${packageType === "10er" ? "(10er-Abo)" : packageType === "20er" ? "(20er-Abo)" : ""}</td>
           </tr>` : ""}
@@ -501,13 +514,22 @@ export function renderEmail(
       const invoiceNumber = String(payload.invoice_number ?? "");
       const pdfLink = String(payload.pdf_link ?? "#");
       const lessonsRemaining = payload.lessons_remaining != null ? Number(payload.lessons_remaining) : null;
+      // Paket-Rechnung im Voraus: description (z.B. "10er-Paket") + Fälligkeit.
+      const description = payload.description ? String(payload.description) : null;
+      const dueDate = payload.due_date ? String(payload.due_date) : null;
+      const isPackage = !lessonDate && !!description;
 
       const chf = amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const subject = `Rechnung ${invoiceNumber} – Klavierstunde vom ${lessonDate ? fmtDate(lessonDate) : ""}`;
+      const subject = isPackage
+        ? `Rechnung ${invoiceNumber} – ${description}`
+        : `Rechnung ${invoiceNumber} – Klavierstunde vom ${lessonDate ? fmtDate(lessonDate) : ""}`;
+      const introText = isPackage
+        ? `vielen Dank für deine Buchung! Anbei die QR-Rechnung für dein ${description}.`
+        : `deine Klavierstunde hat stattgefunden – vielen Dank! Anbei deine Rechnung als QR-Rechnung.`;
       const content = `
         <p style="margin:0 0 16px;">Hallo ${studentName ? studentName.split(" ")[0] : ""},</p>
         <p style="margin:0 0 16px;">
-          deine Klavierstunde hat stattgefunden – vielen Dank! Anbei deine Rechnung als QR-Rechnung.
+          ${introText}
         </p>
         <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
           <tr>
@@ -515,14 +537,18 @@ export function renderEmail(
             <td style="padding:6px 0;font-weight:600;font-size:14px;">${invoiceNumber}</td>
           </tr>
           <tr>
-            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Lektion</td>
-            <td style="padding:6px 0;font-weight:600;font-size:14px;">${lessonDate ? fmtDateTime(lessonDate) : "–"}</td>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">${isPackage ? "Paket" : "Lektion"}</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${isPackage ? description : (lessonDate ? fmtDateTime(lessonDate) : "–")}</td>
           </tr>
           <tr>
             <td style="padding:6px 0;color:#6b7280;font-size:14px;">Betrag</td>
             <td style="padding:6px 0;font-weight:700;font-size:16px;color:#1C244B;">CHF ${chf}</td>
           </tr>
-          ${lessonsRemaining != null ? `<tr>
+          ${isPackage && dueDate ? `<tr>
+            <td style="padding:6px 0;color:#6b7280;font-size:14px;">Zahlbar bis</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${fmtDate(dueDate)}</td>
+          </tr>` : ""}
+          ${!isPackage && lessonsRemaining != null ? `<tr>
             <td style="padding:6px 0;color:#6b7280;font-size:14px;">Verbleibende Lektionen</td>
             <td style="padding:6px 0;font-size:14px;">${lessonsRemaining}</td>
           </tr>` : ""}

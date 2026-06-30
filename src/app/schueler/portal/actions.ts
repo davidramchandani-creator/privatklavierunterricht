@@ -26,6 +26,7 @@ import {
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
 import { sendEmailNow } from "@/lib/emails-outbox";
+import { createPackageInvoice } from "@/lib/package-invoice";
 import { deleteCalendarEvent } from "@/lib/google-calendar";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
@@ -669,7 +670,7 @@ export async function buyPackage(type: "10er" | "20er", agbAccepted: boolean) {
   // Profil + Preise des angemeldeten Schülers laden
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, role, price_single, price_10er, price_20er, travel_surcharge")
+    .select("id, role, price_single, price_10er, price_20er, travel_surcharge, vorname, nachname, adresse, email, payment_method")
     .eq("id", user.id)
     .single();
 
@@ -709,22 +710,35 @@ export async function buyPackage(type: "10er" | "20er", agbAccepted: boolean) {
     validityMonths != null ? addMonths(startsAt, validityMonths) : null;
 
   const admin = await createAdminClient();
-  const { error } = await admin.from("packages").insert({
-    student_id: user.id,
-    type,
-    lessons_total: lessonsTotal,
-    lessons_used: 0,
-    name: PACKAGE_LABELS[type],
-    price_per_lesson: ppl,
-    total_price: totalPrice,
-    starts_at: startsAt.toISOString(),
-    expires_at: expiresAt ? expiresAt.toISOString() : null,
-    status: "active",
-  });
+  const { data: pkg, error } = await admin
+    .from("packages")
+    .insert({
+      student_id: user.id,
+      type,
+      lessons_total: lessonsTotal,
+      lessons_used: 0,
+      name: PACKAGE_LABELS[type],
+      price_per_lesson: ppl,
+      total_price: totalPrice,
+      starts_at: startsAt.toISOString(),
+      expires_at: expiresAt ? expiresAt.toISOString() : null,
+      status: "active",
+    })
+    .select("id, student_id, type, total_price, price_per_lesson, payment_method")
+    .single();
 
-  if (error) {
+  if (error || !pkg) {
     return { error: "Paket konnte nicht gebucht werden. Bitte versuche es erneut." };
   }
+
+  // Gesamten Paketpreis sofort in Rechnung stellen (Zahlung innert 15 Tagen).
+  await createPackageInvoice(admin, pkg, {
+    vorname: profile.vorname,
+    nachname: profile.nachname,
+    adresse: profile.adresse,
+    email: profile.email,
+    payment_method: profile.payment_method,
+  });
 
   revalidatePath("/schueler/portal");
   return { success: true };

@@ -12,6 +12,7 @@ import {
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
 import { enqueueEmail, sendEmailNow } from "@/lib/emails-outbox";
+import { createPackageInvoice } from "@/lib/package-invoice";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   type Package as Paket,
@@ -502,14 +503,6 @@ export async function acceptReschedule(rescheduleId: string) {
   // Google Calendar: verschobenen Termin aktualisieren
   await syncAppointmentToCalendar(admin, rr.appointment_id);
 
-  // Geplante Zahlungsmail auf neues end_at verschieben, damit sie nicht
-  // vor der verschobenen Lektion feuert.
-  await admin
-    .from("scheduled_emails")
-    .update({ send_at: newEnd.toISOString() })
-    .eq("status", "pending")
-    .contains("payload", { appointment_id: rr.appointment_id });
-
   await admin
     .from("reschedule_requests")
     .update({ status: "accepted", aktualisiert_am: new Date().toISOString() })
@@ -652,13 +645,15 @@ export async function createPackageAdmin(formData: FormData) {
     return { error: "Ungültiger Preis." };
   }
 
+  // Schülerprofil für Zahlungsart + Rechnungsdaten laden.
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("vorname, nachname, adresse, email, payment_method")
+    .eq("id", userId)
+    .maybeSingle();
+
   // Ohne explizite Auswahl die Zahlungsart des Schülers übernehmen.
   if (paymentMethod !== "twint" && paymentMethod !== "qr") {
-    const { data: prof } = await admin
-      .from("profiles")
-      .select("payment_method")
-      .eq("id", userId)
-      .maybeSingle();
     paymentMethod = (prof?.payment_method as string) ?? "qr";
   }
 
@@ -667,21 +662,34 @@ export async function createPackageAdmin(formData: FormData) {
   const startsAt = new Date();
   const expiresAt = validityMonths != null ? addMonths(startsAt, validityMonths) : null;
 
-  const { error } = await admin.from("packages").insert({
-    student_id: userId,
-    type,
-    lessons_total: lessonsTotal,
-    lessons_used: 0,
-    name: PACKAGE_LABELS[type],
-    price_per_lesson: pricePerLesson,
-    total_price: pricePerLesson * lessonsTotal,
-    payment_method: paymentMethod,
-    starts_at: startsAt.toISOString(),
-    expires_at: expiresAt ? expiresAt.toISOString() : null,
-    status: "active",
-  });
+  const { data: pkg, error } = await admin
+    .from("packages")
+    .insert({
+      student_id: userId,
+      type,
+      lessons_total: lessonsTotal,
+      lessons_used: 0,
+      name: PACKAGE_LABELS[type],
+      price_per_lesson: pricePerLesson,
+      total_price: pricePerLesson * lessonsTotal,
+      payment_method: paymentMethod,
+      starts_at: startsAt.toISOString(),
+      expires_at: expiresAt ? expiresAt.toISOString() : null,
+      status: "active",
+    })
+    .select("id, student_id, type, total_price, price_per_lesson, payment_method")
+    .single();
 
-  if (error) return { error: error.message };
+  if (error || !pkg) return { error: error?.message ?? "Paket konnte nicht erstellt werden." };
+
+  // Gesamten Paketpreis sofort in Rechnung stellen (Zahlung innert 15 Tagen).
+  await createPackageInvoice(admin, pkg, {
+    vorname: prof?.vorname ?? null,
+    nachname: prof?.nachname ?? null,
+    adresse: prof?.adresse ?? null,
+    email: prof?.email ?? null,
+    payment_method: prof?.payment_method ?? null,
+  });
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
   return { success: true };
