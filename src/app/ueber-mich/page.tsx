@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { Music, Award, Users, Heart, CheckCircle2 } from "lucide-react";
+import { Music, Users, Heart, CheckCircle2, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -7,47 +7,73 @@ import { Button } from "@/components/ui/button";
 export const metadata: Metadata = {
   title: "Über mich – David Ramchandani | Privatklavierunterricht",
   description:
-    "Erfahre mehr über David Ramchandani – Klavierlehrer mit über 16 Jahren Erfahrung in Zürich. Dein persönlicher Musikunterricht.",
+    "Erfahre mehr über David Ramchandani – Klavierunterricht in Neftenbach und Umgebung. Ohne Noten, individuell und praxisnah.",
 };
 
 const stationen = [
   {
-    year: "2008",
-    title: "Beginn der Lehrtätigkeit",
-    desc: "Erste Klavierstunden als Jugendlicher – und sofort Feuer gefangen.",
+    year: "Start",
+    title: "Musikschule",
+    desc: "Beginn des eigenen Klavierunterrichts – der erste Schritt in die Welt der Musik.",
   },
   {
-    year: "2012",
-    title: "Musikhochschule",
-    desc: "Vertieftes Studium klassischer Klaviertechnik und Musiktheorie.",
+    year: "2016–2020",
+    title: "Band «High Five»",
+    desc: "Erste Band-Erfahrung, regelmässige Proben und kleinere Auftritte mit der Band «High Five».",
   },
   {
-    year: "2015",
-    title: "Erste eigene Schüler",
-    desc: "Aufbau eines festen Schülerkreises mit Unterricht in Zürich.",
+    year: "2018–2020",
+    title: "Soloauftritte",
+    desc: "Individuelle Gigs u. a. in der Esse Musicbar Winterthur und im Moods in Zürich.",
   },
   {
-    year: "2020+",
-    title: "Online & Präsenz",
-    desc: "Flexibler Unterricht – vor Ort in deinem Zuhause oder online.",
+    year: "2020",
+    title: "Resonanzband",
+    desc: "Mitglied der Resonanzband – inklusive Auftritt an den Musikfestwochen Winterthur.",
+  },
+  {
+    year: "Anfang 2024",
+    title: "Beginn zu unterrichten",
+    desc: "Start eigener Klavierunterrichtsstunden – individuell, praxisnah und mit Begeisterung.",
+  },
+  {
+    year: "Geplant 2027",
+    title: "PH Studium",
+    desc: "Start des Pädagogikstudiums an der PH Zürich – um Musik auch beruflich weiterzugeben.",
   },
 ];
 
 const werte = [
   {
-    icon: <Heart className="w-5 h-5" />,
-    title: "Leidenschaft",
-    desc: "Musik ist mehr als Noten lesen – es geht ums Fühlen und Ausdrücken.",
+    icon: <Music className="w-5 h-5" />,
+    title: "Ohne Noten",
+    desc: "Wir spielen nach Akkorden, Gehör und Gefühl – keine trockene Theorie.",
   },
   {
     icon: <Users className="w-5 h-5" />,
-    title: "Individuell",
-    desc: "Kein Schüler ist gleich. Ich passe mich deinem Tempo und Stil an.",
+    title: "Individuell angepasst",
+    desc: "Jede Stunde richtet sich nach deinem Tempo und deinen Interessen.",
   },
   {
-    icon: <Award className="w-5 h-5" />,
-    title: "Qualität",
-    desc: "Solide Technik als Fundament – damit du wirklich Fortschritte machst.",
+    icon: <Heart className="w-5 h-5" />,
+    title: "Direkt ans Instrument",
+    desc: "Lernen durch Spielen – vom ersten Ton an.",
+  },
+];
+
+/** Echte Schülerstimmen von der bisherigen Website. */
+const stimmen = [
+  {
+    name: "Jan",
+    text: "Perfekt! David ist ein sehr engagierter Klavierlehrer. Er unterrichtet meine zwei Kinder seit gut einem halben Jahr wöchentlich. Die Kinder fühlen sich super wohl mit ihm, haben Freude am Klavier spielen und machen tolle Fortschritte. David ist professionell, kommuniziert super und er ist sehr zuverlässig. Wir können ihn von Herzen weiterempfehlen :).",
+  },
+  {
+    name: "Pierre",
+    text: "Ich gehe zu ihm in die Stunden was ich keinen Moment bereue. Er hat eine sehr angenehme Art und Weise mir genau da zu helfen wo ich seine Hilfe benötige. Sehr vertrauenswürdige Lektionen auf schon fast kollegialer Basis, was ich enorm schätze. Toller Prof!",
+  },
+  {
+    name: "Julian",
+    text: "David spielt schon seit Kindheit Klavier und ich bin jedes mal überrascht wenn ich ihn spielen höre wie exakt und präzise er die Töne spielt. Er ist ein sehr geduldiger Mensch und kann einem sehr viel beibringen auf dem Klavier. Mit David hat man einen sehr guten, jungen Klavierlehrer der professionell und auf moderne Art und Weise Klavierunterricht erteilt.",
   },
 ];
 
@@ -68,13 +94,13 @@ export default function UeberMichPage() {
           <div className="text-white space-y-6">
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-500 text-white/80">
               <Music className="w-4 h-4" />
-              Klavierlehrer seit 2008
+              16 Jahre Klaviererfahrung
             </div>
             <h1 className="text-4xl sm:text-5xl font-800 leading-tight">
               Hallo, ich bin <span className="italic">David</span>.
             </h1>
             <p className="text-white/70 text-lg leading-relaxed">
-              Ich bringe dir das Klavierspielen bei – egal ob du absolute Anfängerin oder fortgeschrittener Spieler bist. Mit Geduld, Humor und echter Leidenschaft.
+              Ich unterrichte Klavier mit Leidenschaft – nicht nach Noten, sondern nach Gefühl. Ob du Anfänger bist oder wieder einsteigen möchtest, bei mir zählt nicht die Perfektion, sondern der Spass am Spielen.
             </p>
             <div className="flex flex-wrap gap-4 pt-2">
               <Link href="/probelektion">
@@ -115,10 +141,10 @@ export default function UeberMichPage() {
       <section className="bg-white border-b border-[#EAECEF] py-10">
         <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
-            { value: "16+", label: "Jahre Erfahrung" },
-            { value: "200+", label: "Schülerinnen & Schüler" },
-            { value: "5★", label: "Bewertung" },
-            { value: "100%", label: "Persönlicher Unterricht" },
+            { value: "16", label: "Jahre Klaviererfahrung" },
+            { value: "5.0★", label: "aus 4 Bewertungen" },
+            { value: "45 Min", label: "pro Lektion" },
+            { value: "100%", label: "Unterricht bei dir zuhause" },
           ].map(({ value, label }) => (
             <div key={label}>
               <p className="text-3xl font-800 text-navy-900">{value}</p>
@@ -132,16 +158,26 @@ export default function UeberMichPage() {
       <section className="py-20 px-4">
         <div className="max-w-3xl mx-auto space-y-8">
           <div>
-            <h2 className="text-2xl font-800 text-navy-900 mb-4">Meine Geschichte</h2>
+            <h2 className="text-2xl font-800 text-navy-900 mb-4">Warum ich unterrichte</h2>
             <div className="prose prose-gray max-w-none space-y-4 text-gray-600 leading-relaxed">
               <p>
-                Mit 12 Jahren habe ich das erste Mal auf einem alten Klavier gespielt – und seitdem nicht mehr aufgehört. Was als Hobby begann, ist heute mein Beruf und meine Leidenschaft.
+                Ich liebe es, zu unterrichten. Jede*r Schüler*in bringt eine eigene
+                Geschichte mit – und genau das macht den Unterricht so spannend.
+                Mein Ziel ist es, dir zu zeigen, wie du dich am Klavier ausdrücken
+                kannst. Ohne Druck, ohne Theorie-Marathon – sondern mit Freude.
               </p>
               <p>
-                Ich unterrichte alle Altersgruppen: von kleinen Kindern ab 5 Jahren bis zu Erwachsenen, die den Traum vom Klavierspielen endlich verwirklichen möchten. Egal ob Klassik, Pop, Jazz oder einfach das Lieblingslied – bei mir darfst du spielen, was dich begeistert.
+                Seit meinem sechsten Lebensjahr begleitet mich das Klavier. Ich habe
+                eine klassische Ausbildung genossen, aber früh gemerkt: Wirklich
+                berühren kann Musik nur, wenn man sie lebt – nicht nur liest. Deshalb
+                unterrichte ich heute nach einem spielerischen und praxisnahen
+                Konzept – ganz ohne Notenlesen.
               </p>
               <p>
-                Mein Unterricht findet bei dir zu Hause statt – bequem, ohne Fahrtwege, in deiner vertrauten Umgebung. So können wir uns ganz auf die Musik konzentrieren.
+                Mein Ansatz kombiniert Spass am Musizieren mit echtem Lernerfolg. Du
+                spielst schon nach wenigen Minuten erste Melodien und Begleitungen.
+                Jede Lektion ist individuell auf deine Ziele und dein Tempo
+                zugeschnitten – ob Anfängerin oder Fortgeschrittener.
               </p>
             </div>
           </div>
@@ -164,17 +200,17 @@ export default function UeberMichPage() {
       {/* Was ich anbiete */}
       <section className="bg-surface py-20 px-4">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-2xl font-800 text-navy-900 mb-8 tracking-tight">Was ich anbiete</h2>
+          <h2 className="text-2xl font-800 text-navy-900 mb-8 tracking-tight">Mein Unterrichtsstil</h2>
           <div className="grid sm:grid-cols-2 gap-3">
             {[
-              "Klavierunterricht für Anfänger und Fortgeschrittene",
-              "Kinder ab 5 Jahren, Jugendliche & Erwachsene",
-              "Klassik, Pop, Jazz, Filmmusik – du wählst",
-              "Unterricht bei dir zu Hause in Zürich",
-              "Flexible Terminplanung rund um deinen Alltag",
-              "Vorbereitung auf Prüfungen und Auftritte",
-              "Musiktheorie & Notenlesen",
-              "Online-Unterricht auf Wunsch",
+              "Klavierunterricht für Anfängerinnen und Fortgeschrittene",
+              "Spielen nach Akkorden, Gehör und Gefühl – ohne Notenlesen",
+              "Moderne Songs, die du wirklich spielen willst",
+              "Unterricht bei dir zuhause in Neftenbach und Umgebung",
+              "Lektionen à 45 Minuten, flexibel planbar",
+              "Einzellektion oder 10er- bzw. 20er-Paket",
+              "Individuell auf dein Tempo und deine Ziele abgestimmt",
+              "Kostenlose, unverbindliche Probelektion",
             ].map((item) => (
               <div key={item} className="flex items-start gap-3 bg-white rounded-xl p-4 border border-[#EAECEF] hover:border-navy-900/20 hover:-translate-y-0.5 transition-all duration-200">
                 <CheckCircle2 className="w-4 h-4 text-navy-600 mt-0.5 flex-shrink-0" />
@@ -198,6 +234,32 @@ export default function UeberMichPage() {
                 <h3 className="font-700 text-navy-900 mt-1">{title}</h3>
                 <p className="text-sm text-gray-500 mt-0.5">{desc}</p>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Schülerstimmen */}
+      <section className="bg-surface py-20 px-4">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-2xl font-800 text-navy-900 mb-2">Das sagen Schüler/innen</h2>
+          <p className="text-gray-500 text-sm mb-10">Echte Erfahrungen aus dem Unterricht</p>
+          <div className="grid md:grid-cols-3 gap-4">
+            {stimmen.map(({ name, text }) => (
+              <figure
+                key={name}
+                className="bg-white rounded-2xl p-6 border border-[#EAECEF] flex flex-col gap-4"
+              >
+                <div className="flex gap-0.5" aria-label="5 von 5 Sternen">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+                <blockquote className="text-sm text-gray-600 leading-relaxed flex-1">
+                  {text}
+                </blockquote>
+                <figcaption className="text-sm font-700 text-navy-900">{name}</figcaption>
+              </figure>
             ))}
           </div>
         </div>

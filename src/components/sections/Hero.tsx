@@ -79,9 +79,9 @@ export default async function Hero() {
 
             {/* Social proof pills */}
             <div className="flex flex-wrap gap-3 pt-2 opacity-0 animate-fade-in delay-300">
-              <Pill icon={<Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />} text="5.0 Sterne" />
-              <Pill icon={<Users className="w-3.5 h-3.5 text-navy-900" />} text="200+ Schülerinnen & Schüler" />
-              <Pill icon={<Clock className="w-3.5 h-3.5 text-navy-900" />} text="16+ Jahre Erfahrung" />
+              <Pill icon={<Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />} text="5.0 aus 4 Bewertungen" />
+              <Pill icon={<Users className="w-3.5 h-3.5 text-navy-900" />} text="Unterricht bei dir zuhause" />
+              <Pill icon={<Clock className="w-3.5 h-3.5 text-navy-900" />} text="16 Jahre Klaviererfahrung" />
             </div>
           </div>
 

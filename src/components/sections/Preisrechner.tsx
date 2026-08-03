@@ -119,8 +119,9 @@ export default function Preisrechner() {
           const km = parseFloat(distText.replace(",", "."));
           const basis = PAKETE[selectedPaket].preis;
 
-          // Logik: 6 km gratis, danach alle 6 km +5 CHF
-          const stufen = Math.max(0, Math.ceil((km - 6) / 6));
+          // Wegvergütung (Preise-Seite): innerhalb von 5 km keine Wegkosten,
+          // ab 5 km pro angefangene 5 km zusätzlich CHF 5.–
+          const stufen = Math.max(0, Math.ceil((km - 5) / 5));
           const aufschlag = stufen * 5;
 
           if (aufschlag > 25) {
