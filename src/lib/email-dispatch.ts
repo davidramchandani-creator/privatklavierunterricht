@@ -4,6 +4,8 @@ import { renderEmail } from "@/lib/email-templates";
 import { generateQRInvoicePdf, buildSpcData } from "@/lib/qr-invoice";
 import { buildLessonTwintLink, buildTwintLink } from "@/lib/twint";
 import { pricePerPersonFor } from "@/lib/group-courses";
+import { sendPushToUser, sendPushToAdmin } from "@/lib/push";
+import { buildPush } from "@/lib/notification-push";
 
 export const ADMIN_RECIPIENT_TYPES = [
   "booking_request_admin",
@@ -32,6 +34,10 @@ export const STUDENT_PAYLOAD_TO_TYPES = [
 ];
 
 export const STUDENT_LOOKUP_TYPES = [
+  "lesson_reminder_24h",
+  "lesson_reminder_2h",
+  "payment_overdue",
+  "package_expiring",
   "booking_rejected",
   "reschedule_rejected",
   "appointment_cancelled_student",
@@ -160,6 +166,65 @@ export async function dispatchEmail(
   if (!rendered) throw new Error(`No template for type: ${type}`);
 
   await sendEmail({ to, subject: rendered.subject, html: rendered.html });
+
+  // Zusaetzlich Push senden (fehlertolerant: Mail ist bereits raus).
+  await dispatchPush(admin, type, { ...payload, ...extraContext });
+}
+
+/**
+ * Sendet die Push-Variante einer Benachrichtigung.
+ * Wirft nie – eine fehlgeschlagene Push-Nachricht darf weder die E-Mail noch
+ * die ausloesende Aktion beeintraechtigen.
+ */
+export async function dispatchPush(
+  admin: SupabaseClient,
+  type: string,
+  payload: Record<string, unknown>
+): Promise<void> {
+  try {
+    const push = buildPush(type, payload);
+    if (!push) return;
+
+    if (ADMIN_RECIPIENT_TYPES.includes(type)) {
+      await sendPushToAdmin(admin, push);
+      return;
+    }
+
+    // Schueler-Benachrichtigung: user_id ermitteln.
+    let userId = (payload.student_id as string | undefined) ?? undefined;
+    if (!userId && payload.invoice_id) {
+      const { data: inv } = await admin
+        .from("invoices")
+        .select("student_id")
+        .eq("id", payload.invoice_id as string)
+        .maybeSingle();
+      userId = (inv?.student_id as string | undefined) ?? undefined;
+    }
+    if (!userId && payload.appointment_id) {
+      const { data: appt } = await admin
+        .from("appointments")
+        .select("student_id")
+        .eq("id", payload.appointment_id as string)
+        .maybeSingle();
+      userId = (appt?.student_id as string | undefined) ?? undefined;
+    }
+    if (!userId && payload.to) {
+      const { data: prof } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("email", payload.to as string)
+        .maybeSingle();
+      userId = (prof?.id as string | undefined) ?? undefined;
+    }
+
+    if (userId) await sendPushToUser(admin, userId, push);
+  } catch (err) {
+    console.error(
+      "[push] dispatchPush fehlgeschlagen:",
+      type,
+      err instanceof Error ? err.message : String(err)
+    );
+  }
 }
 
 /**

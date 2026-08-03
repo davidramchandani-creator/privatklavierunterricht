@@ -81,6 +81,105 @@ export function renderEmail(
   payload: Record<string, unknown>
 ): { subject: string; html: string } | null {
   switch (type) {
+    // ── Kontaktformular ─────────────────────────────────────────────
+    case "kontakt_received": {
+      return {
+        subject: "Deine Nachricht ist angekommen",
+        html: baseWrapper(
+          `<p>Hallo ${payload.vorname ?? ""}</p>
+           <p>Danke für deine Nachricht – ich habe sie erhalten und melde mich
+              so bald wie möglich bei dir.</p>
+           ${payload.betreff ? `<p><strong>Betreff:</strong> ${payload.betreff}</p>` : ""}
+           <p style="background:#f9fafb;border-left:3px solid #1C244B;padding:12px 16px;color:#4b5563;white-space:pre-wrap;">${String(payload.nachricht ?? "")}</p>
+           <p>Liebe Grüsse<br/>David Ramchandani</p>`
+        ),
+      };
+    }
+    case "kontakt_admin": {
+      return {
+        subject: `Neue Kontaktanfrage von ${payload.vorname ?? ""} ${payload.nachname ?? ""}`.trim(),
+        html: baseWrapper(
+          `<p><strong>Neue Nachricht über das Kontaktformular</strong></p>
+           <p>
+             <strong>Name:</strong> ${payload.vorname ?? ""} ${payload.nachname ?? ""}<br/>
+             <strong>E-Mail:</strong> ${payload.email ?? ""}<br/>
+             ${payload.telefon ? `<strong>Telefon:</strong> ${payload.telefon}<br/>` : ""}
+             ${payload.betreff ? `<strong>Betreff:</strong> ${payload.betreff}<br/>` : ""}
+           </p>
+           <p style="background:#f9fafb;border-left:3px solid #1C244B;padding:12px 16px;color:#4b5563;white-space:pre-wrap;">${String(payload.nachricht ?? "")}</p>
+           <p style="text-align:center;margin:24px 0;">
+             <a href="${APP_URL}/admin/anfragen" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">Im Admin ansehen</a>
+           </p>`
+        ),
+      };
+    }
+    // ── Erinnerungen ────────────────────────────────────────────────
+    case "lesson_reminder_24h": {
+      const start = fmtDateTime(String(payload.start_at));
+      return {
+        subject: `Erinnerung: Klavierunterricht morgen (${start})`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + payload.student_name : ""}</p>
+           <p>Kurze Erinnerung: Deine Klavierlektion findet <strong>${start}</strong> statt.</p>
+           <p>Falls es dir nicht passt, kannst du den Termin <strong>bis 24 Stunden vorher</strong>
+              im Portal verschieben oder stornieren – danach ist das leider nicht mehr möglich.</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Schülerportal</a>
+           </p>
+           <p>Bis morgen!<br/>Liebe Grüsse<br/>David</p>`
+        ),
+      };
+    }
+    case "lesson_reminder_2h": {
+      const start = fmtDateTime(String(payload.start_at));
+      return {
+        subject: `Gleich geht's los – Klavierunterricht um ${start}`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + payload.student_name : ""}</p>
+           <p>Deine Klavierlektion beginnt <strong>${start}</strong>. Bis gleich!</p>
+           <p>Liebe Grüsse<br/>David</p>`
+        ),
+      };
+    }
+    case "payment_overdue": {
+      const amount = Number(payload.amount ?? 0).toFixed(2);
+      return {
+        subject: `Zahlungserinnerung – CHF ${amount} offen`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + payload.student_name : ""}</p>
+           <p>Der Betrag von <strong>CHF ${amount}</strong>${
+             payload.invoice_number ? ` (Rechnung ${payload.invoice_number})` : ""
+           } war am <strong>${fmtDate(String(payload.due_date))}</strong> fällig und ist noch offen.</p>
+           <p>Diese erste Erinnerung ist rein informativ – bitte begleiche den Betrag
+              bei Gelegenheit im Portal.</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Jetzt bezahlen</a>
+           </p>
+           <p>Falls du bereits bezahlt hast, ignoriere diese Nachricht einfach.</p>
+           <p>Liebe Grüsse<br/>David</p>`
+        ),
+      };
+    }
+    case "package_expiring": {
+      const remaining = Number(payload.lessons_remaining ?? 0);
+      return {
+        subject: "Dein Paket läuft bald ab",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + payload.student_name : ""}</p>
+           <p>Dein Paket ist noch bis <strong>${fmtDate(String(payload.expires_at))}</strong> gültig${
+             remaining > 0
+               ? ` – du hast noch <strong>${remaining} Lektion${remaining === 1 ? "" : "en"}</strong> offen`
+               : ""
+           }.</p>
+           <p>Nicht genutzte Lektionen verfallen nach Ablauf. Am besten buchst du deine
+              restlichen Termine jetzt im Portal.</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Termine buchen</a>
+           </p>
+           <p>Liebe Grüsse<br/>David</p>`
+        ),
+      };
+    }
     case "booking_request_admin": {
       const studentName = String(payload.student_name ?? "Unbekannt");
       const desiredStarts = Array.isArray(payload.desired_starts)
