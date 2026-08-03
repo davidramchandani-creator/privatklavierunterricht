@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { dispatchEmail } from "@/lib/email-dispatch";
+import { scanForDueReminders } from "@/lib/reminders";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,15 @@ export async function GET(request: NextRequest) {
 
   const admin = createAdminClient();
 
+  // Erst neue Erinnerungen einplanen (ueberfaellige Zahlungen, ablaufende
+  // Pakete), damit sie im selben Lauf direkt mitversendet werden.
+  let scanned = { overdue: 0, expiring: 0 };
+  try {
+    scanned = await scanForDueReminders(admin);
+  } catch (err) {
+    console.error("[cron] Reminder-Scan fehlgeschlagen:", err);
+  }
+
   // Fetch up to 20 pending emails due now
   const { data: emails } = await admin
     .from("scheduled_emails")
@@ -23,9 +33,9 @@ export async function GET(request: NextRequest) {
     .eq("status", "pending")
     .lte("send_at", new Date().toISOString())
     .order("send_at", { ascending: true })
-    .limit(20);
+    .limit(50);
 
-  if (!emails?.length) return Response.json({ sent: 0 });
+  if (!emails?.length) return Response.json({ sent: 0, ...scanned });
 
   let sent = 0;
   let failed = 0;
@@ -53,5 +63,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return Response.json({ sent, failed });
+  return Response.json({ sent, failed, ...scanned });
 }
