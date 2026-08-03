@@ -63,6 +63,7 @@ export default function Navbar() {
         { href: "/ueber-mich", label: "Über mich" },
         { href: "/#angebote", label: "Angebote" },
         { href: "/preise", label: "Preise" },
+        { href: "/kontakt", label: "Kontakt" },
       ];
 
   return (

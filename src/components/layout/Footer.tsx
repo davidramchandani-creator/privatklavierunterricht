@@ -54,6 +54,7 @@ export default function Footer() {
                 { href: "/#angebote", label: "Angebote" },
                 { href: "/preise", label: "Preise" },
                 { href: "/probelektion", label: "Probelektion" },
+                { href: "/kontakt", label: "Kontakt" },
               ].map((l) => (
                 <li key={l.href}>
                   <Link
@@ -73,6 +74,7 @@ export default function Footer() {
               {[
                 { href: "/auth/login", label: "Anmelden" },
                 { href: "/schueler/portal", label: "Schülerportal" },
+                { href: "/benachrichtigungen", label: "Benachrichtigungen" },
                 { href: "/auth/register", label: "Registrieren" },
               ].map((l) => (
                 <li key={l.href}>
