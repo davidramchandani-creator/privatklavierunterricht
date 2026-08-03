@@ -210,8 +210,10 @@ export async function resendInvite(email: string) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
   const adminClient = await createAdminClient();
 
-  // admin.generateLink bypasses PKCE – works across any browser/device
-  const { error } = await adminClient.auth.admin.generateLink({
+  // admin.generateLink bypasses PKCE – works across any browser/device.
+  // Wichtig: generateLink versendet selbst KEINE E-Mail – der Link muss
+  // anschliessend explizit über unseren eigenen Versand (Resend) zugestellt werden.
+  const { data, error } = await adminClient.auth.admin.generateLink({
     type: "recovery",
     email,
     options: {
@@ -220,6 +222,32 @@ export async function resendInvite(email: string) {
   });
 
   if (error) return { error: error.message };
+
+  const actionLink = data?.properties?.action_link;
+  if (!actionLink) return { error: "Zugangslink konnte nicht erstellt werden." };
+
+  const { sendEmail } = await import("@/lib/email-sender");
+  try {
+    await sendEmail({
+      to: email,
+      subject: "Dein Zugang zum Schülerportal – Klavierunterricht",
+      html: `<div style="font-family:sans-serif;padding:24px;background:#f3f4f6;">
+        <div style="background:#fff;border-radius:12px;padding:32px;max-width:480px;margin:0 auto;">
+          <h2 style="color:#1C244B;margin-top:0;">Dein Zugang zum Schülerportal</h2>
+          <p>Hallo</p>
+          <p>Über den folgenden Button kannst du dein Passwort setzen und dich anschliessend im Schülerportal anmelden:</p>
+          <p style="text-align:center;margin:28px 0;">
+            <a href="${actionLink}" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Passwort setzen</a>
+          </p>
+          <p style="color:#6b7280;font-size:13px;">Der Link ist nur einmal gültig. Falls du ihn nicht angefordert hast, kannst du diese E-Mail ignorieren.</p>
+          <p style="margin-bottom:0;">Liebe Grüsse<br/>David Ramchandani</p>
+        </div>
+      </div>`,
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
+
   return { success: true };
 }
 
@@ -1213,12 +1241,15 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
     .single();
   if (!pkg) return { error: "Paket nicht gefunden." };
 
-  // Genutzte Lektionen aus tatsächlichen Terminen zählen (Spec §3).
+  // Genutzte Lektionen = tatsächlich gehaltene Lektionen (vergangene booked
+  // oder completed). Zukünftige gebuchte Termine werden weiter unten storniert
+  // und dürfen NICHT verrechnet werden.
   const { count: usedCount } = await admin
     .from("appointments")
     .select("id", { count: "exact", head: true })
     .eq("package_id", packageId)
-    .in("status", ["booked", "completed"]);
+    .in("status", ["booked", "completed"])
+    .lte("start_at", new Date().toISOString());
   const lessonsUsed = usedCount ?? 0;
 
   if (!canCancelPackage(pkg as Paket, lessonsUsed)) {
@@ -1366,13 +1397,11 @@ export async function createInvoiceForAppointment(appointmentId: string) {
 
   const amount = Number(pkg?.price_per_lesson ?? 85);
   const paymentMethod = pkg?.payment_method ?? "twint";
-  const invoiceNumber =
-    "PIANO-" + new Date().getFullYear() + "-" + String(Math.floor(Math.random() * 9000) + 1000);
 
+  // invoice_number kommt aus dem DB-Default (fortlaufende Sequenz PIANO-{Jahr}-{NNNN}).
   const { data: inv, error } = await admin
     .from("invoices")
     .insert({
-      invoice_number: invoiceNumber,
       student_id: appt.student_id,
       appointment_id: appointmentId,
       amount,
