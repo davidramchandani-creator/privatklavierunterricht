@@ -568,6 +568,20 @@ export async function acceptProposal(proposalId: string) {
     });
   }
 
+  // Admin informieren, dass der Vorschlag angenommen wurde (Mail + Push).
+  const { data: nameRow } = await supabase
+    .from("profiles")
+    .select("vorname, nachname")
+    .eq("id", user.id)
+    .maybeSingle();
+  await sendEmailNow(admin, "proposal_accepted_admin", {
+    student_id: user.id,
+    student_name: nameRow ? `${nameRow.vorname} ${nameRow.nachname}` : undefined,
+    proposed_start: proposal.proposed_start,
+    lessons_count: proposal.lessons_count ?? 1,
+    interval_days: proposal.interval_days ?? 0,
+  });
+
   revalidatePath("/schueler/portal");
   return { success: true };
 }
@@ -641,11 +655,28 @@ export async function markInvoicePaid(invoiceId: string) {
   }
 
   const admin = await createAdminClient();
-  const { error } = await admin
+  const { data: updated, error } = await admin
     .from("invoices")
     .update({ status: "pending_confirmation" })
-    .eq("id", invoiceId);
+    .eq("id", invoiceId)
+    .select("amount, invoice_number, lesson_date")
+    .maybeSingle();
   if (error) return { error: "Status konnte nicht aktualisiert werden." };
+
+  // Admin informieren, damit die Zahlung geprüft werden kann (Mail + Push).
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("vorname, nachname")
+    .eq("id", user.id)
+    .maybeSingle();
+  await sendEmailNow(admin, "payment_reported_admin", {
+    student_id: user.id,
+    student_name: profile ? `${profile.vorname} ${profile.nachname}` : undefined,
+    invoice_id: invoiceId,
+    amount: updated?.amount,
+    invoice_number: updated?.invoice_number,
+    lesson_date: updated?.lesson_date,
+  });
 
   revalidatePath("/schueler/portal");
   return { success: true };
@@ -748,6 +779,16 @@ export async function buyPackage(type: "10er" | "20er", agbAccepted: boolean) {
     adresse: profile.adresse,
     email: profile.email,
     payment_method: profile.payment_method,
+  });
+
+  // Admin über den Paketkauf informieren (Mail + Push).
+  await sendEmailNow(admin, "package_purchased_admin", {
+    student_id: user.id,
+    student_name: `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim() || undefined,
+    package_label: PACKAGE_LABELS[type],
+    lessons_total: lessonsTotal,
+    price_per_lesson: ppl,
+    total_price: totalPrice,
   });
 
   revalidatePath("/schueler/portal");
