@@ -81,6 +81,59 @@ export function renderEmail(
   payload: Record<string, unknown>
 ): { subject: string; html: string } | null {
   switch (type) {
+    // ── Schüler-Aktionen an den Admin ───────────────────────────────
+    case "payment_reported_admin": {
+      const amount = Number(payload.amount ?? 0).toFixed(2);
+      return {
+        subject: `Zahlung gemeldet: CHF ${amount} von ${payload.student_name ?? "Schüler"}`,
+        html: baseWrapper(
+          `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat eine Zahlung als erledigt markiert.</p>
+           <p>
+             <strong>Betrag:</strong> CHF ${amount}<br/>
+             ${payload.invoice_number ? `<strong>Rechnung:</strong> ${payload.invoice_number}<br/>` : ""}
+             ${payload.lesson_date ? `<strong>Lektion:</strong> ${fmtDateTime(String(payload.lesson_date))}<br/>` : ""}
+           </p>
+           <p>Bitte prüfe den Zahlungseingang und bestätige oder lehne die Zahlung im Adminbereich ab.</p>
+           <p style="text-align:center;margin:24px 0;">
+             <a href="${APP_URL}/admin/zahlungen" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">Zahlungen öffnen</a>
+           </p>`
+        ),
+      };
+    }
+    case "package_purchased_admin": {
+      return {
+        subject: `Neues Paket gebucht: ${payload.package_label ?? "Paket"} – ${payload.student_name ?? "Schüler"}`,
+        html: baseWrapper(
+          `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat ein neues Paket gebucht.</p>
+           <p>
+             <strong>Paket:</strong> ${payload.package_label ?? "-"}<br/>
+             <strong>Lektionen:</strong> ${payload.lessons_total ?? "-"}<br/>
+             <strong>Preis pro Lektion:</strong> CHF ${Number(payload.price_per_lesson ?? 0).toFixed(2)}<br/>
+             <strong>Gesamtpreis:</strong> CHF ${Number(payload.total_price ?? 0).toFixed(2)}
+           </p>
+           <p>Die Rechnung wurde automatisch erstellt und dem Schüler zugestellt.</p>
+           <p style="text-align:center;margin:24px 0;">
+             <a href="${APP_URL}/admin/zahlungen" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">Zahlungen öffnen</a>
+           </p>`
+        ),
+      };
+    }
+    case "proposal_accepted_admin": {
+      return {
+        subject: `Terminvorschlag angenommen von ${payload.student_name ?? "Schüler"}`,
+        html: baseWrapper(
+          `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat deinen Terminvorschlag angenommen.</p>
+           <p>
+             <strong>Termin:</strong> ${payload.proposed_start ? fmtDateTime(String(payload.proposed_start)) : "-"}<br/>
+             ${Number(payload.lessons_count ?? 1) > 1 ? `<strong>Serie:</strong> ${payload.lessons_count} Lektionen alle ${payload.interval_days} Tage<br/>` : ""}
+           </p>
+           <p>Die Termine sind gebucht und im Kalender eingetragen.</p>
+           <p style="text-align:center;margin:24px 0;">
+             <a href="${APP_URL}/admin/kalender" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">Kalender öffnen</a>
+           </p>`
+        ),
+      };
+    }
     // ── Kontaktformular ─────────────────────────────────────────────
     case "kontakt_received": {
       return {

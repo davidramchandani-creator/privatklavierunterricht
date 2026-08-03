@@ -18,6 +18,10 @@ export const ADMIN_RECIPIENT_TYPES = [
   // Kontaktformular + Probelektion-Anfragen (nur Push; die Mail wird in den
   // jeweiligen Actions direkt versendet).
   "anfrage_admin",
+  // Schüler-Aktionen, über die der Admin informiert werden muss.
+  "payment_reported_admin",
+  "package_purchased_admin",
+  "proposal_accepted_admin",
 ];
 
 export const STUDENT_PAYLOAD_TO_TYPES = [

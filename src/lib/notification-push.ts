@@ -226,6 +226,24 @@ const BUILDERS: Record<string, Builder> = {
     url: "/admin/anfragen",
     tag: "admin-anfrage",
   }),
+  payment_reported_admin: (p) => ({
+    title: "Zahlung gemeldet",
+    body: `${p.student_name ?? "Ein Schüler"} hat ${money(p.amount)} als bezahlt markiert – bitte prüfen.`,
+    url: ADMIN_ZAHLUNGEN,
+    tag: "admin-payment",
+  }),
+  package_purchased_admin: (p) => ({
+    title: "Neues Paket gebucht",
+    body: `${p.student_name ?? "Ein Schüler"}: ${p.package_label ?? "Paket"} für ${money(p.total_price)}`,
+    url: ADMIN_ZAHLUNGEN,
+    tag: "admin-package",
+  }),
+  proposal_accepted_admin: (p) => ({
+    title: "Vorschlag angenommen",
+    body: `${p.student_name ?? "Ein Schüler"} hat ${fmt(p.proposed_start)} bestätigt.`,
+    url: "/admin/kalender",
+    tag: "admin-proposal",
+  }),
   group_session_admin: (p) => ({
     title: "Gruppenkurs-Anmeldung",
     body: `${p.student_name ?? "Ein Schüler"} – ${p.course_title ?? "Gruppenkurs"}`,
