@@ -9,22 +9,28 @@ interface Bewertung {
 
 const BEWERTUNGEN: Bewertung[] = [
   {
-    id: "p1",
+    id: "flurina",
     sterne: 5,
-    text: "David ist ein unglaublicher Lehrer! Nach nur 3 Monaten kann ich bereits meine Lieblingslieder spielen. Sein Unterricht ist so motivierend.",
-    name: "Julia M.",
+    text: "Diego ist sehr motiviert und happy!",
+    name: "Flurina",
   },
   {
-    id: "p2",
+    id: "marina",
     sterne: 5,
-    text: "Endlich Klavierunterricht ohne trockene Theorie. David passt sich genau meinem Tempo an und macht den Unterricht immer spannend.",
-    name: "Thomas K.",
+    text: "Wir haben Spass zusammen zu spielen und zu lernen.",
+    name: "Marina",
   },
   {
-    id: "p3",
+    id: "jan",
     sterne: 5,
-    text: "Als kompletter Anfänger hatte ich Bedenken, aber David hat mich sofort abgeholt. Sehr empfehlenswert!",
-    name: "Anonymer Schüler",
+    text: "David ist ein sehr engagierter Klavierlehrer. Die Kinder fühlen sich super wohl mit ihm, haben Freude am Klavier spielen und machen tolle Fortschritte. Wir können ihn von Herzen weiterempfehlen.",
+    name: "Jan",
+  },
+  {
+    id: "pierre",
+    sterne: 5,
+    text: "Er hat eine sehr angenehme Art und Weise mir genau da zu helfen wo ich seine Hilfe benötige. Sehr vertrauenswürdige Lektionen auf schon fast kollegialer Basis. Toller Prof!",
+    name: "Pierre",
   },
 ];
 
