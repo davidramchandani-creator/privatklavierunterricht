@@ -36,7 +36,7 @@ export default function Footer() {
             </p>
             <div className="flex gap-3 mt-4">
               <a
-                href="mailto:david@privatklavierunterricht.ch"
+                href="mailto:david.privatklavierunterricht@gmail.com"
                 className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
                 aria-label="E-Mail"
               >
@@ -52,7 +52,7 @@ export default function Footer() {
               {[
                 { href: "/ueber-mich", label: "Über mich" },
                 { href: "/#angebote", label: "Angebote" },
-                { href: "/#preise", label: "Preise" },
+                { href: "/preise", label: "Preise" },
                 { href: "/probelektion", label: "Probelektion" },
               ].map((l) => (
                 <li key={l.href}>
