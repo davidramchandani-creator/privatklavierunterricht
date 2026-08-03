@@ -13,6 +13,7 @@ import {
   CreditCard,
   Settings,
   UsersRound,
+  Bell,
   X,
   LogOut,
 } from "lucide-react";
@@ -29,6 +30,7 @@ const MORE_ITEMS = [
   { href: "/admin/anfragen", label: "Probelektionen", icon: Inbox },
   { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
   { href: "/admin/gruppenkurse", label: "Gruppenkurse", icon: UsersRound },
+  { href: "/benachrichtigungen", label: "Benachrichtigungen", icon: Bell },
   { href: "/admin/einstellungen", label: "Einstellungen", icon: Settings },
 ];
 

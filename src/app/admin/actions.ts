@@ -25,6 +25,7 @@ import {
   computePackageState,
 } from "@/lib/packages";
 import { addMonths, zurichLocalToIso } from "@/lib/utils";
+import { cancelLessonReminders, scheduleLessonReminders } from "@/lib/reminders";
 import {
   syncAppointmentToCalendar,
   deleteCalendarEvent,
@@ -531,6 +532,14 @@ export async function acceptReschedule(rescheduleId: string) {
   // Google Calendar: verschobenen Termin aktualisieren
   await syncAppointmentToCalendar(admin, rr.appointment_id);
 
+  // Erinnerungen auf den neuen Zeitpunkt umplanen.
+  await cancelLessonReminders(admin, rr.appointment_id);
+  await scheduleLessonReminders(admin, {
+    id: rr.appointment_id,
+    student_id: rr.student_id,
+    start_at: newStart.toISOString(),
+  });
+
   await admin
     .from("reschedule_requests")
     .update({ status: "accepted", aktualisiert_am: new Date().toISOString() })
@@ -870,6 +879,9 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
 
   // Google Calendar: Event löschen
   await deleteCalendarEvent(admin, id);
+
+  // Geplante Termin-Erinnerungen abbrechen.
+  await cancelLessonReminders(admin, id);
 
   // Offene Rechnung zu diesem Termin archivieren + geplante Zahlungsmail abbrechen
   // (Spec §6: bei Terminabsage Rechnung archivieren; Invoice-Status kennt kein "cancelled").

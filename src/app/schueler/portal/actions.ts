@@ -28,6 +28,7 @@ import { loadAvailabilityContext } from "@/lib/booking-server";
 import { sendEmailNow } from "@/lib/emails-outbox";
 import { createPackageInvoice } from "@/lib/package-invoice";
 import { deleteCalendarEvent } from "@/lib/google-calendar";
+import { cancelLessonReminders } from "@/lib/reminders";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   joinGroupSession,
@@ -300,6 +301,9 @@ export async function cancelAppointment(appointmentId: string) {
 
   // Google Calendar: Event löschen
   await deleteCalendarEvent(admin, appointmentId);
+
+  // Geplante Termin-Erinnerungen abbrechen.
+  await cancelLessonReminders(admin, appointmentId);
 
   // Offene Rechnung zu diesem Termin archivieren + geplante Zahlungsmail abbrechen
   // (Spec §6: bei Terminabsage Rechnung archivieren; Invoice-Status kennt kein "cancelled").

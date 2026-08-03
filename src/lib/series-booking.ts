@@ -13,6 +13,7 @@ import {
   computePackageState,
 } from "@/lib/packages";
 import { syncAppointmentToCalendar } from "@/lib/google-calendar";
+import { scheduleLessonReminders } from "@/lib/reminders";
 
 /**
  * Bucht (ggf. als Serie) Termine für einen Schüler im neuen Schema.
@@ -99,6 +100,17 @@ export async function bookSeriesForStudent(
   // Hinweis: Es werden keine Rechnungen/Zahlungsmails pro Lektion mehr erstellt.
   // Die Abrechnung erfolgt im Voraus über den gesamten Paketpreis beim Paketkauf
   // (siehe createPackageInvoice / buyPackage / createPackageAdmin).
+
+  // Termin-Erinnerungen (24h / 2h vorher) einplanen.
+  for (let i = 0; i < created.length; i++) {
+    const row = rows[i];
+    if (!row) continue;
+    await scheduleLessonReminders(admin, {
+      id: created[i].id,
+      student_id: studentUserId,
+      start_at: row.start_at,
+    });
+  }
 
   // Google Calendar Sync (one-way, fehlertolerant)
   for (const c of created) {

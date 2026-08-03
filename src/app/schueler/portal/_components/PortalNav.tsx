@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogOut } from "lucide-react";
+import { LogOut, Bell } from "lucide-react";
 import { logout } from "@/app/auth/actions";
 import Logo from "@/components/layout/Logo";
 
@@ -21,7 +21,17 @@ export default function PortalNav({ vorname }: { vorname?: string }) {
           </span>
         </Link>
 
-        <form action={logout}>
+        <div className="flex items-center gap-1">
+          <Link
+            href="/benachrichtigungen"
+            aria-label="Benachrichtigungen"
+            title="Benachrichtigungen"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-500 text-gray-400 hover:text-navy-900 rounded-lg hover:bg-navy-50 transition-colors"
+          >
+            <Bell className="w-3.5 h-3.5" />
+          </Link>
+
+          <form action={logout}>
           <button
             type="submit"
             className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-500 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
@@ -29,7 +39,8 @@ export default function PortalNav({ vorname }: { vorname?: string }) {
             <LogOut className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Abmelden</span>
           </button>
-        </form>
+          </form>
+        </div>
       </div>
     </header>
   );

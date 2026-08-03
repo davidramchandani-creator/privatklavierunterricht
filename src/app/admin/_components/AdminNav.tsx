@@ -15,6 +15,7 @@ import {
   Settings,
   Clock,
   ChevronDown,
+  Bell,
 } from "lucide-react";
 
 type NavItem = {
@@ -51,6 +52,7 @@ export const navEntries: NavEntry[] = [
   },
   { href: "/admin/gruppenkurse", label: "Gruppenkurse", icon: UsersRound },
   { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
+  { href: "/benachrichtigungen", label: "Benachrichtigungen", icon: Bell },
   { href: "/admin/einstellungen", label: "Einstellungen", icon: Settings },
 ];
 
