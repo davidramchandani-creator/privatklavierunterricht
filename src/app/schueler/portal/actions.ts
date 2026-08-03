@@ -728,6 +728,12 @@ export async function buyPackage(type: "10er" | "20er", agbAccepted: boolean) {
     .single();
 
   if (error || !pkg) {
+    // 23505 = unique_violation: der partielle Unique-Index
+    // `packages_one_active_per_student` verhindert ein zweites aktives Paket
+    // (z. B. bei Doppelklick oder parallelen Requests).
+    if (error?.code === "23505") {
+      return { error: "Du hast bereits ein aktives Paket." };
+    }
     return { error: "Paket konnte nicht gebucht werden. Bitte versuche es erneut." };
   }
 
