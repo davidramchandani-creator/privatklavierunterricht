@@ -13,6 +13,7 @@ import {
 import { loadAvailabilityContext } from "@/lib/booking-server";
 import { sendEmail } from "@/lib/email-sender";
 import { renderEmail } from "@/lib/email-templates";
+import { dispatchPush } from "@/lib/email-dispatch";
 
 export type PublicSlot = {
   beginn: string;
@@ -128,6 +129,13 @@ export async function submitAnfrage(formData: FormData) {
       );
     }
   }
+
+  // Push an den Admin (zusätzlich zur Mail).
+  const adminClient = await createAdminClient();
+  await dispatchPush(adminClient, "anfrage_admin", {
+    ...mailPayload,
+    quelle: "probelektion",
+  });
 
   return { success: true };
 }
