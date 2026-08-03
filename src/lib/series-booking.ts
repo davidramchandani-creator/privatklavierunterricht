@@ -7,7 +7,6 @@ import {
   validateSeries,
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
-import { enqueueEmail } from "@/lib/emails-outbox";
 import {
   type Package as Paket,
   canBuyNewPackage,
@@ -18,8 +17,9 @@ import { syncAppointmentToCalendar } from "@/lib/google-calendar";
 /**
  * Bucht (ggf. als Serie) Termine für einen Schüler im neuen Schema.
  * Validiert transaktional gegen die Buchungs-Engine; 24h-Vorlauf wird als
- * Admin-/System-Aktion übersprungen. Legt pro Termin eine Rechnung an und plant
- * die Zahlungsmail auf `end_at` (Spec §6). Synchronisiert mit Google Calendar.
+ * Admin-/System-Aktion übersprungen. Synchronisiert mit Google Calendar.
+ * Es entstehen KEINE Rechnungen pro Lektion – die Abrechnung läuft im Voraus
+ * über den Paketpreis (siehe createPackageInvoice).
  *
  * Wird genutzt von: Admin-Direktbuchung, Anfrage-Annahme (Admin) und
  * Terminvorschlag-Annahme (Schüler). Der Aufrufer übergibt einen Admin-Client
@@ -96,53 +96,9 @@ export async function bookSeriesForStudent(
     .select("id");
   if (error || !created) return { error: "Termine konnten nicht erstellt werden." };
 
-  // Für jeden Termin: Rechnung anlegen + Zahlungsmail planen
-  for (const appt of rows) {
-    const createdAppt = created[rows.indexOf(appt)];
-    if (!createdAppt) continue;
-
-    // Zahlungsart des Schülers hat Vorrang, dann Paket, dann QR als Default.
-    const paymentMethod: "twint" | "qr" =
-      ((profile?.payment_method as "twint" | "qr" | null) ??
-        (pkg.payment_method as "twint" | "qr" | null)) ??
-      "qr";
-    const amount = Number(pkg.price_per_lesson ?? 0);
-    const studentName = profile ? `${profile.vorname} ${profile.nachname}` : "Schüler";
-
-    const { data: inv } = await admin
-      .from("invoices")
-      .insert({
-        student_id: studentUserId,
-        appointment_id: createdAppt.id,
-        amount,
-        payer_name: studentName,
-        payer_address: profile?.adresse ?? null,
-        status: "unpaid",
-        method: paymentMethod,
-        lesson_date: appt.start_at,
-      })
-      .select("id, invoice_number, access_token")
-      .maybeSingle();
-
-    if (inv && profile?.email) {
-      const sendAt = new Date(appt.end_at);
-      const basePayload = {
-        to: profile.email,
-        student_name: studentName,
-        student_id: studentUserId,
-        lesson_date: appt.start_at,
-        amount,
-        invoice_number: inv.invoice_number,
-        invoice_id: inv.id,
-      };
-      if (paymentMethod === "qr") {
-        await enqueueEmail(admin, "qr_invoice", basePayload, sendAt);
-      } else {
-        // twint_link wird beim Versand aus Betrag + Lektionsdatum gebaut.
-        await enqueueEmail(admin, "twint_payment_request", basePayload, sendAt);
-      }
-    }
-  }
+  // Hinweis: Es werden keine Rechnungen/Zahlungsmails pro Lektion mehr erstellt.
+  // Die Abrechnung erfolgt im Voraus über den gesamten Paketpreis beim Paketkauf
+  // (siehe createPackageInvoice / buyPackage / createPackageAdmin).
 
   // Google Calendar Sync (one-way, fehlertolerant)
   for (const c of created) {

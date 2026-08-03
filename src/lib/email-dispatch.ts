@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendEmail } from "@/lib/email-sender";
 import { renderEmail } from "@/lib/email-templates";
 import { generateQRInvoicePdf, buildSpcData } from "@/lib/qr-invoice";
-import { buildLessonTwintLink } from "@/lib/twint";
+import { buildLessonTwintLink, buildTwintLink } from "@/lib/twint";
 import { pricePerPersonFor } from "@/lib/group-courses";
 
 export const ADMIN_RECIPIENT_TYPES = [
@@ -40,16 +40,54 @@ export const STUDENT_LOOKUP_TYPES = [
   "package_settlement_paid",
 ];
 
-/**
- * Löst Empfänger auf, rendert das Template und sendet die Mail via Resend.
- * Wirft bei Fehlern (kein Empfänger, fehlendes Template, Senderfehler).
- * Wird sowohl für Sofortversand als auch vom Cron-Job genutzt.
- */
+async function getDisabledEmailTypes(admin: SupabaseClient): Promise<string[]> {
+  const { data } = await admin
+    .from("app_settings")
+    .select("value")
+    .eq("key", "email_disabled_types")
+    .maybeSingle();
+  if (!data?.value) return [];
+  return Array.isArray(data.value) ? (data.value as string[]) : [];
+}
+
+const PAYMENT_TYPES = ["twint_payment_request", "qr_invoice", "group_payment_request"];
+
 export async function dispatchEmail(
   admin: SupabaseClient,
   type: string,
   payload: Record<string, unknown>
 ): Promise<void> {
+  // Deaktivierte E-Mail-Typen überspringen.
+  const disabled = await getDisabledEmailTypes(admin);
+  if (disabled.includes(type)) return;
+
+  // Zahlungsmails: vor Versand prüfen, ob noch fällig.
+  if (PAYMENT_TYPES.includes(type)) {
+    // Lektionsbezogene Zahlung: Termin muss noch booked/completed sein
+    // (verhindert Versand nach Stornierung/Löschung).
+    if (payload.appointment_id) {
+      const { data: appt } = await admin
+        .from("appointments")
+        .select("status")
+        .eq("id", payload.appointment_id as string)
+        .maybeSingle();
+      if (!appt || !["booked", "completed"].includes(appt.status as string)) {
+        return;
+      }
+    }
+    // Paket- oder Lektions-Rechnung: bereits bezahlt/archiviert/storniert → nicht (erneut) senden.
+    if (payload.invoice_id) {
+      const { data: inv } = await admin
+        .from("invoices")
+        .select("status")
+        .eq("id", payload.invoice_id as string)
+        .maybeSingle();
+      if (!inv || ["paid", "archived", "cancelled"].includes(inv.status as string)) {
+        return;
+      }
+    }
+  }
+
   let to: string | null = null;
   const extraContext: Record<string, unknown> = {};
 
@@ -92,13 +130,19 @@ export async function dispatchEmail(
     if (link) extraContext.pdf_link = link;
   }
 
-  // TWINT: Deep-Link mit Betrag + Zahlungszweck (gehaltene Lektion) bauen.
+  // TWINT: Deep-Link mit Betrag + Zahlungszweck bauen.
   // Überschreibt einen evtl. im Payload gesetzten Basis-Link (Spec §6).
   if (type === "twint_payment_request") {
-    extraContext.twint_link = buildLessonTwintLink(
-      Number(payload.amount ?? 0),
-      payload.lesson_date ? String(payload.lesson_date) : null
-    );
+    const amount = Number(payload.amount ?? 0);
+    if (!payload.lesson_date && payload.description) {
+      // Paket-Rechnung: Paketname als Zahlungszweck (kein Lektionsdatum).
+      extraContext.twint_link = buildTwintLink(amount, String(payload.description));
+    } else {
+      extraContext.twint_link = buildLessonTwintLink(
+        amount,
+        payload.lesson_date ? String(payload.lesson_date) : null
+      );
+    }
   }
 
   // Gruppenkurs-Zahlung: Preis dynamisch aus der finalen Teilnehmerzahl

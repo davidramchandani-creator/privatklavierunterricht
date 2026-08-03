@@ -5,7 +5,7 @@ import { ChevronLeft, Users, Clock } from "lucide-react";
 import type { GroupCourse } from "@/lib/group-courses";
 import { pricePerPersonFor } from "@/lib/group-courses";
 import KursForm from "../_components/KursForm";
-import { CancelSessionButton, RemoveParticipantButton } from "./_components/SessionActions";
+import { CancelSessionButton, DeleteSessionButton, RemoveParticipantButton } from "./_components/SessionActions";
 import { ArchiveButton } from "./_components/ArchiveButton";
 import SessionPlanForm from "./_components/SessionPlanForm";
 
@@ -243,6 +243,7 @@ export default async function GruppenkurseDetailPage({
                       </span>
                     </p>
                   </div>
+                  <DeleteSessionButton sessionId={s.id} />
                 </div>
               );
             })}

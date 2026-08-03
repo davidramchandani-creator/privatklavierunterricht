@@ -1,8 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { isCalendarConfigured } from "@/lib/google-calendar";
-import { CalendarCheck, CalendarX, Mail } from "lucide-react";
+import { CalendarCheck, CalendarX, Mail, BellOff } from "lucide-react";
 import CalendarSettings from "./_components/CalendarSettings";
 import EmailTest from "./_components/EmailTest";
+import EmailSettingsClient from "./_components/EmailSettingsClient";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,15 @@ export default async function EinstellungenPage() {
   const calendarId = process.env.GOOGLE_CALENDAR_ID ?? "—";
 
   const admin = await createAdminClient();
+
+  const { data: emailSettingsRow } = await admin
+    .from("app_settings")
+    .select("value")
+    .eq("key", "email_disabled_types")
+    .maybeSingle();
+  const disabledEmailTypes: string[] = Array.isArray(emailSettingsRow?.value)
+    ? (emailSettingsRow.value as string[])
+    : [];
   const { count: futureCount } = await admin
     .from("appointments")
     .select("id", { count: "exact", head: true })
@@ -107,6 +117,22 @@ export default async function EinstellungenPage() {
             damit Admin-Benachrichtigungen (neue Anfragen, Stornierungen usw.) ankommen.
           </div>
         )}
+      </section>
+
+      {/* E-Mail-Typen ein/ausschalten */}
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5">
+        <div className="flex items-start gap-3">
+          <span className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
+            <BellOff className="w-5 h-5 text-indigo-600" />
+          </span>
+          <div>
+            <h2 className="text-lg font-700 text-[#1C244B]">E-Mail-Benachrichtigungen</h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Steuere, welche automatischen E-Mails versendet werden. Nützlich während der Migration.
+            </p>
+          </div>
+        </div>
+        <EmailSettingsClient initialDisabled={disabledEmailTypes} />
       </section>
     </div>
   );

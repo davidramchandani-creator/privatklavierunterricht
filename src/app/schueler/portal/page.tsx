@@ -13,7 +13,7 @@ import PullToRefresh from "@/components/PullToRefresh";
 import RealtimeRefresh from "@/components/RealtimeRefresh";
 import { CalendarPlus } from "lucide-react";
 import { canBuyNewPackage, type Package as Paket } from "@/lib/packages";
-import { buildLessonTwintLink } from "@/lib/twint";
+import { buildLessonTwintLink, buildTwintLink } from "@/lib/twint";
 import Gruppenkurse from "./_components/Gruppenkurse";
 import { getGroupCourses } from "./actions";
 
@@ -104,10 +104,10 @@ export default async function SchuelerPortalPage() {
 
   const { data: invoices } = await supabase
     .from("invoices")
-    .select("id, invoice_number, amount, status, method, lesson_date, pdf_url, access_token, appointment_id")
+    .select("id, invoice_number, amount, status, method, lesson_date, pdf_url, access_token, appointment_id, package_id, due_date, description")
     .eq("student_id", user.id)
     .not("status", "in", '("archived","cancelled")')
-    .order("lesson_date", { ascending: false })
+    .order("erstellt_am", { ascending: false })
     .limit(20);
 
   const vorname = profile?.vorname ?? user.email?.split("@")[0] ?? "Schüler";
@@ -135,7 +135,9 @@ export default async function SchuelerPortalPage() {
     ...inv,
     twint_link:
       inv.method === "twint"
-        ? buildLessonTwintLink(Number(inv.amount ?? 0), inv.lesson_date)
+        ? !inv.lesson_date && inv.description
+          ? buildTwintLink(Number(inv.amount ?? 0), inv.description)
+          : buildLessonTwintLink(Number(inv.amount ?? 0), inv.lesson_date)
         : null,
   }));
 

@@ -36,7 +36,7 @@ export default function ProbelektionPage() {
   const days = getDaysInWeek(weekOffset);
   const monday = getMonday(weekOffset);
   const friday = new Date(monday.getTime() + 4 * 86400000);
-  const weekLabel = `${monday.toLocaleDateString("de-CH", { day: "numeric", month: "long" })} – ${friday.toLocaleDateString("de-CH", { day: "numeric", month: "long", year: "numeric" })}`;
+  const weekLabel = `${monday.toLocaleDateString("de-CH", { timeZone: "Europe/Zurich", day: "numeric", month: "long" })} – ${friday.toLocaleDateString("de-CH", { timeZone: "Europe/Zurich", day: "numeric", month: "long", year: "numeric" })}`;
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -160,11 +160,12 @@ export default function ProbelektionPage() {
                     {days.slice(0, 5).map((d) => {
                       const daySlots = slotsByDay.get(d.dateStr) ?? [];
                       if (daySlots.length === 0) return null;
-                      const dayDate = new Date(d.dateStr + "T12:00:00");
+                      const dayDate = new Date(d.dateStr + "T12:00:00Z");
                       return (
                         <div key={d.dateStr}>
                           <p className="text-xs font-600 text-gray-500 mb-2">
                             {dayDate.toLocaleDateString("de-CH", {
+                              timeZone: "Europe/Zurich",
                               weekday: "long",
                               day: "numeric",
                               month: "short",
@@ -208,7 +209,7 @@ export default function ProbelektionPage() {
                             {d.label}
                           </p>
                           <p className="text-[10px] text-gray-500 text-center">
-                            {new Date(d.dateStr + "T12:00:00").toLocaleDateString("de-CH", { day: "numeric", month: "numeric" })}
+                            {new Date(d.dateStr + "T12:00:00Z").toLocaleDateString("de-CH", { timeZone: "Europe/Zurich", day: "numeric", month: "numeric" })}
                           </p>
                           {daySlots.length === 0 ? (
                             <p className="text-[10px] text-gray-200 text-center mt-2">—</p>
@@ -355,14 +356,23 @@ function zurichDateKey(d: Date): string {
   }).format(d);
 }
 
+/**
+ * Montag der Zielwoche – immer auf Basis des Zürcher Kalenderdatums.
+ *
+ * Wichtig gegen Hydration-Mismatches: Der Server rendert in UTC, der Browser in
+ * Europe/Zurich. Mit `new Date().getDay()`/`setHours()` konnten Server und Client
+ * (z. B. spätabends) in unterschiedlichen Wochen landen und unterschiedliche
+ * Texte rendern. Deshalb wird das Datum explizit aus der Zürcher Wandzeit
+ * abgeleitet und als UTC-Mittag zurückgegeben (DST-sicher).
+ */
 function getMonday(weekOffset: number): Date {
-  const now = new Date();
-  const day = now.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diff + weekOffset * 7);
-  monday.setHours(0, 0, 0, 0);
-  return monday;
+  const [y, m, d] = zurichDateKey(new Date()).split("-").map(Number);
+  // Wochentag des Zürcher Datums (0=So … 6=Sa)
+  const weekday = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  const diff = weekday === 0 ? -6 : 1 - weekday;
+  return new Date(
+    Date.UTC(y, m - 1, d + diff + weekOffset * 7, 12, 0, 0)
+  );
 }
 
 function getDaysInWeek(weekOffset: number) {

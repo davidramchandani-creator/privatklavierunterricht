@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
 import { computePackageState, canCancelPackage, PACKAGE_LABELS, type Package } from "@/lib/packages";
-import SchuelerDetailActions, { InvoiceAction, PreiseForm, PackageFormNew, DirektBuchung, ProposalForm, ProposalWithdraw, AppointmentActions, PackageTimerActions } from "./_components/SchuelerDetailActions";
+import SchuelerDetailActions, { InvoiceAction, PreiseForm, PackageFormNew, DirektBuchung, ProposalForm, ProposalWithdraw, AppointmentActions, PackageTimerActions, AdjustLessonsButton } from "./_components/SchuelerDetailActions";
 import { StatusBadge } from "@/components/ui/status-badge";
 
 export default async function SchuelerDetailPage({
@@ -43,9 +43,9 @@ export default async function SchuelerDetailPage({
       .limit(10),
     admin
       .from("invoices")
-      .select("id, invoice_number, amount, status, method, lesson_date, created_at, paid_at")
+      .select("id, invoice_number, amount, status, method, lesson_date, erstellt_am, paid_at, description, due_date")
       .eq("student_id", id)
-      .order("created_at", { ascending: false })
+      .order("erstellt_am", { ascending: false })
       .limit(30),
     admin
       .from("proposals")
@@ -208,21 +208,30 @@ export default async function SchuelerDetailPage({
                       <StatusBadge kind="packageState" status={state.effectiveStatus} />
                     </td>
                     <td className="py-3">
-                      {pkg.status === "active" && (
-                        <PackageTimerActions
-                          packageId={pkg.id}
-                          schuelerId={id}
-                          paused={pkg.paused}
-                          canCancel={canCancelPackage(pkg, state.lessonsUsed)}
-                          pricePerLesson={Number(pkg.price_per_lesson)}
-                          totalPrice={
-                            pkg.total_price != null
-                              ? Number(pkg.total_price)
-                              : pkg.lessons_total * Number(pkg.price_per_lesson)
-                          }
-                          lessonsUsed={state.lessonsUsed}
-                        />
-                      )}
+                      <div className="flex items-center gap-1">
+                        {(pkg.status === "active" || pkg.status === "exhausted") && (
+                          <AdjustLessonsButton
+                            packageId={pkg.id}
+                            currentTotal={pkg.lessons_total}
+                            currentUsed={usedCount}
+                          />
+                        )}
+                        {pkg.status === "active" && (
+                          <PackageTimerActions
+                            packageId={pkg.id}
+                            schuelerId={id}
+                            paused={pkg.paused}
+                            canCancel={canCancelPackage(pkg, state.lessonsUsed)}
+                            pricePerLesson={Number(pkg.price_per_lesson)}
+                            totalPrice={
+                              pkg.total_price != null
+                                ? Number(pkg.total_price)
+                                : pkg.lessons_total * Number(pkg.price_per_lesson)
+                            }
+                            lessonsUsed={state.lessonsUsed}
+                          />
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -332,13 +341,16 @@ export default async function SchuelerDetailPage({
               {invoices.map((inv) => (
                 <tr key={inv.id}>
                   <td className="py-3 text-sm text-gray-600">
-                    {inv.invoice_number ?? "—"}
+                    {inv.description ?? inv.invoice_number ?? "—"}
+                    {inv.description && inv.invoice_number && (
+                      <span className="block text-xs text-gray-400">{inv.invoice_number}</span>
+                    )}
                   </td>
                   <td className="py-3 text-sm font-600 text-gray-900">
                     {formatCHF(Number(inv.amount))}
                   </td>
                   <td className="py-3 text-sm text-gray-600 hidden sm:table-cell">
-                    {inv.lesson_date ? formatDate(inv.lesson_date) : inv.created_at ? formatDate(inv.created_at) : "—"}
+                    {inv.lesson_date ? formatDate(inv.lesson_date) : inv.erstellt_am ? formatDate(inv.erstellt_am) : "—"}
                   </td>
                   <td className="py-3">
                     <StatusBadge kind="payment" status={inv.status} />

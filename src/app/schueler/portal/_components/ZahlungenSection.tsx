@@ -23,6 +23,9 @@ type Invoice = {
   pdf_url: string | null;
   access_token: string | null;
   appointment_id: string | null;
+  package_id?: string | null;
+  due_date?: string | null;
+  description?: string | null;
   /** Serverseitig aus TWINT_BASE_URL gebauter Deep-Link (Spec §6). */
   twint_link: string | null;
 };
@@ -108,13 +111,23 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-600 text-gray-900">
-            {invoice.lesson_date ? fmtLesson(invoice.lesson_date) : "Stornierungsbetrag"}
+            {invoice.description
+              ? invoice.description
+              : invoice.lesson_date
+              ? fmtLesson(invoice.lesson_date)
+              : "Stornierungsbetrag"}
           </p>
           {invoice.invoice_number && (
             <p className="text-xs text-gray-400 mt-0.5">
-              Lektion · {invoice.invoice_number}
+              {invoice.description ? "Paket" : "Lektion"} · {invoice.invoice_number}
             </p>
           )}
+          {invoice.due_date &&
+            (localStatus === "unpaid" || localStatus === "rejected") && (
+              <p className="text-xs text-amber-600 mt-0.5">
+                Zahlbar bis {fmtDate(invoice.due_date)}
+              </p>
+            )}
         </div>
         <div className="flex flex-col items-end gap-1.5">
           <span className="text-base font-700 text-[#1C244B]">{fmtCHF(invoice.amount)}</span>

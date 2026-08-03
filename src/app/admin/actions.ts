@@ -12,6 +12,7 @@ import {
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
 import { enqueueEmail, sendEmailNow } from "@/lib/emails-outbox";
+import { createPackageInvoice } from "@/lib/package-invoice";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   type Package as Paket,
@@ -78,6 +79,56 @@ export async function inviteSchueler(formData: FormData) {
   return { success: true };
 }
 
+export async function createSchuelerDirekt(formData: FormData) {
+  const email = (formData.get("email") as string)?.trim();
+  const vorname = (formData.get("vorname") as string)?.trim();
+  const nachname = (formData.get("nachname") as string)?.trim();
+  const password = formData.get("password") as string;
+  const telefon = (formData.get("telefon") as string) || null;
+  const adresse = (formData.get("adresse") as string) || null;
+
+  if (!email || !vorname || !nachname) {
+    return { error: "E-Mail, Vorname und Nachname sind Pflichtfelder." };
+  }
+  if (!password || password.length < 8) {
+    return { error: "Passwort muss mindestens 8 Zeichen haben." };
+  }
+
+  const adminClient = await createAdminClient();
+
+  const { data: userData, error: createError } = await adminClient.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { vorname, nachname },
+  });
+
+  if (createError) {
+    return { error: createError.message };
+  }
+
+  const userId = userData.user.id;
+
+  const { error: profileError } = await adminClient.from("profiles").upsert({
+    id: userId,
+    role: "student",
+    vorname,
+    nachname,
+    email,
+    telefon,
+    adresse,
+    aktiv: true,
+  }, { onConflict: "id" });
+
+  if (profileError) {
+    await adminClient.auth.admin.deleteUser(userId).catch(() => null);
+    return { error: "Profil konnte nicht erstellt werden: " + profileError.message };
+  }
+
+  revalidatePath("/admin/schueler");
+  return { success: true };
+}
+
 export async function updateSchueler(id: string, formData: FormData) {
   const adminClient = await createAdminClient();
 
@@ -102,6 +153,12 @@ export async function updateSchueler(id: string, formData: FormData) {
 
 export async function deleteSchueler(id: string) {
   const adminClient = await createAdminClient();
+  // Pending Zahlungsmails abbrechen (scheduled_emails hat kein FK zum Schüler).
+  await adminClient
+    .from("scheduled_emails")
+    .update({ status: "cancelled" })
+    .eq("status", "pending")
+    .contains("payload", { student_id: id });
   const { error } = await adminClient.from("profiles").update({ aktiv: false }).eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/admin/schueler");
@@ -121,7 +178,27 @@ export async function reactivateSchueler(id: string) {
 export async function hardDeleteSchueler(id: string) {
   const adminClient = await createAdminClient();
 
-  // Deleting the auth user cascades to profiles (and all linked data via FK)
+  // Vor dem Löschen aufräumen: scheduled_emails hat kein FK → würde sonst ins Leere senden.
+  await adminClient
+    .from("scheduled_emails")
+    .update({ status: "cancelled" })
+    .eq("status", "pending")
+    .contains("payload", { student_id: id });
+
+  await adminClient
+    .from("invoices")
+    .update({ status: "archived" })
+    .eq("student_id", id)
+    .in("status", ["unpaid", "pending_confirmation", "rejected"]);
+
+  await adminClient
+    .from("appointments")
+    .update({ status: "cancelled" })
+    .eq("student_id", id)
+    .eq("status", "booked")
+    .gte("start_at", new Date().toISOString());
+
+  // Auth-User löschen cascaded auf profiles + alle FK-Tabellen.
   const { error } = await adminClient.auth.admin.deleteUser(id);
   if (error) return { error: error.message };
 
@@ -133,8 +210,10 @@ export async function resendInvite(email: string) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
   const adminClient = await createAdminClient();
 
-  // admin.generateLink bypasses PKCE – works across any browser/device
-  const { error } = await adminClient.auth.admin.generateLink({
+  // admin.generateLink bypasses PKCE – works across any browser/device.
+  // Wichtig: generateLink versendet selbst KEINE E-Mail – der Link muss
+  // anschliessend explizit über unseren eigenen Versand (Resend) zugestellt werden.
+  const { data, error } = await adminClient.auth.admin.generateLink({
     type: "recovery",
     email,
     options: {
@@ -143,6 +222,32 @@ export async function resendInvite(email: string) {
   });
 
   if (error) return { error: error.message };
+
+  const actionLink = data?.properties?.action_link;
+  if (!actionLink) return { error: "Zugangslink konnte nicht erstellt werden." };
+
+  const { sendEmail } = await import("@/lib/email-sender");
+  try {
+    await sendEmail({
+      to: email,
+      subject: "Dein Zugang zum Schülerportal – Klavierunterricht",
+      html: `<div style="font-family:sans-serif;padding:24px;background:#f3f4f6;">
+        <div style="background:#fff;border-radius:12px;padding:32px;max-width:480px;margin:0 auto;">
+          <h2 style="color:#1C244B;margin-top:0;">Dein Zugang zum Schülerportal</h2>
+          <p>Hallo</p>
+          <p>Über den folgenden Button kannst du dein Passwort setzen und dich anschliessend im Schülerportal anmelden:</p>
+          <p style="text-align:center;margin:28px 0;">
+            <a href="${actionLink}" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Passwort setzen</a>
+          </p>
+          <p style="color:#6b7280;font-size:13px;">Der Link ist nur einmal gültig. Falls du ihn nicht angefordert hast, kannst du diese E-Mail ignorieren.</p>
+          <p style="margin-bottom:0;">Liebe Grüsse<br/>David Ramchandani</p>
+        </div>
+      </div>`,
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
+
   return { success: true };
 }
 
@@ -568,13 +673,15 @@ export async function createPackageAdmin(formData: FormData) {
     return { error: "Ungültiger Preis." };
   }
 
+  // Schülerprofil für Zahlungsart + Rechnungsdaten laden.
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("vorname, nachname, adresse, email, payment_method")
+    .eq("id", userId)
+    .maybeSingle();
+
   // Ohne explizite Auswahl die Zahlungsart des Schülers übernehmen.
   if (paymentMethod !== "twint" && paymentMethod !== "qr") {
-    const { data: prof } = await admin
-      .from("profiles")
-      .select("payment_method")
-      .eq("id", userId)
-      .maybeSingle();
     paymentMethod = (prof?.payment_method as string) ?? "qr";
   }
 
@@ -583,21 +690,34 @@ export async function createPackageAdmin(formData: FormData) {
   const startsAt = new Date();
   const expiresAt = validityMonths != null ? addMonths(startsAt, validityMonths) : null;
 
-  const { error } = await admin.from("packages").insert({
-    student_id: userId,
-    type,
-    lessons_total: lessonsTotal,
-    lessons_used: 0,
-    name: PACKAGE_LABELS[type],
-    price_per_lesson: pricePerLesson,
-    total_price: pricePerLesson * lessonsTotal,
-    payment_method: paymentMethod,
-    starts_at: startsAt.toISOString(),
-    expires_at: expiresAt ? expiresAt.toISOString() : null,
-    status: "active",
-  });
+  const { data: pkg, error } = await admin
+    .from("packages")
+    .insert({
+      student_id: userId,
+      type,
+      lessons_total: lessonsTotal,
+      lessons_used: 0,
+      name: PACKAGE_LABELS[type],
+      price_per_lesson: pricePerLesson,
+      total_price: pricePerLesson * lessonsTotal,
+      payment_method: paymentMethod,
+      starts_at: startsAt.toISOString(),
+      expires_at: expiresAt ? expiresAt.toISOString() : null,
+      status: "active",
+    })
+    .select("id, student_id, type, total_price, price_per_lesson, payment_method")
+    .single();
 
-  if (error) return { error: error.message };
+  if (error || !pkg) return { error: error?.message ?? "Paket konnte nicht erstellt werden." };
+
+  // Gesamten Paketpreis sofort in Rechnung stellen (Zahlung innert 15 Tagen).
+  await createPackageInvoice(admin, pkg, {
+    vorname: prof?.vorname ?? null,
+    nachname: prof?.nachname ?? null,
+    adresse: prof?.adresse ?? null,
+    email: prof?.email ?? null,
+    payment_method: prof?.payment_method ?? null,
+  });
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
   return { success: true };
@@ -759,6 +879,13 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
     .eq("appointment_id", id)
     .in("status", ["unpaid", "pending_confirmation", "rejected"])
     .select("id");
+
+  // Zahlungsmails via appointment_id abbrechen (deckt auch Fälle ohne invoice_id ab).
+  await admin
+    .from("scheduled_emails")
+    .update({ status: "cancelled" })
+    .eq("status", "pending")
+    .contains("payload", { appointment_id: id });
 
   if (cancelledInvoices?.length) {
     for (const inv of cancelledInvoices) {
@@ -1114,12 +1241,15 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
     .single();
   if (!pkg) return { error: "Paket nicht gefunden." };
 
-  // Genutzte Lektionen aus tatsächlichen Terminen zählen (Spec §3).
+  // Genutzte Lektionen = tatsächlich gehaltene Lektionen (vergangene booked
+  // oder completed). Zukünftige gebuchte Termine werden weiter unten storniert
+  // und dürfen NICHT verrechnet werden.
   const { count: usedCount } = await admin
     .from("appointments")
     .select("id", { count: "exact", head: true })
     .eq("package_id", packageId)
-    .in("status", ["booked", "completed"]);
+    .in("status", ["booked", "completed"])
+    .lte("start_at", new Date().toISOString());
   const lessonsUsed = usedCount ?? 0;
 
   if (!canCancelPackage(pkg as Paket, lessonsUsed)) {
@@ -1267,13 +1397,11 @@ export async function createInvoiceForAppointment(appointmentId: string) {
 
   const amount = Number(pkg?.price_per_lesson ?? 85);
   const paymentMethod = pkg?.payment_method ?? "twint";
-  const invoiceNumber =
-    "PIANO-" + new Date().getFullYear() + "-" + String(Math.floor(Math.random() * 9000) + 1000);
 
+  // invoice_number kommt aus dem DB-Default (fortlaufende Sequenz PIANO-{Jahr}-{NNNN}).
   const { data: inv, error } = await admin
     .from("invoices")
     .insert({
-      invoice_number: invoiceNumber,
       student_id: appt.student_id,
       appointment_id: appointmentId,
       amount,
@@ -1769,5 +1897,78 @@ export async function adminRemoveParticipant(appointmentId: string) {
   }).catch(() => null);
 
   revalidatePath("/admin/gruppenkurse");
+  return { success: true };
+}
+
+export async function deleteGroupSession(sessionId: string) {
+  const admin = await createAdminClient();
+
+  const { data: session } = await admin
+    .from("group_sessions")
+    .select("id, status, course_id")
+    .eq("id", sessionId)
+    .maybeSingle();
+
+  if (!session) return { error: "Session nicht gefunden." };
+  if (session.status === "open" || session.status === "full") {
+    return { error: "Aktive Sessionen können nicht gelöscht werden. Bitte zuerst absagen." };
+  }
+
+  const { error } = await admin.from("group_sessions").delete().eq("id", sessionId);
+  if (error) return { error: "Löschen fehlgeschlagen." };
+
+  revalidatePath(`/admin/gruppenkurse/${session.course_id}`);
+  return { success: true };
+}
+
+// ── Lektionen manuell anpassen ────────────────────────────────────────────────
+
+export async function adjustPackageLessons(packageId: string, delta: number) {
+  if (!Number.isInteger(delta) || delta === 0) {
+    return { error: "Ungültige Anpassung." };
+  }
+
+  const admin = await createAdminClient();
+
+  const { data: pkg } = await admin
+    .from("packages")
+    .select("id, student_id, lessons_total, lessons_used, status")
+    .eq("id", packageId)
+    .maybeSingle();
+
+  if (!pkg) return { error: "Paket nicht gefunden." };
+
+  const newTotal = pkg.lessons_total + delta;
+
+  if (newTotal < 1) {
+    return { error: "Gesamtlektionen können nicht unter 1 fallen." };
+  }
+  if (newTotal < pkg.lessons_used) {
+    return { error: `Kann nicht auf ${newTotal} reduzieren – bereits ${pkg.lessons_used} Lektionen verbraucht.` };
+  }
+
+  let newStatus = pkg.status;
+  if (pkg.status === "exhausted" && delta > 0) newStatus = "active";
+  if (newTotal <= pkg.lessons_used && pkg.status === "active") newStatus = "exhausted";
+
+  const { error } = await admin
+    .from("packages")
+    .update({ lessons_total: newTotal, status: newStatus })
+    .eq("id", packageId);
+
+  if (error) return { error: "Anpassung fehlgeschlagen." };
+
+  revalidatePath(`/admin/schueler/${pkg.student_id}`);
+  return { success: true, newTotal };
+}
+
+// ── E-Mail-Einstellungen ──────────────────────────────────────────────────────
+
+export async function saveEmailSettings(disabledTypes: string[]) {
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("app_settings")
+    .upsert({ key: "email_disabled_types", value: disabledTypes, updated_at: new Date().toISOString() });
+  if (error) return { error: "Einstellungen konnten nicht gespeichert werden." };
   return { success: true };
 }

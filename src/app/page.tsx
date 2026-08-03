@@ -7,7 +7,10 @@ import UeberMichTeaser from "@/components/sections/UeberMichTeaser";
 import ProbelektionCTA from "@/components/sections/ProbelektionCTA";
 
 // Nächster freier Termin im Hero soll aktuell bleiben → stündlich neu rendern.
-export const revalidate = 3600;
+// Immer frisch rendern: Der Hero zeigt den nächsten freien Termin – mit ISR
+// (stale-while-revalidate) konnte bei wenig Traffic ein vergangener Termin
+// angezeigt werden.
+export const dynamic = "force-dynamic";
 
 export default function HomePage() {
   return (
