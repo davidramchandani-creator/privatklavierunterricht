@@ -15,6 +15,9 @@ export const ADMIN_RECIPIENT_TYPES = [
   "reschedule_request_withdrawn",
   "proposal_rejected_admin",
   "group_session_admin",
+  // Kontaktformular + Probelektion-Anfragen (nur Push; die Mail wird in den
+  // jeweiligen Actions direkt versendet).
+  "anfrage_admin",
 ];
 
 export const STUDENT_PAYLOAD_TO_TYPES = [
