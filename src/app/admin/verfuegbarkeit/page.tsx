@@ -27,10 +27,24 @@ const DEFAULT_SLOT: SlotState = {
   ende_zeit: "18:00",
 };
 
+/** Gilt für alle Blöcke gemeinsam – eine Lektionsdauer pro Betrieb. */
+type BlockConfigState = {
+  lesson_minutes: number;
+  min_buffer_minutes: number;
+  packing: "lueckenlos" | "maximal";
+};
+
+const DEFAULT_CONFIG: BlockConfigState = {
+  lesson_minutes: 45,
+  min_buffer_minutes: 15,
+  packing: "lueckenlos",
+};
+
 export default function VerfuegbarkeitPage() {
   const [slots, setSlots] = useState<Record<number, SlotState>>(
     Object.fromEntries(DAYS.map((d) => [d.wochentag, { ...DEFAULT_SLOT }]))
   );
+  const [config, setConfig] = useState<BlockConfigState>(DEFAULT_CONFIG);
   const [isPending, startTransition] = useTransition();
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +68,15 @@ export default function VerfuegbarkeitPage() {
             };
           }
           setSlots(map);
+          const erste = data.find((r) => r.aktiv) ?? data[0];
+          if (erste) {
+            setConfig({
+              lesson_minutes: erste.lesson_minutes ?? DEFAULT_CONFIG.lesson_minutes,
+              min_buffer_minutes:
+                erste.min_buffer_minutes ?? DEFAULT_CONFIG.min_buffer_minutes,
+              packing: erste.packing === "maximal" ? "maximal" : "lueckenlos",
+            });
+          }
         }
         setLoading(false);
       });
@@ -75,6 +98,9 @@ export default function VerfuegbarkeitPage() {
       beginn_zeit: slots[d.wochentag].beginn_zeit,
       ende_zeit: slots[d.wochentag].ende_zeit,
       aktiv: slots[d.wochentag].aktiv,
+      lesson_minutes: config.lesson_minutes,
+      min_buffer_minutes: config.min_buffer_minutes,
+      packing: config.packing,
     }));
     startTransition(async () => {
       const result = await updateVerfuegbarkeit(payload);
@@ -95,10 +121,118 @@ export default function VerfuegbarkeitPage() {
     <div className="space-y-6 max-w-2xl">
       <h1 className="text-2xl font-800 text-[#1C244B]">Verfügbarkeit</h1>
 
+      {/* Lektionsdauer, Puffer, Belegungsstrategie */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+        <div>
+          <h2 className="font-700 text-[#1C244B]">Lektion &amp; Puffer</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Gilt für alle Tage. Der Puffer ist die Untergrenze – wohnt ein
+            Schüler weiter weg, wird automatisch dessen Fahrzeit verwendet
+            (aufgerundet auf 15 Minuten).
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <label className="space-y-1.5 block">
+            <span className="text-sm font-600 text-gray-700">Lektionsdauer</span>
+            <select
+              value={config.lesson_minutes}
+              onChange={(e) => {
+                setConfig((c) => ({ ...c, lesson_minutes: Number(e.target.value) }));
+                setSuccess(false);
+              }}
+              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm bg-white"
+            >
+              {[30, 45, 60, 90].map((m) => (
+                <option key={m} value={m}>
+                  {m} Minuten
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1.5 block">
+            <span className="text-sm font-600 text-gray-700">Mindestpuffer</span>
+            <select
+              value={config.min_buffer_minutes}
+              onChange={(e) => {
+                setConfig((c) => ({
+                  ...c,
+                  min_buffer_minutes: Number(e.target.value),
+                }));
+                setSuccess(false);
+              }}
+              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm bg-white"
+            >
+              {[0, 15, 30, 45].map((m) => (
+                <option key={m} value={m}>
+                  {m === 0 ? "kein Puffer" : `${m} Minuten`}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="space-y-2">
+          <span className="text-sm font-600 text-gray-700">Terminvergabe</span>
+          {(
+            [
+              {
+                wert: "lueckenlos" as const,
+                titel: "Lückenlos",
+                text: "Lektionen reihen sich bündig aneinander. Weniger Auswahl, dafür keine ungenutzten Löcher.",
+              },
+              {
+                wert: "maximal" as const,
+                titel: "Maximale Auswahl",
+                text: "Mehr Startzeiten für Schüler. Kleine unbrauchbare Löcher sind möglich.",
+              },
+            ]
+          ).map(({ wert, titel, text }) => (
+            <label
+              key={wert}
+              className={`flex gap-3 items-start rounded-xl border p-3 cursor-pointer transition-colors ${
+                config.packing === wert
+                  ? "border-[#1C244B]/40 bg-[#1C244B]/5"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <input
+                type="radio"
+                name="packing"
+                checked={config.packing === wert}
+                onChange={() => {
+                  setConfig((c) => ({ ...c, packing: wert }));
+                  setSuccess(false);
+                }}
+                className="mt-0.5 w-4 h-4 accent-[#1C244B]"
+              />
+              <span>
+                <span className="block text-sm font-600 text-[#1C244B]">{titel}</span>
+                <span className="block text-xs text-gray-500 mt-0.5">{text}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+
+        <p className="text-xs text-gray-400 bg-gray-50 rounded-xl px-3 py-2 leading-relaxed">
+          Beispiel: Block 16:00–20:30 mit {config.lesson_minutes} Min. Lektion und{" "}
+          {config.min_buffer_minutes} Min. Puffer ergibt{" "}
+          <strong>
+            {Math.floor(
+              (270 + config.min_buffer_minutes) /
+                (config.lesson_minutes + config.min_buffer_minutes)
+            )}{" "}
+            Lektionen
+          </strong>{" "}
+          pro Abend.
+        </p>
+      </div>
+
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
         <p className="text-sm text-gray-500">
           Lege fest, an welchen Tagen und zu welchen Zeiten Schüler Lektionen
-          buchen können. Zeitfenster werden in 60-Minuten-Slots aufgeteilt.
+          buchen können.
         </p>
 
         <div className="space-y-3">
