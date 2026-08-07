@@ -30,11 +30,13 @@ export const PACKAGE_LABELS: Record<string, string> = {
   "20er": "20er-Paket",
 };
 
-// Gültigkeitsdauer ab starts_at: 10er = 5 Monate, 20er = 10 Monate
+// Gültigkeitsdauer ab starts_at = Abo-Laufzeit: 10er = 4 Monate, 20er = 8 Monate.
+// Identisch mit SUBSCRIPTION_TERM_MONTHS in subscription.ts (Entscheid Dave:
+// Gültigkeit und Ratenlaufzeit laufen synchron ab).
 export const PACKAGE_VALIDITY_MONTHS: Record<string, number | null> = {
   single: null,
-  "10er": 5,
-  "20er": 10,
+  "10er": 4,
+  "20er": 8,
 };
 
 export const PACKAGE_LESSONS: Record<string, number> = {
