@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { BlockSettings } from "./booking-gap";
+import { DEFAULT_BLOCK_SETTINGS } from "./booking-gap";
 import {
   type AvailabilityContext,
   type AvailabilityWindows,
@@ -18,6 +20,11 @@ import {
  * via RLS aber nur eigene Termine sehen. Nach aussen werden nur freie Slots
  * (Zeiten, keine Termindetails) zurückgegeben.
  */
+export type LoadedAvailability = {
+  ctx: AvailabilityContext;
+  blockSettings: BlockSettings;
+};
+
 export async function loadAvailabilityContext(
   admin: SupabaseClient,
   studentId: string,
@@ -73,7 +80,7 @@ export async function loadAvailabilityContext(
       .select("start_date, start_time, end_time, interval_days"),
     admin
       .from("admin_verfuegbarkeit")
-      .select("wochentag, beginn_zeit, ende_zeit, aktiv"),
+      .select("wochentag, beginn_zeit, ende_zeit, aktiv, lesson_minutes, min_buffer_minutes, packing"),
     // Admin-geplante Gruppensessions blockieren Zeitslots auch ohne Teilnehmer.
     admin
       .from("group_sessions")
@@ -86,6 +93,7 @@ export async function loadAvailabilityContext(
   // Vom Admin gepflegte Verfügbarkeit → Fenster-Map (nur aktive Tage).
   // Ohne Einträge bleibt das Feld leer und die Engine nutzt den AVAILABILITY-Default.
   let availabilityWindows: AvailabilityWindows | undefined;
+  let blockSettings: BlockSettings = DEFAULT_BLOCK_SETTINGS;
   if (availRes.data && availRes.data.length > 0) {
     availabilityWindows = {};
     for (const row of availRes.data as Array<{
@@ -93,12 +101,24 @@ export async function loadAvailabilityContext(
       beginn_zeit: string;
       ende_zeit: string;
       aktiv: boolean;
+      lesson_minutes?: number | null;
+      min_buffer_minutes?: number | null;
+      packing?: string | null;
     }>) {
       if (!row.aktiv) continue;
       (availabilityWindows[row.wochentag] ??= []).push({
         start: row.beginn_zeit.slice(0, 5),
         end: row.ende_zeit.slice(0, 5),
       });
+      // Lektionsdauer/Puffer werden aktuell einheitlich geführt; die erste
+      // aktive Zeile gibt die Einstellung vor.
+      blockSettings = {
+        lessonMinutes: row.lesson_minutes ?? DEFAULT_BLOCK_SETTINGS.lessonMinutes,
+        minBufferMinutes:
+          row.min_buffer_minutes ?? DEFAULT_BLOCK_SETTINGS.minBufferMinutes,
+        packing:
+          row.packing === "maximal" ? "maximal" : "lueckenlos",
+      };
     }
   }
 
@@ -119,7 +139,7 @@ export async function loadAvailabilityContext(
     })),
   ];
 
-  return {
+  const ctx: AvailabilityContext = {
     studentId,
     bufferMin: studentBufferMin,
     now,
@@ -129,5 +149,9 @@ export async function loadAvailabilityContext(
     timeBlockRules: (ruleRes.data ?? []) as TimeBlockRule[],
     availabilityWindows,
     skipLeadTime: opts.skipLeadTime ?? false,
+  };
+
+  return Object.assign(ctx, { blockSettings }) as AvailabilityContext & {
+    blockSettings: BlockSettings;
   };
 }
