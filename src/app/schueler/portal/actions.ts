@@ -16,7 +16,6 @@ import {
   type CalDate,
   DEFAULT_BUFFER_MIN,
   addDaysCal,
-  computeAvailableSlots,
   generateSeriesStarts,
   isAtLeast24hAway,
   utcToZonedDate,
@@ -25,8 +24,15 @@ import {
   zonedToUtc,
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
+import { gapAwareSlots, isGapAwareStartBookable, DEFAULT_BLOCK_SETTINGS } from "@/lib/booking-gap";
 import { sendEmailNow } from "@/lib/emails-outbox";
-import { createPackageInvoice } from "@/lib/package-invoice";
+import { createInstalmentSchedule, createPackageInvoice } from "@/lib/package-invoice";
+import {
+  buildInstalmentPlan,
+  CANCELLATION_NOTICE_DAYS,
+  isCancellable,
+  todayInZurich,
+} from "@/lib/subscription";
 import { deleteCalendarEvent } from "@/lib/google-calendar";
 import { cancelLessonReminders } from "@/lib/reminders";
 import { bookSeriesForStudent } from "@/lib/series-booking";
@@ -86,7 +92,11 @@ export async function getVerfuegbareSlots(
     now
   );
 
-  return computeAvailableSlots(fromCal, 7, ctx).map((s) => ({
+  const settings =
+    (ctx as { blockSettings?: typeof DEFAULT_BLOCK_SETTINGS }).blockSettings ??
+    DEFAULT_BLOCK_SETTINGS;
+
+  return gapAwareSlots(fromCal, 7, ctx, settings).map((s) => ({
     beginn: s.start.toISOString(),
     ende: s.end.toISOString(),
   }));
@@ -145,8 +155,11 @@ export async function requestMultipleBookings(desiredStartIsos: string[]) {
     }
     const slotEnd = new Date(desiredStart.getTime() + 3600000);
     const ctx = await loadAvailabilityContext(admin, user.id, bufferMin, desiredStart, slotEnd, now);
-    const validation = validateSeries(desiredStart, 1, 7, ctx);
-    if (!validation.ok) {
+    const settings =
+      (ctx as { blockSettings?: typeof DEFAULT_BLOCK_SETTINGS }).blockSettings ??
+      DEFAULT_BLOCK_SETTINGS;
+    // Nie dem Client vertrauen: exakt dieselbe Prüfung wie bei der Anzeige.
+    if (!isGapAwareStartBookable(desiredStart, ctx, settings)) {
       return {
         error: `Der Slot ${desiredStart.toLocaleString("de-CH", { timeZone: "Europe/Zurich" })} ist nicht verfügbar. Bitte wähle einen anderen Zeitpunkt.`,
       };
@@ -689,7 +702,18 @@ export async function markInvoicePaid(invoiceId: string) {
  * `packages` nur Admin-Inserts erlaubt; sämtliche Geschäftsregeln werden
  * vorher serverseitig geprüft.
  */
-export async function buyPackage(type: "10er" | "20er", agbAccepted: boolean) {
+export type BuyPackageOptions = {
+  /** "einmalig" = Gesamtbetrag sofort, "raten" = 25 % Anzahlung + Monatsraten. */
+  billingMode?: "einmalig" | "raten";
+  /** Opt-in: Paket verlängert sich am Ende der Laufzeit automatisch. */
+  autoRenew?: boolean;
+};
+
+export async function buyPackage(
+  type: "10er" | "20er",
+  agbAccepted: boolean,
+  options: BuyPackageOptions = {}
+) {
   const supabase = await createClient();
 
   const {
@@ -744,6 +768,15 @@ export async function buyPackage(type: "10er" | "20er", agbAccepted: boolean) {
   const expiresAt =
     validityMonths != null ? addMonths(startsAt, validityMonths) : null;
 
+  // Zahlungsmodus: Ratenkauf nur für 10er/20er, Laufzeit = Gültigkeit.
+  const billingMode = options.billingMode === "raten" ? "raten" : "einmalig";
+  const autoRenew = options.autoRenew === true;
+  const startDay = todayInZurich(startsAt);
+  const ratenPlan =
+    billingMode === "raten"
+      ? buildInstalmentPlan(type, totalPrice, startDay)
+      : null;
+
   const admin = await createAdminClient();
   const { data: pkg, error } = await admin
     .from("packages")
@@ -758,6 +791,12 @@ export async function buyPackage(type: "10er" | "20er", agbAccepted: boolean) {
       starts_at: startsAt.toISOString(),
       expires_at: expiresAt ? expiresAt.toISOString() : null,
       status: "active",
+      billing_mode: billingMode,
+      term_months: validityMonths,
+      auto_renew: autoRenew,
+      deposit_amount: ratenPlan ? ratenPlan.depositAmount : null,
+      instalment_count: ratenPlan ? ratenPlan.instalmentCount : null,
+      instalment_amount: ratenPlan ? ratenPlan.instalmentAmount : null,
     })
     .select("id, student_id, type, total_price, price_per_lesson, payment_method")
     .single();
@@ -772,14 +811,26 @@ export async function buyPackage(type: "10er" | "20er", agbAccepted: boolean) {
     return { error: "Paket konnte nicht gebucht werden. Bitte versuche es erneut." };
   }
 
-  // Gesamten Paketpreis sofort in Rechnung stellen (Zahlung innert 15 Tagen).
-  await createPackageInvoice(admin, pkg, {
+  const payer = {
     vorname: profile.vorname,
     nachname: profile.nachname,
     adresse: profile.adresse,
     email: profile.email,
     payment_method: profile.payment_method,
-  });
+  };
+
+  if (ratenPlan) {
+    // Ratenkauf: kompletten Plan anlegen, sofort nur die Anzahlung
+    // fakturieren. Die Monatsraten stellt der Tagesjob am Stichtag.
+    await createInstalmentSchedule(admin, pkg, payer, {
+      type,
+      totalPrice,
+      startDate: startDay,
+    });
+  } else {
+    // Einmalzahlung: Gesamtpreis sofort in Rechnung stellen (15 Tage Frist).
+    await createPackageInvoice(admin, pkg, payer);
+  }
 
   // Admin über den Paketkauf informieren (Mail + Push).
   await sendEmailNow(admin, "package_purchased_admin", {
@@ -789,7 +840,65 @@ export async function buyPackage(type: "10er" | "20er", agbAccepted: boolean) {
     lessons_total: lessonsTotal,
     price_per_lesson: ppl,
     total_price: totalPrice,
+    billing_mode: billingMode,
+    deposit_amount: ratenPlan?.depositAmount,
+    instalment_count: ratenPlan?.instalmentCount,
+    instalment_amount: ratenPlan?.instalmentAmount,
+    auto_renew: autoRenew,
   });
+
+  revalidatePath("/schueler/portal");
+  return { success: true };
+}
+
+/**
+ * Auto-Verlängerung für das eigene Paket ein- oder ausschalten.
+ *
+ * Das ist gleichzeitig die Kündigung: wer abwählt, dessen Paket läuft am
+ * Ende der Laufzeit ersatzlos aus. Nach Ablauf der Kündigungsfrist
+ * (14 Tage vor Verfall) ist die laufende Periode nicht mehr kündbar –
+ * die Verlängerung ist dann bereits ausgelöst.
+ */
+export async function setAutoRenew(packageId: string, enabled: boolean) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const { data: pkg } = await supabase
+    .from("packages")
+    .select("id, student_id, status, expires_at, auto_renew")
+    .eq("id", packageId)
+    .maybeSingle();
+
+  if (!pkg || pkg.student_id !== user.id) {
+    return { error: "Paket nicht gefunden." };
+  }
+  if (pkg.status !== "active") {
+    return { error: "Dieses Paket ist nicht mehr aktiv." };
+  }
+
+  // Kündigungsfrist prüfen – nur beim Abwählen relevant.
+  if (!enabled && pkg.expires_at) {
+    const expiresOn = todayInZurich(new Date(pkg.expires_at));
+    if (!isCancellable(expiresOn, todayInZurich())) {
+      return {
+        error: `Die Kündigungsfrist von ${CANCELLATION_NOTICE_DAYS} Tagen ist abgelaufen. Melde dich bitte direkt bei mir.`,
+      };
+    }
+  }
+
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("packages")
+    .update({
+      auto_renew: enabled,
+      cancelled_at: enabled ? null : new Date().toISOString(),
+    })
+    .eq("id", packageId);
+
+  if (error) return { error: "Änderung konnte nicht gespeichert werden." };
 
   revalidatePath("/schueler/portal");
   return { success: true };
