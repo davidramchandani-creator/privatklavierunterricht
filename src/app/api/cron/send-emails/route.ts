@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { dispatchEmail } from "@/lib/email-dispatch";
 import { scanForDueReminders } from "@/lib/reminders";
+import { runSubscriptionJobs } from "@/lib/subscription-jobs";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,22 @@ export async function GET(request: NextRequest) {
     console.error("[cron] Reminder-Scan fehlgeschlagen:", err);
   }
 
+  // Abo-Automatik: fällige Raten fakturieren, überfällige markieren,
+  // Verlängerungen vorwarnen und ausführen. Läuft vor dem Mailversand,
+  // damit neu erzeugte Mails im selben Durchgang rausgehen.
+  let subscriptions = {
+    instalmentsInvoiced: 0,
+    instalmentsOverdue: 0,
+    renewalNotices: 0,
+    renewed: 0,
+    expired: 0,
+  };
+  try {
+    subscriptions = await runSubscriptionJobs(admin);
+  } catch (err) {
+    console.error("[cron] Abo-Jobs fehlgeschlagen:", err);
+  }
+
   // Fetch up to 20 pending emails due now
   const { data: emails } = await admin
     .from("scheduled_emails")
@@ -35,7 +52,7 @@ export async function GET(request: NextRequest) {
     .order("send_at", { ascending: true })
     .limit(50);
 
-  if (!emails?.length) return Response.json({ sent: 0, ...scanned });
+  if (!emails?.length) return Response.json({ sent: 0, ...scanned, subscriptions });
 
   let sent = 0;
   let failed = 0;
@@ -63,5 +80,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return Response.json({ sent, failed, ...scanned });
+  return Response.json({ sent, failed, ...scanned, subscriptions });
 }
