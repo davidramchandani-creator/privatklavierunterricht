@@ -26,6 +26,7 @@ import {
 } from "@/lib/packages";
 import { addMonths, zurichLocalToIso } from "@/lib/utils";
 import { cancelLessonReminders, scheduleLessonReminders } from "@/lib/reminders";
+import { travelToBuffer } from "@/lib/gap-slots";
 import {
   syncAppointmentToCalendar,
   deleteCalendarEvent,
@@ -655,9 +656,11 @@ export async function calculateTravelBuffer(
     }
     const element = json.rows?.[0]?.elements?.[0];
     if (!element || element.status !== "OK") return { error: "Adresse nicht gefunden." };
-    // Sekunden → Minuten, auf 5 Minuten aufrunden
+    // Sekunden → Minuten, danach auf das Buchungsraster (15 Min) aufrunden.
+    // Nur so bleiben die Startzeiten sauber: 20 Minuten Fahrt ergeben einen
+    // Puffer von 30 Minuten, nicht 20.
     const rawMin = Math.ceil(element.duration.value / 60);
-    const minutes = Math.ceil(rawMin / 5) * 5;
+    const minutes = travelToBuffer(rawMin);
     return { minutes };
   } catch (err) {
     console.error("[calculateTravelBuffer] Unerwarteter Fehler:", err);
