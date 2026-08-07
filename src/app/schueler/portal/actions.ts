@@ -868,7 +868,7 @@ export async function setAutoRenew(packageId: string, enabled: boolean) {
 
   const { data: pkg } = await supabase
     .from("packages")
-    .select("id, student_id, status, expires_at, auto_renew")
+    .select("id, student_id, status, expires_at, auto_renew, type")
     .eq("id", packageId)
     .maybeSingle();
 
@@ -899,6 +899,33 @@ export async function setAutoRenew(packageId: string, enabled: boolean) {
     .eq("id", packageId);
 
   if (error) return { error: "Änderung konnte nicht gespeichert werden." };
+
+  // Kündigung bestätigen – Schüler und Admin (Mail + Push).
+  if (!enabled) {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("vorname, nachname")
+      .eq("id", user.id)
+      .maybeSingle();
+    const studentName =
+      `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined;
+    const label = PACKAGE_LABELS[pkg.type as string] ?? "Paket";
+
+    await sendEmailNow(admin, "subscription_cancelled", {
+      student_id: user.id,
+      student_name: studentName,
+      package_id: pkg.id,
+      package_label: label,
+      expires_at: pkg.expires_at,
+    });
+    await sendEmailNow(admin, "subscription_cancelled_admin", {
+      student_id: user.id,
+      student_name: studentName,
+      package_id: pkg.id,
+      package_label: label,
+      expires_at: pkg.expires_at,
+    });
+  }
 
   revalidatePath("/schueler/portal");
   return { success: true };
