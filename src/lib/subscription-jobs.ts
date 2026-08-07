@@ -22,6 +22,7 @@ import {
 import { PACKAGE_LABELS, PACKAGE_LESSONS } from "@/lib/packages";
 import {
   RENEWAL_NOTICE_DAYS,
+  buildInstalmentPlan,
   SUBSCRIPTION_TERM_MONTHS,
   addMonths,
   todayInZurich,
@@ -302,6 +303,16 @@ async function processExpiredPackages(
     const totalPrice = Number(pkg.total_price ?? ppl * lessonsTotal);
     const expiresOn = addMonths(startDay, termMonths);
 
+    // Ratenplan schon hier berechnen: die Check-Constraint
+    // `packages_raten_complete_check` verlangt, dass ein Ratenpaket
+    // Anzahlung, Ratenanzahl und Ratenhöhe bereits beim Insert mitbringt.
+    // buildInstalmentPlan ist deterministisch, createInstalmentSchedule
+    // unten erzeugt daher exakt denselben Plan.
+    const renewalPlan =
+      pkg.billing_mode === "raten"
+        ? buildInstalmentPlan(type, totalPrice, startDay)
+        : null;
+
     const { data: next, error: insErr } = await admin
       .from("packages")
       .insert({
@@ -319,9 +330,9 @@ async function processExpiredPackages(
         term_months: termMonths,
         auto_renew: true,
         renewed_from_package_id: pkg.id,
-        deposit_amount: null,
-        instalment_count: null,
-        instalment_amount: null,
+        deposit_amount: renewalPlan ? renewalPlan.depositAmount : null,
+        instalment_count: renewalPlan ? renewalPlan.instalmentCount : null,
+        instalment_amount: renewalPlan ? renewalPlan.instalmentAmount : null,
       })
       .select(PACKAGE_FIELDS)
       .maybeSingle<PackageJobRow>();
@@ -334,22 +345,14 @@ async function processExpiredPackages(
       continue;
     }
 
-    if (pkg.billing_mode === "raten") {
-      const plan = await createInstalmentSchedule(
-        admin,
-        next,
-        profile,
-        { type, totalPrice, startDate: startDay }
-      );
-      if ("plan" in plan) {
-        await admin
-          .from("packages")
-          .update({
-            deposit_amount: plan.plan.depositAmount,
-            instalment_count: plan.plan.instalmentCount,
-            instalment_amount: plan.plan.instalmentAmount,
-          })
-          .eq("id", next.id);
+    if (renewalPlan) {
+      const result = await createInstalmentSchedule(admin, next, profile, {
+        type,
+        totalPrice,
+        startDate: startDay,
+      });
+      if ("error" in result) {
+        console.error("[abo] Ratenplan der Verlängerung:", next.id, result.error);
       }
     } else {
       const { createPackageInvoice } = await import("@/lib/package-invoice");
