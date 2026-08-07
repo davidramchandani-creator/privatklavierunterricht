@@ -5,12 +5,12 @@ import {
   type CalDate,
   DEFAULT_BUFFER_MIN,
   addDaysCal,
-  computeAvailableSlots,
   utcToZonedDate,
   weekdayOf,
   zonedToUtc,
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
+import { gapAwareSlots, DEFAULT_BLOCK_SETTINGS } from "@/lib/booking-gap";
 import { sendEmail } from "@/lib/email-sender";
 import { renderEmail } from "@/lib/email-templates";
 import { dispatchPush } from "@/lib/email-dispatch";
@@ -43,7 +43,11 @@ export async function getPublicSlots(weekOffset: number): Promise<PublicSlot[]> 
     now
   );
 
-  return computeAvailableSlots(fromCal, 7, ctx).map((s) => ({
+  const settings =
+    (ctx as { blockSettings?: typeof DEFAULT_BLOCK_SETTINGS }).blockSettings ??
+    DEFAULT_BLOCK_SETTINGS;
+
+  return gapAwareSlots(fromCal, 7, ctx, settings).map((s) => ({
     beginn: s.start.toISOString(),
     ende: s.end.toISOString(),
   }));
@@ -71,7 +75,10 @@ export async function getNextPublicSlot(): Promise<PublicSlot | null> {
       now
     );
 
-    const slots = computeAvailableSlots(fromCal, 7, ctx)
+    const settings =
+      (ctx as { blockSettings?: typeof DEFAULT_BLOCK_SETTINGS }).blockSettings ??
+      DEFAULT_BLOCK_SETTINGS;
+    const slots = gapAwareSlots(fromCal, 7, ctx, settings)
       .filter((s) => s.start.getTime() > now.getTime())
       .sort((a, b) => a.start.getTime() - b.start.getTime());
 
