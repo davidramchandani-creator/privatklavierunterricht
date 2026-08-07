@@ -183,6 +183,38 @@ const BUILDERS: Record<string, Builder> = {
     tag: "package",
   }),
 
+  // ── Abo-Modell ────────────────────────────────────────────────────
+  subscription_renewal_notice: (p) => ({
+    title: "Abo verlängert sich bald",
+    body: p.lessons_remaining
+      ? `Noch ${p.lessons_remaining} Lektion(en) bis ${fmt(p.expires_at)}. Kündbar im Portal.`
+      : `Verlängerung am ${fmt(p.expires_at)}. Kündbar im Portal.`,
+    url: PORTAL,
+    tag: "abo",
+  }),
+  subscription_renewed: (p) => ({
+    title: "Abo verlängert",
+    body: `${p.package_label ?? "Dein Paket"} ist wieder buchbar${
+      p.expires_at ? ` – gültig bis ${fmt(p.expires_at)}` : ""
+    }.`,
+    url: PORTAL,
+    tag: "abo",
+  }),
+  subscription_expired: (p) => ({
+    title: "Paket abgelaufen",
+    body: p.lessons_forfeited
+      ? `${p.lessons_forfeited} nicht genutzte Lektion(en) sind verfallen.`
+      : "Du kannst jederzeit ein neues Paket lösen.",
+    url: PORTAL,
+    tag: "abo",
+  }),
+  subscription_cancelled: (p) => ({
+    title: "Verlängerung abgeschaltet",
+    body: `Dein Paket läuft am ${fmt(p.expires_at)} aus. Restliche Lektionen vorher buchen.`,
+    url: PORTAL,
+    tag: "abo",
+  }),
+
   // ── Admin ─────────────────────────────────────────────────────────
   booking_request_admin: (p) => ({
     title: "Neue Terminanfrage",
@@ -249,6 +281,18 @@ const BUILDERS: Record<string, Builder> = {
     body: `${p.student_name ?? "Ein Schüler"} – ${p.course_title ?? "Gruppenkurs"}`,
     url: "/admin/gruppenkurse",
     tag: "admin-group",
+  }),
+  subscription_renewed_admin: (p) => ({
+    title: "Abo verlängert",
+    body: `${p.student_name ?? "Ein Schüler"} – ${p.package_label ?? "Paket"} automatisch erneuert.`,
+    url: "/admin/schueler",
+    tag: "abo-admin",
+  }),
+  subscription_cancelled_admin: (p) => ({
+    title: "Abo gekündigt",
+    body: `${p.student_name ?? "Ein Schüler"} hat die Verlängerung abgeschaltet.`,
+    url: "/admin/schueler",
+    tag: "abo-admin",
   }),
 };
 

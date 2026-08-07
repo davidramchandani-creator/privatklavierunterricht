@@ -1260,6 +1260,126 @@ export function renderEmail(
       return { subject, html: baseWrapper(content) };
     }
 
+    // ── Abo-Modell ────────────────────────────────────────────────
+    case "subscription_renewal_notice": {
+      const remaining = Number(payload.lessons_remaining ?? 0);
+      return {
+        subject: "Dein Abo verlängert sich bald",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + payload.student_name : ""}</p>
+           <p>Dein <strong>${payload.package_label ?? "Paket"}</strong> läuft am
+              <strong>${fmtDate(String(payload.expires_at))}</strong> ab und verlängert
+              sich danach automatisch um eine neue Laufzeit.</p>
+           ${
+             remaining > 0
+               ? `<p>Du hast noch <strong>${remaining} Lektion${remaining === 1 ? "" : "en"}</strong> offen.
+                   Nicht genutzte Lektionen verfallen beim Ablauf – buch dir am besten
+                   jetzt noch die restlichen Termine.</p>`
+               : ""
+           }
+           <p>Wenn du nicht verlängern möchtest, kannst du die automatische Verlängerung
+              im Portal abschalten – bis 14 Tage vor Ablauf.</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>
+           <p>Liebe Grüsse<br/>David</p>`
+        ),
+      };
+    }
+    case "subscription_renewed": {
+      const raten = payload.billing_mode === "raten";
+      return {
+        subject: "Dein Abo wurde verlängert",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + payload.student_name : ""}</p>
+           <p>Dein <strong>${payload.package_label ?? "Paket"}</strong> wurde automatisch
+              verlängert und ist ab sofort wieder buchbar${
+                payload.expires_at
+                  ? `, gültig bis <strong>${fmtDate(String(payload.expires_at))}</strong>`
+                  : ""
+              }.</p>
+           <p>${
+             raten
+               ? "Die Anzahlung für die neue Laufzeit erhältst du separat per Rechnung, die weiteren Raten folgen monatlich."
+               : "Die Rechnung für die neue Laufzeit erhältst du separat."
+           }</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Termine buchen</a>
+           </p>
+           <p>Liebe Grüsse<br/>David</p>`
+        ),
+      };
+    }
+    case "subscription_expired": {
+      const verfallen = Number(payload.lessons_forfeited ?? 0);
+      return {
+        subject: "Dein Paket ist abgelaufen",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + payload.student_name : ""}</p>
+           <p>Dein <strong>${payload.package_label ?? "Paket"}</strong> ist am
+              <strong>${fmtDate(String(payload.expires_at))}</strong> abgelaufen.</p>
+           ${
+             verfallen > 0
+               ? `<p>Dabei sind <strong>${verfallen} nicht genutzte Lektion${verfallen === 1 ? "" : "en"}</strong> verfallen.</p>`
+               : ""
+           }
+           <p>Du kannst jederzeit ein neues Paket lösen – auf Wunsch auch in Monatsraten.</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Neues Paket wählen</a>
+           </p>
+           <p>Liebe Grüsse<br/>David</p>`
+        ),
+      };
+    }
+    case "subscription_cancelled": {
+      return {
+        subject: "Automatische Verlängerung beendet",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + payload.student_name : ""}</p>
+           <p>Die automatische Verlängerung für dein
+              <strong>${payload.package_label ?? "Paket"}</strong> ist abgeschaltet.</p>
+           <p>Dein Paket bleibt bis <strong>${fmtDate(String(payload.expires_at))}</strong>
+              wie gewohnt nutzbar. Danach läuft es aus, ohne dass ein neues startet.</p>
+           <p>Nicht genutzte Lektionen verfallen beim Ablauf – buch dir also
+              rechtzeitig deine restlichen Termine.</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Termine buchen</a>
+           </p>
+           <p>Liebe Grüsse<br/>David</p>`
+        ),
+      };
+    }
+    case "subscription_renewed_admin": {
+      return {
+        subject: `Abo verlängert – ${payload.student_name ?? "Schüler"}`,
+        html: baseWrapper(
+          `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat ein automatisch
+              verlängertes <strong>${payload.package_label ?? "Paket"}</strong>.</p>
+           <p>Zahlungsart: ${payload.billing_mode === "raten" ? "Monatsraten" : "Einmalzahlung"}<br/>
+              Gültig bis: ${payload.expires_at ? fmtDate(String(payload.expires_at)) : "–"}</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/schueler" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Im Admin öffnen</a>
+           </p>`
+        ),
+      };
+    }
+    case "subscription_cancelled_admin": {
+      return {
+        subject: `Abo gekündigt – ${payload.student_name ?? "Schüler"}`,
+        html: baseWrapper(
+          `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat die automatische
+              Verlängerung für das <strong>${payload.package_label ?? "Paket"}</strong>
+              abgeschaltet.</p>
+           <p>Das Paket läuft am
+              ${payload.expires_at ? fmtDate(String(payload.expires_at)) : "Ende der Laufzeit"}
+              aus und wird nicht erneuert.</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/schueler" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Im Admin öffnen</a>
+           </p>`
+        ),
+      };
+    }
+
     default:
       return null;
   }

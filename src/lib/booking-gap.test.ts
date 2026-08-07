@@ -87,6 +87,72 @@ describe("Integration: gap-aware Slots am realen Tag", () => {
     expect(gapAwareDaySlots(DAY, c, settings, windows)).toEqual([]);
   });
 
+  it("blendet eine wiederkehrende Sperrregel aus, die auf den Tag fällt", () => {
+    // 10.8.2026 ist 67 Tage nach dem 4.6.2026 – 67 % 7 !== 0, also greift
+    // die Regel an diesem Montag NICHT.
+    const montag = times(
+      gapAwareDaySlots(
+        DAY,
+        ctx({
+          timeBlockRules: [
+            {
+              start_date: "2026-06-04",
+              start_time: "19:00",
+              end_time: "20:00",
+              interval_days: 7,
+            },
+          ],
+        }),
+        settings,
+        windows
+      )
+    );
+    expect(montag).toEqual(["16:30", "17:30", "18:30"]);
+
+    // Der 3.8.2026 ist 60 Tage nach dem 4.6. – ebenfalls kein Treffer.
+    // Passend ist der 10.8. nur, wenn die Regel am 6.7.2026 startet
+    // (35 Tage, 35 % 7 === 0).
+    const gesperrt = times(
+      gapAwareDaySlots(
+        DAY,
+        ctx({
+          timeBlockRules: [
+            {
+              start_date: "2026-07-06",
+              start_time: "19:00",
+              end_time: "20:00",
+              interval_days: 7,
+            },
+          ],
+        }),
+        settings,
+        windows
+      )
+    );
+    expect(gesperrt).toEqual(["16:30", "17:30"]);
+  });
+
+  it("ignoriert eine Sperrregel vor ihrem Startdatum", () => {
+    const slots = times(
+      gapAwareDaySlots(
+        DAY,
+        ctx({
+          timeBlockRules: [
+            {
+              start_date: "2026-09-07",
+              start_time: "19:00",
+              end_time: "20:00",
+              interval_days: 7,
+            },
+          ],
+        }),
+        settings,
+        windows
+      )
+    );
+    expect(slots).toEqual(["16:30", "17:30", "18:30"]);
+  });
+
   it("wendet die 24-Stunden-Regel an", () => {
     const c = ctx({ now: zonedToUtc(2026, 8, 10, 12, 0) }); // nur 4h vorher
     expect(gapAwareDaySlots(DAY, c, settings, windows)).toEqual([]);
