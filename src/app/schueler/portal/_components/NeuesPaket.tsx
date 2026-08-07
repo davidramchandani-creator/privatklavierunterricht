@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Package, Check, Loader2, X } from "lucide-react";
+import { Package, Check, Loader2, X, CalendarClock, RefreshCw } from "lucide-react";
 import { formatCHF } from "@/lib/utils";
+import {
+  buildInstalmentPlan,
+  CANCELLATION_NOTICE_DAYS,
+  todayInZurich,
+} from "@/lib/subscription";
 import { buyPackage } from "../actions";
 
 type Prices = {
@@ -21,9 +26,16 @@ type Variant = {
 };
 
 const VARIANTS: Variant[] = [
-  { type: "10er", label: "10er-Paket", lessons: 10, validityLabel: "5 Monate gültig" },
-  { type: "20er", label: "20er-Paket", lessons: 20, validityLabel: "10 Monate gültig" },
+  { type: "10er", label: "10er-Paket", lessons: 10, validityLabel: "4 Monate gültig" },
+  { type: "20er", label: "20er-Paket", lessons: 20, validityLabel: "8 Monate gültig" },
 ];
+
+type BillingMode = "einmalig" | "raten";
+
+function formatDay(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return `${d}.${m}.${y}`;
+}
 
 export default function NeuesPaket({
   prices,
@@ -37,6 +49,8 @@ export default function NeuesPaket({
   const router = useRouter();
   const [selected, setSelected] = useState<Variant | null>(null);
   const [agb, setAgb] = useState(false);
+  const [billingMode, setBillingMode] = useState<BillingMode>("einmalig");
+  const [autoRenew, setAutoRenew] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -45,11 +59,29 @@ export default function NeuesPaket({
     return Number(base) + Number(prices.travel_surcharge);
   }
 
+  const plan = useMemo(() => {
+    if (!selected) return null;
+    const total = pricePerLesson(selected.type) * selected.lessons;
+    return buildInstalmentPlan(selected.type, total, todayInZurich());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, prices.price_10er, prices.price_20er, prices.travel_surcharge]);
+
+  function openModal(v: Variant) {
+    setSelected(v);
+    setAgb(false);
+    setBillingMode("einmalig");
+    setAutoRenew(false);
+    setError(null);
+  }
+
   function handleBuy() {
     if (!selected || !agb) return;
     setError(null);
     startTransition(async () => {
-      const result = await buyPackage(selected.type, agb);
+      const result = await buyPackage(selected.type, agb, {
+        billingMode,
+        autoRenew,
+      });
       if (result?.error) {
         setError(result.error);
       } else {
@@ -81,11 +113,7 @@ export default function NeuesPaket({
           return (
             <button
               key={v.type}
-              onClick={() => {
-                setSelected(v);
-                setAgb(false);
-                setError(null);
-              }}
+              onClick={() => openModal(v)}
               className="text-left bg-white rounded-2xl border border-gray-100 hover:border-[#1C244B]/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5 group"
             >
               <div className="flex items-center gap-3">
@@ -106,19 +134,22 @@ export default function NeuesPaket({
                   Total <span className="font-600 text-gray-700">{formatCHF(total)}</span>
                 </p>
               </div>
+              <p className="mt-2 text-xs text-gray-400">
+                Auf Wunsch in Monatsraten zahlbar
+              </p>
             </button>
           );
         })}
       </div>
 
       {/* Bestätigungs-Modal */}
-      {selected && (
+      {selected && plan && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6 overflow-y-auto"
           onClick={() => !isPending && setSelected(null)}
         >
           <div
-            className="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-5"
+            className="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-5 my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between">
@@ -153,10 +184,102 @@ export default function NeuesPaket({
               <div className="flex justify-between border-t border-gray-200 pt-2">
                 <span className="text-gray-500">Gesamtpreis</span>
                 <span className="font-800 text-[#1C244B]">
-                  {formatCHF(pricePerLesson(selected.type) * selected.lessons)}
+                  {formatCHF(plan.totalPrice)}
                 </span>
               </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-400">Gültig bis</span>
+                <span className="text-gray-500">{formatDay(plan.expiresOn)}</span>
+              </div>
             </div>
+
+            {/* Zahlungsart */}
+            <div className="space-y-2">
+              <p className="text-xs font-600 text-gray-500 uppercase tracking-wide">
+                Zahlung
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBillingMode("einmalig")}
+                  className={`rounded-xl border px-3 py-3 text-left transition-colors ${
+                    billingMode === "einmalig"
+                      ? "border-[#1C244B] bg-[#1C244B]/5"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <p className="text-sm font-600 text-gray-900">Einmalig</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {formatCHF(plan.totalPrice)} innert 15 Tagen
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingMode("raten")}
+                  className={`rounded-xl border px-3 py-3 text-left transition-colors ${
+                    billingMode === "raten"
+                      ? "border-[#1C244B] bg-[#1C244B]/5"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <p className="text-sm font-600 text-gray-900">Monatsraten</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {plan.instalmentCount} × {formatCHF(plan.instalmentAmount)}
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            {/* Ratenplan-Vorschau */}
+            {billingMode === "raten" && (
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-600 text-gray-500 uppercase tracking-wide">
+                  <CalendarClock className="w-3.5 h-3.5" />
+                  Zahlungsplan
+                </div>
+                <ul className="text-sm divide-y divide-gray-100">
+                  {plan.entries.map((e) => (
+                    <li key={e.sequence} className="flex justify-between py-1.5">
+                      <span className="text-gray-600">
+                        {e.kind === "anzahlung"
+                          ? "Anzahlung (25 %)"
+                          : `Rate ${e.sequence}`}
+                        <span className="text-gray-400 ml-2 text-xs">
+                          {formatDay(e.dueDate)}
+                        </span>
+                      </span>
+                      <span className="font-600 text-gray-900">
+                        {formatCHF(e.amount)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-gray-400 leading-snug pt-1">
+                  Die Anzahlung ist sofort fällig, danach folgt jeden Monat eine
+                  Rate. Alle Lektionen sind ab sofort buchbar.
+                </p>
+              </div>
+            )}
+
+            {/* Auto-Verlängerung */}
+            <label className="flex items-start gap-2.5 cursor-pointer rounded-2xl border border-gray-100 p-3.5">
+              <input
+                type="checkbox"
+                checked={autoRenew}
+                onChange={(e) => setAutoRenew(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#1C244B] focus:ring-[#1C244B]"
+              />
+              <span className="text-sm text-gray-600 leading-snug">
+                <span className="inline-flex items-center gap-1.5 font-600 text-gray-900">
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Automatisch verlängern
+                </span>
+                <br />
+                Am {formatDay(plan.expiresOn)} startet automatisch ein neues{" "}
+                {selected.label}. Kündbar bis {CANCELLATION_NOTICE_DAYS} Tage vorher,
+                jederzeit im Portal.
+              </span>
+            </label>
 
             <label className="flex items-start gap-2.5 cursor-pointer">
               <input
@@ -175,7 +298,10 @@ export default function NeuesPaket({
                   AGB
                 </Link>{" "}
                 gelesen und akzeptiere sie. Mit dem Kauf buche ich dieses Paket
-                verbindlich.
+                verbindlich
+                {billingMode === "raten"
+                  ? " und verpflichte mich zur Zahlung aller Raten."
+                  : "."}
               </span>
             </label>
 
@@ -196,7 +322,10 @@ export default function NeuesPaket({
                 </>
               ) : (
                 <>
-                  <Check className="w-4 h-4" /> Verbindlich buchen
+                  <Check className="w-4 h-4" />
+                  {billingMode === "raten"
+                    ? `Verbindlich buchen – ${formatCHF(plan.depositAmount)} jetzt`
+                    : "Verbindlich buchen"}
                 </>
               )}
             </button>
