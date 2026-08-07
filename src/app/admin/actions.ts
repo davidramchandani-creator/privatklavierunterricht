@@ -285,10 +285,29 @@ export type VerfuegbarkeitSlot = {
   beginn_zeit: string;
   ende_zeit: string;
   aktiv: boolean;
+  /** Dauer einer Lektion in diesem Block (Minuten). */
+  lesson_minutes: number;
+  /** Untergrenze für den Puffer zwischen zwei Lektionen (Minuten). */
+  min_buffer_minutes: number;
+  /** lueckenlos = bündig aneinander; maximal = mehr Auswahl, kleine Löcher. */
+  packing: "lueckenlos" | "maximal";
 };
 
 export async function updateVerfuegbarkeit(slots: VerfuegbarkeitSlot[]) {
   const supabase = await createClient();
+
+  // Plausibilität serverseitig prüfen – nie dem Formular vertrauen.
+  for (const s of slots) {
+    if (s.lesson_minutes < 15 || s.lesson_minutes > 180) {
+      return { error: "Die Lektionsdauer muss zwischen 15 und 180 Minuten liegen." };
+    }
+    if (s.min_buffer_minutes < 0 || s.min_buffer_minutes > 120) {
+      return { error: "Der Puffer muss zwischen 0 und 120 Minuten liegen." };
+    }
+    if (s.aktiv && s.ende_zeit <= s.beginn_zeit) {
+      return { error: "Die Endzeit muss nach der Startzeit liegen." };
+    }
+  }
 
   // Delete all existing
   const { error: deleteError } = await supabase
