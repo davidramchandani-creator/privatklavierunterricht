@@ -111,6 +111,20 @@ export function gapAwareDaySlots(
     });
   }
 
+  // Wiederkehrende Sperrregeln (alle 7 bzw. 14 Tage ab start_date).
+  const dayNum = Date.UTC(day.y, day.m - 1, day.d);
+  for (const rule of ctx.timeBlockRules) {
+    if (!rule.interval_days || rule.interval_days <= 0) continue;
+    const [ry, rm, rd] = rule.start_date.split("-").map(Number);
+    const diffDays = Math.round((dayNum - Date.UTC(ry, rm - 1, rd)) / 86400000);
+    if (diffDays < 0 || diffDays % rule.interval_days !== 0) continue;
+    busyAll.push({
+      start: hhmmToMin(rule.start_time),
+      end: hhmmToMin(rule.end_time),
+      bufferMinutes: settings.minBufferMinutes,
+    });
+  }
+
   const result: Slot[] = [];
 
   for (const w of windows) {
