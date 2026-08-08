@@ -7,13 +7,20 @@ import NeuesPaket from "./_components/NeuesPaket";
 import NaechsteTermine from "./_components/NaechsteTermine";
 import TerminBuchen from "./_components/TerminBuchen";
 import ZahlungenSection from "./_components/ZahlungenSection";
+import ZahlungsplanCard from "./_components/ZahlungsplanCard";
 import ProposalCard from "./_components/ProposalCard";
 import PortalTabs from "./_components/PortalTabs";
 import PullToRefresh from "@/components/PullToRefresh";
 import RealtimeRefresh from "@/components/RealtimeRefresh";
 import { CalendarPlus } from "lucide-react";
-import { canBuyNewPackage, type Package as Paket } from "@/lib/packages";
+import { PACKAGE_LABELS, canBuyNewPackage, type Package as Paket } from "@/lib/packages";
 import { buildLessonTwintLink, buildTwintLink } from "@/lib/twint";
+import { buildPlanSummary, type InstalmentRow } from "@/lib/instalment-view";
+import {
+  cancellationDeadline,
+  isCancellable,
+  todayInZurich,
+} from "@/lib/subscription";
 import Gruppenkurse from "./_components/Gruppenkurse";
 import { getGroupCourses } from "./actions";
 
@@ -110,6 +117,20 @@ export default async function SchuelerPortalPage() {
     .order("erstellt_am", { ascending: false })
     .limit(20);
 
+  // Ratenplan des aktiven Pakets (nur bei Ratenkauf vorhanden).
+  const { data: instalmentRows } = aktivesPackage
+    ? await supabase
+        .from("package_instalments")
+        .select("id, sequence, kind, amount, due_date, status, invoice_id, paid_at")
+        .eq("package_id", aktivesPackage.id)
+        .order("sequence", { ascending: true })
+    : { data: null };
+
+  const plan =
+    instalmentRows && instalmentRows.length > 0
+      ? buildPlanSummary(instalmentRows as InstalmentRow[])
+      : null;
+
   const vorname = profile?.vorname ?? user.email?.split("@")[0] ?? "Schüler";
 
   // Auf-einen-Blick-Stats für den Hero
@@ -133,11 +154,13 @@ export default async function SchuelerPortalPage() {
   // serverseitig gebaut (Spec §6 – trxInfo = Lektionsinfo).
   const invoicesForPortal = (invoices ?? []).map((inv) => ({
     ...inv,
+    // Leerer String = TWINT_BASE_URL nicht konfiguriert -> null, damit die
+    // UI den TWINT-Button gar nicht erst anbietet.
     twint_link:
       inv.method === "twint"
-        ? !inv.lesson_date && inv.description
-          ? buildTwintLink(Number(inv.amount ?? 0), inv.description)
-          : buildLessonTwintLink(Number(inv.amount ?? 0), inv.lesson_date)
+        ? (!inv.lesson_date && inv.description
+            ? buildTwintLink(Number(inv.amount ?? 0), inv.description)
+            : buildLessonTwintLink(Number(inv.amount ?? 0), inv.lesson_date)) || null
         : null,
   }));
 
@@ -255,8 +278,37 @@ export default async function SchuelerPortalPage() {
     </div>
   );
 
+  // Der TWINT-Link zur nächsten Rate stammt aus der bereits gestellten
+  // Rechnung – ist sie noch nicht fakturiert, gibt es nichts zu zahlen.
+  const nextTwintLink =
+    plan?.next?.invoiceId
+      ? invoicesForPortal.find((i) => i.id === plan.next!.invoiceId)?.twint_link ??
+        null
+      : null;
+
+  const ablaufTag = aktivesPackage?.expires_at
+    ? todayInZurich(new Date(aktivesPackage.expires_at))
+    : null;
+
   const zahlungen = (
     <div className="space-y-5">
+      {plan && aktivesPackage && (
+        <ZahlungsplanCard
+          plan={plan}
+          packageId={aktivesPackage.id}
+          packageLabel={
+            aktivesPackage.name ??
+            PACKAGE_LABELS[aktivesPackage.type] ??
+            aktivesPackage.type
+          }
+          nextTwintLink={nextTwintLink}
+          autoRenew={Boolean(
+            (aktivesPackage as { auto_renew?: boolean }).auto_renew
+          )}
+          cancellationDeadline={ablaufTag ? cancellationDeadline(ablaufTag) : null}
+          canCancel={ablaufTag ? isCancellable(ablaufTag, todayInZurich()) : false}
+        />
+      )}
       <ZahlungenSection invoices={invoicesForPortal} />
     </div>
   );
