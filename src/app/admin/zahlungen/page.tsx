@@ -23,7 +23,7 @@ export default async function ZahlungenPage() {
   const { data } = await admin
     .from("invoices")
     .select(
-      "id, invoice_number, amount, status, method, lesson_date, paid_at, student_id, profiles(vorname, nachname)"
+      "id, invoice_number, amount, status, method, lesson_date, paid_at, description, due_date, student_id, profiles(vorname, nachname)"
     )
     .order("lesson_date", { ascending: false, nullsFirst: false })
     .limit(500);
@@ -38,6 +38,8 @@ export default async function ZahlungenPage() {
       method: inv.method,
       lesson_date: inv.lesson_date,
       paid_at: inv.paid_at,
+      description: inv.description,
+      due_date: inv.due_date,
       studentName: p ? `${p.vorname} ${p.nachname}`.trim() : "—",
     };
   });
