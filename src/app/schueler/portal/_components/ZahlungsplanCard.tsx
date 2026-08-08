@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Loader2,
   ExternalLink,
+  Lock,
 } from "lucide-react";
 import { formatCHF } from "@/lib/utils";
 import {
@@ -49,6 +50,8 @@ export type ZahlungsplanProps = {
   /** ISO-Tag, bis zu dem gekündigt werden kann. */
   cancellationDeadline: string | null;
   canCancel: boolean;
+  /** Buchung noch gesperrt, weil die Anzahlung offen ist. */
+  bookingLocked: boolean;
 };
 
 export default function ZahlungsplanCard({
@@ -59,6 +62,7 @@ export default function ZahlungsplanCard({
   autoRenew,
   cancellationDeadline,
   canCancel,
+  bookingLocked,
 }: ZahlungsplanProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -78,7 +82,7 @@ export default function ZahlungsplanCard({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-6">
+    <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
       {/* Kopf */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
@@ -108,6 +112,15 @@ export default function ZahlungsplanCard({
             : "Auf Kurs"}
         </span>
       </div>
+
+      {bookingLocked && (
+        <div className="mt-4 rounded-xl bg-amber-50 border border-amber-200 px-3.5 py-3 flex items-start gap-2.5">
+          <Lock className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-900 leading-snug">
+            Terminbuchung ist frei, sobald deine Anzahlung bezahlt ist.
+          </p>
+        </div>
+      )}
 
       {/* Fortschritt */}
       <div className="mt-5">
@@ -139,7 +152,7 @@ export default function ZahlungsplanCard({
       {/* Nächste Rate */}
       {plan.next && (
         <div
-          className={`mt-5 rounded-xl px-4 py-3 flex items-center justify-between gap-3 ${
+          className={`mt-5 rounded-xl px-3.5 sm:px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
             plan.next.state === "ueberfaellig" ? "bg-red-50" : "bg-navy-50"
           }`}
         >
@@ -170,7 +183,7 @@ export default function ZahlungsplanCard({
               href={nextTwintLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs font-600 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:border-navy-900/40 transition-colors whitespace-nowrap"
+              className="flex items-center justify-center gap-1.5 text-sm font-600 bg-white border border-gray-200 rounded-lg px-3 min-h-[44px] active:bg-gray-50 transition-colors whitespace-nowrap w-full sm:w-auto"
             >
               Mit TWINT zahlen
               <ExternalLink className="w-3 h-3" />
@@ -199,7 +212,10 @@ export default function ZahlungsplanCard({
               }`}
             >
               {e.label}
-              <span className="text-gray-400 font-400"> · {formatDay(e.dueDate)}</span>
+              <span className="text-gray-400 font-400 block sm:inline">
+                <span className="hidden sm:inline"> · </span>
+                {formatDay(e.dueDate)}
+              </span>
               {e.state === "in_pruefung" && (
                 <span className="text-amber-600 font-400"> · in Prüfung</span>
               )}
@@ -243,7 +259,7 @@ export default function ZahlungsplanCard({
           onClick={toggleRenew}
           disabled={isPending || (autoRenew && !canCancel)}
           aria-pressed={autoRenew}
-          className="flex-shrink-0 text-xs font-600 px-3 py-2 rounded-lg border border-gray-200 hover:border-navy-900/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="flex-shrink-0 text-sm font-600 px-3.5 min-h-[44px] rounded-lg border border-gray-200 active:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {isPending ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
