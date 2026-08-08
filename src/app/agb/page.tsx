@@ -29,7 +29,7 @@ const abschnitte: Abschnitt[] = [
     titel: "3. Pakete (verbindlich & Rücktritt)",
     punkte: [
       "Mit der Buchung eines Pakets gehst du eine verbindliche Vereinbarung ein.",
-      "Die enthaltenen Lektionen müssen innerhalb der im Angebot genannten Gültigkeitsdauer eingelöst werden.",
+      "Die enthaltenen Lektionen müssen innerhalb der Gültigkeitsdauer eingelöst werden: 4 Monate beim 10er-Paket, 8 Monate beim 20er-Paket, jeweils ab Buchungsdatum.",
       "Nicht genutzte Lektionen innerhalb dieser Frist verfallen und werden zu 100 % verrechnet.",
       "Ein Paket kann bis zur 3. genommenen Lektion storniert werden. In diesem Fall werden die bereits genommenen Lektionen zum Einzellektionspreis verrechnet. Ab der 4. Lektion ist eine Stornierung des Pakets nicht mehr möglich.",
       "Auch bei Abbruch oder Unzufriedenheit nach der 3. Lektion bleibt der gesamte Paketbetrag geschuldet.",
@@ -37,32 +37,48 @@ const abschnitte: Abschnitt[] = [
     ],
   },
   {
-    titel: "4. Zahlung & Mahnung",
+    titel: "4. Zahlung: Einmalzahlung oder Raten",
     punkte: [
-      "Beim Buchen eines Pakets wird der gesamte Paketbetrag in Rechnung gestellt. Die Zahlung erfolgt per TWINT oder QR-Rechnung (IBAN-Überweisung) und ist innert 15 Tagen fällig.",
-      "Das Paket ist ab Buchung sofort nutzbar – du musst also nicht auf den Zahlungseingang warten, um Lektionen zu buchen.",
-      "Einzellektionen werden nach der Lektion in Rechnung gestellt und sind ebenfalls innert 15 Tagen fällig.",
+      "Beim Buchen eines Pakets wählst du zwischen Einmalzahlung und Monatsraten. Bezahlt wird in beiden Fällen per TWINT oder QR-Rechnung (IBAN-Überweisung).",
+      "Bei Einmalzahlung wird der gesamte Paketbetrag sofort in Rechnung gestellt und ist innert 15 Tagen fällig.",
+      "Bei Ratenzahlung wird zuerst eine Anzahlung von 25 % des Paketpreises fällig. Der Restbetrag wird in gleich hohen Monatsraten verteilt: vier Raten beim 10er-Paket, acht Raten beim 20er-Paket. Die letzte Rate kann geringfügig abweichen, damit die Summe exakt dem Paketpreis entspricht.",
+      "Jede Rate wird am jeweiligen Monatsstichtag in Rechnung gestellt und ist innert 10 Tagen fällig. Den vollständigen Zahlungsplan siehst du vor dem Kauf und jederzeit im Portal.",
+      "Das Paket ist in beiden Fällen ab Buchung sofort und vollständig nutzbar – du musst weder auf den Zahlungseingang warten noch alle Raten bezahlt haben, um Lektionen zu buchen.",
+      "Der gesamte Paketbetrag ist mit der Buchung geschuldet. Die Ratenzahlung ist eine Zahlungserleichterung und keine Kündigungsmöglichkeit: Bleiben Raten offen, werden sie unabhängig davon fällig, ob die Lektionen bezogen wurden.",
+      "Einzellektionen werden nach der Lektion in Rechnung gestellt und sind innert 15 Tagen fällig.",
       "Die erste Mahnung gilt als Erinnerung. Ab der zweiten Mahnung wird eine Mahngebühr von CHF 20.– pro Mahnung erhoben.",
+      "Bei mehr als zwei offenen, überfälligen Raten kann ich weitere Buchungen aussetzen, bis der Rückstand ausgeglichen ist.",
     ],
   },
   {
-    titel: "5. Stornierung & Verschiebung",
+    titel: "5. Automatische Verlängerung & Kündigung",
+    punkte: [
+      "Die automatische Verlängerung ist freiwillig. Sie gilt nur, wenn du sie beim Kauf ausdrücklich aktivierst – ohne dieses Häkchen läuft dein Paket am Ende der Laufzeit einfach aus.",
+      "Ist sie aktiv, verlängert sich das Paket am Ablaufdatum automatisch um eine neue Laufzeit desselben Typs und zum dann gültigen Preis. Die Zahlungsart (einmalig oder Raten) wird übernommen.",
+      "Du kannst die Verlängerung jederzeit im Portal abschalten, spätestens jedoch 14 Tage vor Ablauf der laufenden Laufzeit. Danach ist die Verlängerung ausgelöst und die neue Laufzeit verbindlich.",
+      "Spätestens 30 Tage vor Ablauf erhältst du eine Erinnerung per E-Mail und Push, damit du rechtzeitig entscheiden kannst.",
+      "Eine Kündigung wirkt auf das Ende der laufenden Laufzeit. Bereits begonnene Laufzeiten und offene Raten bleiben geschuldet.",
+      "Nicht genutzte Lektionen verfallen auch bei einer Verlängerung – sie werden nicht in die neue Laufzeit übertragen.",
+    ],
+  },
+  {
+    titel: "6. Stornierung & Verschiebung",
     punkte: [
       "Lektionen können nur über die Website und bis spätestens 24 Stunden vor Beginn storniert oder verschoben werden.",
       "Bei späterer Absage oder Nichterscheinen wird der volle Preis der Lektion in Rechnung gestellt.",
     ],
   },
   {
-    titel: "6. Krankheit, Unfall & Ferien",
+    titel: "7. Krankheit, Unfall & Ferien",
     punkte: [
-      "Bei längerfristiger, begründeter Krankheit oder Unfall wird das Paket pausiert.",
+      "Bei längerfristiger, begründeter Krankheit oder Unfall wird das Paket pausiert. Die Gültigkeitsdauer verlängert sich entsprechend; der Ratenplan läuft unverändert weiter.",
       "Kurzzeitige Krankheitsabwesenheiten von weniger als zwei Wochen werden nicht berücksichtigt, da der Standard-Rhythmus zwei Wochen beträgt.",
       "Ferien von meiner Seite und von Schülerseite werden ebenfalls berücksichtigt und führen zur Pausierung des Pakets.",
       "Abwesenheiten durch Ferien oder längere Krankheiten müssen frühzeitig mitgeteilt werden.",
     ],
   },
   {
-    titel: "7. Unterrichtsort & Material",
+    titel: "8. Unterrichtsort & Material",
     punkte: [
       "Der Unterricht findet aktuell ausschliesslich beim Schüler statt.",
       "Ich stelle keine Unterrichtsmaterialien zur Verfügung, empfehle aber passende Materialien und Quellen nach bestem Wissen.",
@@ -70,25 +86,25 @@ const abschnitte: Abschnitt[] = [
     ],
   },
   {
-    titel: "8. Fehlerhafte Preisangaben",
+    titel: "9. Fehlerhafte Preisangaben",
     absaetze: [
       "Sollte aufgrund eines technischen Fehlers ein falscher Preis auf der Website angezeigt werden, gilt immer der von mir schriftlich oder mündlich bestätigte Preis.",
     ],
   },
   {
-    titel: "9. Datenschutz",
+    titel: "10. Datenschutz",
     absaetze: [
       "Alle Daten werden vertraulich behandelt und nicht an Dritte weitergegeben. Sie dienen ausschliesslich der Organisation und Durchführung des Unterrichts.",
     ],
   },
   {
-    titel: "10. Vertragsdauer",
+    titel: "11. Vertragsdauer",
     absaetze: [
-      "Der Vertrag gilt für die Dauer des gebuchten Pakets und darüber hinaus, bis alle Lektionen eingelöst und alle offenen Beträge bezahlt wurden.",
+      "Der Vertrag gilt für die Dauer des gebuchten Pakets und darüber hinaus, bis alle Lektionen eingelöst und alle offenen Beträge – einschliesslich noch ausstehender Raten – bezahlt wurden.",
     ],
   },
   {
-    titel: "11. Schlussbestimmungen",
+    titel: "12. Schlussbestimmungen",
     absaetze: [
       "Der Unterricht basiert auf gegenseitigem Vertrauen und Einvernehmen.",
       "Sollte es trotzdem einmal nicht passen, suche ich zuerst das Gespräch. Änderungen dieser AGB behalte ich mir vor.",
