@@ -36,6 +36,30 @@ import {
 
 // ── Schüler ──────────────────────────────────────────────────────────────────
 
+/**
+ * Stellt sicher, dass der Aufrufer wirklich Admin ist.
+ *
+ * Die Middleware schützt nur die /admin-Seiten. Server Actions sind darüber
+ * hinaus direkt aufrufbar, deshalb muss jede Action, die mit dem
+ * Service-Role-Client schreibt, die Rolle selbst prüfen.
+ */
+async function assertAdmin(): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.role !== "admin") return { error: "Keine Berechtigung." };
+  return null;
+}
+
 export async function inviteSchueler(formData: FormData) {
   const email = formData.get("email") as string;
   const vorname = formData.get("vorname") as string;
@@ -260,6 +284,9 @@ export async function updateInvoiceStatus(
   id: string,
   status: "paid" | "rejected" | "archived"
 ) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const adminClient = await createAdminClient();
 
   const update: Record<string, unknown> = { status };
@@ -286,6 +313,9 @@ export async function updateInvoiceStatus(
  * Idempotent: Raten mit bestehender Rechnung werden übersprungen.
  */
 export async function issueInstalmentNow(instalmentId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const adminClient = await createAdminClient();
 
   const { data: inst } = await adminClient
