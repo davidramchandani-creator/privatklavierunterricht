@@ -155,6 +155,70 @@ export function buildPlanSummary(
   };
 }
 
+// ── Buchungssperre bei Ratenkauf ────────────────────────────────────
+
+export type BookingLock = {
+  /** true = Schüler darf (noch) keine Lektionen buchen. */
+  locked: boolean;
+  /** Betrag der Anzahlung, falls relevant. */
+  depositAmount: number;
+  /** Zustand der Anzahlung, damit die UI den richtigen Hinweis zeigt. */
+  depositState: InstalmentUiState | null;
+};
+
+const OPEN_LOCK: BookingLock = {
+  locked: false,
+  depositAmount: 0,
+  depositState: null,
+};
+
+/**
+ * Entscheidet, ob ein Paket bereits bebucht werden darf.
+ *
+ * Regel (Entscheid Dave):
+ *  - Einmalzahlung  → sofort buchbar, unabhängig vom Zahlungseingang.
+ *  - Ratenzahlung   → erst buchbar, wenn die Anzahlung bestätigt bezahlt ist.
+ *
+ * Eine vom Schüler nur gemeldete Zahlung ("Ich habe bezahlt", Status
+ * `pending_confirmation`) reicht bewusst nicht – sonst liesse sich die
+ * Sperre durch einen Klick umgehen.
+ */
+export function bookingLock(
+  billingMode: string | null | undefined,
+  rows: InstalmentRow[],
+  today: string = todayInZurich()
+): BookingLock {
+  if (billingMode !== "raten") return OPEN_LOCK;
+
+  const deposit = rows.find((r) => r.kind === "anzahlung");
+  // Kein Ratenplan hinterlegt → nicht künstlich sperren.
+  if (!deposit) return OPEN_LOCK;
+
+  const state = uiState(deposit, today);
+  return {
+    locked: state !== "bezahlt",
+    depositAmount: roundRappen(Number(deposit.amount)),
+    depositState: state,
+  };
+}
+
+/** Text für die Buchungssperre, passend zum Zustand der Anzahlung. */
+export function bookingLockReason(lock: BookingLock): string | null {
+  if (!lock.locked) return null;
+  const betrag = lock.depositAmount.toLocaleString("de-CH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  switch (lock.depositState) {
+    case "in_pruefung":
+      return `Deine Anzahlung von CHF ${betrag} ist gemeldet. Sobald ich sie bestätigt habe, kannst du Termine buchen.`;
+    case "ueberfaellig":
+      return `Deine Anzahlung von CHF ${betrag} ist überfällig. Sobald sie eingegangen ist, kannst du Termine buchen.`;
+    default:
+      return `Sobald deine Anzahlung von CHF ${betrag} bezahlt ist, kannst du Termine buchen.`;
+  }
+}
+
 /** "in 9 Tagen", "heute", "seit 3 Tagen überfällig". */
 export function dueLabel(daysUntilDue: number, overdue: boolean): string {
   if (overdue) {

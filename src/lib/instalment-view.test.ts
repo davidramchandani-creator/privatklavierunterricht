@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  bookingLock,
+  bookingLockReason,
   buildPlanSummary,
   daysBetween,
   dueLabel,
@@ -152,5 +154,53 @@ describe("formatDay", () => {
   it("schreibt Schweizer Kurzdatum", () => {
     expect(formatDay("2026-10-07")).toBe("7. Okt. 2026");
     expect(formatDay("2026-03-31")).toBe("31. März 2026");
+  });
+});
+
+describe("bookingLock – Buchungssperre", () => {
+  const anzahlung = (status: string): InstalmentRow[] => [
+    { id: "a", sequence: 0, kind: "anzahlung", amount: 250, due_date: "2026-08-01", status, invoice_id: null },
+    { id: "b", sequence: 1, kind: "rate", amount: 187.5, due_date: "2026-09-01", status: "open", invoice_id: null },
+  ];
+
+  it("Einmalzahlung ist nie gesperrt", () => {
+    expect(bookingLock("einmalig", anzahlung("open"), "2026-08-20").locked).toBe(false);
+    expect(bookingLock(null, [], "2026-08-20").locked).toBe(false);
+  });
+
+  it("Ratenkauf ist gesperrt, solange die Anzahlung offen ist", () => {
+    for (const status of ["open", "invoiced", "overdue"]) {
+      expect(bookingLock("raten", anzahlung(status), "2026-08-20").locked).toBe(true);
+    }
+  });
+
+  it("eine nur gemeldete Zahlung hebt die Sperre nicht auf", () => {
+    const lock = bookingLock("raten", anzahlung("pending_confirmation"), "2026-08-20");
+    expect(lock.locked).toBe(true);
+    expect(lock.depositState).toBe("in_pruefung");
+  });
+
+  it("bezahlte Anzahlung gibt die Buchung frei", () => {
+    const lock = bookingLock("raten", anzahlung("paid"), "2026-08-20");
+    expect(lock.locked).toBe(false);
+    expect(bookingLockReason(lock)).toBeNull();
+  });
+
+  it("offene Raten nach der Anzahlung sperren nicht", () => {
+    const rows: InstalmentRow[] = [
+      { id: "a", sequence: 0, kind: "anzahlung", amount: 250, due_date: "2026-08-01", status: "paid", invoice_id: null },
+      { id: "b", sequence: 1, kind: "rate", amount: 187.5, due_date: "2026-08-05", status: "overdue", invoice_id: null },
+    ];
+    expect(bookingLock("raten", rows, "2026-08-20").locked).toBe(false);
+  });
+
+  it("Ratenkauf ohne hinterlegten Plan sperrt nicht", () => {
+    expect(bookingLock("raten", [], "2026-08-20").locked).toBe(false);
+  });
+
+  it("nennt den Anzahlungsbetrag im Hinweis", () => {
+    const lock = bookingLock("raten", anzahlung("open"), "2026-08-20");
+    expect(lock.depositAmount).toBe(250);
+    expect(bookingLockReason(lock)).toContain("CHF 250.00");
   });
 });
