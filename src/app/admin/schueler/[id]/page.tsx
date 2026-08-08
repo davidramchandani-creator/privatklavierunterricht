@@ -6,6 +6,9 @@ import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
 import { computePackageState, canCancelPackage, PACKAGE_LABELS, type Package } from "@/lib/packages";
 import SchuelerDetailActions, { InvoiceAction, PreiseForm, PackageFormNew, DirektBuchung, ProposalForm, ProposalWithdraw, AppointmentActions, PackageTimerActions, AdjustLessonsButton } from "./_components/SchuelerDetailActions";
 import { StatusBadge } from "@/components/ui/status-badge";
+import RatenplanPanel from "./_components/RatenplanPanel";
+import { buildPlanSummary, type InstalmentRow } from "@/lib/instalment-view";
+import { todayInZurich } from "@/lib/subscription";
 
 export default async function SchuelerDetailPage({
   params,
@@ -56,6 +59,27 @@ export default async function SchuelerDetailPage({
   ]);
 
   if (!profile || profile.role === "admin") notFound();
+
+  // Ratenpläne aller Pakete dieses Schülers.
+  const { data: instalmentRows } = await admin
+    .from("package_instalments")
+    .select("id, package_id, sequence, kind, amount, due_date, status, invoice_id, paid_at")
+    .eq("student_id", id)
+    .order("sequence", { ascending: true });
+
+  const grouped = new Map<string, InstalmentRow[]>();
+  for (const row of (instalmentRows ?? []) as unknown as (InstalmentRow & {
+    package_id: string;
+  })[]) {
+    const list = grouped.get(row.package_id) ?? [];
+    list.push(row);
+    grouped.set(row.package_id, list);
+  }
+
+  const plaene = new Map<string, ReturnType<typeof buildPlanSummary>>();
+  for (const [pkgId, rows] of grouped) {
+    plaene.set(pkgId, buildPlanSummary(rows));
+  }
 
   // Dynamisch gezählte Lektionen pro Paket (booked + completed + no_show zählen als verbraucht)
   const lessonsUsedByPackage = new Map<string, number>();
@@ -253,6 +277,21 @@ export default async function SchuelerDetailPage({
           }}
         />
       </div>
+
+      {/* Ratenpläne */}
+      {(packages as Package[] | null)
+        ?.filter((pkg) => plaene.has(pkg.id))
+        .map((pkg) => (
+          <RatenplanPanel
+            key={pkg.id}
+            plan={plaene.get(pkg.id)!}
+            packageLabel={PACKAGE_LABELS[pkg.type] ?? pkg.name ?? pkg.type}
+            autoRenew={Boolean((pkg as { auto_renew?: boolean }).auto_renew)}
+            expiresOn={
+              pkg.expires_at ? todayInZurich(new Date(pkg.expires_at)) : null
+            }
+          />
+        ))}
 
       {/* Bevorstehende Lektionen */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
