@@ -12,7 +12,7 @@ import {
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
 import { enqueueEmail, sendEmailNow } from "@/lib/emails-outbox";
-import { createPackageInvoice } from "@/lib/package-invoice";
+import { createPackageInvoice, issueInstalmentInvoice } from "@/lib/package-invoice";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   type Package as Paket,
@@ -277,6 +277,51 @@ export async function updateInvoiceStatus(
   return { success: true };
 }
 
+
+/**
+ * Stellt eine Rate sofort in Rechnung, auch wenn der Stichtag noch nicht
+ * erreicht ist. Nützlich, wenn ein Schüler früher zahlen möchte oder eine
+ * Rechnung nachgereicht werden muss.
+ *
+ * Idempotent: Raten mit bestehender Rechnung werden übersprungen.
+ */
+export async function issueInstalmentNow(instalmentId: string) {
+  const adminClient = await createAdminClient();
+
+  const { data: inst } = await adminClient
+    .from("package_instalments")
+    .select("id, package_id, student_id, sequence, kind, amount, due_date, invoice_id, status")
+    .eq("id", instalmentId)
+    .maybeSingle();
+
+  if (!inst) return { error: "Rate nicht gefunden." };
+  if (inst.invoice_id) return { error: "Für diese Rate gibt es bereits eine Rechnung." };
+  if (inst.status === "cancelled") return { error: "Diese Rate ist storniert." };
+
+  const { data: pkg } = await adminClient
+    .from("packages")
+    .select("id, student_id, type, total_price, price_per_lesson, payment_method, instalment_count, status")
+    .eq("id", inst.package_id)
+    .maybeSingle();
+
+  if (!pkg) return { error: "Paket nicht gefunden." };
+
+  const { data: profile } = await adminClient
+    .from("profiles")
+    .select("vorname, nachname, adresse, email, payment_method")
+    .eq("id", inst.student_id)
+    .maybeSingle();
+
+  if (!profile) return { error: "Profil nicht gefunden." };
+
+  const result = await issueInstalmentInvoice(adminClient, inst, pkg, profile);
+  if ("error" in result) return { error: result.error };
+
+  revalidatePath("/admin/zahlungen");
+  revalidatePath(`/admin/schueler/${inst.student_id}`);
+  revalidatePath("/admin");
+  return { success: true };
+}
 
 // ── Verfügbarkeit ─────────────────────────────────────────────────────────────
 
