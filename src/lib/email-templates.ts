@@ -592,7 +592,7 @@ export function renderEmail(
       const studentName = String(payload.student_name ?? "");
       const lessonDate = String(payload.lesson_date ?? "");
       const amount = Number(payload.amount ?? 0);
-      const twintLink = String(payload.twint_link ?? "#");
+      const twintLink = String(payload.twint_link ?? "");
       const invoiceNumber = String(payload.invoice_number ?? "");
       const lessonsRemaining = payload.lessons_remaining != null ? Number(payload.lessons_remaining) : null;
       const packageType = payload.package_type ? String(payload.package_type) : null;
@@ -635,11 +635,11 @@ export function renderEmail(
             <td style="padding:6px 0;font-size:14px;">${lessonsRemaining} ${packageType === "10er" ? "(10er-Abo)" : packageType === "20er" ? "(20er-Abo)" : ""}</td>
           </tr>` : ""}
         </table>
-        <p style="margin:0 0 24px;">
+        ${twintLink ? `<p style="margin:0 0 24px;">
           <a href="${twintLink}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
             <img alt="Mit TWINT bezahlen" src="https://go.twint.ch/static/img/button_dark_en.svg" style="height:58px;width:auto;border:none;" />
           </a>
-        </p>
+        </p>` : ""}
         <p style="margin:0 0 16px;">
           Nach der Zahlung bitte im Portal bestätigen:
         </p>
@@ -861,10 +861,11 @@ export function renderEmail(
         </tr>` : ""}
       `;
 
+      const gruppenTwintLink = String(payload.twint_link ?? "");
       const payBlock =
-        method === "twint"
+        method === "twint" && gruppenTwintLink
           ? `<p style="margin:0 0 24px;">
-              <a href="${String(payload.twint_link ?? "#")}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
+              <a href="${gruppenTwintLink}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
                 <img alt="Mit TWINT bezahlen" src="https://go.twint.ch/static/img/button_dark_en.svg" style="height:58px;width:auto;border:none;" />
               </a>
             </p>`

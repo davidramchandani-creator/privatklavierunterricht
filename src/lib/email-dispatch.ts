@@ -157,7 +157,8 @@ export async function dispatchEmail(
     const amount = Number(payload.amount ?? 0);
     if (!payload.lesson_date && payload.description) {
       // Paket-Rechnung: Paketname als Zahlungszweck (kein Lektionsdatum).
-      extraContext.twint_link = buildTwintLink(amount, String(payload.description));
+      extraContext.twint_link =
+        buildTwintLink(amount, String(payload.description)) || undefined;
     } else {
       extraContext.twint_link = buildLessonTwintLink(
         amount,
