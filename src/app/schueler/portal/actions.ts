@@ -33,6 +33,11 @@ import {
   isCancellable,
   todayInZurich,
 } from "@/lib/subscription";
+import {
+  bookingLock,
+  bookingLockReason,
+  type InstalmentRow,
+} from "@/lib/instalment-view";
 import { deleteCalendarEvent } from "@/lib/google-calendar";
 import { cancelLessonReminders } from "@/lib/reminders";
 import { bookSeriesForStudent } from "@/lib/series-booking";
@@ -108,6 +113,28 @@ export async function getVerfuegbareSlots(
  * eigene Zeile in booking_requests. Alle Slots der gleichen Einreichung teilen
  * dieselbe group_id, damit der Admin sie gebündelt sehen und einzeln entscheiden kann.
  */
+/**
+ * Prüft die Buchungssperre bei Ratenkauf: Erst wenn die Anzahlung bestätigt
+ * bezahlt ist, darf gebucht werden. Wird serverseitig erzwungen, damit die
+ * Regel auch bei umgangener UI greift.
+ */
+async function assertBookingUnlocked(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  pkg: { id: string; billing_mode?: string | null }
+): Promise<{ error: string } | null> {
+  if (pkg.billing_mode !== "raten") return null;
+
+  const { data: rows } = await supabase
+    .from("package_instalments")
+    .select("id, sequence, kind, amount, due_date, status, invoice_id, paid_at")
+    .eq("package_id", pkg.id)
+    .order("sequence", { ascending: true });
+
+  const lock = bookingLock(pkg.billing_mode, (rows ?? []) as InstalmentRow[]);
+  if (!lock.locked) return null;
+  return { error: bookingLockReason(lock) ?? "Buchung noch nicht freigegeben." };
+}
+
 export async function requestMultipleBookings(desiredStartIsos: string[]) {
   if (!desiredStartIsos.length) return { error: "Keine Termine ausgewählt." };
   if (desiredStartIsos.length > 20) return { error: "Maximal 20 Termine pro Anfrage." };
@@ -132,6 +159,9 @@ export async function requestMultipleBookings(desiredStartIsos: string[]) {
     .eq("status", "active");
   const pkg = (pkgs as Paket[] | null)?.find((p) => !canBuyNewPackage(p)) ?? null;
   if (!pkg) return { error: "Du hast kein aktives Paket. Bitte buche zuerst ein Paket." };
+
+  const gesperrt = await assertBookingUnlocked(supabase, pkg);
+  if (gesperrt) return gesperrt;
 
   const state = computePackageState(pkg);
   if (state.lessonsRemaining < desiredStartIsos.length) {
@@ -543,6 +573,18 @@ export async function acceptProposal(proposalId: string) {
   }
   if (proposal.status !== "open") {
     return { error: "Dieser Vorschlag ist nicht mehr offen." };
+  }
+
+  // Auch ein Admin-Vorschlag darf erst angenommen werden, wenn die
+  // Anzahlung eines Ratenpakets bezahlt ist.
+  const { data: aktivePakete } = await supabase
+    .from("packages")
+    .select("id, billing_mode")
+    .eq("student_id", user.id)
+    .eq("status", "active");
+  for (const p of aktivePakete ?? []) {
+    const gesperrt = await assertBookingUnlocked(supabase, p);
+    if (gesperrt) return gesperrt;
   }
 
   const admin = await createAdminClient();

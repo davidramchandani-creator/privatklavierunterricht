@@ -12,10 +12,15 @@ import ProposalCard from "./_components/ProposalCard";
 import PortalTabs from "./_components/PortalTabs";
 import PullToRefresh from "@/components/PullToRefresh";
 import RealtimeRefresh from "@/components/RealtimeRefresh";
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, Lock } from "lucide-react";
 import { PACKAGE_LABELS, canBuyNewPackage, type Package as Paket } from "@/lib/packages";
 import { buildLessonTwintLink, buildTwintLink } from "@/lib/twint";
-import { buildPlanSummary, type InstalmentRow } from "@/lib/instalment-view";
+import {
+  bookingLock,
+  bookingLockReason,
+  buildPlanSummary,
+  type InstalmentRow,
+} from "@/lib/instalment-view";
 import {
   cancellationDeadline,
   isCancellable,
@@ -77,7 +82,7 @@ export default async function SchuelerPortalPage() {
   };
 
   const kannNeuesPaket = canBuyNewPackage(aktivesPackage);
-  const canBook = !!aktivesPackage && !canBuyNewPackage(aktivesPackage);
+  const paketNutzbar = !!aktivesPackage && !canBuyNewPackage(aktivesPackage);
 
   const { data: naechsteAppointments } = await supabase
     .from("appointments")
@@ -130,6 +135,15 @@ export default async function SchuelerPortalPage() {
     instalmentRows && instalmentRows.length > 0
       ? buildPlanSummary(instalmentRows as InstalmentRow[])
       : null;
+
+  // Ratenkauf: Buchen erst nach bezahlter Anzahlung (Entscheid Dave).
+  const lock = bookingLock(
+    (aktivesPackage as { billing_mode?: string | null } | null)?.billing_mode,
+    (instalmentRows ?? []) as InstalmentRow[]
+  );
+  const lockReason = bookingLockReason(lock);
+
+  const canBook = paketNutzbar && !lock.locked;
 
   const vorname = profile?.vorname ?? user.email?.split("@")[0] ?? "Schüler";
 
@@ -271,6 +285,27 @@ export default async function SchuelerPortalPage() {
           <TerminBuchen maxSlots={remainingLessons} />
         </div>
       )}
+      {aktivesPackage && lock.locked && lockReason && (
+        <div className="pt-1">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex items-start gap-3">
+            <Lock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="font-600 text-amber-900 text-sm">
+                Terminbuchung noch gesperrt
+              </p>
+              <p className="text-sm text-amber-800 mt-1 leading-relaxed">
+                {lockReason}
+              </p>
+              <a
+                href="#zahlungen"
+                className="inline-block mt-3 text-sm font-600 text-amber-900 underline underline-offset-2"
+              >
+                Zum Zahlungsplan
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="pt-2">
         <h2 className="text-base font-700 text-navy-900 tracking-tight mb-4">Gruppenkurse</h2>
         <Gruppenkurse courses={groupCourses} />
@@ -307,6 +342,7 @@ export default async function SchuelerPortalPage() {
           )}
           cancellationDeadline={ablaufTag ? cancellationDeadline(ablaufTag) : null}
           canCancel={ablaufTag ? isCancellable(ablaufTag, todayInZurich()) : false}
+          bookingLocked={lock.locked}
         />
       )}
       <ZahlungenSection invoices={invoicesForPortal} />
