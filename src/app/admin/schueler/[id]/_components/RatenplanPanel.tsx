@@ -43,7 +43,7 @@ export default function RatenplanPanel({
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   if (plan.entries.length === 0) return null;
 
@@ -52,14 +52,18 @@ export default function RatenplanPanel({
     setBusyId(id);
     startTransition(async () => {
       const res = await issueInstalmentNow(id);
+      if (res && "error" in res) {
+        setError(res.error);
+        setBusyId(null);
+        return;
+      }
+      router.refresh();
       setBusyId(null);
-      if (res?.error) setError(res.error);
-      else router.refresh();
     });
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h2 className="text-lg font-700 text-[#1C244B]">Ratenplan</h2>
@@ -108,7 +112,7 @@ export default function RatenplanPanel({
 
       <ul className="divide-y divide-gray-100 border-t border-gray-100">
         {plan.entries.map((e) => (
-          <li key={e.id} className="flex items-center gap-3 py-2.5">
+          <li key={e.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
             <span className="flex-shrink-0">{STATE_ICON[e.state]}</span>
             <span
               className={`flex-1 text-sm min-w-0 ${
@@ -116,7 +120,10 @@ export default function RatenplanPanel({
               } ${e.isNext ? "font-600" : ""}`}
             >
               {e.label}
-              <span className="text-gray-400 font-400"> · {formatDay(e.dueDate)}</span>
+              <span className="text-gray-400 font-400 block sm:inline">
+                <span className="hidden sm:inline"> · </span>
+                {formatDay(e.dueDate)}
+              </span>
             </span>
             <span
               className={`text-sm tabular-nums whitespace-nowrap ${
@@ -125,14 +132,14 @@ export default function RatenplanPanel({
             >
               {formatCHF(e.amount)}
             </span>
-            <span className="w-[104px] text-right flex-shrink-0">
+            <span className="text-right flex-shrink-0 ml-auto sm:ml-0 sm:w-[104px]">
               {!e.invoiceId && e.state !== "bezahlt" && e.state !== "storniert" ? (
                 <button
                   onClick={() => stellen(e.id)}
-                  disabled={isPending && busyId === e.id}
-                  className="text-xs font-600 px-3 py-1.5 rounded-lg border border-gray-200 hover:border-[#1C244B]/40 disabled:opacity-40 transition-colors inline-flex items-center gap-1.5"
+                  disabled={busyId === e.id}
+                  className="text-xs font-600 px-3 min-h-[36px] rounded-lg border border-gray-200 active:bg-gray-50 disabled:opacity-40 transition-colors inline-flex items-center gap-1.5"
                 >
-                  {isPending && busyId === e.id && (
+                  {busyId === e.id && (
                     <Loader2 className="w-3 h-3 animate-spin" />
                   )}
                   Jetzt stellen
