@@ -16,6 +16,19 @@ const modelle = [
   { modell: "20er-Paket", preis: "CHF 65.–" },
 ];
 
+const ratenmodelle = [
+  {
+    paket: "10er-Paket (CHF 700.–)",
+    anzahlung: "CHF 175.–",
+    raten: "4 × CHF 131.25",
+  },
+  {
+    paket: "20er-Paket (CHF 1300.–)",
+    anzahlung: "CHF 325.–",
+    raten: "8 × CHF 121.90",
+  },
+];
+
 const leistungen = [
   "Hohe Unterrichtsqualität – 16 Jahre Spielerfahrung, individuelle Methoden ohne Notenzwang",
   "Vorbereitung und Nachbearbeitung jeder Lektion",
@@ -81,6 +94,54 @@ export default function PreisePage() {
             <p className="text-sm text-gray-500 mt-4 leading-relaxed">
               Die Pakete sind rabattiert, weil sie Verbindlichkeit schaffen und mir
               ermöglichen, den Unterricht verlässlich zu planen.
+            </p>
+          </div>
+
+          {/* Ratenzahlung */}
+          <div className="space-y-4">
+            <h2 className="text-2xl font-800 text-navy-900">
+              Auf Wunsch in Monatsraten
+            </h2>
+            <p className="text-gray-600 leading-relaxed">
+              Ein Paket muss nicht auf einmal bezahlt werden. Beim Kauf wählst du
+              zwischen Einmalzahlung und Monatsraten: 25&nbsp;% Anzahlung, der Rest
+              verteilt sich auf gleich hohe Monatsraten. Der volle Lektionsumfang
+              steht dir ab dem ersten Tag zur Verfügung – du musst nicht warten, bis
+              alles bezahlt ist.
+            </p>
+            <div className="overflow-hidden rounded-2xl border border-[#EAECEF]">
+              <table className="w-full text-left">
+                <thead className="bg-surface">
+                  <tr>
+                    <th className="px-5 py-3 text-sm font-700 text-navy-900">Paket</th>
+                    <th className="px-5 py-3 text-sm font-700 text-navy-900 text-right">
+                      Anzahlung
+                    </th>
+                    <th className="px-5 py-3 text-sm font-700 text-navy-900 text-right">
+                      Danach
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ratenmodelle.map(({ paket, anzahlung, raten }, i) => (
+                    <tr key={paket} className={i > 0 ? "border-t border-[#EAECEF]" : ""}>
+                      <td className="px-5 py-4 text-sm text-gray-700">{paket}</td>
+                      <td className="px-5 py-4 text-sm font-700 text-navy-900 text-right">
+                        {anzahlung}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-gray-700 text-right">
+                        {raten}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Den genauen Zahlungsplan mit allen Fälligkeitsdaten siehst du vor dem
+              Kauf und jederzeit im Schülerportal. Bezahlt wird per TWINT oder
+              QR-Rechnung. Der Gesamtbetrag ist mit der Buchung geschuldet – die
+              Raten sind eine Zahlungserleichterung.
             </p>
           </div>
 
