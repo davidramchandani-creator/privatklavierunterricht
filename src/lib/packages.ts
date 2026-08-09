@@ -170,20 +170,30 @@ export function formatRemainingTime(ms: number | null): string {
 export const MAX_USED_LESSONS_FOR_CANCELLATION = 3;
 /** Basis-Einzelpreis bei Stornierung (Spec §10). */
 export const CANCELLATION_SINGLE_BASE = 70;
-/** Schwelle, ab der der Paket-Lektionspreis den Einzelpreis erhöht. */
+/** Schwelle beim 10er-Paket und bei Einzellektionen. */
 export const CANCELLATION_SINGLE_THRESHOLD = 60;
+/** Schwelle beim 20er-Paket – dort ist der Lektionspreis von Haus aus tiefer. */
+export const CANCELLATION_SINGLE_THRESHOLD_20ER = 55;
 
 /**
  * Effektiver Einzelpreis je bereits genutzter Lektion bei Stornierung:
- * 70 + max(0, Paket-Lektionspreis − 60). Damit wird der vergünstigte
+ * 70 + max(0, Paket-Lektionspreis − Schwelle). Damit wird der vergünstigte
  * Paketpreis für die tatsächlich besuchten Lektionen auf Einzelpreis-Niveau
- * nachberechnet (Spec §10).
+ * nachberechnet (Spec §5).
+ *
+ * Die Schwelle hängt vom Pakettyp ab: 55 beim 20er, 60 sonst. Ohne den Typ
+ * wird 60 angenommen – das war bis hierher der einzige Wert und ergab beim
+ * 20er einen um CHF 5 pro Lektion zu tiefen Einzelpreis.
  */
-export function cancellationSingleLessonPrice(pricePerLesson: number): number {
-  return (
-    CANCELLATION_SINGLE_BASE +
-    Math.max(0, Number(pricePerLesson) - CANCELLATION_SINGLE_THRESHOLD)
-  );
+export function cancellationSingleLessonPrice(
+  pricePerLesson: number,
+  packageType?: string
+): number {
+  const schwelle =
+    packageType === "20er"
+      ? CANCELLATION_SINGLE_THRESHOLD_20ER
+      : CANCELLATION_SINGLE_THRESHOLD;
+  return CANCELLATION_SINGLE_BASE + Math.max(0, Number(pricePerLesson) - schwelle);
 }
 
 export type CancellationSettlement = {
@@ -218,7 +228,8 @@ export function computeCancellationSettlement(
   paidAmount?: number
 ): CancellationSettlement {
   const singleLessonPrice = cancellationSingleLessonPrice(
-    Number(pkg.price_per_lesson)
+    Number(pkg.price_per_lesson),
+    pkg.type
   );
   const usedCost = lessonsUsed * singleLessonPrice;
   const paidTotal =

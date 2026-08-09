@@ -29,11 +29,24 @@ function makePackage(overrides: Partial<Package> = {}): Package {
 }
 
 describe("cancellationSingleLessonPrice", () => {
-  it("70 + max(0, preis - 60)", () => {
-    expect(cancellationSingleLessonPrice(70)).toBe(80); // 70 + 10
-    expect(cancellationSingleLessonPrice(65)).toBe(75); // 70 + 5
-    expect(cancellationSingleLessonPrice(60)).toBe(70); // 70 + 0
-    expect(cancellationSingleLessonPrice(50)).toBe(70); // 70 + max(0,-10)=70
+  it("10er und Einzellektion: 70 + max(0, preis - 60)", () => {
+    expect(cancellationSingleLessonPrice(70, "10er")).toBe(80); // 70 + 10
+    expect(cancellationSingleLessonPrice(60, "10er")).toBe(70); // 70 + 0
+    expect(cancellationSingleLessonPrice(50, "10er")).toBe(70); // 70 + max(0,-10)
+    expect(cancellationSingleLessonPrice(85, "single")).toBe(95); // 70 + 25
+  });
+
+  it("20er: Schwelle 55 statt 60", () => {
+    // Der 20er-Lektionspreis ist von Haus aus tiefer, deshalb greift laut
+    // Spezifikation eine tiefere Schwelle. Vorher wurde immer 60 gerechnet –
+    // das ergab pro genutzter Lektion CHF 5 zu wenig.
+    expect(cancellationSingleLessonPrice(65, "20er")).toBe(80); // 70 + 10
+    expect(cancellationSingleLessonPrice(55, "20er")).toBe(70); // 70 + 0
+    expect(cancellationSingleLessonPrice(65, "10er")).toBe(75); // zum Vergleich
+  });
+
+  it("ohne Typ gilt die 60er-Schwelle", () => {
+    expect(cancellationSingleLessonPrice(65)).toBe(75);
   });
 });
 
@@ -85,6 +98,23 @@ describe("canCancelPackage", () => {
 
   it("verbietet null-Paket", () => {
     expect(canCancelPackage(null, 0)).toBe(false);
+  });
+});
+
+describe("computeCancellationSettlement – 20er-Paket", () => {
+  it("nutzt die 20er-Schwelle", () => {
+    const pkg = makePackage({
+      type: "20er",
+      price_per_lesson: 65,
+      total_price: 1300,
+      lessons_total: 20,
+    });
+    const s = computeCancellationSettlement(pkg, 3, 325);
+    expect(s.singleLessonPrice).toBe(80); // nicht 75
+    expect(s.usedCost).toBe(240); // 3 × 80
+    expect(s.paidTotal).toBe(325); // nur die Anzahlung
+    expect(s.refund).toBe(85);
+    expect(s.owed).toBe(0);
   });
 });
 
