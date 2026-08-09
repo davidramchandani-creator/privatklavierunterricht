@@ -26,6 +26,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatCHF } from "@/lib/utils";
+import { buildInstalmentPlan, todayInZurich } from "@/lib/subscription";
+import { formatDay } from "@/lib/instalment-view";
 import {
   CANCELLATION_SINGLE_BASE,
   CANCELLATION_SINGLE_THRESHOLD,
@@ -537,11 +539,27 @@ function PackageFormNew({
 
   const [type, setType] = useState<string>("10er");
   const [price, setPrice] = useState(String(priceFor("10er")));
+  const [billingMode, setBillingMode] = useState<"einmalig" | "raten">("einmalig");
+  const [autoRenew, setAutoRenew] = useState(false);
+
+  // Einzellektionen gibt es weder auf Raten noch mit Verlängerung.
+  const istPaket = type === "10er" || type === "20er";
 
   function handleTypeChange(value: string) {
     setType(value);
     setPrice(String(priceFor(value)));
+    if (value === "single") {
+      setBillingMode("einmalig");
+      setAutoRenew(false);
+    }
   }
+
+  const lektionen = type === "10er" ? 10 : type === "20er" ? 20 : 1;
+  const gesamt = (Number(price) || 0) * lektionen;
+  const plan =
+    istPaket && billingMode === "raten"
+      ? buildInstalmentPlan(type as "10er" | "20er", gesamt, todayInZurich())
+      : null;
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -549,7 +567,7 @@ function PackageFormNew({
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       const result = await createPackageAdmin(formData);
-      if (result?.error) setError(result.error);
+      if (result && "error" in result) setError(result.error);
       else {
         setOpen(false);
         router.refresh();
@@ -612,7 +630,56 @@ function PackageFormNew({
             required
           />
         </div>
+        {istPaket && (
+          <div className="space-y-1">
+            <label className="text-xs font-500 text-gray-600">Zahlung</label>
+            <select
+              name="billing_mode"
+              value={billingMode}
+              onChange={(e) =>
+                setBillingMode(e.target.value as "einmalig" | "raten")
+              }
+              className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="einmalig">Einmalig</option>
+              <option value="raten">Monatsraten</option>
+            </select>
+          </div>
+        )}
       </div>
+
+      {plan && (
+        <div className="rounded-lg bg-gray-50 border border-gray-100 p-3 text-xs text-gray-600 space-y-1">
+          <p className="font-600 text-gray-900">
+            Anzahlung {formatCHF(plan.depositAmount)} · danach{" "}
+            {plan.instalmentCount} × {formatCHF(plan.instalmentAmount)}
+          </p>
+          <p>
+            Erste Rate am {plan.entries[1] ? formatDay(plan.entries[1].dueDate) : "–"} · Gesamtbetrag{" "}
+            {formatCHF(plan.totalPrice)}
+          </p>
+          <p className="text-amber-700">
+            Der Schüler kann erst buchen, wenn die Anzahlung als bezahlt
+            bestätigt ist.
+          </p>
+        </div>
+      )}
+
+      {istPaket && (
+        <label className="flex items-start gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            name="auto_renew"
+            checked={autoRenew}
+            onChange={(e) => setAutoRenew(e.target.checked)}
+            className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#1C244B] focus:ring-[#1C244B]"
+          />
+          <span className="text-xs text-gray-600 leading-snug">
+            Automatisch verlängern — das Paket erneuert sich am Ende der
+            Laufzeit. Der Schüler kann das im Portal abschalten.
+          </span>
+        </label>
+      )}
       {error && (
         <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
       )}
@@ -983,7 +1050,7 @@ function PackageTimerActions({
     setCancelError(null);
     startTransition(async () => {
       const result = await cancelPackage(packageId, schuelerId);
-      if (result?.error) setCancelError(result.error);
+      if (result && "error" in result) setCancelError(result.error);
       else {
         setShowCancel(false);
         router.refresh();

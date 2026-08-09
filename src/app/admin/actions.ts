@@ -12,7 +12,16 @@ import {
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
 import { enqueueEmail, sendEmailNow } from "@/lib/emails-outbox";
-import { createPackageInvoice, issueInstalmentInvoice } from "@/lib/package-invoice";
+import {
+  createInstalmentSchedule,
+  createPackageInvoice,
+  issueInstalmentInvoice,
+} from "@/lib/package-invoice";
+import {
+  buildInstalmentPlan,
+  todayInZurich,
+  type SubscriptionType,
+} from "@/lib/subscription";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   type Package as Paket,
@@ -764,6 +773,9 @@ export async function calculateTravelBuffer(
 
 /** Admin legt einem Schüler ein Paket an (neues Schema). */
 export async function createPackageAdmin(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const userId = formData.get("student_user_id") as string;
@@ -795,6 +807,20 @@ export async function createPackageAdmin(formData: FormData) {
   const validityMonths = PACKAGE_VALIDITY_MONTHS[type];
   const startsAt = new Date();
   const expiresAt = validityMonths != null ? addMonths(startsAt, validityMonths) : null;
+  const totalPrice = pricePerLesson * lessonsTotal;
+
+  // Zahlungsmodell – identisch zum Schülerportal. Ratenkauf gibt es nur
+  // für 10er/20er, eine Einzellektion wird immer einmalig verrechnet.
+  const billingMode =
+    (formData.get("billing_mode") as string) === "raten" && type !== "single"
+      ? "raten"
+      : "einmalig";
+  const autoRenew = formData.get("auto_renew") === "on" && type !== "single";
+  const startDay = todayInZurich(startsAt);
+  const ratenPlan =
+    billingMode === "raten"
+      ? buildInstalmentPlan(type as SubscriptionType, totalPrice, startDay)
+      : null;
 
   const { data: pkg, error } = await admin
     .from("packages")
@@ -805,27 +831,52 @@ export async function createPackageAdmin(formData: FormData) {
       lessons_used: 0,
       name: PACKAGE_LABELS[type],
       price_per_lesson: pricePerLesson,
-      total_price: pricePerLesson * lessonsTotal,
+      total_price: totalPrice,
       payment_method: paymentMethod,
       starts_at: startsAt.toISOString(),
       expires_at: expiresAt ? expiresAt.toISOString() : null,
       status: "active",
+      billing_mode: billingMode,
+      term_months: validityMonths,
+      auto_renew: autoRenew,
+      deposit_amount: ratenPlan ? ratenPlan.depositAmount : null,
+      instalment_count: ratenPlan ? ratenPlan.instalmentCount : null,
+      instalment_amount: ratenPlan ? ratenPlan.instalmentAmount : null,
     })
-    .select("id, student_id, type, total_price, price_per_lesson, payment_method")
+    .select(
+      "id, student_id, type, total_price, price_per_lesson, payment_method, instalment_count"
+    )
     .single();
 
-  if (error || !pkg) return { error: error?.message ?? "Paket konnte nicht erstellt werden." };
+  if (error || !pkg) {
+    if (error?.code === "23505") {
+      return { error: "Dieser Schüler hat bereits ein aktives Paket." };
+    }
+    return { error: error?.message ?? "Paket konnte nicht erstellt werden." };
+  }
 
-  // Gesamten Paketpreis sofort in Rechnung stellen (Zahlung innert 15 Tagen).
-  await createPackageInvoice(admin, pkg, {
+  const payer = {
     vorname: prof?.vorname ?? null,
     nachname: prof?.nachname ?? null,
     adresse: prof?.adresse ?? null,
     email: prof?.email ?? null,
     payment_method: prof?.payment_method ?? null,
-  });
+  };
+
+  if (ratenPlan) {
+    // Ratenkauf: Plan anlegen, sofort nur die Anzahlung fakturieren.
+    await createInstalmentSchedule(admin, pkg, payer, {
+      type: type as SubscriptionType,
+      totalPrice,
+      startDate: startDay,
+    });
+  } else {
+    // Einmalzahlung: Gesamtpreis sofort in Rechnung stellen (15 Tage Frist).
+    await createPackageInvoice(admin, pkg, payer);
+  }
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
+  revalidatePath("/admin/zahlungen");
   return { success: true };
 }
 
@@ -1341,6 +1392,9 @@ export async function extendPackage(
  * berechnete Abrechnung (Rückerstattung/Nachzahlung) zurück.
  */
 export async function cancelPackage(packageId: string, schuelerId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: pkg } = await admin
@@ -1401,10 +1455,37 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
     }
   }
 
+  // Noch nicht bezahlte Raten stilllegen. Ohne das würde der Tagesjob für
+  // ein storniertes Paket weiter Monatsrechnungen erzeugen, und die offenen
+  // Beträge liefen in der Admin-Übersicht als "ausstehend" mit.
+  const { data: offeneRaten } = await admin
+    .from("package_instalments")
+    .update({ status: "cancelled" })
+    .eq("package_id", packageId)
+    .in("status", ["open", "invoiced", "overdue"])
+    .select("id, invoice_id");
+
+  for (const rate of offeneRaten ?? []) {
+    if (!rate.invoice_id) continue;
+    // Bereits gestellte, unbezahlte Ratenrechnungen archivieren …
+    await admin
+      .from("invoices")
+      .update({ status: "archived" })
+      .eq("id", rate.invoice_id)
+      .in("status", ["unpaid", "pending_confirmation", "rejected"]);
+    // … und die zugehörigen Zahlungsmails abbrechen.
+    await admin
+      .from("scheduled_emails")
+      .update({ status: "cancelled" })
+      .eq("status", "pending")
+      .contains("payload", { invoice_id: rate.invoice_id });
+  }
+
   const { error } = await admin
     .from("packages")
     .update({
       status: "cancelled",
+      auto_renew: false,
       paused: false,
       pause_remaining_seconds: null,
       paused_at: null,
