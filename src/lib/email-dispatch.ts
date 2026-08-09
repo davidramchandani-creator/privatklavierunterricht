@@ -59,6 +59,7 @@ export const STUDENT_LOOKUP_TYPES = [
   "subscription_renewed",
   "subscription_expired",
   "subscription_cancelled",
+  "package_created",
 ];
 
 async function getDisabledEmailTypes(admin: SupabaseClient): Promise<string[]> {

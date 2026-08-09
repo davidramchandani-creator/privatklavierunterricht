@@ -874,6 +874,25 @@ export async function buyPackage(
     await createPackageInvoice(admin, pkg, payer);
   }
 
+  // Paketbestätigung an den Schüler – erklärt, was als Nächstes zu tun ist.
+  await sendEmailNow(admin, "package_created", {
+    student_id: user.id,
+    student_name: `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim() || undefined,
+    package_label: PACKAGE_LABELS[type],
+    lessons_total: lessonsTotal,
+    total_price: totalPrice,
+    billing_mode: billingMode,
+    deposit_amount: ratenPlan?.depositAmount,
+    expires_at: expiresAt ? expiresAt.toISOString() : null,
+    plan: ratenPlan
+      ? ratenPlan.entries.map((e) => ({
+          label: e.kind === "anzahlung" ? "Anzahlung" : `Rate ${e.sequence}`,
+          amount: e.amount,
+          dueDate: e.dueDate,
+        }))
+      : null,
+  });
+
   // Admin über den Paketkauf informieren (Mail + Push).
   await sendEmailNow(admin, "package_purchased_admin", {
     student_id: user.id,

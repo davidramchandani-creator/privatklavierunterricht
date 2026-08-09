@@ -183,6 +183,16 @@ const BUILDERS: Record<string, Builder> = {
     tag: "package",
   }),
 
+  package_created: (p) => ({
+    title: p.billing_mode === "raten" ? "Paket bereit – Anzahlung offen" : "Paket bereit",
+    body:
+      p.billing_mode === "raten"
+        ? "Nach der Anzahlung kannst du Termine buchen."
+        : `${p.package_label ?? "Dein Paket"} ist ab sofort buchbar.`,
+    url: PORTAL,
+    tag: "abo",
+  }),
+
   // ── Abo-Modell ────────────────────────────────────────────────────
   subscription_renewal_notice: (p) => ({
     title: "Abo verlängert sich bald",

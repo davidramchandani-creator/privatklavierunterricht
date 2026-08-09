@@ -875,6 +875,25 @@ export async function createPackageAdmin(formData: FormData) {
     await createPackageInvoice(admin, pkg, payer);
   }
 
+  // Paketbestätigung an den Schüler – erklärt, was als Nächstes zu tun ist.
+  await sendEmailNow(admin, "package_created", {
+    student_id: userId,
+    student_name: `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined,
+    package_label: PACKAGE_LABELS[type] ?? type,
+    lessons_total: lessonsTotal,
+    total_price: totalPrice,
+    billing_mode: billingMode,
+    deposit_amount: ratenPlan?.depositAmount,
+    expires_at: expiresAt ? expiresAt.toISOString() : null,
+    plan: ratenPlan
+      ? ratenPlan.entries.map((e) => ({
+          label: e.kind === "anzahlung" ? "Anzahlung" : `Rate ${e.sequence}`,
+          amount: e.amount,
+          dueDate: e.dueDate,
+        }))
+      : null,
+  });
+
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin/zahlungen");
   return { success: true };
@@ -1530,6 +1549,7 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
         status: "unpaid",
         method: paymentMethod,
         lesson_date: null,
+        description: "Stornierung – Restbetrag",
       })
       .select("id, invoice_number")
       .maybeSingle();
@@ -1616,7 +1636,9 @@ export async function confirmInvoicePayment(invoiceId: string) {
 
   const { data: inv } = await admin
     .from("invoices")
-    .select("id, student_id, invoice_number, amount, lesson_date")
+    .select(
+      "id, student_id, invoice_number, amount, lesson_date, package_id, instalment_id, description"
+    )
     .eq("id", invoiceId)
     .single();
   if (!inv) return { error: "Rechnung nicht gefunden." };
@@ -1634,13 +1656,31 @@ export async function confirmInvoicePayment(invoiceId: string) {
     .maybeSingle();
 
   if (profile?.email) {
-    const isSettlement = !inv.lesson_date;
+    // Eine Stornoabrechnung erkennt man daran, dass sie an nichts hängt:
+    // keine Lektion, kein Paket, keine Rate. Früher wurde nur auf ein
+    // fehlendes Lektionsdatum geprüft – seit es Paket- und Ratenrechnungen
+    // gibt, landeten die fälschlich in der Stornierungsmail.
+    const isSettlement =
+      !inv.lesson_date && !inv.package_id && !inv.instalment_id;
+
     if (isSettlement) {
       await sendEmailNow(admin, "package_settlement_paid", {
         student_id: inv.student_id,
         amount: inv.amount,
       });
     } else {
+      // Wurde die Anzahlung eines Ratenpakets bestätigt, ist damit auch die
+      // Terminbuchung freigegeben – das gehört in die Bestätigung.
+      let unlocksBooking = false;
+      if (inv.instalment_id) {
+        const { data: rate } = await admin
+          .from("package_instalments")
+          .select("kind")
+          .eq("id", inv.instalment_id)
+          .maybeSingle();
+        unlocksBooking = rate?.kind === "anzahlung";
+      }
+
       await sendEmailNow(admin, "payment_confirmed", {
         to: profile.email,
         student_name: `${profile.vorname} ${profile.nachname}`,
@@ -1648,6 +1688,8 @@ export async function confirmInvoicePayment(invoiceId: string) {
         lesson_date: inv.lesson_date,
         amount: inv.amount,
         invoice_number: inv.invoice_number,
+        description: inv.description,
+        unlocks_booking: unlocksBooking,
       });
     }
   }
@@ -1662,7 +1704,7 @@ export async function rejectInvoicePayment(invoiceId: string, reason?: string) {
 
   const { data: inv } = await admin
     .from("invoices")
-    .select("id, student_id, invoice_number, amount, lesson_date")
+    .select("id, student_id, invoice_number, amount, lesson_date, description")
     .eq("id", invoiceId)
     .single();
   if (!inv) return { error: "Rechnung nicht gefunden." };
@@ -1687,6 +1729,7 @@ export async function rejectInvoicePayment(invoiceId: string, reason?: string) {
       lesson_date: inv.lesson_date,
       amount: inv.amount,
       invoice_number: inv.invoice_number,
+      description: inv.description,
       reason: reason ?? null,
     });
   }

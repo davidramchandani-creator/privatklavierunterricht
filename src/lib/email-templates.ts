@@ -905,9 +905,17 @@ export function renderEmail(
       const lessonDate = String(payload.lesson_date ?? "");
       const amount = Number(payload.amount ?? 0);
       const invoiceNumber = String(payload.invoice_number ?? "");
+      // Rechnungen ohne Lektionsdatum (Paket, Anzahlung, Rate) tragen ihre
+      // Bezeichnung in `description`.
+      const bezeichnung = payload.description ? String(payload.description) : null;
+      const unlocksBooking = payload.unlocks_booking === true;
 
       const chf = amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const subject = `Zahlung bestätigt – Klavierstunde vom ${lessonDate ? fmtDate(lessonDate) : ""}`;
+      const subject = lessonDate
+        ? `Zahlung bestätigt – Klavierstunde vom ${fmtDate(lessonDate)}`
+        : bezeichnung
+          ? `Zahlung bestätigt – ${bezeichnung}`
+          : "Zahlung bestätigt";
       const content = `
         <p style="margin:0 0 16px;">Hallo ${studentName ? studentName.split(" ")[0] : ""},</p>
         <p style="margin:0 0 16px;font-size:18px;font-weight:bold;color:#10b981;">
@@ -918,8 +926,10 @@ export function renderEmail(
         </p>
         <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f0fdf4;border-radius:6px;padding:16px;border:1px solid #bbf7d0;">
           <tr>
-            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Lektion</td>
-            <td style="padding:6px 0;font-weight:600;font-size:14px;">${lessonDate ? fmtDateTime(lessonDate) : "–"}</td>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">${lessonDate ? "Lektion" : "Position"}</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${
+              lessonDate ? fmtDateTime(lessonDate) : (bezeichnung ?? "–")
+            }</td>
           </tr>
           <tr>
             <td style="padding:6px 0;color:#6b7280;font-size:14px;">Betrag</td>
@@ -930,6 +940,18 @@ export function renderEmail(
             <td style="padding:6px 0;font-size:14px;">${invoiceNumber}</td>
           </tr>` : ""}
         </table>
+        ${unlocksBooking ? `
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin-bottom:24px;">
+          <p style="margin:0 0 8px;font-weight:600;color:#166534;">Du kannst jetzt Termine buchen</p>
+          <p style="margin:0;color:#166534;font-size:14px;">
+            Mit der Anzahlung ist dein Paket freigeschaltet. Alle Lektionen
+            stehen dir ab sofort zur Verfügung – die weiteren Raten laufen
+            monatlich weiter.
+          </p>
+        </div>
+        <p style="text-align:center;margin:0 0 24px;">
+          <a href="${APP_URL}/schueler/portal#termine" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Termine buchen</a>
+        </p>` : ""}
         <p style="margin:0;color:#6b7280;font-size:13px;">
           Liebe Grüsse<br/>David Ramchandani
         </p>
@@ -1259,6 +1281,75 @@ export function renderEmail(
         </p>
       `;
       return { subject, html: baseWrapper(content) };
+    }
+
+    case "package_created": {
+      const raten = payload.billing_mode === "raten";
+      const lektionen = Number(payload.lessons_total ?? 0);
+      const chf = (n: unknown) =>
+        Number(n ?? 0).toLocaleString("de-CH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      const plan = Array.isArray(payload.plan)
+        ? (payload.plan as Array<{ label: string; amount: number; dueDate: string }>)
+        : [];
+
+      return {
+        subject: raten
+          ? `Dein ${payload.package_label ?? "Paket"} ist bereit – Anzahlung offen`
+          : `Dein ${payload.package_label ?? "Paket"} ist bereit`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Dein <strong>${payload.package_label ?? "Paket"}</strong> mit
+              <strong>${lektionen} Lektionen</strong> ist angelegt${
+                payload.expires_at
+                  ? `, gültig bis <strong>${fmtDate(String(payload.expires_at))}</strong>`
+                  : ""
+              }.</p>
+
+           ${
+             raten
+               ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#92400e;">Ein Schritt fehlt noch</p>
+                    <p style="margin:0;color:#92400e;font-size:14px;">
+                      Du hast Ratenzahlung gewählt. Sobald deine Anzahlung von
+                      <strong>CHF ${chf(payload.deposit_amount)}</strong> bei mir eingegangen
+                      und von mir bestätigt ist, kannst du deine Lektionen buchen.
+                      Die Rechnung dazu bekommst du in einer separaten E-Mail.
+                    </p>
+                  </div>`
+               : `<p>Du kannst ab sofort Termine buchen – du musst nicht auf den
+                    Zahlungseingang warten. Die Rechnung über
+                    <strong>CHF ${chf(payload.total_price)}</strong> erhältst du in einer
+                    separaten E-Mail, zahlbar innert 15 Tagen.</p>`
+           }
+
+           ${
+             plan.length > 0
+               ? `<p style="margin:0 0 8px;font-weight:600;">Dein Zahlungsplan</p>
+                  <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background:#f8fafc;border-radius:6px;">
+                    ${plan
+                      .map(
+                        (e) => `<tr>
+                          <td style="padding:8px 12px;color:#475569;font-size:14px;">${e.label}</td>
+                          <td style="padding:8px 12px;color:#64748b;font-size:13px;">${fmtDate(e.dueDate)}</td>
+                          <td style="padding:8px 12px;font-weight:600;font-size:14px;text-align:right;">CHF ${chf(e.amount)}</td>
+                        </tr>`
+                      )
+                      .join("")}
+                  </table>`
+               : ""
+           }
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal#zahlungen" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">${
+               raten ? "Zahlungsplan ansehen" : "Zum Portal"
+             }</a>
+           </p>
+           <p>Liebe Grüsse<br/>David</p>`
+        ),
+      };
     }
 
     // ── Abo-Modell ────────────────────────────────────────────────
