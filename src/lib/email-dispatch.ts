@@ -340,6 +340,16 @@ async function prepareGroupPayment(
     participantCount
   );
 
+  // Ohne hinterlegte Preisstaffel liefert pricePerPersonFor 0. Dann lieber
+  // gar keine Rechnung stellen als eine über CHF 0 – die würde als bezahlt
+  // durchlaufen und der Betrag wäre für immer verloren.
+  if (!(amount > 0)) {
+    throw new Error(
+      `Gruppenkurs "${course.title}" hat keine gültige Preisstaffel – ` +
+        `Rechnung für Termin ${appointmentId} wurde nicht erstellt.`
+    );
+  }
+
   const { data: profile } = await admin
     .from("profiles")
     .select("vorname, nachname, adresse, payment_method")
