@@ -344,7 +344,7 @@ export function renderEmail(
           ${remaining > 0 ? `<li style="padding:4px 0;font-size:14px;color:#6b7280;">… und ${remaining} weitere Termine</li>` : ""}
         </ul>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Wir freuen uns auf die gemeinsamen Lektionen!
+          Ich freue mich auf die gemeinsamen Lektionen!
         </p>
       `;
       return { subject, html: baseWrapper(content) };
@@ -356,7 +356,7 @@ export function renderEmail(
       const subject = "Deine Terminanfrage – Absage";
       const content = `
         <p style="margin:0 0 16px;">
-          Leider können wir deinen angefragten Termin nicht bestätigen.
+          Leider kann ich deinen angefragten Termin nicht bestätigen.
         </p>
         ${
           reason
@@ -366,7 +366,7 @@ export function renderEmail(
             : ""
         }
         <p style="margin:0 0 24px;">
-          Gerne kannst du einen anderen Termin anfragen. Wir helfen dir, einen passenden Zeitpunkt zu finden.
+          Gerne kannst du einen anderen Termin anfragen. Ich helfe dir gerne, einen passenden Zeitpunkt zu finden.
         </p>
         <p style="margin:0 0 24px;">
           <a href="${APP_URL}/schueler/portal"
@@ -476,7 +476,7 @@ export function renderEmail(
 
       const subject = "Dein Verschiebungswunsch wurde erhalten";
       const content = `
-        <p style="margin:0 0 16px;">Vielen Dank – wir haben deinen Verschiebungswunsch erhalten.</p>
+        <p style="margin:0 0 16px;">Vielen Dank – ich habe deinen Verschiebungswunsch erhalten.</p>
         <p style="margin:0 0 16px;">
           David prüft den neuen Zeitpunkt und bestätigt ihn so bald wie möglich.
           Bis dahin bleibt dein bisheriger Termin gültig.
@@ -510,7 +510,7 @@ export function renderEmail(
             <td style="padding:6px 0;font-weight:600;font-size:14px;color:#1C244B;">${proposedStart ? fmtDateTime(proposedStart) : "–"}</td>
           </tr>
         </table>
-        <p style="margin:0;color:#6b7280;font-size:13px;">Wir freuen uns auf die Lektion!</p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">Ich freue mich auf die Lektion!</p>
       `;
       return { subject, html: baseWrapper(content) };
     }
@@ -522,7 +522,7 @@ export function renderEmail(
       const subject = "Dein Verschiebungswunsch – Absage";
       const content = `
         <p style="margin:0 0 16px;">
-          Leider können wir deinen Verschiebungswunsch nicht annehmen.
+          Leider kann ich deinen Verschiebungswunsch nicht annehmen.
           Dein bisheriger Termin${originalStart ? ` am <strong>${fmtDateTime(originalStart)}</strong>` : ""} bleibt bestehen.
         </p>
         ${
@@ -965,18 +965,29 @@ export function renderEmail(
       const amount = Number(payload.amount ?? 0);
       const invoiceNumber = String(payload.invoice_number ?? "");
       const reason = payload.reason ? String(payload.reason) : null;
+      // Paket-, Anzahlungs- und Ratenrechnungen haben kein Lektionsdatum;
+      // sie tragen ihre Bezeichnung in `description`.
+      const bezeichnung = payload.description ? String(payload.description) : null;
 
       const chf = amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const subject = `Zahlung nicht gefunden – Klavierstunde vom ${lessonDate ? fmtDate(lessonDate) : ""}`;
+      const subject = lessonDate
+        ? `Zahlung nicht gefunden – Klavierstunde vom ${fmtDate(lessonDate)}`
+        : bezeichnung
+          ? `Zahlung nicht gefunden – ${bezeichnung}`
+          : "Zahlung nicht gefunden";
       const content = `
         <p style="margin:0 0 16px;">Hallo ${studentName ? studentName.split(" ")[0] : ""},</p>
         <p style="margin:0 0 16px;">
-          Leider konnte deine Zahlung für die folgende Lektion nicht gefunden werden:
+          Leider konnte ich deine Zahlung für ${
+            lessonDate ? "die folgende Lektion" : "die folgende Position"
+          } nicht finden:
         </p>
         <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#fef2f2;border-radius:6px;padding:16px;border:1px solid #fecaca;">
           <tr>
-            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Lektion</td>
-            <td style="padding:6px 0;font-weight:600;font-size:14px;">${lessonDate ? fmtDateTime(lessonDate) : "–"}</td>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">${lessonDate ? "Lektion" : "Position"}</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${
+              lessonDate ? fmtDateTime(lessonDate) : (bezeichnung ?? "–")
+            }</td>
           </tr>
           <tr>
             <td style="padding:6px 0;color:#6b7280;font-size:14px;">Betrag</td>
@@ -1183,7 +1194,7 @@ export function renderEmail(
       const content = `
         <p style="margin:0 0 16px;">Hallo,</p>
         <p style="margin:0 0 24px;">
-          wir haben eine Anfrage erhalten, dein Passwort zurückzusetzen.
+          es liegt eine Anfrage vor, dein Passwort zurückzusetzen.
           Klicke auf den Button, um ein neues Passwort festzulegen:
         </p>
         <p style="text-align:center;margin:0 0 24px;">
