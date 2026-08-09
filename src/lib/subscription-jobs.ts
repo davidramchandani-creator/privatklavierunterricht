@@ -198,6 +198,8 @@ async function sendRenewalNotices(
     .select(PACKAGE_FIELDS)
     .eq("status", "active")
     .eq("auto_renew", true)
+    // Pausierte Pakete ruhen: keine Vorwarnung, kein Ablauf, keine Verlängerung.
+    .eq("paused", false)
     .is("renewal_notice_sent_at", null)
     .not("expires_at", "is", null)
     .gt("expires_at", now.toISOString())
@@ -241,6 +243,11 @@ async function processExpiredPackages(
     .from("packages")
     .select(PACKAGE_FIELDS)
     .eq("status", "active")
+    // Während einer Pause bleibt `expires_at` auf dem alten Stand stehen –
+    // die Restlaufzeit liegt in `pause_remaining_seconds`. Ohne diese Zeile
+    // würde ein pausiertes Paket ablaufen, die Lektionen verfallen und bei
+    // aktiver Auto-Verlängerung sogar ein neues Paket in Rechnung gestellt.
+    .eq("paused", false)
     .not("expires_at", "is", null)
     .lte("expires_at", now.toISOString())
     .limit(50)
