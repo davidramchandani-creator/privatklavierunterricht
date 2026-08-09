@@ -236,7 +236,7 @@ export async function requestMultipleBookings(desiredStartIsos: string[]) {
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Schüler zieht alle offenen Anfragen einer Gruppe auf einmal zurück. */
@@ -269,7 +269,7 @@ export async function withdrawGroupBookingRequests(groupId: string) {
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Schüler zieht eine offene Terminanfrage zurück (Spec §10.4). */
@@ -306,7 +306,7 @@ export async function withdrawBookingRequest(requestId: string) {
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /**
@@ -330,7 +330,7 @@ export async function cancelAppointment(appointmentId: string) {
   if (!appt || appt.student_id !== user.id) {
     return { error: "Termin nicht gefunden." };
   }
-  if (appt.status === "cancelled") return { success: true };
+  if (appt.status === "cancelled") return { success: true, error: undefined };
   if (!isAtLeast24hAway(appt.start_at, new Date())) {
     return { error: "Stornierungen sind nur bis 24 Stunden vorher möglich." };
   }
@@ -388,7 +388,7 @@ export async function cancelAppointment(appointmentId: string) {
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /**
@@ -503,7 +503,7 @@ export async function requestReschedule(
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Schüler zieht eine offene Verschiebungsanfrage zurück. */
@@ -547,7 +547,7 @@ export async function withdrawReschedule(rescheduleId: string) {
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /**
@@ -638,7 +638,7 @@ export async function acceptProposal(proposalId: string) {
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Schüler lehnt einen Terminvorschlag ab → Admin wird informiert. */
@@ -681,7 +681,7 @@ export async function rejectProposal(proposalId: string) {
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /**
@@ -734,7 +734,7 @@ export async function markInvoicePaid(invoiceId: string) {
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /**
@@ -909,7 +909,7 @@ export async function buyPackage(
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /**
@@ -989,7 +989,7 @@ export async function setAutoRenew(packageId: string, enabled: boolean) {
   }
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 // ── Gruppenkurse ───────────────────────────────────────────────────────────
@@ -1107,7 +1107,7 @@ export async function joinGroupSessionAction(sessionId: string) {
   if ("error" in result) return result;
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function leaveGroupSessionAction(sessionId: string) {
@@ -1122,5 +1122,5 @@ export async function leaveGroupSessionAction(sessionId: string) {
   if ("error" in result) return result;
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }

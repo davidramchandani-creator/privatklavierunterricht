@@ -80,6 +80,12 @@ async function insertPackageInvoice(
     .maybeSingle();
 
   if (error || !inv) {
+    // 23505 = unique_violation. Der partielle Unique-Index
+    // `invoices_one_per_instalment` bzw. `invoices_one_active_per_appointment`
+    // hat einen Doppelversand abgefangen: es gibt bereits eine Rechnung.
+    if (error?.code === "23505") {
+      return { error: "Für diese Position besteht bereits eine Rechnung." };
+    }
     return { error: error?.message ?? "Rechnung konnte nicht erstellt werden." };
   }
 

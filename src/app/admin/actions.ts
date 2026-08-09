@@ -1714,7 +1714,14 @@ export async function createInvoiceForAppointment(appointmentId: string) {
     .select("id")
     .single();
 
-  if (error || !inv) return { error: "Rechnung konnte nicht erstellt werden." };
+  if (error || !inv) {
+    // 23505 = der Unique-Index invoices_one_active_per_appointment.
+    // Für diesen Termin gibt es bereits eine offene Rechnung.
+    if (error?.code === "23505") {
+      return { error: "Für diesen Termin besteht bereits eine Rechnung." };
+    }
+    return { error: "Rechnung konnte nicht erstellt werden." };
+  }
 
   revalidatePath("/admin/zahlungen");
   return { success: true, error: undefined, invoiceId: inv.id };

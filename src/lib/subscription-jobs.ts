@@ -156,6 +156,8 @@ async function invoiceDueInstalments(
       profile
     );
     if ("invoiceId" in result) count++;
+    // "error" heisst hier meist: ein paralleler Lauf war schneller. Der
+    // Unique-Index hat das Duplikat verhindert, wir gehen einfach weiter.
   }
   return count;
 }
