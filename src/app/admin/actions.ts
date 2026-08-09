@@ -70,6 +70,9 @@ async function assertAdmin(): Promise<{ error: string } | null> {
 }
 
 export async function inviteSchueler(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const email = formData.get("email") as string;
   const vorname = formData.get("vorname") as string;
   const nachname = formData.get("nachname") as string;
@@ -111,10 +114,13 @@ export async function inviteSchueler(formData: FormData) {
   }
 
   revalidatePath("/admin/schueler");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function createSchuelerDirekt(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const email = (formData.get("email") as string)?.trim();
   const vorname = (formData.get("vorname") as string)?.trim();
   const nachname = (formData.get("nachname") as string)?.trim();
@@ -161,10 +167,13 @@ export async function createSchuelerDirekt(formData: FormData) {
   }
 
   revalidatePath("/admin/schueler");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function updateSchueler(id: string, formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const adminClient = await createAdminClient();
 
   const vorname = formData.get("vorname") as string;
@@ -183,10 +192,13 @@ export async function updateSchueler(id: string, formData: FormData) {
 
   revalidatePath(`/admin/schueler/${id}`);
   revalidatePath("/admin/schueler");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function deleteSchueler(id: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const adminClient = await createAdminClient();
   // Pending Zahlungsmails abbrechen (scheduled_emails hat kein FK zum Schüler).
   await adminClient
@@ -198,19 +210,25 @@ export async function deleteSchueler(id: string) {
   if (error) return { error: error.message };
   revalidatePath("/admin/schueler");
   revalidatePath(`/admin/schueler/${id}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function reactivateSchueler(id: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const adminClient = await createAdminClient();
   const { error } = await adminClient.from("profiles").update({ aktiv: true }).eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/admin/schueler");
   revalidatePath(`/admin/schueler/${id}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function hardDeleteSchueler(id: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const adminClient = await createAdminClient();
 
   // Vor dem Löschen aufräumen: scheduled_emails hat kein FK → würde sonst ins Leere senden.
@@ -238,10 +256,13 @@ export async function hardDeleteSchueler(id: string) {
   if (error) return { error: error.message };
 
   revalidatePath("/admin/schueler");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function resendInvite(email: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
   const adminClient = await createAdminClient();
 
@@ -283,7 +304,7 @@ export async function resendInvite(email: string) {
     return { error: err instanceof Error ? err.message : String(err) };
   }
 
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 
@@ -310,7 +331,7 @@ export async function updateInvoiceStatus(
 
   revalidatePath("/admin/zahlungen");
   revalidatePath("/admin");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 
@@ -359,7 +380,7 @@ export async function issueInstalmentNow(instalmentId: string) {
   revalidatePath("/admin/zahlungen");
   revalidatePath(`/admin/schueler/${inst.student_id}`);
   revalidatePath("/admin");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 // ── Verfügbarkeit ─────────────────────────────────────────────────────────────
@@ -378,6 +399,9 @@ export type VerfuegbarkeitSlot = {
 };
 
 export async function updateVerfuegbarkeit(slots: VerfuegbarkeitSlot[]) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const supabase = await createClient();
 
   // Plausibilität serverseitig prüfen – nie dem Formular vertrauen.
@@ -407,12 +431,15 @@ export async function updateVerfuegbarkeit(slots: VerfuegbarkeitSlot[]) {
   }
 
   revalidatePath("/admin/verfuegbarkeit");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 // ── Preise ────────────────────────────────────────────────────────────────────
 
 export async function updatePreise(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const supabase = await createClient();
 
   const typen = ["einzellektion", "10er", "20er"] as const;
@@ -443,7 +470,7 @@ export async function updatePreise(formData: FormData) {
   }
 
   revalidatePath("/admin/preise");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 // ── Terminanfragen (booking_requests) ───────────────────────────────────────
@@ -455,6 +482,9 @@ export async function updatePreise(formData: FormData) {
  * 24h-Vorlaufregel wird als Admin-Aktion übersprungen.
  */
 export async function acceptBookingRequest(requestId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: req } = await admin
@@ -531,11 +561,14 @@ export async function acceptBookingRequest(requestId: string) {
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
   revalidatePath(`/admin/schueler/${req.student_id}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Admin lehnt eine Terminanfrage ab (optional mit Begründung). */
 export async function rejectBookingRequest(requestId: string, reason?: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: req } = await admin
@@ -562,7 +595,7 @@ export async function rejectBookingRequest(requestId: string, reason?: string) {
   });
 
   revalidatePath("/admin/terminanfragen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /**
@@ -571,6 +604,9 @@ export async function rejectBookingRequest(requestId: string, reason?: string) {
  * ausgenommen) und verschiebt den Termin auf den neuen Zeitpunkt.
  */
 export async function acceptReschedule(rescheduleId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: rr } = await admin
@@ -660,11 +696,14 @@ export async function acceptReschedule(rescheduleId: string) {
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
   revalidatePath(`/admin/schueler/${rr.student_id}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Admin lehnt eine Verschiebungsanfrage ab (optional mit Begründung). */
 export async function rejectReschedule(rescheduleId: string, reason?: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: rr } = await admin
@@ -692,7 +731,7 @@ export async function rejectReschedule(rescheduleId: string, reason?: string) {
   });
 
   revalidatePath("/admin/terminanfragen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 // ── Admin: Preise, Pakete, Direktbuchung, Termine (neues Schema) ─────────────
@@ -703,6 +742,9 @@ export async function updateStudentPrices(
   schuelerId: string,
   formData: FormData
 ) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const update: Record<string, number | string> = {};
@@ -721,19 +763,22 @@ export async function updateStudentPrices(
   const pm = formData.get("payment_method") as string | null;
   if (pm === "twint" || pm === "qr") update.payment_method = pm;
 
-  if (Object.keys(update).length === 0) return { success: true };
+  if (Object.keys(update).length === 0) return { success: true, error: undefined };
 
   const { error } = await admin.from("profiles").update(update).eq("id", userId);
   if (error) return { error: error.message };
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Berechnet die Fahrzeit vom Admin-Standort zur Schüleradresse via Google Maps. */
 export async function calculateTravelBuffer(
   studentAddress: string
 ): Promise<{ minutes: number } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) return { error: "GOOGLE_MAPS_API_KEY nicht konfiguriert." };
 
@@ -896,11 +941,14 @@ export async function createPackageAdmin(formData: FormData) {
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin/zahlungen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Admin bucht direkt (ohne Anfrage) – sofort bestätigt. Spec §4.3. */
 export async function createDirectBooking(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const userId = formData.get("student_user_id") as string;
@@ -924,7 +972,7 @@ export async function createDirectBooking(formData: FormData) {
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /**
@@ -934,6 +982,9 @@ export async function createDirectBooking(formData: FormData) {
  * bei dessen Annahme im Portal werden Termine gebucht.
  */
 export async function createProposal(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const studentId = formData.get("student_user_id") as string;
@@ -994,11 +1045,14 @@ export async function createProposal(formData: FormData) {
   }
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Admin zieht einen offenen Terminvorschlag zurück. */
 export async function withdrawProposal(proposalId: string, schuelerId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { error } = await admin
     .from("proposals")
@@ -1007,11 +1061,14 @@ export async function withdrawProposal(proposalId: string, schuelerId: string) {
     .eq("status", "open");
   if (error) return { error: "Vorschlag konnte nicht zurückgezogen werden." };
   revalidatePath(`/admin/schueler/${schuelerId}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Termin als abgeschlossen markieren (neues Schema). */
 export async function markAppointmentNoShow(id: string, schuelerId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { error } = await admin
     .from("appointments")
@@ -1024,11 +1081,14 @@ export async function markAppointmentNoShow(id: string, schuelerId: string) {
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Termin stornieren (neues Schema). Gibt die Lektion wieder frei. */
 export async function cancelAppointmentNew(id: string, schuelerId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   // Termin laden (für Schüler-Benachrichtigung).
@@ -1088,7 +1148,7 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 // ── Abwesenheiten, Zeitblöcke & Timer (Meilenstein 8) ───────────────────────
@@ -1157,6 +1217,9 @@ type ExtendablePackage = {
 
 /** Admin/Schüler-Abwesenheit anlegen (Spec §7). */
 export async function createAbsence(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const scope = formData.get("scope") as string; // admin | student
@@ -1211,11 +1274,14 @@ export async function createAbsence(formData: FormData) {
   if (scope === "student" && studentUserId) {
     revalidatePath("/admin/schueler");
   }
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Abwesenheit löschen und die Timer-Verlängerung zurückrechnen. */
 export async function deleteAbsence(id: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   // Verlängerungen dieser Abwesenheit zurücknehmen
@@ -1252,11 +1318,14 @@ export async function deleteAbsence(id: string) {
   if (error) return { error: error.message };
 
   revalidatePath("/admin/abwesenheiten");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Einmaligen Zeitblock anlegen. */
 export async function createTimeBlock(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const title = (formData.get("title") as string) || "";
   const date = formData.get("date") as string;
@@ -1272,19 +1341,25 @@ export async function createTimeBlock(formData: FormData) {
   if (error) return { error: error.message };
 
   revalidatePath("/admin/abwesenheiten");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function deleteTimeBlock(id: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { error } = await admin.from("time_blocks").delete().eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/admin/abwesenheiten");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Wiederkehrende Sperrregel anlegen (alle 7/14 Tage). */
 export async function createTimeBlockRule(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const title = (formData.get("title") as string) || "";
   const startDate = formData.get("start_date") as string;
@@ -1306,19 +1381,25 @@ export async function createTimeBlockRule(formData: FormData) {
   if (error) return { error: error.message };
 
   revalidatePath("/admin/abwesenheiten");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function deleteTimeBlockRule(id: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { error } = await admin.from("time_block_rules").delete().eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/admin/abwesenheiten");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Paket-Timer pausieren: Restzeit einfrieren. Spec §7. */
 export async function pausePackage(packageId: string, schuelerId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { data: pkg } = await admin
     .from("packages")
@@ -1326,7 +1407,7 @@ export async function pausePackage(packageId: string, schuelerId: string) {
     .eq("id", packageId)
     .single();
   if (!pkg) return { error: "Paket nicht gefunden." };
-  if (pkg.paused) return { success: true };
+  if (pkg.paused) return { success: true, error: undefined };
 
   const remaining = pkg.expires_at
     ? Math.max(0, Math.floor((new Date(pkg.expires_at).getTime() - Date.now()) / 1000))
@@ -1343,11 +1424,14 @@ export async function pausePackage(packageId: string, schuelerId: string) {
   if (error) return { error: error.message };
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Paket-Timer fortsetzen: Ablauf = jetzt + eingefrorene Restzeit. Spec §7. */
 export async function resumePackage(packageId: string, schuelerId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { data: pkg } = await admin
     .from("packages")
@@ -1355,7 +1439,7 @@ export async function resumePackage(packageId: string, schuelerId: string) {
     .eq("id", packageId)
     .single();
   if (!pkg) return { error: "Paket nicht gefunden." };
-  if (!pkg.paused) return { success: true };
+  if (!pkg.paused) return { success: true, error: undefined };
 
   const update: Record<string, unknown> = {
     paused: false,
@@ -1372,7 +1456,7 @@ export async function resumePackage(packageId: string, schuelerId: string) {
   if (error) return { error: error.message };
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Paket-Timer manuell um N Tage verlängern. */
@@ -1382,6 +1466,9 @@ export async function extendPackage(
   days: number,
   reason?: string
 ) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   if (!days || days <= 0) return { error: "Ungültige Anzahl Tage." };
   const admin = await createAdminClient();
   const { data: pkg } = await admin
@@ -1400,7 +1487,7 @@ export async function extendPackage(
   );
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /**
@@ -1574,7 +1661,7 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin");
-  return { success: true, settlement };
+  return { success: true, error: undefined, settlement };
 }
 
 // ── Rechnungen / Zahlungen (Meilenstein 9) ────────────────────────────────────
@@ -1584,6 +1671,9 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
  * Buchen aufgerufen; kann auch manuell ausgelöst werden.
  */
 export async function createInvoiceForAppointment(appointmentId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: appt } = await admin
@@ -1627,11 +1717,14 @@ export async function createInvoiceForAppointment(appointmentId: string) {
   if (error || !inv) return { error: "Rechnung konnte nicht erstellt werden." };
 
   revalidatePath("/admin/zahlungen");
-  return { success: true, invoiceId: inv.id };
+  return { success: true, error: undefined, invoiceId: inv.id };
 }
 
 /** Admin bestätigt eine Zahlung (pending_confirmation → paid). */
 export async function confirmInvoicePayment(invoiceId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: inv } = await admin
@@ -1695,11 +1788,14 @@ export async function confirmInvoicePayment(invoiceId: string) {
   }
 
   revalidatePath("/admin/zahlungen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Admin lehnt eine Zahlung ab (pending_confirmation → rejected). */
 export async function rejectInvoicePayment(invoiceId: string, reason?: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: inv } = await admin
@@ -1735,11 +1831,14 @@ export async function rejectInvoicePayment(invoiceId: string, reason?: string) {
   }
 
   revalidatePath("/admin/zahlungen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Admin archiviert eine Rechnung (aus der aktiven Liste entfernen). */
 export async function archiveInvoice(invoiceId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { error } = await admin
     .from("invoices")
@@ -1747,11 +1846,14 @@ export async function archiveInvoice(invoiceId: string) {
     .eq("id", invoiceId);
   if (error) return { error: error.message };
   revalidatePath("/admin/zahlungen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Admin sendet die Zahlungsmail für eine Rechnung erneut (sofort). */
 export async function resendPaymentEmail(invoiceId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: inv } = await admin
@@ -1794,13 +1896,16 @@ export async function resendPaymentEmail(invoiceId: string) {
   }
 
   revalidatePath("/admin/zahlungen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 // ── Aufräumen / Löschen ───────────────────────────────────────────────────────
 
 /** Erledigte Buchungsanfrage (nicht open) endgültig löschen. */
 export async function deleteBookingRequest(requestId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = createAdminClient();
   const { data: req } = await admin
     .from("booking_requests")
@@ -1812,11 +1917,14 @@ export async function deleteBookingRequest(requestId: string) {
   const { error } = await admin.from("booking_requests").delete().eq("id", requestId);
   if (error) return { error: error.message };
   revalidatePath("/admin/terminanfragen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Erledigte Verschiebungsanfrage (nicht open) endgültig löschen. */
 export async function deleteRescheduleRequest(rescheduleId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = createAdminClient();
   const { data: rr } = await admin
     .from("reschedule_requests")
@@ -1828,22 +1936,28 @@ export async function deleteRescheduleRequest(rescheduleId: string) {
   const { error } = await admin.from("reschedule_requests").delete().eq("id", rescheduleId);
   if (error) return { error: error.message };
   revalidatePath("/admin/terminanfragen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Alle erledigten Buchungs- und Verschiebungsanfragen auf einmal löschen. */
 export async function bulkDeleteProcessedRequests() {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = createAdminClient();
   await Promise.all([
     admin.from("booking_requests").delete().neq("status", "open"),
     admin.from("reschedule_requests").delete().neq("status", "open"),
   ]);
   revalidatePath("/admin/terminanfragen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Einzelne archivierte/stornierte Rechnung endgültig löschen. */
 export async function hardDeleteInvoice(invoiceId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = createAdminClient();
   const { data: inv } = await admin
     .from("invoices")
@@ -1857,20 +1971,26 @@ export async function hardDeleteInvoice(invoiceId: string) {
   const { error } = await admin.from("invoices").delete().eq("id", invoiceId);
   if (error) return { error: error.message };
   revalidatePath("/admin/zahlungen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Alle archivierten Rechnungen auf einmal löschen (Papierkorb leeren). */
 export async function deleteArchivedInvoices() {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = createAdminClient();
   const { error } = await admin.from("invoices").delete().eq("status", "archived");
   if (error) return { error: error.message };
   revalidatePath("/admin/zahlungen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Sendet eine Test-E-Mail an ADMIN_EMAIL zur Überprüfung der Resend-Konfiguration. */
 export async function sendTestEmail() {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const to = process.env.ADMIN_EMAIL;
   if (!to) {
     return { error: "Umgebungsvariable ADMIN_EMAIL ist nicht gesetzt." };
@@ -1898,20 +2018,29 @@ export async function sendTestEmail() {
 
 /** Testet die Verbindung zum Google-Kalender (Einstellungsseite). */
 export async function testGoogleCalendar() {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   return await testCalendarConnection();
 }
 
 /** Synchronisiert alle zukünftigen gebuchten Termine in den Google-Kalender. */
 export async function runFullCalendarSync() {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const result = await fullSyncFutureAppointments(admin);
   revalidatePath("/admin/einstellungen");
-  return { success: true, ...result };
+  return { success: true, error: undefined, ...result };
 }
 
 // ── Anfragen ─────────────────────────────────────────────────────────────────
 
 export async function updateAnfrageStatus(id: string, status: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("anfragen")
@@ -1919,7 +2048,7 @@ export async function updateAnfrageStatus(id: string, status: string) {
     .eq("id", id);
   if (error) return { error: "Status konnte nicht aktualisiert werden." };
   revalidatePath("/admin/anfragen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 // ── Gruppenkurse ─────────────────────────────────────────────────────────────
@@ -1931,6 +2060,9 @@ import {
 import { normalizePriceTiers } from "@/lib/group-courses";
 
 export async function createGroupCourse(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Nicht angemeldet." };
@@ -1966,10 +2098,13 @@ export async function createGroupCourse(formData: FormData) {
   if (error) return { error: "Kurs konnte nicht erstellt werden." };
 
   revalidatePath("/admin/gruppenkurse");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function updateGroupCourse(courseId: string, formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const title = (formData.get("title") as string)?.trim();
   if (!title) return { error: "Titel erforderlich." };
 
@@ -1994,18 +2129,24 @@ export async function updateGroupCourse(courseId: string, formData: FormData) {
 
   revalidatePath("/admin/gruppenkurse");
   revalidatePath(`/admin/gruppenkurse/${courseId}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function archiveGroupCourse(courseId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { error } = await admin.from("group_courses").update({ status: "archived" }).eq("id", courseId);
   if (error) return { error: "Kurs konnte nicht archiviert werden." };
   revalidatePath("/admin/gruppenkurse");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function planGroupSessions(courseId: string, formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Nicht angemeldet." };
@@ -2031,6 +2172,9 @@ export async function planGroupSessions(courseId: string, formData: FormData) {
 }
 
 export async function adminCancelGroupSession(sessionId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   // Teilnehmer-Termine laden.
@@ -2070,10 +2214,13 @@ export async function adminCancelGroupSession(sessionId: string) {
   }
 
   revalidatePath("/admin/gruppenkurse");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function adminRemoveParticipant(appointmentId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: appt } = await admin
@@ -2130,10 +2277,13 @@ export async function adminRemoveParticipant(appointmentId: string) {
   }).catch(() => null);
 
   revalidatePath("/admin/gruppenkurse");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function deleteGroupSession(sessionId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: session } = await admin
@@ -2151,12 +2301,15 @@ export async function deleteGroupSession(sessionId: string) {
   if (error) return { error: "Löschen fehlgeschlagen." };
 
   revalidatePath(`/admin/gruppenkurse/${session.course_id}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 // ── Lektionen manuell anpassen ────────────────────────────────────────────────
 
 export async function adjustPackageLessons(packageId: string, delta: number) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   if (!Number.isInteger(delta) || delta === 0) {
     return { error: "Ungültige Anpassung." };
   }
@@ -2192,16 +2345,19 @@ export async function adjustPackageLessons(packageId: string, delta: number) {
   if (error) return { error: "Anpassung fehlgeschlagen." };
 
   revalidatePath(`/admin/schueler/${pkg.student_id}`);
-  return { success: true, newTotal };
+  return { success: true, error: undefined, newTotal };
 }
 
 // ── E-Mail-Einstellungen ──────────────────────────────────────────────────────
 
 export async function saveEmailSettings(disabledTypes: string[]) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { error } = await admin
     .from("app_settings")
     .upsert({ key: "email_disabled_types", value: disabledTypes, updated_at: new Date().toISOString() });
   if (error) return { error: "Einstellungen konnten nicht gespeichert werden." };
-  return { success: true };
+  return { success: true, error: undefined };
 }

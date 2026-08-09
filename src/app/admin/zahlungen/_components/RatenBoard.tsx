@@ -118,7 +118,7 @@ export default function RatenBoard({ zeilen }: { zeilen: RatenZeile[] }) {
     startTransition(async () => {
       const res = await issueInstalmentNow(id);
       if (res && "error" in res) {
-        setError(res.error);
+        setError(res.error ?? null);
         setBusyId(null);
         return;
       }

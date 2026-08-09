@@ -58,7 +58,7 @@ function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       const result = await updateSchueler(profile.id, formData);
-      if (result?.error) setError(result.error);
+      if (result?.error) setError(result.error ?? null);
       else setEditing(false);
     });
   }
@@ -67,7 +67,7 @@ function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
     if (!confirm("Schüler deaktivieren?")) return;
     startTransition(async () => {
       const result = await deleteSchueler(profile.id);
-      if (result?.error) setError(result.error);
+      if (result?.error) setError(result.error ?? null);
       else router.refresh();
     });
   }
@@ -75,7 +75,7 @@ function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
   function handleReactivate() {
     startTransition(async () => {
       const result = await reactivateSchueler(profile.id);
-      if (result?.error) setError(result.error);
+      if (result?.error) setError(result.error ?? null);
       else router.refresh();
     });
   }
@@ -84,7 +84,7 @@ function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
     if (!confirm(`${profile.vorname} ${profile.nachname} wirklich permanent löschen? Alle Daten (Pakete, Termine, Zahlungen) werden unwiderruflich gelöscht.`)) return;
     startTransition(async () => {
       const result = await hardDeleteSchueler(profile.id);
-      if (result?.error) setError(result.error);
+      if (result?.error) setError(result.error ?? null);
       else router.push("/admin/schueler");
     });
   }
@@ -92,7 +92,7 @@ function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
   function handleResendInvite() {
     startTransition(async () => {
       const result = await resendInvite(profile.email);
-      if (result?.error) setError(result.error);
+      if (result?.error) setError(result.error ?? null);
       else setInviteSent(true);
     });
   }
@@ -330,7 +330,7 @@ function PreiseForm({
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       const result = await updateStudentPrices(userId, schuelerId, formData);
-      if (result?.error) setError(result.error);
+      if (result?.error) setError(result.error ?? null);
       else {
         setSuccess(true);
         router.refresh();
@@ -567,7 +567,7 @@ function PackageFormNew({
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       const result = await createPackageAdmin(formData);
-      if (result && "error" in result) setError(result.error);
+      if (result && "error" in result) setError(result.error ?? null);
       else {
         setOpen(false);
         router.refresh();
@@ -726,7 +726,7 @@ function DirektBuchung({
     formData.set("interval_days", intervalDays);
     startTransition(async () => {
       const result = await createDirectBooking(formData);
-      if (result && "error" in result && result.error) setError(result.error);
+      if (result && "error" in result && result.error) setError(result.error ?? null);
       else {
         setOpen(false);
         router.refresh();
@@ -832,7 +832,7 @@ function ProposalForm({
     formData.set("interval_days", intervalDays);
     startTransition(async () => {
       const result = await createProposal(formData);
-      if (result && "error" in result && result.error) setError(result.error);
+      if (result && "error" in result && result.error) setError(result.error ?? null);
       else {
         setOpen(false);
         setStart("");
@@ -1050,7 +1050,7 @@ function PackageTimerActions({
     setCancelError(null);
     startTransition(async () => {
       const result = await cancelPackage(packageId, schuelerId);
-      if (result && "error" in result) setCancelError(result.error);
+      if (result && "error" in result) setCancelError(result.error ?? null);
       else {
         setShowCancel(false);
         router.refresh();
@@ -1201,7 +1201,7 @@ function AdjustLessonsButton({
     startTransition(async () => {
       const result = await adjustPackageLessons(packageId, delta);
       if (result?.error) {
-        setError(result.error);
+        setError(result.error ?? null);
       } else {
         setOpen(false);
         setDelta(1);
