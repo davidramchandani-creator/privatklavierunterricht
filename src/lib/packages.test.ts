@@ -87,3 +87,50 @@ describe("canCancelPackage", () => {
     expect(canCancelPackage(null, 0)).toBe(false);
   });
 });
+
+describe("computeCancellationSettlement – Ratenzahlung", () => {
+  const ratenPaket = () =>
+    makePackage({ price_per_lesson: 70, total_price: 700, lessons_total: 10 });
+
+  it("rechnet mit dem tatsächlich bezahlten Betrag, nicht mit dem Paketpreis", () => {
+    // Schüler hat nur die Anzahlung von CHF 175 beglichen und 2 Lektionen genutzt.
+    const s = computeCancellationSettlement(ratenPaket(), 2, 175);
+    expect(s.paidTotal).toBe(175);
+    expect(s.usedCost).toBe(160); // 2 × CHF 80 Einzelpreis
+    expect(s.refund).toBe(15);
+    expect(s.owed).toBe(0);
+  });
+
+  it("ohne den Parameter käme die alte, falsche Annahme heraus", () => {
+    // Absicherung gegen einen Rückfall: ohne bezahlten Betrag wird weiterhin
+    // der volle Paketpreis unterstellt – das darf die Abrechnung nie tun.
+    const ohne = computeCancellationSettlement(ratenPaket(), 2);
+    expect(ohne.refund).toBe(540);
+    const mit = computeCancellationSettlement(ratenPaket(), 2, 175);
+    expect(mit.refund).toBe(15);
+    expect(ohne.refund).not.toBe(mit.refund);
+  });
+
+  it("Anzahlung plus erste Rate", () => {
+    const s = computeCancellationSettlement(ratenPaket(), 2, 306.25);
+    expect(s.refund).toBe(146.25);
+    expect(s.owed).toBe(0);
+  });
+
+  it("noch nichts bezahlt ergibt eine Nachzahlung", () => {
+    const s = computeCancellationSettlement(ratenPaket(), 2, 0);
+    expect(s.refund).toBe(0);
+    expect(s.owed).toBe(160);
+  });
+
+  it("Anzahlung bezahlt, keine Lektion genutzt: alles zurück", () => {
+    const s = computeCancellationSettlement(ratenPaket(), 0, 175);
+    expect(s.refund).toBe(175);
+    expect(s.owed).toBe(0);
+  });
+
+  it("vollständig bezahltes Paket verhält sich wie bisher", () => {
+    const s = computeCancellationSettlement(ratenPaket(), 2, 700);
+    expect(s.refund).toBe(540);
+  });
+});

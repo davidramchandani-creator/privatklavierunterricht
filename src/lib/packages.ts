@@ -190,7 +190,7 @@ export type CancellationSettlement = {
   lessonsUsed: number;
   singleLessonPrice: number;
   usedCost: number; // genutzte Lektionen × Einzelpreis
-  paidTotal: number; // ursprünglich bezahlter Paketpreis
+  paidTotal: number; // tatsächlich bereits bezahlter Betrag
   refund: number; // Rückerstattung (nie negativ)
   owed: number; // Nachzahlung, falls usedCost > paidTotal
 };
@@ -203,16 +203,30 @@ export type CancellationSettlement = {
  */
 export function computeCancellationSettlement(
   pkg: Package,
-  lessonsUsed: number
+  lessonsUsed: number,
+  /**
+   * Betrag, den der Schüler bis jetzt tatsächlich bezahlt hat.
+   *
+   * Muss übergeben werden, seit es Ratenzahlung gibt. Vorher galt die
+   * Annahme "Paket gekauft = Paketpreis bezahlt"; bei einem Ratenpaket ist
+   * das falsch. Wer erst die Anzahlung beglichen hat, bekäme sonst eine
+   * Rückerstattung auf Geld, das nie geflossen ist.
+   *
+   * Ohne Angabe gilt die alte Annahme (voller Paketpreis bezahlt) – nur für
+   * Vorschauen gedacht, nie für die echte Abrechnung.
+   */
+  paidAmount?: number
 ): CancellationSettlement {
   const singleLessonPrice = cancellationSingleLessonPrice(
     Number(pkg.price_per_lesson)
   );
   const usedCost = lessonsUsed * singleLessonPrice;
   const paidTotal =
-    pkg.total_price != null
-      ? Number(pkg.total_price)
-      : pkg.lessons_total * Number(pkg.price_per_lesson);
+    paidAmount != null
+      ? Number(paidAmount)
+      : pkg.total_price != null
+        ? Number(pkg.total_price)
+        : pkg.lessons_total * Number(pkg.price_per_lesson);
   const diff = paidTotal - usedCost;
   return {
     lessonsUsed,

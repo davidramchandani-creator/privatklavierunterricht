@@ -1528,7 +1528,25 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
     };
   }
 
-  const settlement = computeCancellationSettlement(pkg as Paket, lessonsUsed);
+  // Tatsächlich geflossenes Geld: alle bezahlten Rechnungen dieses Pakets.
+  // Bei Ratenzahlung ist das oft nur die Anzahlung – der Paketpreis wäre
+  // hier die falsche Bezugsgrösse und würde zu Rückerstattungen auf nie
+  // eingegangenes Geld führen.
+  const { data: bezahlteRechnungen } = await admin
+    .from("invoices")
+    .select("amount")
+    .eq("package_id", packageId)
+    .eq("status", "paid");
+  const bereitsBezahlt = (bezahlteRechnungen ?? []).reduce(
+    (summe, r) => summe + Number(r.amount ?? 0),
+    0
+  );
+
+  const settlement = computeCancellationSettlement(
+    pkg as Paket,
+    lessonsUsed,
+    bereitsBezahlt
+  );
 
   // Künftige gebuchte Termine dieses Pakets stornieren.
   const { data: futureAppts } = await admin
