@@ -2082,6 +2082,42 @@ export function renderEmail(
       };
     }
 
+    case "abo_endet_bald": {
+      return {
+        subject: `Dein ${payload.package_label ?? "Abo"} endet bald`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Dein <strong>${payload.package_label ?? "Abo"}</strong> endet am
+              <strong>${
+                payload.periode_ende
+                  ? fmtDate(String(payload.periode_ende))
+                  : payload.expires_at
+                    ? fmtDate(String(payload.expires_at))
+                    : ""
+              }</strong>.</p>
+
+           <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0;color:#92400e;font-size:14px;">
+               Du hast die automatische Verlängerung abgeschaltet. Danach ist
+               dein fester Platz wieder frei — falls du weitermachen möchtest,
+               melde dich bitte vorher bei mir oder schalte die Verlängerung im
+               Portal wieder ein.
+             </p>
+           </div>
+
+           <p style="color:#64748b;font-size:14px;">
+             Solltest du bewusst aufhören wollen: alles gut, dann musst du
+             nichts tun. Die Termine bis zum Ende der Laufzeit bleiben natürlich
+             bestehen.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>`
+        ),
+      };
+    }
+
     default:
       return null;
   }

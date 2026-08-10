@@ -211,11 +211,16 @@ async function sendRenewalNotices(
 ): Promise<number> {
   const until = new Date(now.getTime() + RENEWAL_NOTICE_DAYS * 86400000);
 
+  // Alle bald ablaufenden Perioden – mit und ohne Verlängerung.
+  //
+  // Bisher wurden nur Pakete mit `auto_renew` benachrichtigt. Beim Abo ist
+  // aber gerade der andere Fall wichtig: Wer die Verlängerung abgeschaltet
+  // hat, verliert am Periodenende seinen festen Platz. Ohne Vorwarnung merkt
+  // er es erst, wenn nichts mehr im Kalender steht.
   const { data: packages } = await admin
     .from("packages")
     .select(PACKAGE_FIELDS)
     .eq("status", "active")
-    .eq("auto_renew", true)
     // Pausierte Pakete ruhen: keine Vorwarnung, kein Ablauf, keine Verlängerung.
     .eq("paused", false)
     .is("renewal_notice_sent_at", null)
@@ -227,20 +232,32 @@ async function sendRenewalNotices(
 
   let count = 0;
   for (const pkg of packages ?? []) {
+    // Ohne Verlängerung ist nur beim Abo eine Nachricht sinnvoll; alte
+    // Lektionspakete werden weiterhin über `package_expiring` abgedeckt.
+    if (!pkg.auto_renew && !pkg.abo_variante) continue;
+
+    const typ = pkg.auto_renew
+      ? "subscription_renewal_notice"
+      : "abo_endet_bald";
+
     const created = await enqueueOnce(
       admin,
-      "subscription_renewal_notice",
+      typ,
       {
         student_id: pkg.student_id,
         package_id: pkg.id,
-        package_label: PACKAGE_LABELS[pkg.type] ?? pkg.type,
+        package_label: pkg.abo_variante
+          ? ABO_LABELS[pkg.abo_variante === "jahr" ? "jahr" : "halbjahr"]
+          : (PACKAGE_LABELS[pkg.type] ?? pkg.type),
         expires_at: pkg.expires_at,
+        periode_ende: pkg.periode_ende,
+        monatsbetrag: pkg.monatsbetrag,
         lessons_remaining: Math.max(
           0,
           Number(pkg.lessons_total ?? 0) - Number(pkg.lessons_used ?? 0)
         ),
       },
-      `subscription_renewal_notice:${pkg.id}`
+      `${typ}:${pkg.id}`
     );
     await admin
       .from("packages")
