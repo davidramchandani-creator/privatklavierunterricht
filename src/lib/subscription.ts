@@ -5,13 +5,21 @@
 
 export type SubscriptionType = "10er" | "20er";
 
-/** Laufzeit = Gültigkeit des Pakets UND Ratenlaufzeit (Entscheid Dave). */
+/**
+ * Laufzeit = Gültigkeit des Pakets UND Ratenlaufzeit (Entscheid Dave).
+ *
+ * Diese Werte gelten für den **wöchentlichen** Rhythmus. Bei zweiwöchentlichem
+ * Unterricht ist die Laufzeit länger — die Berechnung dazu steht in
+ * `rhythmus.ts` (`termMonthsForType`) und wird hier über die Optionen von
+ * `buildInstalmentPlan` hereingereicht. Hier bleiben sie als Default stehen,
+ * damit Altcode und Vorschauen ohne Rhythmus weiter funktionieren.
+ */
 export const SUBSCRIPTION_TERM_MONTHS: Record<SubscriptionType, number> = {
   "10er": 4,
   "20er": 8,
 };
 
-/** Anzahl Monatsraten nach der Anzahlung. */
+/** Anzahl Monatsraten nach der Anzahlung (wöchentlicher Rhythmus). */
 export const SUBSCRIPTION_INSTALMENTS: Record<SubscriptionType, number> = {
   "10er": 4,
   "20er": 8,
@@ -79,20 +87,63 @@ export function addMonths(isoDate: string, months: number): string {
   return toIso(ty, tm, td);
 }
 
+/** Durchschnittliche Tage pro Monat — für gebrochene Laufzeiten. */
+const DAYS_PER_MONTH = 30.44;
+
+/**
+ * Datum um eine (auch gebrochene) Anzahl Monate verschieben.
+ *
+ * Ganze Monate laufen über `addMonths` (monatsende-sicher), der Rest wird in
+ * Tagen ergänzt. Gebrochene Laufzeiten entstehen beim Rhythmuswechsel: mit
+ * 7 Restlektionen zweiwöchentlich sind es 4.2 Monate — das gibt es als
+ * Kalendermonat nicht.
+ */
+export function addTermMonths(isoDate: string, months: number): string {
+  const whole = Math.trunc(months);
+  const rest = months - whole;
+  const base = addMonths(isoDate, whole);
+  const extraDays = Math.round(rest * DAYS_PER_MONTH);
+  if (extraDays === 0) return base;
+  const [y, m, d] = base.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d) + extraDays * 86400000);
+  return toIso(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate());
+}
+
+export type InstalmentPlanOptions = {
+  /**
+   * Laufzeit in Monaten. Ohne Angabe gilt der wöchentliche Standard des
+   * Pakettyps. Der Rhythmus-abhängige Wert kommt aus `termMonthsForType`.
+   */
+  termMonths?: number;
+  /**
+   * Anzahl Monatsraten nach der Anzahlung. Ohne Angabe: eine Rate pro
+   * angefangenem Laufzeitmonat.
+   */
+  instalmentCount?: number;
+};
+
 /**
  * Ratenplan für ein Abo.
  *
  * Anzahlung (25 %) ist sofort fällig, danach folgen `instalmentCount`
  * gleich hohe Monatsraten. Die letzte Rate nimmt den Rundungsrest auf,
  * damit die Summe exakt dem Gesamtpreis entspricht.
+ *
+ * Bei zweiwöchentlichem Rhythmus ist die Laufzeit länger, also gibt es mehr
+ * und dafür kleinere Raten. Der Gesamtpreis bleibt identisch — der Rhythmus
+ * ändert nur, über welchen Zeitraum bezahlt wird, nie wie viel.
  */
 export function buildInstalmentPlan(
   type: SubscriptionType,
   totalPrice: number,
-  startDate: string
+  startDate: string,
+  options: InstalmentPlanOptions = {}
 ): InstalmentPlan {
-  const termMonths = SUBSCRIPTION_TERM_MONTHS[type];
-  const instalmentCount = SUBSCRIPTION_INSTALMENTS[type];
+  const termMonths = options.termMonths ?? SUBSCRIPTION_TERM_MONTHS[type];
+  const instalmentCount = Math.max(
+    1,
+    options.instalmentCount ?? Math.round(termMonths)
+  );
 
   const total = roundRappen(totalPrice);
   const deposit = roundRappen(total * DEPOSIT_RATE);
@@ -123,7 +174,7 @@ export function buildInstalmentPlan(
     instalmentCount,
     instalmentAmount: nominal,
     entries,
-    expiresOn: addMonths(startDate, termMonths),
+    expiresOn: addTermMonths(startDate, termMonths),
   };
 }
 

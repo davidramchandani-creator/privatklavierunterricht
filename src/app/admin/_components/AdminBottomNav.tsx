@@ -16,6 +16,7 @@ import {
   Bell,
   X,
   LogOut,
+  Route,
 } from "lucide-react";
 import { logout } from "@/app/auth/actions";
 
@@ -30,6 +31,7 @@ const MORE_ITEMS = [
   { href: "/admin/anfragen", label: "Probelektionen", icon: Inbox },
   { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
   { href: "/admin/gruppenkurse", label: "Gruppenkurse", icon: UsersRound },
+  { href: "/admin/routenplanung", label: "Routenplanung", icon: Route },
   { href: "/benachrichtigungen", label: "Benachrichtigungen", icon: Bell },
   { href: "/admin/einstellungen", label: "Einstellungen", icon: Settings },
 ];

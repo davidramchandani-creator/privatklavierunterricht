@@ -1483,6 +1483,272 @@ export function renderEmail(
       };
     }
 
+    // ── Fixplatz ─────────────────────────────────────────────
+    case "fixplatz_confirmed": {
+      const termine = Array.isArray(payload.termine)
+        ? (payload.termine as string[])
+        : [];
+      const verschoben = Array.isArray(payload.verschoben)
+        ? (payload.verschoben as Array<{ original: string; ersatz: string }>)
+        : [];
+      const offen = Array.isArray(payload.offen) ? (payload.offen as string[]) : [];
+
+      return {
+        subject: `Dein fester Platz steht: ${payload.fixplatz_text ?? "Fixplatz"}`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Dein fester Unterrichtsplatz ist eingerichtet:</p>
+
+           <div style="background:#F3F5F8;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0;font-size:16px;font-weight:600;color:#1C244B;">
+               ${payload.fixplatz_text ?? ""}
+             </p>
+             <p style="margin:8px 0 0;color:#475569;font-size:14px;">
+               ${termine.length} Termine sind bereits eingetragen – du musst nichts
+               mehr einzeln buchen.
+             </p>
+           </div>
+
+           ${
+             verschoben.length > 0
+               ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#92400e;">Ein paar Ausweichtermine</p>
+                    <p style="margin:0 0 8px;color:#92400e;font-size:14px;">
+                      An diesen Tagen war dein Platz belegt (Ferien oder Feiertag).
+                      Ich habe dir einen Ersatz in derselben oder der folgenden Woche
+                      gelegt:
+                    </p>
+                    <ul style="margin:0;padding-left:20px;color:#92400e;font-size:14px;">
+                      ${verschoben
+                        .map(
+                          (v) =>
+                            `<li>statt ${fmtDate(v.original)} → <strong>${fmtDateTime(v.ersatz)}</strong></li>`
+                        )
+                        .join("")}
+                    </ul>
+                  </div>`
+               : ""
+           }
+
+           ${
+             offen.length > 0
+               ? `<p><strong>${offen.length} Lektion${offen.length === 1 ? "" : "en"}</strong>
+                    konnte ich noch nicht platzieren. Ich melde mich dazu bei dir –
+                    die Lektionen sind dir gutgeschrieben und verfallen nicht.</p>`
+               : ""
+           }
+
+           <p style="margin:24px 0 8px;font-weight:600;">Deine Termine</p>
+           <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background:#f8fafc;border-radius:6px;">
+             ${termine
+               .map(
+                 (t, i) => `<tr>
+                   <td style="padding:6px 12px;color:#94a3b8;font-size:13px;width:32px;">${i + 1}.</td>
+                   <td style="padding:6px 12px;color:#334155;font-size:14px;">${fmtDateTime(t)}</td>
+                 </tr>`
+               )
+               .join("")}
+           </table>
+
+           <p style="color:#64748b;font-size:14px;">
+             Wenn du einmal nicht kannst: bitte spätestens 24 Stunden vorher im
+             Portal absagen. Du bekommst dann automatisch Ausweichtermine
+             vorgeschlagen.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal#termine" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Termine ansehen</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "fixplatz_admin": {
+      return {
+        subject: `Neuer Fixplatz – ${payload.student_name ?? "Schüler"}`,
+        html: baseWrapper(
+          `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat einen festen
+              Platz gebucht:</p>
+           <p style="font-size:16px;font-weight:600;color:#1C244B;">
+             ${payload.fixplatz_text ?? ""}
+           </p>
+           <p>${payload.anzahl_termine ?? 0} Termine angelegt${
+             payload.anzahl_verschoben
+               ? `, davon ${payload.anzahl_verschoben} als Ausweichtermin`
+               : ""
+           }${
+             payload.anzahl_offen
+               ? `. ${payload.anzahl_offen} Lektion(en) konnten nicht platziert werden und brauchen deine Hand.`
+               : "."
+           }</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/kalender" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Kalender öffnen</a>
+           </p>`
+        ),
+      };
+    }
+
+    // ── Ausfälle ─────────────────────────────────────────────
+    case "ausfall_ersatz_vorschlag": {
+      const vorschlaege = Array.isArray(payload.vorschlaege)
+        ? (payload.vorschlaege as Array<{ start: string; begruendung: string }>)
+        : [];
+      return {
+        subject: `Ausweichtermine für den ${payload.original_datum ? fmtDate(String(payload.original_datum)) : "ausgefallenen Termin"}`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Deine Lektion vom
+              <strong>${payload.original_datum ? fmtDateTime(String(payload.original_datum)) : ""}</strong>
+              fällt aus${payload.grund ? ` (${payload.grund})` : ""}.</p>
+
+           <p><strong>Die Lektion ist dir erhalten</strong> – sie wird nicht abgezogen.
+              Such dir einen der folgenden Ausweichtermine aus:</p>
+
+           <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background:#f8fafc;border-radius:6px;">
+             ${vorschlaege
+               .map(
+                 (v) => `<tr>
+                   <td style="padding:10px 12px;color:#1C244B;font-size:14px;font-weight:600;">${fmtDateTime(v.start)}</td>
+                   <td style="padding:10px 12px;color:#64748b;font-size:13px;">${v.begruendung}</td>
+                 </tr>`
+               )
+               .join("")}
+           </table>
+
+           <p style="color:#64748b;font-size:14px;">
+             Passt keiner davon? Dann verlängert sich stattdessen die Laufzeit deines
+             Pakets um die entsprechende Zeit – du verlierst nichts.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal#termine" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Ausweichtermin wählen</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "ausfall_gutschrift": {
+      return {
+        subject: "Deine Laufzeit wurde verlängert",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Für die ausgefallene Lektion vom
+              <strong>${payload.original_datum ? fmtDate(String(payload.original_datum)) : ""}</strong>
+              liess sich kein Ausweichtermin finden.</p>
+
+           <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0;color:#065f46;font-size:14px;">
+               Die Lektion bleibt dir erhalten und die Laufzeit deines Pakets
+               verlängert sich um <strong>${payload.tage ?? 0} Tage</strong>${
+                 payload.neues_ablaufdatum
+                   ? ` – neu gültig bis <strong>${fmtDate(String(payload.neues_ablaufdatum))}</strong>`
+                   : ""
+               }.
+             </p>
+           </div>
+
+           <p>Beim nächsten Mal kannst du sie ganz normal buchen.</p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "ausfall_kurzfristig": {
+      return {
+        subject: `Absage erhalten – ${payload.original_datum ? fmtDate(String(payload.original_datum)) : ""}`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Deine Absage für den
+              <strong>${payload.original_datum ? fmtDateTime(String(payload.original_datum)) : ""}</strong>
+              ist bei mir angekommen.</p>
+
+           <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0;color:#92400e;font-size:14px;">
+               Weil die Absage weniger als 24 Stunden vorher kam, gilt die Lektion
+               als gehalten – die Zeit war für dich reserviert und liess sich nicht
+               mehr anderweitig vergeben.
+             </p>
+           </div>
+
+           <p style="color:#64748b;font-size:14px;">
+             Wenn etwas Aussergewöhnliches dazwischenkam, melde dich einfach bei mir.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal#termine" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zu meinen Terminen</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "ausfall_admin": {
+      return {
+        subject: `Absage: ${payload.student_name ?? "Schüler"} – ${payload.original_datum ? fmtDate(String(payload.original_datum)) : ""}`,
+        html: baseWrapper(
+          `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat die Lektion vom
+              <strong>${payload.original_datum ? fmtDateTime(String(payload.original_datum)) : ""}</strong>
+              abgesagt${payload.grund ? `: „${payload.grund}“` : "."}</p>
+           <p>${
+             payload.kurzfristig
+               ? "Kurzfristig (unter 24 Stunden) – die Lektion gilt als gehalten."
+               : "Rechtzeitig abgesagt – der Schüler hat Ausweichtermine vorgeschlagen bekommen."
+           }</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/kalender" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Kalender öffnen</a>
+           </p>`
+        ),
+      };
+    }
+
+    // ── Rhythmuswechsel ──────────────────────────────────────
+    case "rhythmus_changed": {
+      const laenger = Number(payload.differenz_tage ?? 0) > 0;
+      const tage = Math.abs(Number(payload.differenz_tage ?? 0));
+      return {
+        subject: `Dein Rhythmus ist jetzt ${payload.neuer_rhythmus_text ?? "geändert"}`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Dein Unterrichtsrhythmus wurde von
+              <strong>${payload.alter_rhythmus_text ?? ""}</strong> auf
+              <strong>${payload.neuer_rhythmus_text ?? ""}</strong> umgestellt.</p>
+
+           <div style="background:#F3F5F8;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0 0 6px;color:#475569;font-size:14px;">
+               <strong>${payload.lektionen_offen ?? 0}</strong> Lektionen sind noch offen.
+             </p>
+             <p style="margin:0;color:#475569;font-size:14px;">
+               Neu gültig bis
+               <strong>${payload.neues_ablaufdatum ? fmtDate(String(payload.neues_ablaufdatum)) : ""}</strong>
+               ${
+                 tage === 0
+                   ? "(unverändert)"
+                   : laenger
+                     ? `(${tage} Tage länger)`
+                     : `(${tage} Tage kürzer)`
+               }.
+             </p>
+           </div>
+
+           <p style="color:#64748b;font-size:14px;">
+             Der Preis bleibt gleich – gleiche Lektionszahl, gleicher Lektionspreis.
+             Der Rhythmus ändert nur, über welchen Zeitraum du sie beziehst.
+             ${
+               payload.raten_angepasst
+                 ? " Deine offenen Raten wurden entsprechend neu verteilt; der Gesamtbetrag bleibt unverändert."
+                 : ""
+             }
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>`
+        ),
+      };
+    }
+
     default:
       return null;
   }

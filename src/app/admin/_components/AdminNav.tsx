@@ -16,6 +16,7 @@ import {
   Clock,
   ChevronDown,
   Bell,
+  Route,
 } from "lucide-react";
 
 type NavItem = {
@@ -48,6 +49,7 @@ export const navEntries: NavEntry[] = [
       { href: "/admin/kalender", label: "Kalenderansicht", icon: Calendar, exact: true },
       { href: "/admin/abwesenheiten", label: "Abwesenheiten", icon: CalendarOff },
       { href: "/admin/verfuegbarkeit", label: "Verfügbarkeit", icon: Clock },
+      { href: "/admin/routenplanung", label: "Routenplanung", icon: Route },
     ],
   },
   { href: "/admin/gruppenkurse", label: "Gruppenkurse", icon: UsersRound },
