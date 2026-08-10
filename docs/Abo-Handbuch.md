@@ -275,6 +275,31 @@ Die Differenz ist keine Kritik an den Schülern, sondern deine
 Entscheidungsgrundlage: Ist sie gross, lohnt es sich, bei einzelnen um ein
 zusätzliches Zeitfenster zu bitten. Ist sie klein, ist alles in Ordnung.
 
+### Einen Einzelnen anschreiben
+
+Wenn er noch keine Zeiten angegeben hat, steht er in der Liste mit dem Vermerk
+„keine Zeiten angegeben" — und darunter erscheint **„Zeiten anfragen"**.
+
+Eine Einzelanfrage ist technisch eine Planungsrunde mit genau einem
+Adressaten. Das ist bewusst so: dasselbe Formular im Portal, dieselbe
+Speicherung, dieselbe Zuteilungsrechnung. Nur bekommt sonst niemand eine Mail.
+
+Was das für dich heisst:
+
+- **Eine laufende Runde für alle bleibt unberührt.** Die beiden stehen sich
+  nicht im Weg, und die Einzelanfrage taucht auf dem Planungsboard nicht als
+  „es läuft bereits eine Runde" auf.
+- **Zweimal klicken schadet nicht.** Läuft bereits eine Anfrage, wird keine
+  zweite angelegt — er bekommt die Mail noch einmal. Der Knopf heisst dann
+  „Nochmals anschreiben", und die Datenbank verhindert Doppelanfragen auch
+  dann, wenn zwei Klicks gleichzeitig ankommen.
+- **Frist sind sieben Tage.** Sie steht in der Mail und im Portal.
+- **Nach dem Setzen schliesst sie sich selbst.** Sonst stünde die Aufforderung
+  weiter in seinem Portal, obwohl der Termin längst steht.
+
+Sobald er geantwortet hat, erscheint er hier mit den Vorschlägen — von da an
+ist es der Ablauf von oben.
+
 ### Einen Einzelnen nachträglich einpassen
 
 Der Alltagsfall zwischen zwei Runden: Jemand schliesst im November ab, die

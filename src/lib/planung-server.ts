@@ -39,6 +39,8 @@ export async function ladeOffeneRunde(
     .from("planungsrunden")
     .select("id, titel, periode_start, frist, status, angewendet_am")
     .eq("status", "offen")
+    // Einzelanfragen laufen daneben her und blockieren keine Runde.
+    .is("nur_student_id", null)
     .order("erstellt_am", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -190,6 +192,37 @@ export type EinpassKontext = {
   schuelerName: string;
   hatZeiten: boolean;
 };
+
+/**
+ * Offene Einzelanfrage an genau diesen Schüler.
+ *
+ * Eine Einzelanfrage ist technisch eine Runde mit einem einzigen Adressaten.
+ * Dadurch funktionieren Formular, Speichern und Zuteilungsrechnung
+ * unverändert — nur der Kreis ist kleiner.
+ */
+export async function ladeOffeneEinzelanfrage(
+  client: SupabaseClient,
+  studentId: string
+): Promise<Runde | null> {
+  const { data } = await client
+    .from("planungsrunden")
+    .select("id, titel, periode_start, frist, status, angewendet_am")
+    .eq("status", "offen")
+    .eq("nur_student_id", studentId)
+    .order("erstellt_am", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return null;
+  return {
+    id: data.id as string,
+    titel: data.titel as string,
+    periodeStart: data.periode_start as string | null,
+    frist: String(data.frist),
+    status: data.status as string,
+    angewendetAm: data.angewendet_am as string | null,
+  };
+}
 
 /**
  * Sucht die besten Plätze für einen einzelnen Schüler im laufenden Plan.

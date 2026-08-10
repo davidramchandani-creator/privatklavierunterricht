@@ -36,7 +36,11 @@ import {
 } from "@/lib/rhythmus";
 import { findeAusweichtermine } from "@/lib/fixplatz-server";
 import { meldeAusfall } from "@/lib/ausfall";
-import { ladeOffeneRunde, ladeVerfuegbarkeit } from "@/lib/planung-server";
+import {
+  ladeOffeneEinzelanfrage,
+  ladeOffeneRunde,
+  ladeVerfuegbarkeit,
+} from "@/lib/planung-server";
 import { ladeFenster } from "@/lib/routing-server";
 import {
   ABO_LABELS,
@@ -1046,7 +1050,14 @@ export async function offeneVerfuegbarkeitsabfrage(): Promise<{
   if (!user) return leer;
 
   const admin = await createAdminClient();
-  const runde = await ladeOffeneRunde(admin);
+
+  // Eine Einzelanfrage geht vor: sie betrifft diesen Schüler direkt, während
+  // eine allgemeine Runde auch dann läuft, wenn er längst geantwortet hat.
+  const [allgemein, einzeln] = await Promise.all([
+    ladeOffeneRunde(admin),
+    ladeOffeneEinzelanfrage(admin, user.id),
+  ]);
+  const runde = einzeln ?? allgemein;
   if (!runde) return leer;
 
   const [fenster, vorhanden, { data: antwort }] = await Promise.all([

@@ -79,6 +79,7 @@ export const STUDENT_LOOKUP_TYPES = [
   "abo_endet_bald",
   // Terminplanung
   "verfuegbarkeit_anfrage",
+  "verfuegbarkeit_einzelanfrage",
   "verfuegbarkeit_erinnerung",
   "verfuegbarkeit_zuteilung",
 ];

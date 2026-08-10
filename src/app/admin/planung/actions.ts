@@ -9,6 +9,7 @@ import { bookFixplatzSeries } from "@/lib/fixplatz-server";
 import {
   findeEinpassungFuer,
   ladeAntwortStand,
+  ladeOffeneEinzelanfrage,
   ladeOffeneRunde,
   rechneZuteilung,
   type AntwortStand,
@@ -311,7 +312,13 @@ export async function zuteilungAnwenden(
  * genau die, die mitten in der Periode eingepasst werden müssen.
  */
 export async function wartendeSchueler(): Promise<{
-  schueler: { id: string; name: string; hatZeiten: boolean }[];
+  schueler: {
+    id: string;
+    name: string;
+    hatZeiten: boolean;
+    /** Frist einer bereits laufenden Einzelanfrage, sonst null. */
+    angefragtBis: string | null;
+  }[];
 }> {
   const verboten = await assertAdmin();
   if (verboten) return { schueler: [] };
@@ -335,6 +342,16 @@ export async function wartendeSchueler(): Promise<{
 
   const mitZeiten = new Set((verf ?? []).map((v) => v.student_id as string));
 
+  const { data: anfragen } = await admin
+    .from("planungsrunden")
+    .select("nur_student_id, frist")
+    .eq("status", "offen")
+    .in("nur_student_id", ids);
+
+  const angefragt = new Map(
+    (anfragen ?? []).map((a) => [a.nur_student_id as string, String(a.frist)])
+  );
+
   return {
     schueler: (pakete ?? []).map((p) => {
       const prof = (
@@ -345,12 +362,85 @@ export async function wartendeSchueler(): Promise<{
         name:
           `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || "Ohne Namen",
         hatZeiten: mitZeiten.has(p.student_id as string),
+        angefragtBis: angefragt.get(p.student_id as string) ?? null,
       };
     }),
   };
 }
 
 /** Beste Plätze für einen einzelnen Schüler im laufenden Plan. */
+/**
+ * Einen einzelnen Schüler nach seinen Zeiten fragen.
+ *
+ * Der Fall zwischen zwei Runden: Jemand schliesst im November ab, die nächste
+ * Runde ist im Februar. Ihn bis dahin warten zu lassen wäre falsch — er zahlt
+ * bereits ab Periodenbeginn.
+ *
+ * Umgesetzt als Runde mit genau einem Adressaten: dasselbe Formular im
+ * Portal, dieselbe Speicherung, dieselbe Rechnung. Nur bekommt niemand sonst
+ * eine Mail, und die allgemeine Runde bleibt davon unberührt.
+ */
+export async function zeitenAnfragen(
+  studentId: string,
+  fristTage = 7
+): Promise<
+  { success: true; error: undefined; frist: string } | { error: string }
+> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+  if (!studentId) return { error: "Kein Schüler gewählt." };
+
+  const admin = await createAdminClient();
+
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("vorname, nachname")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (!prof) return { error: "Schüler nicht gefunden." };
+
+  const name =
+    `${prof.vorname ?? ""} ${prof.nachname ?? ""}`.trim() || "Schüler";
+
+  // Läuft schon eine Anfrage, wird nicht eine zweite angelegt, sondern nur
+  // noch einmal angeschrieben. Sonst sammeln sich Karteileichen an, und der
+  // Schüler bekommt zwei Mails zur selben Sache.
+  const bestehend = await ladeOffeneEinzelanfrage(admin, studentId);
+  if (bestehend) {
+    // Bewusst dieselbe Mail noch einmal statt einer Erinnerungsvorlage: die
+    // Erinnerung spricht von einer laufenden Planung für alle, und das
+    // stimmt hier nicht.
+    await sendEmailNow(admin, "verfuegbarkeit_einzelanfrage", {
+      student_id: studentId,
+      student_name: name,
+      frist: bestehend.frist,
+    });
+    return { success: true, error: undefined, frist: bestehend.frist };
+  }
+
+  const frist = new Date();
+  frist.setDate(frist.getDate() + fristTage);
+  const fristIso = frist.toISOString().slice(0, 10);
+
+  const { error } = await admin.from("planungsrunden").insert({
+    titel: "Dein fester Termin",
+    frist: fristIso,
+    status: "offen",
+    nur_student_id: studentId,
+  });
+  if (error) return { error: "Die Anfrage konnte nicht angelegt werden." };
+
+  await sendEmailNow(admin, "verfuegbarkeit_einzelanfrage", {
+    student_id: studentId,
+    student_name: name,
+    frist: fristIso,
+  });
+
+  revalidatePath("/admin/planung");
+  revalidatePath("/schueler/portal");
+  return { success: true, error: undefined, frist: fristIso };
+}
+
 export async function einpassungSuchen(
   studentId: string,
   pufferMinuten: number
@@ -451,8 +541,17 @@ export async function einzelnEinpassen(params: {
     wunsch_erfuellt: true,
   });
 
+  // Die Einzelanfrage hat ihren Zweck erfüllt – sonst stünde sie dem Schüler
+  // weiter im Portal und würde ihn zum Nachtragen auffordern.
+  await admin
+    .from("planungsrunden")
+    .update({ status: "angewendet", angewendet_am: new Date().toISOString() })
+    .eq("nur_student_id", params.studentId)
+    .eq("status", "offen");
+
   revalidatePath("/admin/planung");
   revalidatePath("/admin/kalender");
+  revalidatePath("/schueler/portal");
   return { success: true, error: undefined, termine: serie.appointmentIds.length };
 }
 
