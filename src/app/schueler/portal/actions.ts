@@ -37,6 +37,8 @@ import {
 import { describeFixplatz } from "@/lib/fixplatz";
 import { bookFixplatzSeries, findeAusweichtermine } from "@/lib/fixplatz-server";
 import { meldeAusfall } from "@/lib/ausfall";
+import { ladeOffeneRunde, ladeVerfuegbarkeit } from "@/lib/planung-server";
+import { ladeFenster } from "@/lib/routing-server";
 import { findeFixplaetze, type FixplatzAngebot } from "@/lib/fixplatz-suche";
 import {
   ABO_LABELS,
@@ -931,6 +933,141 @@ export async function markInvoicePaid(invoiceId: string) {
 
   revalidatePath("/schueler/portal");
   return { success: true, error: undefined };
+}
+
+// ── Verfügbarkeit für die Planungsrunde ────────────────────
+
+/**
+ * Schüler trägt ein, wann er kann.
+ *
+ * Ersetzt jedes Mal alle Fenster dieser Runde, statt sie zu ergänzen — sonst
+ * bliebe ein gelöschter Tag stehen und der Planer würde einen Termin
+ * ansetzen, an dem der Schüler längst nicht mehr kann.
+ */
+export async function verfuegbarkeitSpeichern(params: {
+  rundeId: string;
+  fenster: {
+    wochentag: number;
+    fruehestens: string;
+    spaetestens: string;
+    praeferenz: number;
+  }[];
+  bemerkung: string | null;
+}): Promise<{ success: true; error: undefined } | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  if (params.fenster.length === 0) {
+    return { error: "Bitte wähle mindestens einen Tag aus." };
+  }
+
+  const admin = await createAdminClient();
+
+  const { data: runde } = await admin
+    .from("planungsrunden")
+    .select("id, status, frist")
+    .eq("id", params.rundeId)
+    .maybeSingle();
+
+  if (!runde) return { error: "Diese Abfrage gibt es nicht mehr." };
+  if (runde.status !== "offen") {
+    return { error: "Diese Abfrage ist bereits abgeschlossen." };
+  }
+
+  for (const f of params.fenster) {
+    if (f.wochentag < 0 || f.wochentag > 6) return { error: "Ungültiger Wochentag." };
+    if (f.fruehestens >= f.spaetestens) {
+      return { error: "Das Ende liegt vor dem Beginn." };
+    }
+    if (f.praeferenz < 1 || f.praeferenz > 3) {
+      return { error: "Ungültige Präferenz." };
+    }
+  }
+
+  await admin
+    .from("student_verfuegbarkeit")
+    .delete()
+    .eq("student_id", user.id)
+    .eq("runde_id", params.rundeId);
+
+  const { error } = await admin.from("student_verfuegbarkeit").insert(
+    params.fenster.map((f) => ({
+      student_id: user.id,
+      runde_id: params.rundeId,
+      wochentag: f.wochentag,
+      fruehestens: f.fruehestens,
+      spaetestens: f.spaetestens,
+      praeferenz: f.praeferenz,
+    }))
+  );
+  if (error) return { error: "Die Zeiten konnten nicht gespeichert werden." };
+
+  await admin.from("planungs_antworten").upsert(
+    {
+      runde_id: params.rundeId,
+      student_id: user.id,
+      geantwortet_am: new Date().toISOString(),
+      bemerkung: params.bemerkung,
+    },
+    { onConflict: "runde_id,student_id" }
+  );
+
+  revalidatePath("/schueler/portal");
+  return { success: true, error: undefined };
+}
+
+/** Die laufende Abfrage samt bereits eingetragener Zeiten. */
+export async function offeneVerfuegbarkeitsabfrage(): Promise<{
+  runde: { id: string; titel: string; frist: string } | null;
+  fenster: { wochentag: number; beginn: string; ende: string }[];
+  vorhanden: {
+    wochentag: number;
+    fruehestens: string;
+    spaetestens: string;
+    praeferenz: number;
+  }[];
+  bemerkung: string | null;
+  geantwortet: boolean;
+}> {
+  const leer = {
+    runde: null,
+    fenster: [],
+    vorhanden: [],
+    bemerkung: null,
+    geantwortet: false,
+  };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return leer;
+
+  const admin = await createAdminClient();
+  const runde = await ladeOffeneRunde(admin);
+  if (!runde) return leer;
+
+  const [fenster, vorhanden, { data: antwort }] = await Promise.all([
+    ladeFenster(admin),
+    ladeVerfuegbarkeit(admin, user.id, runde.id),
+    admin
+      .from("planungs_antworten")
+      .select("geantwortet_am, bemerkung")
+      .eq("runde_id", runde.id)
+      .eq("student_id", user.id)
+      .maybeSingle(),
+  ]);
+
+  return {
+    runde: { id: runde.id, titel: runde.titel, frist: runde.frist },
+    fenster,
+    vorhanden,
+    bemerkung: (antwort?.bemerkung as string) ?? null,
+    geantwortet: antwort?.geantwortet_am != null,
+  };
 }
 
 // ── Abo ────────────────────────────────────────────────────
