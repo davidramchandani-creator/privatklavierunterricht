@@ -55,6 +55,56 @@ export const INTERVAL_DAYS: Record<Rhythmus, number> = {
   zweiwoechentlich: 14,
 };
 
+/** Durchschnittliche Tage pro Monat – für Umrechnungen zwischen beiden. */
+const TAGE_PRO_MONAT = 30.44;
+
+/**
+ * Wie lange die Lektionen tatsächlich dauern, in Monaten.
+ *
+ * Nicht zu verwechseln mit der Laufzeit: 10 Lektionen wöchentlich sind nach
+ * gut 2 Monaten durch, die Laufzeit beträgt aber 4. Die Differenz ist bewusst
+ * eingebauter Puffer für Ferien und Krankheit — kein Zeitraum, in dem noch
+ * Unterricht stattfindet.
+ *
+ * Gerechnet wird über die Abstände zwischen den Lektionen: bei 10 Lektionen
+ * liegen 9 Intervalle dazwischen, nicht 10.
+ */
+export function lessonMonths(lessons: number, rhythmus: Rhythmus): number {
+  const intervalle = Math.max(0, lessons - 1);
+  return (
+    Math.round((intervalle * INTERVAL_DAYS[rhythmus]) / TAGE_PRO_MONAT * 100) / 100
+  );
+}
+
+/**
+ * Anzahl Monatsraten nach der Anzahlung.
+ *
+ * Die Raten folgen der **Unterrichtsdauer**, nicht der Laufzeit. Der Grund
+ * ist ein Fall, der sonst regelmässig auftritt und niemandem erklärbar ist:
+ * Wer seine 10 Lektionen wöchentlich bezieht, ist nach gut 2 Monaten fertig —
+ * hätte aber bei laufzeitgekoppelten Raten noch 2 Raten à CHF 131.25 offen,
+ * ohne dass noch Unterricht stattfindet. Startet dann ein neues Paket, laufen
+ * zwei Zahlungspläne nebeneinander.
+ *
+ * Mit lektionsgekoppelten Raten ist die Zahlung fertig, wenn der Unterricht
+ * fertig ist. Der Preis bleibt identisch, die Raten sind dafür grösser und
+ * weniger.
+ */
+export function instalmentCountFor(lessons: number, rhythmus: Rhythmus): number {
+  return Math.max(1, Math.round(lessonMonths(lessons, rhythmus)));
+}
+
+/**
+ * Puffer zwischen der letzten Lektion und dem Schliessen des Pakets.
+ *
+ * Ein aufgebrauchtes Paket soll nicht bis zum nominellen Ablaufdatum
+ * weiterlaufen — sonst kann der Schüler wochenlang weder buchen noch ein
+ * neues Paket kaufen, während die Verlängerung erst am Ablaufdatum greift.
+ * Die Woche Puffer lässt Raum für eine Nachholstunde oder eine Verschiebung,
+ * die noch hereinkommt.
+ */
+export const ABSCHLUSS_PUFFER_TAGE = 7;
+
 /**
  * Aufschlag auf den Lektionspreis für flexible Buchung, in Prozent.
  *
@@ -209,11 +259,15 @@ export function flexMehrkosten(
 /**
  * Ratenplan für ein Paket mit gegebenem Rhythmus.
  *
- * Der Gesamtpreis ist rhythmusunabhängig. Was sich ändert, ist die Laufzeit
- * und damit die Anzahl Raten: zweiwöchentlich läuft länger, also mehr und
- * kleinere Raten. Beispiel 10er zu CHF 700:
- *   wöchentlich      → Anzahlung 175 + 4 × 131.25  (über 4 Monate)
- *   zweiwöchentlich  → Anzahlung 175 + 6 × 87.50   (über 6 Monate)
+ * Der Gesamtpreis ist rhythmusunabhängig. Was sich ändert, ist die Anzahl
+ * Raten — und die richtet sich nach der **Unterrichtsdauer**, nicht nach der
+ * Laufzeit (siehe `instalmentCountFor`). Beispiel 10er zu CHF 700:
+ *   wöchentlich      → Anzahlung 175 + 2 × 262.50  (Lektionen nach 2.1 Mt durch)
+ *   zweiwöchentlich  → Anzahlung 175 + 4 × 131.25  (nach 4.2 Mt durch)
+ *
+ * Das Ablaufdatum des Pakets bleibt davon unberührt und folgt weiterhin der
+ * Laufzeit — der Puffer für Ferien und Krankheit bleibt also erhalten, nur
+ * bezahlt wird nicht mehr in Zeiten, in denen kein Unterricht stattfindet.
  */
 export function buildPlanForRhythmus(
   type: SubscriptionType,
@@ -221,10 +275,13 @@ export function buildPlanForRhythmus(
   startDate: string,
   rhythmus: Rhythmus
 ): InstalmentPlan {
-  const termMonths = termMonthsForType(type, rhythmus);
+  const lessons = type === "10er" ? 10 : 20;
   return buildInstalmentPlan(type, totalPrice, startDate, {
-    termMonths,
-    instalmentCount: Math.round(termMonths),
+    // Laufzeit (= Gültigkeit) bleibt an den Rhythmus gekoppelt …
+    termMonths: termMonthsForType(type, rhythmus),
+    // … die Raten dagegen an die Unterrichtsdauer. Der Abstand bleibt
+    // monatlich, nur die Anzahl ist kleiner.
+    instalmentCount: instalmentCountFor(lessons, rhythmus),
   });
 }
 

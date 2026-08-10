@@ -34,12 +34,32 @@ lässt sich ein Rhythmuswechsel mitten im Paket ohne Sonderfälle umrechnen
 Der Preis ändert sich durch den Rhythmus **nie**. Gleiche Lektionszahl, gleicher
 Lektionspreis. Der Rhythmus bestimmt nur, über welchen Zeitraum die Lektionen
 bezogen werden — und bei Ratenzahlung, auf wie viele Raten sich derselbe Betrag
-verteilt:
+verteilt.
 
-| 10er zu CHF 700 | Anzahlung | Raten |
-|---|---|---|
-| wöchentlich | CHF 175 | 4 × CHF 131.25 |
-| alle zwei Wochen | CHF 175 | 6 × CHF 87.50 |
+### Die Raten folgen dem Unterricht, nicht der Laufzeit
+
+Das ist wichtig und nicht selbstverständlich. Die **Laufzeit** ist grosszügig
+(4 Monate für 10 wöchentliche Lektionen), weil sie Puffer für Ferien und
+Krankheit enthält. Die **Lektionen** selbst sind aber schon nach gut 2 Monaten
+durch.
+
+Wären die Raten an die Laufzeit gekoppelt, liefen sie zwei Monate weiter, ohne
+dass Unterricht stattfindet — und wenn dann ein neues Paket startet, hätte der
+Schüler zwei Zahlungspläne gleichzeitig. Darum enden die Raten mit dem
+Unterricht:
+
+| Paket | Lektionen durch nach | Anzahlung | Raten | letzte Rate |
+|---|---|---|---|---|
+| 10er wöchentlich | 2.1 Mt | CHF 175 | 2 × CHF 262.50 | 09.10. |
+| 10er alle zwei Wochen | 4.2 Mt | CHF 175 | 4 × CHF 131.25 | 09.12. |
+| 20er wöchentlich | 4.4 Mt | CHF 325 | 4 × CHF 243.75 | 09.12. |
+| 20er alle zwei Wochen | 8.7 Mt | CHF 325 | 9 × CHF 108.35 | 09.05. |
+
+Der Nachteil, damit du ihn kennst: die einzelnen Raten sind grösser. Beim 10er
+wöchentlich verdoppelt sich die Rate von CHF 131.25 auf CHF 262.50. Beides ist
+nicht gleichzeitig zu haben — entweder kleine Raten oder eine Zahlung, die mit
+dem Unterricht endet. Das Ablaufdatum bleibt in jedem Fall unverändert, der
+Puffer für Ferien und Krankheit geht also nicht verloren.
 
 ---
 
@@ -146,6 +166,44 @@ gerade pausiert, wächst die eingefrorene Restzeit statt des Ablaufdatums, sonst
 ginge die Gutschrift beim Fortsetzen verloren.
 
 Du bekommst in jedem Fall `ausfall_admin`.
+
+---
+
+## 5b. Wenn jemand früher fertig ist als die Laufzeit
+
+Der häufigste Fall überhaupt — und der, an dem am meisten schiefgehen kann.
+
+**Ausgangslage:** 10er wöchentlich, gekauft am 09.08. Die letzte Lektion ist am
+13.10., die Laufzeit läuft aber bis 09.12. Dazwischen liegen 57 Tage.
+
+**Was passiert:** Eine Woche nach der letzten Lektion wird das Paket
+geschlossen. Nicht am Ablaufdatum — das wären fast zwei Monate, in denen der
+Schüler weder buchen noch ein neues Paket kaufen kann (die Datenbank lässt nur
+ein aktives Paket zu) und die Verlängerung noch nicht greift. Eine erzwungene
+Pause, die niemand bestellt hat.
+
+Die Woche Puffer ist Absicht: In dieser Zeit kann noch ein Ausweichtermin oder
+eine Verschiebung hereinkommen.
+
+**Bei aktiver Auto-Verlängerung:** Das neue Paket startet sofort, mit
+**demselben Rhythmus und demselben Fixplatz**. Wer dienstags um 17:15 hatte, hat
+weiterhin dienstags um 17:15 — die neue Terminserie wird direkt gebucht. Ein
+Verlängerungspaket, das stillschweigend auf wöchentlich und flexibel
+zurückfällt, wäre eine andere Leistung als die gekaufte.
+
+**Ohne Auto-Verlängerung:** Das Paket wird geschlossen, der Schüler kann sofort
+ein neues kaufen. Kein Warten aufs Ablaufdatum.
+
+**Und das Geld?** Weil die Raten dem Unterricht folgen (Abschnitt 2), ist bei
+drei der vier Paketvarianten beim Abschluss **nichts mehr offen**. Nur beim
+20er zweiwöchentlich bleibt typischerweise eine letzte Rate übrig.
+
+Falls doch etwas offen ist, wird es zu **einer einzigen Schlussrechnung**
+zusammengezogen, fällig sofort. Nie zwei Zahlungspläne nebeneinander. Der Betrag
+ist sauber geschuldet — bezahlt wird das Paket, nicht die einzelne Lektion. Es
+geht allein um die Übersicht.
+
+Bereits gestellte Rechnungen werden dabei nicht angefasst.
 
 ---
 

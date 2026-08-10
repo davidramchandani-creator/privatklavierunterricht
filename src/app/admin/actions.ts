@@ -970,6 +970,7 @@ export async function createPackageAdmin(formData: FormData) {
       type: type as SubscriptionType,
       totalPrice,
       startDate: startDay,
+      rhythmus,
     });
   } else {
     // Einmalzahlung: Gesamtpreis sofort in Rechnung stellen (15 Tage Frist).

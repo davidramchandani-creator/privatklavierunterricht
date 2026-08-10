@@ -22,12 +22,17 @@ import {
 import { PACKAGE_LABELS, PACKAGE_LESSONS } from "@/lib/packages";
 import {
   RENEWAL_NOTICE_DAYS,
-  buildInstalmentPlan,
-  SUBSCRIPTION_TERM_MONTHS,
-  addMonths,
   todayInZurich,
   type SubscriptionType,
 } from "@/lib/subscription";
+import {
+  ABSCHLUSS_PUFFER_TAGE,
+  buildPlanForRhythmus,
+  expiryFor,
+  termMonthsForType,
+  type Rhythmus,
+} from "@/lib/rhythmus";
+import { bookFixplatzSeries } from "@/lib/fixplatz-server";
 
 export type SubscriptionJobResult = {
   instalmentsInvoiced: number;
@@ -62,6 +67,11 @@ type PackageJobRow = {
   instalment_count: number | null;
   renewal_notice_sent_at: string | null;
   status: string;
+  rhythmus: string | null;
+  booking_mode: string | null;
+  fixplatz_weekday: number | null;
+  fixplatz_time: string | null;
+  fixplatz_week_parity: number | null;
 };
 
 type InstalmentJobRow = {
@@ -77,7 +87,7 @@ type InstalmentJobRow = {
 
 const PROFILE_FIELDS = "vorname, nachname, adresse, email, payment_method";
 const PACKAGE_FIELDS =
-  "id, student_id, type, total_price, price_per_lesson, payment_method, lessons_total, lessons_used, expires_at, auto_renew, billing_mode, term_months, instalment_count, renewal_notice_sent_at, status";
+  "id, student_id, type, total_price, price_per_lesson, payment_method, lessons_total, lessons_used, expires_at, auto_renew, billing_mode, term_months, instalment_count, renewal_notice_sent_at, status, rhythmus, booking_mode, fixplatz_weekday, fixplatz_time, fixplatz_week_parity";
 
 /** Outbox-Eintrag, idempotent über `dedupe_key`. */
 async function enqueueOnce(
@@ -235,11 +245,140 @@ async function sendRenewalNotices(
 
 // ── 4. Abgelaufene Abos: verlängern oder verfallen lassen ───────────
 
+/**
+ * Aufgebrauchte Pakete, deren letzte Lektion lange genug her ist.
+ *
+ * Ohne diesen Schritt läuft ein Paket, dessen Lektionen alle bezogen sind,
+ * bis zum nominellen Ablaufdatum weiter. Bei 10 Lektionen wöchentlich sind
+ * das bis zu **57 Tage**, in denen der Schüler weder buchen noch ein neues
+ * Paket kaufen kann (der Unique-Index lässt nur ein aktives Paket zu) und
+ * die Verlängerung noch nicht greift. Eine erzwungene Pause, die niemand
+ * bestellt hat.
+ *
+ * Der Puffer von einer Woche lässt Raum für eine Nachholstunde oder eine
+ * Verschiebung, die noch hereinkommt.
+ */
+async function findeAufgebrauchtePakete(
+  admin: SupabaseClient,
+  now: Date
+): Promise<PackageJobRow[]> {
+  const { data: kandidaten } = await admin
+    .from("packages")
+    .select(PACKAGE_FIELDS)
+    .eq("status", "active")
+    .eq("paused", false)
+    .limit(200)
+    .overrideTypes<PackageJobRow[]>();
+
+  const fertig: PackageJobRow[] = [];
+  const grenze = now.getTime() - ABSCHLUSS_PUFFER_TAGE * 86400000;
+
+  for (const pkg of kandidaten ?? []) {
+    const total = Number(pkg.lessons_total ?? 0);
+    const used = Number(pkg.lessons_used ?? 0);
+    if (total <= 0 || used < total) continue;
+
+    // Wann war die letzte gebuchte Lektion? Erst eine Woche danach wird
+    // geschlossen – vorher könnte noch ein Ausweichtermin dazukommen.
+    const { data: letzte } = await admin
+      .from("appointments")
+      .select("start_at")
+      .eq("package_id", pkg.id)
+      .in("status", ["booked", "completed"])
+      .order("start_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!letzte?.start_at) continue;
+    if (new Date(letzte.start_at).getTime() > grenze) continue;
+
+    fertig.push(pkg);
+  }
+
+  return fertig;
+}
+
+/**
+ * Fasst die beim Abschluss noch offenen Raten zu einer einzigen Rechnung
+ * zusammen.
+ *
+ * Betroffen sind nur Raten ohne Rechnung. Was bereits fakturiert ist, bleibt
+ * unangetastet — eine Rechnung, die draussen ist, schreibt man nicht um.
+ *
+ * Mit lektionsgekoppelten Raten ist dieser Fall selten geworden: bei drei der
+ * vier Paketvarianten bleibt beim Abschluss nichts offen. Übrig bleibt vor
+ * allem das 20er zweiwöchentlich, wo eine letzte Rate knapp nach der letzten
+ * Lektion fällig wird.
+ */
+async function zieheRestratenZusammen(
+  admin: SupabaseClient,
+  pkg: PackageJobRow,
+  now: Date
+): Promise<void> {
+  if (pkg.billing_mode !== "raten") return;
+
+  const { data: offen } = await admin
+    .from("package_instalments")
+    .select("id, sequence, kind, amount, due_date, invoice_id")
+    .eq("package_id", pkg.id)
+    .eq("status", "open")
+    .is("invoice_id", null)
+    .order("sequence");
+
+  if (!offen || offen.length === 0) return;
+
+  const summe =
+    Math.round(offen.reduce((s, r) => s + Number(r.amount ?? 0), 0) * 20) / 20;
+  if (!(summe > 0)) return;
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select(PROFILE_FIELDS)
+    .eq("id", pkg.student_id)
+    .maybeSingle<ProfileRow>();
+  if (!profile) return;
+
+  // Eine Rate trägt den ganzen Restbetrag, der Rest wird storniert. Damit
+  // bleibt die Summe unverändert und es entsteht genau eine Rechnung.
+  const [traeger, ...ueberzaehlig] = offen;
+  const heute = todayInZurich(now);
+
+  await admin
+    .from("package_instalments")
+    .update({ amount: summe, due_date: heute })
+    .eq("id", traeger.id);
+
+  for (const r of ueberzaehlig) {
+    await admin
+      .from("package_instalments")
+      .update({ status: "cancelled", amount: 0 })
+      .eq("id", r.id);
+  }
+
+  // Sofort in Rechnung stellen – der Unterricht ist erbracht.
+  const ergebnis = await issueInstalmentInvoice(
+    admin,
+    {
+      id: traeger.id,
+      sequence: Number(traeger.sequence),
+      kind: String(traeger.kind),
+      amount: summe,
+      due_date: heute,
+      invoice_id: null,
+    },
+    { ...pkg, instalment_count: pkg.instalment_count },
+    profile
+  );
+  if ("error" in ergebnis) {
+    console.error("[abo] Schlussrechnung:", pkg.id, ergebnis.error);
+  }
+}
+
 async function processExpiredPackages(
   admin: SupabaseClient,
   now: Date
 ): Promise<{ renewed: number; expired: number }> {
-  const { data: packages } = await admin
+  const { data: abgelaufen } = await admin
     .from("packages")
     .select(PACKAGE_FIELDS)
     .eq("status", "active")
@@ -253,10 +392,20 @@ async function processExpiredPackages(
     .limit(50)
     .overrideTypes<PackageJobRow[]>();
 
+  // Zwei Wege führen zum Abschluss: die Laufzeit ist um, oder die Lektionen
+  // sind aufgebraucht. Beide enden gleich – nur der Grund unterscheidet sich,
+  // und davon hängt ab, ob Lektionen verfallen.
+  const aufgebraucht = await findeAufgebrauchtePakete(admin, now);
+  const gesehen = new Set((abgelaufen ?? []).map((p) => p.id));
+  const packages = [
+    ...(abgelaufen ?? []),
+    ...aufgebraucht.filter((p) => !gesehen.has(p.id)),
+  ];
+
   let renewed = 0;
   let expired = 0;
 
-  for (const pkg of packages ?? []) {
+  for (const pkg of packages) {
     const remaining = Math.max(
       0,
       Number(pkg.lessons_total ?? 0) - Number(pkg.lessons_used ?? 0)
@@ -275,6 +424,14 @@ async function processExpiredPackages(
       continue;
     }
     expired++;
+
+    // Noch offene Raten zu **einer** Schlussrechnung zusammenziehen.
+    //
+    // Der Betrag ist sauber geschuldet – bezahlt wird das Paket, nicht die
+    // einzelne Lektion. Es geht allein um die Übersicht: liefe der alte
+    // Ratenplan neben dem neuen weiter, sähe der Schüler zwei Zahlungspläne
+    // gleichzeitig und wüsste nicht mehr, wofür er zahlt.
+    await zieheRestratenZusammen(admin, pkg, now);
 
     // Nicht genutzte Lektionen verfallen – darüber wird informiert.
     if (remaining > 0) {
@@ -305,21 +462,27 @@ async function processExpiredPackages(
       .maybeSingle<ProfileRow>();
     if (!profile) continue;
 
-    const termMonths = SUBSCRIPTION_TERM_MONTHS[type];
+    // Rhythmus und Buchungsart des Vorgängers weiterführen. Wer einen
+    // Fixplatz am Dienstag um 17:15 hatte, will ihn behalten – ein
+    // Verlängerungspaket, das stillschweigend auf wöchentlich/flexibel
+    // zurückfällt, wäre eine andere Leistung als die gekaufte.
+    const rhythmus: Rhythmus =
+      pkg.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich";
     const startDay = todayInZurich(now);
     const lessonsTotal = PACKAGE_LESSONS[type];
+    const termMonths = termMonthsForType(type, rhythmus);
     const ppl = Number(pkg.price_per_lesson ?? 0);
     const totalPrice = Number(pkg.total_price ?? ppl * lessonsTotal);
-    const expiresOn = addMonths(startDay, termMonths);
+    const expiresOn = expiryFor(lessonsTotal, rhythmus, startDay);
 
     // Ratenplan schon hier berechnen: die Check-Constraint
     // `packages_raten_complete_check` verlangt, dass ein Ratenpaket
     // Anzahlung, Ratenanzahl und Ratenhöhe bereits beim Insert mitbringt.
-    // buildInstalmentPlan ist deterministisch, createInstalmentSchedule
+    // buildPlanForRhythmus ist deterministisch, createInstalmentSchedule
     // unten erzeugt daher exakt denselben Plan.
     const renewalPlan =
       pkg.billing_mode === "raten"
-        ? buildInstalmentPlan(type, totalPrice, startDay)
+        ? buildPlanForRhythmus(type, totalPrice, startDay, rhythmus)
         : null;
 
     const { data: next, error: insErr } = await admin
@@ -336,12 +499,17 @@ async function processExpiredPackages(
         expires_at: `${expiresOn}T12:00:00.000Z`,
         status: "active",
         billing_mode: pkg.billing_mode,
-        term_months: termMonths,
+        term_months: Math.round(termMonths),
         auto_renew: true,
         renewed_from_package_id: pkg.id,
         deposit_amount: renewalPlan ? renewalPlan.depositAmount : null,
         instalment_count: renewalPlan ? renewalPlan.instalmentCount : null,
         instalment_amount: renewalPlan ? renewalPlan.instalmentAmount : null,
+        rhythmus,
+        booking_mode: pkg.booking_mode ?? "flex",
+        fixplatz_weekday: pkg.fixplatz_weekday,
+        fixplatz_time: pkg.fixplatz_time,
+        fixplatz_week_parity: pkg.fixplatz_week_parity,
       })
       .select(PACKAGE_FIELDS)
       .maybeSingle<PackageJobRow>();
@@ -359,6 +527,7 @@ async function processExpiredPackages(
         type,
         totalPrice,
         startDate: startDay,
+        rhythmus,
       });
       if ("error" in result) {
         console.error("[abo] Ratenplan der Verlängerung:", next.id, result.error);
@@ -366,6 +535,36 @@ async function processExpiredPackages(
     } else {
       const { createPackageInvoice } = await import("@/lib/package-invoice");
       await createPackageInvoice(admin, next, profile);
+    }
+
+    // Fixplatz nahtlos fortsetzen: dieselbe Zeit, dieselbe Wochenparität.
+    if (
+      next.booking_mode === "fix" &&
+      next.fixplatz_weekday != null &&
+      next.fixplatz_time
+    ) {
+      const serie = await bookFixplatzSeries(admin, {
+        studentId: pkg.student_id,
+        packageId: next.id,
+        wunsch: {
+          weekday: Number(next.fixplatz_weekday),
+          time: String(next.fixplatz_time).slice(0, 5),
+          rhythmus,
+          lessons: lessonsTotal,
+        },
+        parity:
+          next.fixplatz_week_parity == null
+            ? null
+            : ((Number(next.fixplatz_week_parity) === 1 ? 1 : 0) as 0 | 1),
+        now,
+      });
+      if ("error" in serie) {
+        console.error(
+          "[abo] Fixplatz-Serie der Verlängerung:",
+          next.id,
+          serie.error
+        );
+      }
     }
 
     await enqueueOnce(

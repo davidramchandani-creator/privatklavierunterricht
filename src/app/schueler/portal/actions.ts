@@ -939,6 +939,7 @@ export async function buyPackage(
       type,
       totalPrice,
       startDate: startDay,
+      rhythmus,
     });
   } else {
     // Einmalzahlung: Gesamtpreis sofort in Rechnung stellen (15 Tage Frist).

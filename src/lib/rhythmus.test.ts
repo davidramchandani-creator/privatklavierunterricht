@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  ABSCHLUSS_PUFFER_TAGE,
   addTermMonths,
   buildPlanForRhythmus,
   computeRhythmusChange,
   expiryFor,
   flexMehrkosten,
+  instalmentCountFor,
   intervalDaysFor,
   isoWeek,
+  lessonMonths,
   nextMatchingDate,
   priceWithBookingMode,
   rescheduleOpenInstalments,
@@ -60,7 +63,34 @@ describe("addTermMonths – gebrochene Laufzeiten", () => {
   });
 });
 
-describe("Ratenplan folgt dem Rhythmus", () => {
+describe("Wie lange die Lektionen wirklich dauern", () => {
+  it("rechnet über die Abstände, nicht über die Lektionszahl", () => {
+    // Bei 10 Lektionen liegen 9 Intervalle dazwischen, nicht 10.
+    expect(lessonMonths(10, "woechentlich")).toBe(2.07);
+    expect(lessonMonths(10, "zweiwoechentlich")).toBe(4.14);
+    expect(lessonMonths(20, "woechentlich")).toBe(4.37);
+    expect(lessonMonths(20, "zweiwoechentlich")).toBe(8.74);
+  });
+
+  it("liegt immer deutlich unter der Laufzeit – das ist der Puffer", () => {
+    for (const lektionen of [10, 20] as const) {
+      for (const r of ["woechentlich", "zweiwoechentlich"] as const) {
+        const typ = lektionen === 10 ? "10er" : "20er";
+        expect(lessonMonths(lektionen, r)).toBeLessThan(termMonthsForType(typ, r));
+      }
+    }
+  });
+
+  it("kommt mit einer einzelnen Lektion klar", () => {
+    expect(lessonMonths(1, "woechentlich")).toBe(0);
+    expect(instalmentCountFor(1, "woechentlich")).toBe(1);
+  });
+});
+
+describe("Ratenplan folgt der Unterrichtsdauer, nicht der Laufzeit", () => {
+  // Der Grund: Wer seine 10 Lektionen wöchentlich bezieht, ist nach gut
+  // 2 Monaten fertig. Laufzeitgekoppelte Raten liefen noch 2 Monate weiter,
+  // ohne dass Unterricht stattfindet – und überlappten mit dem Folgepaket.
   const faelle: Array<{
     typ: "10er" | "20er";
     preis: number;
@@ -68,10 +98,10 @@ describe("Ratenplan folgt dem Rhythmus", () => {
     raten: number;
     anzahlung: number;
   }> = [
-    { typ: "10er", preis: 700, rhythmus: "woechentlich", raten: 4, anzahlung: 175 },
-    { typ: "10er", preis: 700, rhythmus: "zweiwoechentlich", raten: 6, anzahlung: 175 },
-    { typ: "20er", preis: 1300, rhythmus: "woechentlich", raten: 8, anzahlung: 325 },
-    { typ: "20er", preis: 1300, rhythmus: "zweiwoechentlich", raten: 12, anzahlung: 325 },
+    { typ: "10er", preis: 700, rhythmus: "woechentlich", raten: 2, anzahlung: 175 },
+    { typ: "10er", preis: 700, rhythmus: "zweiwoechentlich", raten: 4, anzahlung: 175 },
+    { typ: "20er", preis: 1300, rhythmus: "woechentlich", raten: 4, anzahlung: 325 },
+    { typ: "20er", preis: 1300, rhythmus: "zweiwoechentlich", raten: 9, anzahlung: 325 },
   ];
 
   for (const f of faelle) {
@@ -91,12 +121,41 @@ describe("Ratenplan folgt dem Rhythmus", () => {
     }
   });
 
+  it("ist mit der Zahlung fertig, bevor die Lektionen es sind", () => {
+    // Der eigentliche Zweck der Umstellung: keine Raten mehr offen, wenn
+    // der Unterricht durch ist. Sonst laufen beim Folgepaket zwei
+    // Zahlungspläne nebeneinander.
+    for (const f of faelle) {
+      const plan = buildPlanForRhythmus(f.typ, f.preis, "2026-08-09", f.rhythmus);
+      const lektionen = f.typ === "10er" ? 10 : 20;
+      const letzteRate = plan.entries[plan.entries.length - 1].dueDate;
+      const lektionenFertig = addTermMonths(
+        "2026-08-09",
+        lessonMonths(lektionen, f.rhythmus)
+      );
+      // Höchstens ein paar Tage Überhang – nie Monate.
+      const tageDanach =
+        (Date.parse(`${letzteRate}T00:00:00Z`) -
+          Date.parse(`${lektionenFertig}T00:00:00Z`)) /
+        86400000;
+      expect(tageDanach).toBeLessThanOrEqual(10);
+    }
+  });
+
   it("macht zweiwöchentlich kleinere Raten als wöchentlich", () => {
     const woe = buildPlanForRhythmus("10er", 700, "2026-08-09", "woechentlich");
     const zwei = buildPlanForRhythmus("10er", 700, "2026-08-09", "zweiwoechentlich");
-    expect(woe.instalmentAmount).toBe(131.25);
-    expect(zwei.instalmentAmount).toBe(87.5);
+    expect(woe.instalmentAmount).toBe(262.5);
+    expect(zwei.instalmentAmount).toBe(131.25);
     expect(zwei.instalmentAmount).toBeLessThan(woe.instalmentAmount);
+  });
+
+  it("lässt die Gültigkeit unangetastet – der Puffer bleibt", () => {
+    // Die Raten wurden kürzer, das Ablaufdatum nicht. Wer krank wird, hat
+    // weiterhin die volle Laufzeit, um die Lektionen zu beziehen.
+    const plan = buildPlanForRhythmus("10er", 700, "2026-08-09", "woechentlich");
+    expect(plan.expiresOn).toBe("2026-12-09");
+    expect(plan.termMonths).toBe(4);
   });
 });
 
@@ -233,6 +292,14 @@ describe("Flex-Aufschlag", () => {
 
   it("respektiert einen abweichenden Aufschlag", () => {
     expect(priceWithBookingMode(70, "flex", 20)).toBe(84);
+  });
+});
+
+describe("Abschluss-Puffer", () => {
+  it("gibt einer Nachholstunde noch eine Woche Zeit", () => {
+    // Ein aufgebrauchtes Paket wird nicht sofort geschlossen: es könnte
+    // noch ein Ausweichtermin hereinkommen.
+    expect(ABSCHLUSS_PUFFER_TAGE).toBe(7);
   });
 });
 

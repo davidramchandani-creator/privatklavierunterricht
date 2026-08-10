@@ -6,6 +6,7 @@ import {
   type InstalmentPlan,
   type SubscriptionType,
 } from "@/lib/subscription";
+import { buildPlanForRhythmus, type Rhythmus } from "@/lib/rhythmus";
 
 /** Zahlungsfrist für Paket-Rechnungen in Tagen (Spec: Zahlung innert 15 Tagen fällig). */
 export const PACKAGE_INVOICE_DUE_DAYS = 15;
@@ -160,9 +161,26 @@ export async function createInstalmentSchedule(
   admin: SupabaseClient,
   pkg: PackageRow,
   profile: ProfileRow,
-  opts: { type: SubscriptionType; totalPrice: number; startDate: string }
+  opts: {
+    type: SubscriptionType;
+    totalPrice: number;
+    startDate: string;
+    /**
+     * Muss übergeben werden, sobald das Paket einen Rhythmus hat. Der Plan
+     * hängt davon ab (Raten folgen der Unterrichtsdauer) — ohne den Rhythmus
+     * entstünden hier andere Raten als in den Paketspalten stehen.
+     */
+    rhythmus?: Rhythmus;
+  }
 ): Promise<{ plan: InstalmentPlan; invoiceId: string } | { error: string }> {
-  const plan = buildInstalmentPlan(opts.type, opts.totalPrice, opts.startDate);
+  const plan = opts.rhythmus
+    ? buildPlanForRhythmus(
+        opts.type,
+        opts.totalPrice,
+        opts.startDate,
+        opts.rhythmus
+      )
+    : buildInstalmentPlan(opts.type, opts.totalPrice, opts.startDate);
 
   const { data: rows, error } = await admin
     .from("package_instalments")
