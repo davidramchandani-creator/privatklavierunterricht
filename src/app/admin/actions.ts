@@ -12,20 +12,53 @@ import {
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
 import { enqueueEmail, sendEmailNow } from "@/lib/emails-outbox";
-import { createPackageInvoice } from "@/lib/package-invoice";
+import {
+  createInstalmentSchedule,
+  createPackageInvoice,
+  issueInstalmentInvoice,
+} from "@/lib/package-invoice";
+import {
+  todayInZurich,
+  type SubscriptionType,
+} from "@/lib/subscription";
+import {
+  buildPlanForRhythmus,
+  computeRhythmusChange,
+  expiryFor,
+  rescheduleOpenInstalments,
+  RHYTHMUS_LABELS,
+  termMonthsForType,
+  type BookingMode,
+  type Rhythmus,
+} from "@/lib/rhythmus";
+import { describeFixplatz } from "@/lib/fixplatz";
+import { bookFixplatzSeries } from "@/lib/fixplatz-server";
+import { meldeAusfall } from "@/lib/ausfall";
+import { findeFixplaetze, type FixplatzAngebot } from "@/lib/fixplatz-suche";
+import {
+  ABO_LABELS,
+  aboAusstiegAbrechnung,
+  type AusstiegAbrechnung,
+} from "@/lib/abo";
+import {
+  baueVorschau,
+  legeMonatsratenAn,
+  naechsterPeriodenstart,
+  type AboVorschau,
+} from "@/lib/abo-server";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   type Package as Paket,
   PACKAGE_LABELS,
   PACKAGE_LESSONS,
-  PACKAGE_VALIDITY_MONTHS,
   canBuyNewPackage,
   canCancelPackage,
   computeCancellationSettlement,
   computePackageState,
 } from "@/lib/packages";
-import { addMonths, zurichLocalToIso } from "@/lib/utils";
+import { zurichLocalToIso } from "@/lib/utils";
 import { cancelLessonReminders, scheduleLessonReminders } from "@/lib/reminders";
+import { travelToBuffer } from "@/lib/gap-slots";
 import {
   syncAppointmentToCalendar,
   deleteCalendarEvent,
@@ -35,7 +68,34 @@ import {
 
 // ── Schüler ──────────────────────────────────────────────────────────────────
 
+/**
+ * Stellt sicher, dass der Aufrufer wirklich Admin ist.
+ *
+ * Die Middleware schützt nur die /admin-Seiten. Server Actions sind darüber
+ * hinaus direkt aufrufbar, deshalb muss jede Action, die mit dem
+ * Service-Role-Client schreibt, die Rolle selbst prüfen.
+ */
+async function assertAdmin(): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.role !== "admin") return { error: "Keine Berechtigung." };
+  return null;
+}
+
 export async function inviteSchueler(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const email = formData.get("email") as string;
   const vorname = formData.get("vorname") as string;
   const nachname = formData.get("nachname") as string;
@@ -77,10 +137,13 @@ export async function inviteSchueler(formData: FormData) {
   }
 
   revalidatePath("/admin/schueler");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function createSchuelerDirekt(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const email = (formData.get("email") as string)?.trim();
   const vorname = (formData.get("vorname") as string)?.trim();
   const nachname = (formData.get("nachname") as string)?.trim();
@@ -127,10 +190,13 @@ export async function createSchuelerDirekt(formData: FormData) {
   }
 
   revalidatePath("/admin/schueler");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function updateSchueler(id: string, formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const adminClient = await createAdminClient();
 
   const vorname = formData.get("vorname") as string;
@@ -149,10 +215,13 @@ export async function updateSchueler(id: string, formData: FormData) {
 
   revalidatePath(`/admin/schueler/${id}`);
   revalidatePath("/admin/schueler");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function deleteSchueler(id: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const adminClient = await createAdminClient();
   // Pending Zahlungsmails abbrechen (scheduled_emails hat kein FK zum Schüler).
   await adminClient
@@ -164,19 +233,25 @@ export async function deleteSchueler(id: string) {
   if (error) return { error: error.message };
   revalidatePath("/admin/schueler");
   revalidatePath(`/admin/schueler/${id}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function reactivateSchueler(id: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const adminClient = await createAdminClient();
   const { error } = await adminClient.from("profiles").update({ aktiv: true }).eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/admin/schueler");
   revalidatePath(`/admin/schueler/${id}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function hardDeleteSchueler(id: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const adminClient = await createAdminClient();
 
   // Vor dem Löschen aufräumen: scheduled_emails hat kein FK → würde sonst ins Leere senden.
@@ -204,10 +279,13 @@ export async function hardDeleteSchueler(id: string) {
   if (error) return { error: error.message };
 
   revalidatePath("/admin/schueler");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function resendInvite(email: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
   const adminClient = await createAdminClient();
 
@@ -249,7 +327,7 @@ export async function resendInvite(email: string) {
     return { error: err instanceof Error ? err.message : String(err) };
   }
 
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 
@@ -259,6 +337,9 @@ export async function updateInvoiceStatus(
   id: string,
   status: "paid" | "rejected" | "archived"
 ) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const adminClient = await createAdminClient();
 
   const update: Record<string, unknown> = { status };
@@ -273,9 +354,57 @@ export async function updateInvoiceStatus(
 
   revalidatePath("/admin/zahlungen");
   revalidatePath("/admin");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
+
+/**
+ * Stellt eine Rate sofort in Rechnung, auch wenn der Stichtag noch nicht
+ * erreicht ist. Nützlich, wenn ein Schüler früher zahlen möchte oder eine
+ * Rechnung nachgereicht werden muss.
+ *
+ * Idempotent: Raten mit bestehender Rechnung werden übersprungen.
+ */
+export async function issueInstalmentNow(instalmentId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const adminClient = await createAdminClient();
+
+  const { data: inst } = await adminClient
+    .from("package_instalments")
+    .select("id, package_id, student_id, sequence, kind, amount, due_date, invoice_id, status")
+    .eq("id", instalmentId)
+    .maybeSingle();
+
+  if (!inst) return { error: "Rate nicht gefunden." };
+  if (inst.invoice_id) return { error: "Für diese Rate gibt es bereits eine Rechnung." };
+  if (inst.status === "cancelled") return { error: "Diese Rate ist storniert." };
+
+  const { data: pkg } = await adminClient
+    .from("packages")
+    .select("id, student_id, type, total_price, price_per_lesson, payment_method, instalment_count, status")
+    .eq("id", inst.package_id)
+    .maybeSingle();
+
+  if (!pkg) return { error: "Paket nicht gefunden." };
+
+  const { data: profile } = await adminClient
+    .from("profiles")
+    .select("vorname, nachname, adresse, email, payment_method")
+    .eq("id", inst.student_id)
+    .maybeSingle();
+
+  if (!profile) return { error: "Profil nicht gefunden." };
+
+  const result = await issueInstalmentInvoice(adminClient, inst, pkg, profile);
+  if ("error" in result) return { error: result.error };
+
+  revalidatePath("/admin/zahlungen");
+  revalidatePath(`/admin/schueler/${inst.student_id}`);
+  revalidatePath("/admin");
+  return { success: true, error: undefined };
+}
 
 // ── Verfügbarkeit ─────────────────────────────────────────────────────────────
 
@@ -284,10 +413,32 @@ export type VerfuegbarkeitSlot = {
   beginn_zeit: string;
   ende_zeit: string;
   aktiv: boolean;
+  /** Dauer einer Lektion in diesem Block (Minuten). */
+  lesson_minutes: number;
+  /** Untergrenze für den Puffer zwischen zwei Lektionen (Minuten). */
+  min_buffer_minutes: number;
+  /** lueckenlos = bündig aneinander; maximal = mehr Auswahl, kleine Löcher. */
+  packing: "lueckenlos" | "maximal";
 };
 
 export async function updateVerfuegbarkeit(slots: VerfuegbarkeitSlot[]) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const supabase = await createClient();
+
+  // Plausibilität serverseitig prüfen – nie dem Formular vertrauen.
+  for (const s of slots) {
+    if (s.lesson_minutes < 15 || s.lesson_minutes > 180) {
+      return { error: "Die Lektionsdauer muss zwischen 15 und 180 Minuten liegen." };
+    }
+    if (s.min_buffer_minutes < 0 || s.min_buffer_minutes > 120) {
+      return { error: "Der Puffer muss zwischen 0 und 120 Minuten liegen." };
+    }
+    if (s.aktiv && s.ende_zeit <= s.beginn_zeit) {
+      return { error: "Die Endzeit muss nach der Startzeit liegen." };
+    }
+  }
 
   // Delete all existing
   const { error: deleteError } = await supabase
@@ -303,12 +454,15 @@ export async function updateVerfuegbarkeit(slots: VerfuegbarkeitSlot[]) {
   }
 
   revalidatePath("/admin/verfuegbarkeit");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 // ── Preise ────────────────────────────────────────────────────────────────────
 
 export async function updatePreise(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const supabase = await createClient();
 
   const typen = ["einzellektion", "10er", "20er"] as const;
@@ -339,7 +493,7 @@ export async function updatePreise(formData: FormData) {
   }
 
   revalidatePath("/admin/preise");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 // ── Terminanfragen (booking_requests) ───────────────────────────────────────
@@ -351,6 +505,9 @@ export async function updatePreise(formData: FormData) {
  * 24h-Vorlaufregel wird als Admin-Aktion übersprungen.
  */
 export async function acceptBookingRequest(requestId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: req } = await admin
@@ -427,11 +584,14 @@ export async function acceptBookingRequest(requestId: string) {
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
   revalidatePath(`/admin/schueler/${req.student_id}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Admin lehnt eine Terminanfrage ab (optional mit Begründung). */
 export async function rejectBookingRequest(requestId: string, reason?: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: req } = await admin
@@ -458,7 +618,7 @@ export async function rejectBookingRequest(requestId: string, reason?: string) {
   });
 
   revalidatePath("/admin/terminanfragen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /**
@@ -467,6 +627,9 @@ export async function rejectBookingRequest(requestId: string, reason?: string) {
  * ausgenommen) und verschiebt den Termin auf den neuen Zeitpunkt.
  */
 export async function acceptReschedule(rescheduleId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: rr } = await admin
@@ -556,11 +719,14 @@ export async function acceptReschedule(rescheduleId: string) {
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
   revalidatePath(`/admin/schueler/${rr.student_id}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Admin lehnt eine Verschiebungsanfrage ab (optional mit Begründung). */
 export async function rejectReschedule(rescheduleId: string, reason?: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: rr } = await admin
@@ -588,7 +754,7 @@ export async function rejectReschedule(rescheduleId: string, reason?: string) {
   });
 
   revalidatePath("/admin/terminanfragen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 // ── Admin: Preise, Pakete, Direktbuchung, Termine (neues Schema) ─────────────
@@ -599,10 +765,21 @@ export async function updateStudentPrices(
   schuelerId: string,
   formData: FormData
 ) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const update: Record<string, number | string> = {};
-  const fields = ["price_single", "price_10er", "price_20er", "travel_surcharge"] as const;
+  // price_10er/price_20er bleiben in der Datenbank, werden aber nicht mehr
+  // gepflegt: sie gehören zu den auslaufenden Lektionspaketen. Die Abo-Preise
+  // stehen in price_halbjahr/price_jahr.
+  const fields = [
+    "price_single",
+    "price_halbjahr",
+    "price_jahr",
+    "travel_surcharge",
+  ] as const;
   for (const f of fields) {
     const v = parseFloat(formData.get(f) as string);
     if (!isNaN(v) && v >= 0) update[f] = v;
@@ -617,19 +794,22 @@ export async function updateStudentPrices(
   const pm = formData.get("payment_method") as string | null;
   if (pm === "twint" || pm === "qr") update.payment_method = pm;
 
-  if (Object.keys(update).length === 0) return { success: true };
+  if (Object.keys(update).length === 0) return { success: true, error: undefined };
 
   const { error } = await admin.from("profiles").update(update).eq("id", userId);
   if (error) return { error: error.message };
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Berechnet die Fahrzeit vom Admin-Standort zur Schüleradresse via Google Maps. */
 export async function calculateTravelBuffer(
   studentAddress: string
 ): Promise<{ minutes: number } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) return { error: "GOOGLE_MAPS_API_KEY nicht konfiguriert." };
 
@@ -655,9 +835,11 @@ export async function calculateTravelBuffer(
     }
     const element = json.rows?.[0]?.elements?.[0];
     if (!element || element.status !== "OK") return { error: "Adresse nicht gefunden." };
-    // Sekunden → Minuten, auf 5 Minuten aufrunden
+    // Sekunden → Minuten, danach auf das Buchungsraster (15 Min) aufrunden.
+    // Nur so bleiben die Startzeiten sauber: 20 Minuten Fahrt ergeben einen
+    // Puffer von 30 Minuten, nicht 20.
     const rawMin = Math.ceil(element.duration.value / 60);
-    const minutes = Math.ceil(rawMin / 5) * 5;
+    const minutes = travelToBuffer(rawMin);
     return { minutes };
   } catch (err) {
     console.error("[calculateTravelBuffer] Unerwarteter Fehler:", err);
@@ -667,6 +849,9 @@ export async function calculateTravelBuffer(
 
 /** Admin legt einem Schüler ein Paket an (neues Schema). */
 export async function createPackageAdmin(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const userId = formData.get("student_user_id") as string;
@@ -695,9 +880,60 @@ export async function createPackageAdmin(formData: FormData) {
   }
 
   const lessonsTotal = PACKAGE_LESSONS[type];
-  const validityMonths = PACKAGE_VALIDITY_MONTHS[type];
   const startsAt = new Date();
-  const expiresAt = validityMonths != null ? addMonths(startsAt, validityMonths) : null;
+  const startDay = todayInZurich(startsAt);
+  const totalPrice = pricePerLesson * lessonsTotal;
+
+  // Rhythmus und Buchungsart – bei einer Einzellektion gibt es beides nicht.
+  const istPaket = type !== "single";
+  const rhythmus: Rhythmus =
+    istPaket && (formData.get("rhythmus") as string) === "zweiwoechentlich"
+      ? "zweiwoechentlich"
+      : "woechentlich";
+  const bookingMode: BookingMode =
+    istPaket && (formData.get("booking_mode") as string) === "fix" ? "fix" : "flex";
+
+  const fixWeekdayRaw = formData.get("fixplatz_weekday") as string | null;
+  const fixTime = (formData.get("fixplatz_time") as string) || null;
+  const fixParityRaw = formData.get("fixplatz_week_parity") as string | null;
+  const fixplatz =
+    bookingMode === "fix" && fixWeekdayRaw && fixTime
+      ? {
+          weekday: Number(fixWeekdayRaw),
+          time: fixTime,
+          parity:
+            rhythmus === "zweiwoechentlich" && fixParityRaw
+              ? ((Number(fixParityRaw) === 1 ? 1 : 0) as 0 | 1)
+              : null,
+        }
+      : null;
+
+  if (bookingMode === "fix" && !fixplatz) {
+    return { error: "Für einen Fixplatz braucht es Wochentag und Uhrzeit." };
+  }
+
+  // Laufzeit: bei Paketen nach Rhythmus, bei der Einzellektion unbegrenzt.
+  const termMonths = istPaket ? termMonthsForType(type as SubscriptionType, rhythmus) : null;
+  const expiresAt = istPaket
+    ? new Date(`${expiryFor(lessonsTotal, rhythmus, startDay)}T23:59:59.000Z`)
+    : null;
+
+  // Zahlungsmodell – identisch zum Schülerportal. Ratenkauf gibt es nur
+  // für 10er/20er, eine Einzellektion wird immer einmalig verrechnet.
+  const billingMode =
+    (formData.get("billing_mode") as string) === "raten" && istPaket
+      ? "raten"
+      : "einmalig";
+  const autoRenew = formData.get("auto_renew") === "on" && istPaket;
+  const ratenPlan =
+    billingMode === "raten"
+      ? buildPlanForRhythmus(
+          type as SubscriptionType,
+          totalPrice,
+          startDay,
+          rhythmus
+        )
+      : null;
 
   const { data: pkg, error } = await admin
     .from("packages")
@@ -708,32 +944,628 @@ export async function createPackageAdmin(formData: FormData) {
       lessons_used: 0,
       name: PACKAGE_LABELS[type],
       price_per_lesson: pricePerLesson,
-      total_price: pricePerLesson * lessonsTotal,
+      total_price: totalPrice,
       payment_method: paymentMethod,
       starts_at: startsAt.toISOString(),
       expires_at: expiresAt ? expiresAt.toISOString() : null,
       status: "active",
+      billing_mode: billingMode,
+      term_months: termMonths != null ? Math.round(termMonths) : null,
+      auto_renew: autoRenew,
+      deposit_amount: ratenPlan ? ratenPlan.depositAmount : null,
+      instalment_count: ratenPlan ? ratenPlan.instalmentCount : null,
+      instalment_amount: ratenPlan ? ratenPlan.instalmentAmount : null,
+      rhythmus: istPaket ? rhythmus : null,
+      booking_mode: bookingMode,
+      fixplatz_weekday: fixplatz?.weekday ?? null,
+      fixplatz_time: fixplatz?.time ?? null,
+      fixplatz_week_parity: fixplatz?.parity ?? null,
+      // Der Admin setzt den Preis von Hand – ein automatischer Flex-Aufschlag
+      // würde ihn überschreiben. Darum hier bewusst 0.
+      flex_surcharge_percent: 0,
     })
-    .select("id, student_id, type, total_price, price_per_lesson, payment_method")
+    .select(
+      "id, student_id, type, total_price, price_per_lesson, payment_method, instalment_count"
+    )
     .single();
 
-  if (error || !pkg) return { error: error?.message ?? "Paket konnte nicht erstellt werden." };
+  if (error || !pkg) {
+    if (error?.code === "23505") {
+      return { error: "Dieser Schüler hat bereits ein aktives Paket." };
+    }
+    return { error: error?.message ?? "Paket konnte nicht erstellt werden." };
+  }
 
-  // Gesamten Paketpreis sofort in Rechnung stellen (Zahlung innert 15 Tagen).
-  await createPackageInvoice(admin, pkg, {
+  const payer = {
     vorname: prof?.vorname ?? null,
     nachname: prof?.nachname ?? null,
     adresse: prof?.adresse ?? null,
     email: prof?.email ?? null,
     payment_method: prof?.payment_method ?? null,
+  };
+
+  if (ratenPlan) {
+    // Ratenkauf: Plan anlegen, sofort nur die Anzahlung fakturieren.
+    await createInstalmentSchedule(admin, pkg, payer, {
+      type: type as SubscriptionType,
+      totalPrice,
+      startDate: startDay,
+      rhythmus,
+    });
+  } else {
+    // Einmalzahlung: Gesamtpreis sofort in Rechnung stellen (15 Tage Frist).
+    await createPackageInvoice(admin, pkg, payer);
+  }
+
+  // Paketbestätigung an den Schüler – erklärt, was als Nächstes zu tun ist.
+  await sendEmailNow(admin, "package_created", {
+    student_id: userId,
+    student_name: `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined,
+    package_label: PACKAGE_LABELS[type] ?? type,
+    lessons_total: lessonsTotal,
+    total_price: totalPrice,
+    billing_mode: billingMode,
+    deposit_amount: ratenPlan?.depositAmount,
+    expires_at: expiresAt ? expiresAt.toISOString() : null,
+    plan: ratenPlan
+      ? ratenPlan.entries.map((e) => ({
+          label: e.kind === "anzahlung" ? "Anzahlung" : `Rate ${e.sequence}`,
+          amount: e.amount,
+          dueDate: e.dueDate,
+        }))
+      : null,
+  });
+
+  // Fixplatz: die ganze Serie sofort anlegen, damit der Platz belegt ist und
+  // der Schüler nichts mehr einzeln buchen muss.
+  if (fixplatz && istPaket) {
+    const serie = await bookFixplatzSeries(admin, {
+      studentId: userId,
+      packageId: pkg.id,
+      wunsch: {
+        weekday: fixplatz.weekday,
+        time: fixplatz.time,
+        rhythmus,
+        lessons: lessonsTotal,
+      },
+      parity: fixplatz.parity,
+    });
+
+    if (!("error" in serie)) {
+      const { data: termine } = await admin
+        .from("appointments")
+        .select("start_at")
+        .in("id", serie.appointmentIds)
+        .order("start_at");
+
+      await sendEmailNow(admin, "fixplatz_confirmed", {
+        student_id: userId,
+        student_name:
+          `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined,
+        fixplatz_text: describeFixplatz(
+          fixplatz.weekday,
+          fixplatz.time,
+          rhythmus,
+          fixplatz.parity
+        ),
+        termine: (termine ?? []).map((t) => t.start_at as string),
+        verschoben: serie.verschoben.map((v) => ({
+          original: v.original.toISOString(),
+          ersatz: v.ersatz.toISOString(),
+        })),
+        offen: serie.offen.map((d) => d.toISOString()),
+      });
+    }
+    // Bei einem Fehler bleibt das Paket bestehen – die Lektionen sind
+    // gutgeschrieben, nur die Serie fehlt und lässt sich nachtragen.
+  }
+
+  revalidatePath(`/admin/schueler/${schuelerId}`);
+  revalidatePath("/admin/zahlungen");
+  revalidatePath("/admin/kalender");
+  return { success: true, error: undefined };
+}
+
+/**
+ * Abo für einen Schüler anlegen – dieselbe Rechnung wie im Portal.
+ *
+ * Bewusst über dieselbe `baueVorschau`, damit im Admin garantiert dieselbe
+ * Lektionszahl und derselbe Monatsbetrag herauskommen wie beim
+ * Selbstabschluss. Zwei getrennte Rechenwege wären die sichere Quelle für
+ * Abweichungen, die niemand bemerkt.
+ */
+export async function aboAnlegenAdmin(
+  formData: FormData
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const studentId = String(formData.get("student_user_id") ?? "");
+  const schuelerId = String(formData.get("schueler_id") ?? "");
+  const variante = String(formData.get("abo_variante") ?? "halbjahr") as
+    | "halbjahr"
+    | "jahr";
+  const rhythmus: Rhythmus =
+    String(formData.get("rhythmus")) === "zweiwoechentlich"
+      ? "zweiwoechentlich"
+      : "woechentlich";
+  const bookingMode: BookingMode =
+    String(formData.get("booking_mode")) === "flex" ? "flex" : "fix";
+  const autoRenew = formData.get("auto_renew") === "on";
+
+  const fixWeekdayRaw = formData.get("fixplatz_weekday") as string | null;
+  const fixTime = (formData.get("fixplatz_time") as string) || null;
+  const fixParityRaw = formData.get("fixplatz_week_parity") as string | null;
+
+  if (!studentId) return { error: "Kein Schüler angegeben." };
+  if (variante !== "halbjahr" && variante !== "jahr") {
+    return { error: "Ungültige Abo-Variante." };
+  }
+
+  const fixplatz =
+    bookingMode === "fix" && fixWeekdayRaw && fixTime
+      ? {
+          weekday: Number(fixWeekdayRaw),
+          time: fixTime,
+          parity:
+            rhythmus === "zweiwoechentlich" && fixParityRaw
+              ? ((Number(fixParityRaw) === 1 ? 1 : 0) as 0 | 1)
+              : null,
+        }
+      : null;
+
+  if (bookingMode === "fix" && !fixplatz) {
+    return { error: "Für einen Fixplatz braucht es Wochentag und Uhrzeit." };
+  }
+
+  const admin = await createAdminClient();
+
+  const { data: bestehend } = await admin
+    .from("packages")
+    .select("id, status")
+    .eq("student_id", studentId)
+    .eq("status", "active")
+    .maybeSingle();
+  if (bestehend) {
+    return { error: "Dieser Schüler hat bereits ein aktives Abo oder Paket." };
+  }
+
+  const periodeStart = naechsterPeriodenstart(todayInZurich());
+  const vorschau = await baueVorschau(admin, {
+    studentId,
+    variante,
+    rhythmus,
+    bookingMode,
+    weekday: fixplatz?.weekday ?? 3,
+    periodeStart,
+  });
+
+  if (vorschau.lektionen < 1) {
+    return { error: "In diesem Zeitraum liegen keine Unterrichtstermine." };
+  }
+
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("vorname, nachname, adresse, email, payment_method")
+    .eq("id", studentId)
+    .maybeSingle();
+
+  const { data: pkg, error } = await admin
+    .from("packages")
+    .insert({
+      student_id: studentId,
+      type: variante === "halbjahr" ? "10er" : "20er",
+      lessons_total: vorschau.lektionen,
+      lessons_used: 0,
+      name: `${ABO_LABELS[variante]} · ${
+        rhythmus === "woechentlich" ? "wöchentlich" : "alle zwei Wochen"
+      }`,
+      price_per_lesson: vorschau.preisProLektion,
+      total_price: vorschau.gesamtpreis,
+      payment_method: prof?.payment_method ?? "qr",
+      starts_at: new Date(`${periodeStart}T00:00:00.000Z`).toISOString(),
+      expires_at: new Date(`${vorschau.periodeEnde}T23:59:59.000Z`).toISOString(),
+      status: "active",
+      billing_mode: "raten",
+      term_months: vorschau.laufzeitMonate,
+      auto_renew: autoRenew,
+      deposit_amount: 0,
+      instalment_count: vorschau.laufzeitMonate,
+      instalment_amount: vorschau.monatsbetrag,
+      rhythmus,
+      booking_mode: bookingMode,
+      fixplatz_weekday: fixplatz?.weekday ?? null,
+      fixplatz_time: fixplatz?.time ?? null,
+      fixplatz_week_parity: fixplatz?.parity ?? null,
+      flex_surcharge_percent: 0,
+      abo_variante: variante,
+      abo_lektionen: vorschau.lektionen,
+      monatsbetrag: vorschau.monatsbetrag,
+      periode_start: periodeStart,
+      periode_ende: vorschau.periodeEnde,
+    })
+    .select("id")
+    .single();
+
+  if (error || !pkg) {
+    if (error?.code === "23505") return { error: "Es läuft bereits ein Abo." };
+    return { error: "Das Abo konnte nicht angelegt werden." };
+  }
+
+  const raten = await legeMonatsratenAn(admin, {
+    packageId: pkg.id,
+    studentId,
+    gesamtpreis: vorschau.gesamtpreis,
+    laufzeitMonate: vorschau.laufzeitMonate,
+    periodeStart,
+  });
+  if ("error" in raten) {
+    console.error("[abo] Monatsraten (Admin):", pkg.id, raten.error);
+  }
+
+  let fixplatzText: string | null = null;
+  if (fixplatz) {
+    fixplatzText = describeFixplatz(
+      fixplatz.weekday,
+      fixplatz.time,
+      rhythmus,
+      fixplatz.parity
+    );
+    const serie = await bookFixplatzSeries(admin, {
+      studentId,
+      packageId: pkg.id,
+      wunsch: {
+        weekday: fixplatz.weekday,
+        time: fixplatz.time,
+        rhythmus,
+        lessons: vorschau.lektionen,
+      },
+      parity: fixplatz.parity,
+    });
+    if ("error" in serie) {
+      console.error("[abo] Fixplatz-Serie (Admin):", pkg.id, serie.error);
+    }
+  }
+
+  await sendEmailNow(admin, "abo_gestartet", {
+    student_id: studentId,
+    student_name: `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined,
+    abo_label: ABO_LABELS[variante],
+    rhythmus_text: rhythmus === "woechentlich" ? "jede Woche" : "alle zwei Wochen",
+    fixplatz_text: fixplatzText,
+    lektionen: vorschau.lektionen,
+    monatsbetrag: vorschau.monatsbetrag,
+    laufzeit_monate: vorschau.laufzeitMonate,
+    periode_start: periodeStart,
+    periode_ende: vorschau.periodeEnde,
+    termine: vorschau.termine,
+    ferientage: vorschau.ferientage,
+    auto_renew: autoRenew,
   });
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
-  return { success: true };
+  revalidatePath("/admin/kalender");
+  revalidatePath("/admin/zahlungen");
+  return { success: true, error: undefined };
+}
+
+/**
+ * Abo vorzeitig beenden – der Ausnahmefall.
+ *
+ * Der Normalfall ist ein anderer: Wer aufhören will, schaltet die
+ * Verlängerung ab und läuft die Periode zu Ende. Diese Aktion ist für den
+ * echten Vertragsbruch — Wegzug, längere Krankheit, Kulanz.
+ *
+ * Angefangene Monate bleiben geschuldet, die restlichen entfallen. Zukünftige
+ * Termine werden storniert, noch nicht gestellte Raten der offenen Monate
+ * ebenfalls. Was bereits fakturiert ist, bleibt stehen — eine Rechnung, die
+ * draussen ist, schreibt man nicht um.
+ */
+export async function aboVorzeitigBeenden(
+  packageId: string,
+  schuelerId: string,
+  grund?: string
+): Promise<
+  | { success: true; error: undefined; abrechnung: AusstiegAbrechnung }
+  | { error: string }
+> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+
+  const { data: pkg } = await admin
+    .from("packages")
+    .select(
+      "id, student_id, status, abo_variante, periode_start, periode_ende, term_months, monatsbetrag, total_price"
+    )
+    .eq("id", packageId)
+    .maybeSingle();
+
+  if (!pkg) return { error: "Abo nicht gefunden." };
+  if (!pkg.abo_variante) {
+    return { error: "Das ist kein Abo – bitte die Paket-Stornierung verwenden." };
+  }
+  if (pkg.status !== "active") return { error: "Dieses Abo ist nicht aktiv." };
+
+  const heute = todayInZurich();
+
+  const { data: bezahlt } = await admin
+    .from("invoices")
+    .select("amount")
+    .eq("package_id", packageId)
+    .eq("status", "paid");
+  const bereitsBezahlt = (bezahlt ?? []).reduce(
+    (s, r) => s + Number(r.amount ?? 0),
+    0
+  );
+
+  const abrechnung = aboAusstiegAbrechnung({
+    periodeStart: String(pkg.periode_start ?? heute),
+    laufzeitMonate: Number(pkg.term_months ?? 6),
+    monatsbetrag: Number(pkg.monatsbetrag ?? 0),
+    austritt: heute,
+    bereitsBezahlt,
+    gesamtpreis: Number(pkg.total_price ?? 0),
+  });
+
+  // Zukünftige Termine stornieren.
+  const { data: kommende } = await admin
+    .from("appointments")
+    .select("id")
+    .eq("package_id", packageId)
+    .in("status", ["booked", "pending"])
+    .gt("start_at", new Date().toISOString());
+
+  for (const t of kommende ?? []) {
+    await admin
+      .from("appointments")
+      .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
+      .eq("id", t.id);
+    await cancelLessonReminders(admin, t.id);
+    await deleteCalendarEvent(admin, t.id);
+  }
+
+  // Noch nicht fakturierte Raten der nicht mehr anfallenden Monate schliessen.
+  const { data: offeneRaten } = await admin
+    .from("package_instalments")
+    .select("id, sequence")
+    .eq("package_id", packageId)
+    .eq("status", "open")
+    .is("invoice_id", null);
+
+  for (const r of offeneRaten ?? []) {
+    if (Number(r.sequence) > abrechnung.monateBegonnen) {
+      await admin
+        .from("package_instalments")
+        .update({ status: "cancelled", amount: 0 })
+        .eq("id", r.id);
+    }
+  }
+
+  await admin
+    .from("packages")
+    .update({
+      status: "cancelled",
+      cancelled_at: new Date().toISOString(),
+      auto_renew: false,
+    })
+    .eq("id", packageId);
+
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("vorname, nachname")
+    .eq("id", pkg.student_id)
+    .maybeSingle();
+
+  await sendEmailNow(admin, "abo_beendet", {
+    student_id: pkg.student_id,
+    student_name: `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined,
+    grund: grund ?? undefined,
+    monate_begonnen: abrechnung.monateBegonnen,
+    monate_offen: abrechnung.monateOffen,
+    geschuldet: abrechnung.geschuldet,
+    bereits_bezahlt: abrechnung.bereitsBezahlt,
+    nachzahlung: abrechnung.nachzahlung,
+    rueckerstattung: abrechnung.rueckerstattung,
+    stornierte_termine: (kommende ?? []).length,
+  });
+
+  revalidatePath(`/admin/schueler/${schuelerId}`);
+  revalidatePath("/admin/kalender");
+  revalidatePath("/admin/zahlungen");
+  return { success: true, error: undefined, abrechnung };
+}
+
+/**
+ * Abo-Vorschau für den Admin – zeigt vor dem Anlegen die exakte
+ * Lektionszahl und den Monatsbetrag.
+ */
+export async function aboVorschauAdmin(params: {
+  studentUserId: string;
+  variante: "halbjahr" | "jahr";
+  rhythmus: Rhythmus;
+  bookingMode: BookingMode;
+  weekday: number;
+}): Promise<{ vorschau: AboVorschau } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  if (!params.studentUserId) return { error: "Kein Schüler angegeben." };
+
+  const admin = await createAdminClient();
+  const vorschau = await baueVorschau(admin, {
+    studentId: params.studentUserId,
+    variante: params.variante,
+    rhythmus: params.rhythmus,
+    bookingMode: params.bookingMode,
+    weekday: params.weekday,
+    periodeStart: naechsterPeriodenstart(todayInZurich()),
+  });
+  return { vorschau };
+}
+
+/**
+ * Freie Fixplätze für einen Schüler – dieselbe Suche wie im Portal.
+ * Geprüft wird die ganze Serie über die Laufzeit, nicht nur der nächste Termin.
+ */
+export async function fixplaetzeFuerSchueler(
+  studentUserId: string,
+  type: "10er" | "20er",
+  rhythmus: Rhythmus
+): Promise<{ angebote: FixplatzAngebot[] } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  if (!studentUserId) return { error: "Kein Schüler angegeben." };
+  if (type !== "10er" && type !== "20er") return { error: "Ungültiger Pakettyp." };
+
+  const admin = await createAdminClient();
+  const angebote = await findeFixplaetze(admin, {
+    studentId: studentUserId,
+    rhythmus: rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich",
+    lessons: PACKAGE_LESSONS[type],
+  });
+  return { angebote };
+}
+
+/**
+ * Rhythmus eines laufenden Pakets wechseln – in beide Richtungen.
+ *
+ * Die Restlaufzeit richtet sich nach den **verbleibenden** Lektionen, nicht
+ * nach dem Wechselzeitpunkt. Damit ist der Wechsel fair und nicht ausnutzbar:
+ * wer kurz vor Ablauf auf zweiwöchentlich wechselt, gewinnt nur die Zeit, die
+ * seine Restlektionen wirklich brauchen. Auf den langsameren Rhythmus zu
+ * wechseln nimmt nie Zeit weg.
+ *
+ * Der Preis bleibt unverändert – gleiche Lektionszahl, gleicher Lektionspreis.
+ * Noch nicht fakturierte Raten werden über die neue Laufzeit neu verteilt;
+ * bereits gestellte Rechnungen bleiben unangetastet.
+ */
+export async function rhythmusWechseln(
+  packageId: string,
+  neuerRhythmus: Rhythmus
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+
+  const { data: pkg } = await admin
+    .from("packages")
+    .select(
+      "id, student_id, status, rhythmus, expires_at, lessons_total, lessons_used, billing_mode, booking_mode"
+    )
+    .eq("id", packageId)
+    .maybeSingle();
+
+  if (!pkg) return { error: "Paket nicht gefunden." };
+  if (pkg.status !== "active") return { error: "Dieses Paket ist nicht aktiv." };
+
+  const alt: Rhythmus =
+    pkg.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich";
+  if (alt === neuerRhythmus) {
+    return { error: "Dieser Rhythmus ist bereits eingestellt." };
+  }
+  if (!pkg.expires_at) {
+    return { error: "Dieses Paket hat keine Laufzeit, die sich umrechnen liesse." };
+  }
+
+  const heute = todayInZurich();
+  const offen = Math.max(
+    0,
+    Number(pkg.lessons_total ?? 0) - Number(pkg.lessons_used ?? 0)
+  );
+
+  const wechsel = computeRhythmusChange({
+    von: alt,
+    nach: neuerRhythmus,
+    lessonsRemaining: offen,
+    today: heute,
+    bisherigesAblaufdatum: String(pkg.expires_at).slice(0, 10),
+  });
+
+  await admin
+    .from("packages")
+    .update({
+      rhythmus: neuerRhythmus,
+      expires_at: `${wechsel.neuesAblaufdatum}T23:59:59.000Z`,
+      term_months: Math.max(1, Math.round(wechsel.restMonate)),
+    })
+    .eq("id", pkg.id);
+
+  // Offene Raten neu verteilen. Was schon fakturiert oder bezahlt ist, bleibt
+  // wie es ist – eine Rechnung, die draussen ist, schreibt man nicht um.
+  let ratenAngepasst = false;
+  if (pkg.billing_mode === "raten") {
+    const { data: raten } = await admin
+      .from("package_instalments")
+      .select("id, sequence, amount, due_date, status, invoice_id")
+      .eq("package_id", pkg.id)
+      .eq("status", "open")
+      .is("invoice_id", null)
+      .order("sequence");
+
+    if (raten && raten.length > 0) {
+      const neu = rescheduleOpenInstalments(
+        raten.map((r) => ({
+          id: r.id,
+          sequence: Number(r.sequence),
+          amount: Number(r.amount),
+          dueDate: String(r.due_date),
+        })),
+        wechsel.neuesAblaufdatum,
+        heute
+      );
+
+      for (const r of neu) {
+        if (r.neuerBetrag <= 0) {
+          // Zusammengelegt – der Betrag steckt jetzt in einer anderen Rate.
+          await admin
+            .from("package_instalments")
+            .update({ status: "cancelled", amount: 0 })
+            .eq("id", r.id);
+        } else {
+          await admin
+            .from("package_instalments")
+            .update({
+              amount: r.neuerBetrag,
+              due_date: r.neuesFaelligkeitsdatum,
+            })
+            .eq("id", r.id);
+        }
+      }
+      ratenAngepasst = true;
+    }
+  }
+
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("vorname, nachname")
+    .eq("id", pkg.student_id)
+    .maybeSingle();
+
+  await sendEmailNow(admin, "rhythmus_changed", {
+    student_id: pkg.student_id,
+    student_name: `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined,
+    alter_rhythmus_text: RHYTHMUS_LABELS[alt],
+    neuer_rhythmus_text: RHYTHMUS_LABELS[neuerRhythmus],
+    lektionen_offen: offen,
+    neues_ablaufdatum: wechsel.neuesAblaufdatum,
+    differenz_tage: wechsel.differenzTage,
+    raten_angepasst: ratenAngepasst,
+  });
+
+  revalidatePath("/admin/schueler");
+  revalidatePath("/schueler/portal");
+  return { success: true, error: undefined };
 }
 
 /** Admin bucht direkt (ohne Anfrage) – sofort bestätigt. Spec §4.3. */
 export async function createDirectBooking(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const userId = formData.get("student_user_id") as string;
@@ -757,7 +1589,7 @@ export async function createDirectBooking(formData: FormData) {
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /**
@@ -767,6 +1599,9 @@ export async function createDirectBooking(formData: FormData) {
  * bei dessen Annahme im Portal werden Termine gebucht.
  */
 export async function createProposal(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const studentId = formData.get("student_user_id") as string;
@@ -827,11 +1662,14 @@ export async function createProposal(formData: FormData) {
   }
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Admin zieht einen offenen Terminvorschlag zurück. */
 export async function withdrawProposal(proposalId: string, schuelerId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { error } = await admin
     .from("proposals")
@@ -840,11 +1678,14 @@ export async function withdrawProposal(proposalId: string, schuelerId: string) {
     .eq("status", "open");
   if (error) return { error: "Vorschlag konnte nicht zurückgezogen werden." };
   revalidatePath(`/admin/schueler/${schuelerId}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Termin als abgeschlossen markieren (neues Schema). */
 export async function markAppointmentNoShow(id: string, schuelerId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { error } = await admin
     .from("appointments")
@@ -857,23 +1698,30 @@ export async function markAppointmentNoShow(id: string, schuelerId: string) {
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Termin stornieren (neues Schema). Gibt die Lektion wieder frei. */
 export async function cancelAppointmentNew(id: string, schuelerId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
-  // Termin laden (für Schüler-Benachrichtigung).
+  // Termin laden (für Schüler-Benachrichtigung und Ausfall-Kaskade).
   const { data: appt } = await admin
     .from("appointments")
-    .select("start_at, student_id, status")
+    .select("start_at, student_id, status, package_id")
     .eq("id", id)
     .maybeSingle();
 
   const { error } = await admin
     .from("appointments")
-    .update({ status: "cancelled" })
+    .update({
+      status: "cancelled",
+      ausfall_verursacher: "admin",
+      ausfall_gemeldet_am: new Date().toISOString(),
+    })
     .eq("id", id);
   if (error) return { error: error.message };
 
@@ -916,12 +1764,28 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
       appointment_id: id,
       start_at: appt.start_at,
     });
+
+    // Ausfall-Kaskade: Ausweichtermine suchen, sonst Laufzeitgutschrift.
+    //
+    // Bei einer Absage durch die Lehrperson gibt es die 24-Stunden-Ausnahme
+    // nicht – die Lektion bleibt in jedem Fall erhalten. Das entscheidet
+    // `meldeAusfall`, nicht diese Funktion.
+    const ausfall = await meldeAusfall(admin, {
+      appointmentId: id,
+      studentId: appt.student_id,
+      packageId: appt.package_id ?? null,
+      verursacher: "admin",
+      originalStart: new Date(appt.start_at),
+    });
+    if ("error" in ausfall) {
+      console.error("[ausfall] Kaskade fehlgeschlagen:", id, ausfall.error);
+    }
   }
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin/kalender");
   revalidatePath("/admin");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 // ── Abwesenheiten, Zeitblöcke & Timer (Meilenstein 8) ───────────────────────
@@ -990,6 +1854,9 @@ type ExtendablePackage = {
 
 /** Admin/Schüler-Abwesenheit anlegen (Spec §7). */
 export async function createAbsence(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const scope = formData.get("scope") as string; // admin | student
@@ -1044,11 +1911,14 @@ export async function createAbsence(formData: FormData) {
   if (scope === "student" && studentUserId) {
     revalidatePath("/admin/schueler");
   }
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Abwesenheit löschen und die Timer-Verlängerung zurückrechnen. */
 export async function deleteAbsence(id: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   // Verlängerungen dieser Abwesenheit zurücknehmen
@@ -1085,11 +1955,14 @@ export async function deleteAbsence(id: string) {
   if (error) return { error: error.message };
 
   revalidatePath("/admin/abwesenheiten");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Einmaligen Zeitblock anlegen. */
 export async function createTimeBlock(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const title = (formData.get("title") as string) || "";
   const date = formData.get("date") as string;
@@ -1105,19 +1978,25 @@ export async function createTimeBlock(formData: FormData) {
   if (error) return { error: error.message };
 
   revalidatePath("/admin/abwesenheiten");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function deleteTimeBlock(id: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { error } = await admin.from("time_blocks").delete().eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/admin/abwesenheiten");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Wiederkehrende Sperrregel anlegen (alle 7/14 Tage). */
 export async function createTimeBlockRule(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const title = (formData.get("title") as string) || "";
   const startDate = formData.get("start_date") as string;
@@ -1139,19 +2018,25 @@ export async function createTimeBlockRule(formData: FormData) {
   if (error) return { error: error.message };
 
   revalidatePath("/admin/abwesenheiten");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function deleteTimeBlockRule(id: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { error } = await admin.from("time_block_rules").delete().eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/admin/abwesenheiten");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Paket-Timer pausieren: Restzeit einfrieren. Spec §7. */
 export async function pausePackage(packageId: string, schuelerId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { data: pkg } = await admin
     .from("packages")
@@ -1159,7 +2044,7 @@ export async function pausePackage(packageId: string, schuelerId: string) {
     .eq("id", packageId)
     .single();
   if (!pkg) return { error: "Paket nicht gefunden." };
-  if (pkg.paused) return { success: true };
+  if (pkg.paused) return { success: true, error: undefined };
 
   const remaining = pkg.expires_at
     ? Math.max(0, Math.floor((new Date(pkg.expires_at).getTime() - Date.now()) / 1000))
@@ -1176,11 +2061,14 @@ export async function pausePackage(packageId: string, schuelerId: string) {
   if (error) return { error: error.message };
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Paket-Timer fortsetzen: Ablauf = jetzt + eingefrorene Restzeit. Spec §7. */
 export async function resumePackage(packageId: string, schuelerId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { data: pkg } = await admin
     .from("packages")
@@ -1188,7 +2076,7 @@ export async function resumePackage(packageId: string, schuelerId: string) {
     .eq("id", packageId)
     .single();
   if (!pkg) return { error: "Paket nicht gefunden." };
-  if (!pkg.paused) return { success: true };
+  if (!pkg.paused) return { success: true, error: undefined };
 
   const update: Record<string, unknown> = {
     paused: false,
@@ -1205,7 +2093,7 @@ export async function resumePackage(packageId: string, schuelerId: string) {
   if (error) return { error: error.message };
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Paket-Timer manuell um N Tage verlängern. */
@@ -1215,6 +2103,9 @@ export async function extendPackage(
   days: number,
   reason?: string
 ) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   if (!days || days <= 0) return { error: "Ungültige Anzahl Tage." };
   const admin = await createAdminClient();
   const { data: pkg } = await admin
@@ -1233,7 +2124,7 @@ export async function extendPackage(
   );
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /**
@@ -1244,6 +2135,9 @@ export async function extendPackage(
  * berechnete Abrechnung (Rückerstattung/Nachzahlung) zurück.
  */
 export async function cancelPackage(packageId: string, schuelerId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: pkg } = await admin
@@ -1271,7 +2165,25 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
     };
   }
 
-  const settlement = computeCancellationSettlement(pkg as Paket, lessonsUsed);
+  // Tatsächlich geflossenes Geld: alle bezahlten Rechnungen dieses Pakets.
+  // Bei Ratenzahlung ist das oft nur die Anzahlung – der Paketpreis wäre
+  // hier die falsche Bezugsgrösse und würde zu Rückerstattungen auf nie
+  // eingegangenes Geld führen.
+  const { data: bezahlteRechnungen } = await admin
+    .from("invoices")
+    .select("amount")
+    .eq("package_id", packageId)
+    .eq("status", "paid");
+  const bereitsBezahlt = (bezahlteRechnungen ?? []).reduce(
+    (summe, r) => summe + Number(r.amount ?? 0),
+    0
+  );
+
+  const settlement = computeCancellationSettlement(
+    pkg as Paket,
+    lessonsUsed,
+    bereitsBezahlt
+  );
 
   // Künftige gebuchte Termine dieses Pakets stornieren.
   const { data: futureAppts } = await admin
@@ -1304,10 +2216,37 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
     }
   }
 
+  // Noch nicht bezahlte Raten stilllegen. Ohne das würde der Tagesjob für
+  // ein storniertes Paket weiter Monatsrechnungen erzeugen, und die offenen
+  // Beträge liefen in der Admin-Übersicht als "ausstehend" mit.
+  const { data: offeneRaten } = await admin
+    .from("package_instalments")
+    .update({ status: "cancelled" })
+    .eq("package_id", packageId)
+    .in("status", ["open", "invoiced", "overdue"])
+    .select("id, invoice_id");
+
+  for (const rate of offeneRaten ?? []) {
+    if (!rate.invoice_id) continue;
+    // Bereits gestellte, unbezahlte Ratenrechnungen archivieren …
+    await admin
+      .from("invoices")
+      .update({ status: "archived" })
+      .eq("id", rate.invoice_id)
+      .in("status", ["unpaid", "pending_confirmation", "rejected"]);
+    // … und die zugehörigen Zahlungsmails abbrechen.
+    await admin
+      .from("scheduled_emails")
+      .update({ status: "cancelled" })
+      .eq("status", "pending")
+      .contains("payload", { invoice_id: rate.invoice_id });
+  }
+
   const { error } = await admin
     .from("packages")
     .update({
       status: "cancelled",
+      auto_renew: false,
       paused: false,
       pause_remaining_seconds: null,
       paused_at: null,
@@ -1352,6 +2291,7 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
         status: "unpaid",
         method: paymentMethod,
         lesson_date: null,
+        description: "Stornierung – Restbetrag",
       })
       .select("id, invoice_number")
       .maybeSingle();
@@ -1376,7 +2316,7 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin");
-  return { success: true, settlement };
+  return { success: true, error: undefined, settlement };
 }
 
 // ── Rechnungen / Zahlungen (Meilenstein 9) ────────────────────────────────────
@@ -1386,6 +2326,9 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
  * Buchen aufgerufen; kann auch manuell ausgelöst werden.
  */
 export async function createInvoiceForAppointment(appointmentId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: appt } = await admin
@@ -1426,19 +2369,31 @@ export async function createInvoiceForAppointment(appointmentId: string) {
     .select("id")
     .single();
 
-  if (error || !inv) return { error: "Rechnung konnte nicht erstellt werden." };
+  if (error || !inv) {
+    // 23505 = der Unique-Index invoices_one_active_per_appointment.
+    // Für diesen Termin gibt es bereits eine offene Rechnung.
+    if (error?.code === "23505") {
+      return { error: "Für diesen Termin besteht bereits eine Rechnung." };
+    }
+    return { error: "Rechnung konnte nicht erstellt werden." };
+  }
 
   revalidatePath("/admin/zahlungen");
-  return { success: true, invoiceId: inv.id };
+  return { success: true, error: undefined, invoiceId: inv.id };
 }
 
 /** Admin bestätigt eine Zahlung (pending_confirmation → paid). */
 export async function confirmInvoicePayment(invoiceId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: inv } = await admin
     .from("invoices")
-    .select("id, student_id, invoice_number, amount, lesson_date")
+    .select(
+      "id, student_id, invoice_number, amount, lesson_date, package_id, instalment_id, description"
+    )
     .eq("id", invoiceId)
     .single();
   if (!inv) return { error: "Rechnung nicht gefunden." };
@@ -1456,13 +2411,31 @@ export async function confirmInvoicePayment(invoiceId: string) {
     .maybeSingle();
 
   if (profile?.email) {
-    const isSettlement = !inv.lesson_date;
+    // Eine Stornoabrechnung erkennt man daran, dass sie an nichts hängt:
+    // keine Lektion, kein Paket, keine Rate. Früher wurde nur auf ein
+    // fehlendes Lektionsdatum geprüft – seit es Paket- und Ratenrechnungen
+    // gibt, landeten die fälschlich in der Stornierungsmail.
+    const isSettlement =
+      !inv.lesson_date && !inv.package_id && !inv.instalment_id;
+
     if (isSettlement) {
       await sendEmailNow(admin, "package_settlement_paid", {
         student_id: inv.student_id,
         amount: inv.amount,
       });
     } else {
+      // Wurde die Anzahlung eines Ratenpakets bestätigt, ist damit auch die
+      // Terminbuchung freigegeben – das gehört in die Bestätigung.
+      let unlocksBooking = false;
+      if (inv.instalment_id) {
+        const { data: rate } = await admin
+          .from("package_instalments")
+          .select("kind")
+          .eq("id", inv.instalment_id)
+          .maybeSingle();
+        unlocksBooking = rate?.kind === "anzahlung";
+      }
+
       await sendEmailNow(admin, "payment_confirmed", {
         to: profile.email,
         student_name: `${profile.vorname} ${profile.nachname}`,
@@ -1470,21 +2443,26 @@ export async function confirmInvoicePayment(invoiceId: string) {
         lesson_date: inv.lesson_date,
         amount: inv.amount,
         invoice_number: inv.invoice_number,
+        description: inv.description,
+        unlocks_booking: unlocksBooking,
       });
     }
   }
 
   revalidatePath("/admin/zahlungen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Admin lehnt eine Zahlung ab (pending_confirmation → rejected). */
 export async function rejectInvoicePayment(invoiceId: string, reason?: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: inv } = await admin
     .from("invoices")
-    .select("id, student_id, invoice_number, amount, lesson_date")
+    .select("id, student_id, invoice_number, amount, lesson_date, description")
     .eq("id", invoiceId)
     .single();
   if (!inv) return { error: "Rechnung nicht gefunden." };
@@ -1509,16 +2487,20 @@ export async function rejectInvoicePayment(invoiceId: string, reason?: string) {
       lesson_date: inv.lesson_date,
       amount: inv.amount,
       invoice_number: inv.invoice_number,
+      description: inv.description,
       reason: reason ?? null,
     });
   }
 
   revalidatePath("/admin/zahlungen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Admin archiviert eine Rechnung (aus der aktiven Liste entfernen). */
 export async function archiveInvoice(invoiceId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { error } = await admin
     .from("invoices")
@@ -1526,11 +2508,14 @@ export async function archiveInvoice(invoiceId: string) {
     .eq("id", invoiceId);
   if (error) return { error: error.message };
   revalidatePath("/admin/zahlungen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Admin sendet die Zahlungsmail für eine Rechnung erneut (sofort). */
 export async function resendPaymentEmail(invoiceId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: inv } = await admin
@@ -1573,13 +2558,16 @@ export async function resendPaymentEmail(invoiceId: string) {
   }
 
   revalidatePath("/admin/zahlungen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 // ── Aufräumen / Löschen ───────────────────────────────────────────────────────
 
 /** Erledigte Buchungsanfrage (nicht open) endgültig löschen. */
 export async function deleteBookingRequest(requestId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = createAdminClient();
   const { data: req } = await admin
     .from("booking_requests")
@@ -1591,11 +2579,14 @@ export async function deleteBookingRequest(requestId: string) {
   const { error } = await admin.from("booking_requests").delete().eq("id", requestId);
   if (error) return { error: error.message };
   revalidatePath("/admin/terminanfragen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Erledigte Verschiebungsanfrage (nicht open) endgültig löschen. */
 export async function deleteRescheduleRequest(rescheduleId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = createAdminClient();
   const { data: rr } = await admin
     .from("reschedule_requests")
@@ -1607,22 +2598,28 @@ export async function deleteRescheduleRequest(rescheduleId: string) {
   const { error } = await admin.from("reschedule_requests").delete().eq("id", rescheduleId);
   if (error) return { error: error.message };
   revalidatePath("/admin/terminanfragen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Alle erledigten Buchungs- und Verschiebungsanfragen auf einmal löschen. */
 export async function bulkDeleteProcessedRequests() {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = createAdminClient();
   await Promise.all([
     admin.from("booking_requests").delete().neq("status", "open"),
     admin.from("reschedule_requests").delete().neq("status", "open"),
   ]);
   revalidatePath("/admin/terminanfragen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Einzelne archivierte/stornierte Rechnung endgültig löschen. */
 export async function hardDeleteInvoice(invoiceId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = createAdminClient();
   const { data: inv } = await admin
     .from("invoices")
@@ -1636,20 +2633,26 @@ export async function hardDeleteInvoice(invoiceId: string) {
   const { error } = await admin.from("invoices").delete().eq("id", invoiceId);
   if (error) return { error: error.message };
   revalidatePath("/admin/zahlungen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Alle archivierten Rechnungen auf einmal löschen (Papierkorb leeren). */
 export async function deleteArchivedInvoices() {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = createAdminClient();
   const { error } = await admin.from("invoices").delete().eq("status", "archived");
   if (error) return { error: error.message };
   revalidatePath("/admin/zahlungen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Sendet eine Test-E-Mail an ADMIN_EMAIL zur Überprüfung der Resend-Konfiguration. */
 export async function sendTestEmail() {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const to = process.env.ADMIN_EMAIL;
   if (!to) {
     return { error: "Umgebungsvariable ADMIN_EMAIL ist nicht gesetzt." };
@@ -1677,20 +2680,29 @@ export async function sendTestEmail() {
 
 /** Testet die Verbindung zum Google-Kalender (Einstellungsseite). */
 export async function testGoogleCalendar() {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   return await testCalendarConnection();
 }
 
 /** Synchronisiert alle zukünftigen gebuchten Termine in den Google-Kalender. */
 export async function runFullCalendarSync() {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const result = await fullSyncFutureAppointments(admin);
   revalidatePath("/admin/einstellungen");
-  return { success: true, ...result };
+  return { success: true, error: undefined, ...result };
 }
 
 // ── Anfragen ─────────────────────────────────────────────────────────────────
 
 export async function updateAnfrageStatus(id: string, status: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("anfragen")
@@ -1698,7 +2710,7 @@ export async function updateAnfrageStatus(id: string, status: string) {
     .eq("id", id);
   if (error) return { error: "Status konnte nicht aktualisiert werden." };
   revalidatePath("/admin/anfragen");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 // ── Gruppenkurse ─────────────────────────────────────────────────────────────
@@ -1710,6 +2722,9 @@ import {
 import { normalizePriceTiers } from "@/lib/group-courses";
 
 export async function createGroupCourse(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Nicht angemeldet." };
@@ -1745,10 +2760,13 @@ export async function createGroupCourse(formData: FormData) {
   if (error) return { error: "Kurs konnte nicht erstellt werden." };
 
   revalidatePath("/admin/gruppenkurse");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function updateGroupCourse(courseId: string, formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const title = (formData.get("title") as string)?.trim();
   if (!title) return { error: "Titel erforderlich." };
 
@@ -1773,18 +2791,24 @@ export async function updateGroupCourse(courseId: string, formData: FormData) {
 
   revalidatePath("/admin/gruppenkurse");
   revalidatePath(`/admin/gruppenkurse/${courseId}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function archiveGroupCourse(courseId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { error } = await admin.from("group_courses").update({ status: "archived" }).eq("id", courseId);
   if (error) return { error: "Kurs konnte nicht archiviert werden." };
   revalidatePath("/admin/gruppenkurse");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function planGroupSessions(courseId: string, formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Nicht angemeldet." };
@@ -1810,6 +2834,9 @@ export async function planGroupSessions(courseId: string, formData: FormData) {
 }
 
 export async function adminCancelGroupSession(sessionId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   // Teilnehmer-Termine laden.
@@ -1849,10 +2876,13 @@ export async function adminCancelGroupSession(sessionId: string) {
   }
 
   revalidatePath("/admin/gruppenkurse");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function adminRemoveParticipant(appointmentId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: appt } = await admin
@@ -1909,10 +2939,13 @@ export async function adminRemoveParticipant(appointmentId: string) {
   }).catch(() => null);
 
   revalidatePath("/admin/gruppenkurse");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function deleteGroupSession(sessionId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
 
   const { data: session } = await admin
@@ -1930,12 +2963,15 @@ export async function deleteGroupSession(sessionId: string) {
   if (error) return { error: "Löschen fehlgeschlagen." };
 
   revalidatePath(`/admin/gruppenkurse/${session.course_id}`);
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 // ── Lektionen manuell anpassen ────────────────────────────────────────────────
 
 export async function adjustPackageLessons(packageId: string, delta: number) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   if (!Number.isInteger(delta) || delta === 0) {
     return { error: "Ungültige Anpassung." };
   }
@@ -1971,16 +3007,19 @@ export async function adjustPackageLessons(packageId: string, delta: number) {
   if (error) return { error: "Anpassung fehlgeschlagen." };
 
   revalidatePath(`/admin/schueler/${pkg.student_id}`);
-  return { success: true, newTotal };
+  return { success: true, error: undefined, newTotal };
 }
 
 // ── E-Mail-Einstellungen ──────────────────────────────────────────────────────
 
 export async function saveEmailSettings(disabledTypes: string[]) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
   const admin = await createAdminClient();
   const { error } = await admin
     .from("app_settings")
     .upsert({ key: "email_disabled_types", value: disabledTypes, updated_at: new Date().toISOString() });
   if (error) return { error: "Einstellungen konnten nicht gespeichert werden." };
-  return { success: true };
+  return { success: true, error: undefined };
 }

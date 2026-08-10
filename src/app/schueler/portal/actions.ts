@@ -2,21 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { addMonths } from "@/lib/utils";
 import {
   type Package as Paket,
   PACKAGE_LABELS,
   PACKAGE_LESSONS,
-  PACKAGE_VALIDITY_MONTHS,
   canBuyNewPackage,
   computePackageState,
-  pricePerLessonFor,
 } from "@/lib/packages";
 import {
   type CalDate,
   DEFAULT_BUFFER_MIN,
+  LESSON_DURATION_MIN,
   addDaysCal,
-  computeAvailableSlots,
   generateSeriesStarts,
   isAtLeast24hAway,
   utcToZonedDate,
@@ -25,10 +22,39 @@ import {
   zonedToUtc,
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
+import { gapAwareSlots, isGapAwareStartBookable, DEFAULT_BLOCK_SETTINGS } from "@/lib/booking-gap";
 import { sendEmailNow } from "@/lib/emails-outbox";
-import { createPackageInvoice } from "@/lib/package-invoice";
-import { deleteCalendarEvent } from "@/lib/google-calendar";
-import { cancelLessonReminders } from "@/lib/reminders";
+import {
+  CANCELLATION_NOTICE_DAYS,
+  isCancellable,
+  todayInZurich,
+} from "@/lib/subscription";
+import {
+  FLEX_SURCHARGE_PERCENT,
+  type BookingMode,
+  type Rhythmus,
+} from "@/lib/rhythmus";
+import { describeFixplatz } from "@/lib/fixplatz";
+import { bookFixplatzSeries, findeAusweichtermine } from "@/lib/fixplatz-server";
+import { meldeAusfall } from "@/lib/ausfall";
+import { findeFixplaetze, type FixplatzAngebot } from "@/lib/fixplatz-suche";
+import {
+  ABO_LABELS,
+  type AboVariante,
+} from "@/lib/abo";
+import {
+  baueVorschau,
+  legeMonatsratenAn,
+  naechsterPeriodenstart,
+  type AboVorschau,
+} from "@/lib/abo-server";
+import {
+  bookingLock,
+  bookingLockReason,
+  type InstalmentRow,
+} from "@/lib/instalment-view";
+import { deleteCalendarEvent, syncAppointmentToCalendar } from "@/lib/google-calendar";
+import { cancelLessonReminders, scheduleLessonReminders } from "@/lib/reminders";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   joinGroupSession,
@@ -86,7 +112,11 @@ export async function getVerfuegbareSlots(
     now
   );
 
-  return computeAvailableSlots(fromCal, 7, ctx).map((s) => ({
+  const settings =
+    (ctx as { blockSettings?: typeof DEFAULT_BLOCK_SETTINGS }).blockSettings ??
+    DEFAULT_BLOCK_SETTINGS;
+
+  return gapAwareSlots(fromCal, 7, ctx, settings).map((s) => ({
     beginn: s.start.toISOString(),
     ende: s.end.toISOString(),
   }));
@@ -98,6 +128,28 @@ export async function getVerfuegbareSlots(
  * eigene Zeile in booking_requests. Alle Slots der gleichen Einreichung teilen
  * dieselbe group_id, damit der Admin sie gebündelt sehen und einzeln entscheiden kann.
  */
+/**
+ * Prüft die Buchungssperre bei Ratenkauf: Erst wenn die Anzahlung bestätigt
+ * bezahlt ist, darf gebucht werden. Wird serverseitig erzwungen, damit die
+ * Regel auch bei umgangener UI greift.
+ */
+async function assertBookingUnlocked(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  pkg: { id: string; billing_mode?: string | null }
+): Promise<{ error: string } | null> {
+  if (pkg.billing_mode !== "raten") return null;
+
+  const { data: rows } = await supabase
+    .from("package_instalments")
+    .select("id, sequence, kind, amount, due_date, status, invoice_id, paid_at")
+    .eq("package_id", pkg.id)
+    .order("sequence", { ascending: true });
+
+  const lock = bookingLock(pkg.billing_mode, (rows ?? []) as InstalmentRow[]);
+  if (!lock.locked) return null;
+  return { error: bookingLockReason(lock) ?? "Buchung noch nicht freigegeben." };
+}
+
 export async function requestMultipleBookings(desiredStartIsos: string[]) {
   if (!desiredStartIsos.length) return { error: "Keine Termine ausgewählt." };
   if (desiredStartIsos.length > 20) return { error: "Maximal 20 Termine pro Anfrage." };
@@ -123,6 +175,9 @@ export async function requestMultipleBookings(desiredStartIsos: string[]) {
   const pkg = (pkgs as Paket[] | null)?.find((p) => !canBuyNewPackage(p)) ?? null;
   if (!pkg) return { error: "Du hast kein aktives Paket. Bitte buche zuerst ein Paket." };
 
+  const gesperrt = await assertBookingUnlocked(supabase, pkg);
+  if (gesperrt) return gesperrt;
+
   const state = computePackageState(pkg);
   if (state.lessonsRemaining < desiredStartIsos.length) {
     return {
@@ -145,8 +200,11 @@ export async function requestMultipleBookings(desiredStartIsos: string[]) {
     }
     const slotEnd = new Date(desiredStart.getTime() + 3600000);
     const ctx = await loadAvailabilityContext(admin, user.id, bufferMin, desiredStart, slotEnd, now);
-    const validation = validateSeries(desiredStart, 1, 7, ctx);
-    if (!validation.ok) {
+    const settings =
+      (ctx as { blockSettings?: typeof DEFAULT_BLOCK_SETTINGS }).blockSettings ??
+      DEFAULT_BLOCK_SETTINGS;
+    // Nie dem Client vertrauen: exakt dieselbe Prüfung wie bei der Anzeige.
+    if (!isGapAwareStartBookable(desiredStart, ctx, settings)) {
       return {
         error: `Der Slot ${desiredStart.toLocaleString("de-CH", { timeZone: "Europe/Zurich" })} ist nicht verfügbar. Bitte wähle einen anderen Zeitpunkt.`,
       };
@@ -193,7 +251,7 @@ export async function requestMultipleBookings(desiredStartIsos: string[]) {
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Schüler zieht alle offenen Anfragen einer Gruppe auf einmal zurück. */
@@ -226,7 +284,7 @@ export async function withdrawGroupBookingRequests(groupId: string) {
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Schüler zieht eine offene Terminanfrage zurück (Spec §10.4). */
@@ -263,7 +321,7 @@ export async function withdrawBookingRequest(requestId: string) {
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /**
@@ -280,22 +338,32 @@ export async function cancelAppointment(appointmentId: string) {
 
   const { data: appt } = await supabase
     .from("appointments")
-    .select("id, start_at, student_id, status")
+    .select("id, start_at, student_id, status, package_id")
     .eq("id", appointmentId)
     .single();
 
   if (!appt || appt.student_id !== user.id) {
     return { error: "Termin nicht gefunden." };
   }
-  if (appt.status === "cancelled") return { success: true };
-  if (!isAtLeast24hAway(appt.start_at, new Date())) {
-    return { error: "Stornierungen sind nur bis 24 Stunden vorher möglich." };
-  }
+  if (appt.status === "cancelled") return { success: true, error: undefined };
+
+  const jetzt = new Date();
+  // Kurzfristige Absagen sind bewusst **erlaubt**, nicht blockiert.
+  //
+  // Vorher wurde unter 24 Stunden abgewiesen – wer morgens krank wurde,
+  // konnte es über das System gar nicht mitteilen und musste anrufen. Die
+  // Lektion gilt in diesem Fall trotzdem als gehalten; das entscheidet die
+  // Ausfall-Logik, nicht diese Funktion.
+  const kurzfristig = !isAtLeast24hAway(appt.start_at, jetzt);
 
   const admin = await createAdminClient();
   const { error } = await admin
     .from("appointments")
-    .update({ status: "cancelled" })
+    .update({
+      status: "cancelled",
+      ausfall_verursacher: "schueler",
+      ausfall_gemeldet_am: jetzt.toISOString(),
+    })
     .eq("id", appointmentId);
   if (error) return { error: "Termin konnte nicht storniert werden." };
 
@@ -332,20 +400,191 @@ export async function cancelAppointment(appointmentId: string) {
     }
   }
 
-  // Sofortversand: Mail an Admin (Info) + Bestätigung an Schüler (Spec §9).
-  await sendEmailNow(admin, "appointment_cancelled_by_student", {
-    student_id: user.id,
-    appointment_id: appointmentId,
-    start_at: appt.start_at,
+  // Ausfall-Kaskade anstossen: sucht Ausweichtermine, schreibt bei
+  // rechtzeitiger Absage eine Gutschrift, wenn nichts zu finden ist, und
+  // verschickt die passende Mail. Sie entscheidet auch, ob die Lektion
+  // erhalten bleibt oder als gehalten gilt.
+  const ausfall = await meldeAusfall(admin, {
+    appointmentId,
+    studentId: user.id,
+    packageId: appt.package_id ?? null,
+    verursacher: "schueler",
+    originalStart: new Date(appt.start_at),
+    now: jetzt,
   });
-  await sendEmailNow(admin, "appointment_cancelled_student", {
+
+  if ("error" in ausfall) {
+    // Der Termin ist storniert – das ist der wichtigere Teil. Nur die
+    // Kompensation fehlt; darüber wird der Admin ohnehin informiert.
+    console.error("[ausfall] Kaskade fehlgeschlagen:", appointmentId, ausfall.error);
+    await sendEmailNow(admin, "appointment_cancelled_by_student", {
+      student_id: user.id,
+      appointment_id: appointmentId,
+      start_at: appt.start_at,
+    });
+  }
+
+  revalidatePath("/schueler/portal");
+  return {
+    success: true,
+    error: undefined,
+    kurzfristig,
+    vorschlaege: "error" in ausfall ? [] : ausfall.vorschlaege,
+  };
+}
+
+/**
+ * Offene Ausfälle des angemeldeten Schülers samt Ausweichvorschlägen.
+ *
+ * Bisher standen die Vorschläge nur in der E-Mail. Wer sie dort übersah,
+ * hatte keine Möglichkeit mehr, einen Ersatztermin zu wählen.
+ */
+export async function offeneAusfaelle(): Promise<{
+  ausfaelle: {
+    id: string;
+    originalStart: string;
+    vorschlaege: { start: string; begruendung: string }[];
+  }[];
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ausfaelle: [] };
+
+  const { data: rows } = await supabase
+    .from("lesson_ausfaelle")
+    .select("id, appointment_id, original_start, status")
+    .eq("student_id", user.id)
+    .eq("status", "offen")
+    .order("original_start");
+
+  if (!rows || rows.length === 0) return { ausfaelle: [] };
+
+  const admin = await createAdminClient();
+  const ausfaelle = [];
+
+  for (const r of rows) {
+    const kandidaten = await findeAusweichtermine(admin, {
+      studentId: user.id,
+      originalStart: new Date(r.original_start as string),
+      excludeAppointmentId: r.appointment_id as string,
+    });
+    ausfaelle.push({
+      id: r.id as string,
+      originalStart: r.original_start as string,
+      vorschlaege: kandidaten.map((k) => ({
+        start: k.slot.start.toISOString(),
+        begruendung: k.begruendung,
+      })),
+    });
+  }
+
+  return { ausfaelle };
+}
+
+/**
+ * Schüler wählt einen Ausweichtermin für eine ausgefallene Lektion.
+ *
+ * Der Slot wird serverseitig nochmals geprüft — zwischen dem Vorschlag in
+ * der E-Mail und dem Klick können Tage liegen, in denen der Platz
+ * anderweitig vergeben wurde.
+ */
+export async function ausweichterminWaehlen(
+  ausfallId: string,
+  startIso: string
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const { data: ausfall } = await supabase
+    .from("lesson_ausfaelle")
+    .select("id, student_id, package_id, appointment_id, original_start, status")
+    .eq("id", ausfallId)
+    .maybeSingle();
+
+  if (!ausfall || ausfall.student_id !== user.id) {
+    return { error: "Ausfall nicht gefunden." };
+  }
+  if (ausfall.status !== "offen") {
+    return { error: "Für diese Lektion ist bereits ein Ersatz eingetragen." };
+  }
+
+  const admin = await createAdminClient();
+  const gewuenscht = new Date(startIso);
+
+  // Ist der Slot noch frei? Der Vorschlag kann alt sein.
+  const kandidaten = await findeAusweichtermine(admin, {
+    studentId: user.id,
+    originalStart: new Date(ausfall.original_start as string),
+    excludeAppointmentId: ausfall.appointment_id as string,
+  });
+  const passt = kandidaten.some(
+    (k) => k.slot.start.getTime() === gewuenscht.getTime()
+  );
+  if (!passt) {
+    return {
+      error:
+        "Dieser Termin ist inzwischen belegt. Bitte wähle einen der aktuellen Vorschläge.",
+    };
+  }
+
+  const { data: erstellt, error } = await admin
+    .from("appointments")
+    .insert({
+      student_id: user.id,
+      package_id: ausfall.package_id,
+      start_at: gewuenscht.toISOString(),
+      end_at: new Date(
+        gewuenscht.getTime() + LESSON_DURATION_MIN * 60000
+      ).toISOString(),
+      status: "booked",
+      source: "reschedule",
+      ersetzt_appointment_id: ausfall.appointment_id,
+      notes: `Ausweichtermin für ${String(ausfall.original_start).slice(0, 10)}`,
+    })
+    .select("id, start_at")
+    .single();
+
+  if (error || !erstellt) {
+    return { error: "Der Ausweichtermin konnte nicht gebucht werden." };
+  }
+
+  await admin
+    .from("lesson_ausfaelle")
+    .update({
+      status: "ersatz_gebucht",
+      ersatz_appointment_id: erstellt.id,
+      erledigt_am: new Date().toISOString(),
+    })
+    .eq("id", ausfallId);
+
+  await scheduleLessonReminders(admin, {
+    id: erstellt.id,
     student_id: user.id,
-    appointment_id: appointmentId,
-    start_at: appt.start_at,
+    start_at: erstellt.start_at as string,
+  });
+  await syncAppointmentToCalendar(admin, erstellt.id);
+
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("vorname, nachname")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  await sendEmailNow(admin, "reschedule_confirmed", {
+    to: undefined,
+    student_id: user.id,
+    student_name: `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined,
+    original_start: ausfall.original_start,
+    new_start: erstellt.start_at,
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /**
@@ -460,7 +699,7 @@ export async function requestReschedule(
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Schüler zieht eine offene Verschiebungsanfrage zurück. */
@@ -504,7 +743,7 @@ export async function withdrawReschedule(rescheduleId: string) {
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /**
@@ -530,6 +769,18 @@ export async function acceptProposal(proposalId: string) {
   }
   if (proposal.status !== "open") {
     return { error: "Dieser Vorschlag ist nicht mehr offen." };
+  }
+
+  // Auch ein Admin-Vorschlag darf erst angenommen werden, wenn die
+  // Anzahlung eines Ratenpakets bezahlt ist.
+  const { data: aktivePakete } = await supabase
+    .from("packages")
+    .select("id, billing_mode")
+    .eq("student_id", user.id)
+    .eq("status", "active");
+  for (const p of aktivePakete ?? []) {
+    const gesperrt = await assertBookingUnlocked(supabase, p);
+    if (gesperrt) return gesperrt;
   }
 
   const admin = await createAdminClient();
@@ -568,8 +819,22 @@ export async function acceptProposal(proposalId: string) {
     });
   }
 
+  // Admin informieren, dass der Vorschlag angenommen wurde (Mail + Push).
+  const { data: nameRow } = await supabase
+    .from("profiles")
+    .select("vorname, nachname")
+    .eq("id", user.id)
+    .maybeSingle();
+  await sendEmailNow(admin, "proposal_accepted_admin", {
+    student_id: user.id,
+    student_name: nameRow ? `${nameRow.vorname} ${nameRow.nachname}` : undefined,
+    proposed_start: proposal.proposed_start,
+    lessons_count: proposal.lessons_count ?? 1,
+    interval_days: proposal.interval_days ?? 0,
+  });
+
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /** Schüler lehnt einen Terminvorschlag ab → Admin wird informiert. */
@@ -612,7 +877,7 @@ export async function rejectProposal(proposalId: string) {
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 /**
@@ -641,117 +906,384 @@ export async function markInvoicePaid(invoiceId: string) {
   }
 
   const admin = await createAdminClient();
-  const { error } = await admin
+  const { data: updated, error } = await admin
     .from("invoices")
     .update({ status: "pending_confirmation" })
-    .eq("id", invoiceId);
+    .eq("id", invoiceId)
+    .select("amount, invoice_number, lesson_date")
+    .maybeSingle();
   if (error) return { error: "Status konnte nicht aktualisiert werden." };
 
+  // Admin informieren, damit die Zahlung geprüft werden kann (Mail + Push).
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("vorname, nachname")
+    .eq("id", user.id)
+    .maybeSingle();
+  await sendEmailNow(admin, "payment_reported_admin", {
+    student_id: user.id,
+    student_name: profile ? `${profile.vorname} ${profile.nachname}` : undefined,
+    invoice_id: invoiceId,
+    amount: updated?.amount,
+    invoice_number: updated?.invoice_number,
+    lesson_date: updated?.lesson_date,
+  });
+
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
-/**
- * Schüler bucht ein neues Paket (10er oder 20er) im Portal.
- * Preis wird serverseitig aus dem Profil berechnet – nie aus dem Client
- * übernommen. Insert läuft über den Service-Role-Client, da die RLS auf
- * `packages` nur Admin-Inserts erlaubt; sämtliche Geschäftsregeln werden
- * vorher serverseitig geprüft.
- */
-export async function buyPackage(type: "10er" | "20er", agbAccepted: boolean) {
-  const supabase = await createClient();
+// ── Abo ────────────────────────────────────────────────────
 
+/**
+ * Abo-Vorschau für den angemeldeten Schüler.
+ *
+ * Liefert die **exakten** Termine für den gewählten Fixplatz, die Ferien, die
+ * darin ausfallen, und den Monatsbetrag. Bewusst serverseitig gerechnet: Der
+ * Preis darf nie aus dem Browser kommen, und die Zahl in der Vorschau muss
+ * dieselbe sein, die nachher auf der Rechnung steht.
+ */
+export async function aboVorschau(params: {
+  variante: AboVariante;
+  rhythmus: Rhythmus;
+  bookingMode: BookingMode;
+  weekday: number;
+}): Promise<{ vorschau: AboVorschau } | { error: string }> {
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Nicht angemeldet." };
 
-  if (!agbAccepted) return { error: "Bitte akzeptiere zuerst die AGB." };
-  if (type !== "10er" && type !== "20er") {
-    return { error: "Ungültiger Pakettyp." };
+  if (params.variante !== "halbjahr" && params.variante !== "jahr") {
+    return { error: "Ungültige Abo-Variante." };
+  }
+  if (params.weekday < 0 || params.weekday > 6) {
+    return { error: "Ungültiger Wochentag." };
   }
 
-  // Profil + Preise des angemeldeten Schülers laden
+  const admin = await createAdminClient();
+  const vorschau = await baueVorschau(admin, {
+    studentId: user.id,
+    variante: params.variante,
+    rhythmus:
+      params.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich",
+    bookingMode: params.bookingMode === "fix" ? "fix" : "flex",
+    weekday: params.weekday,
+    periodeStart: naechsterPeriodenstart(todayInZurich()),
+  });
+
+  return { vorschau };
+}
+
+/**
+ * Freie Fixplätze für den angemeldeten Schüler.
+ *
+ * Geprüft wird die **ganze Serie** über die Abo-Laufzeit, nicht nur der
+ * nächste Termin. Ein Platz, der nächste Woche frei ist, aber ab Oktober
+ * jedes zweite Mal kollidiert, taugt nicht als fester Platz.
+ */
+export async function fixplaetzeSuchen(
+  type: "10er" | "20er",
+  rhythmus: Rhythmus
+): Promise<{ angebote: FixplatzAngebot[] } | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  if (type !== "10er" && type !== "20er") return { error: "Ungültiger Pakettyp." };
+
+  const admin = await createAdminClient();
+  const angebote = await findeFixplaetze(admin, {
+    studentId: user.id,
+    rhythmus: rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich",
+    lessons: PACKAGE_LESSONS[type],
+  });
+
+  return { angebote };
+}
+
+/**
+ * Abo abschliessen.
+ *
+ * Der Schüler kauft eine Laufzeit (Halbjahr oder Jahr), nicht eine
+ * Lektionszahl — wie viele Lektionen darin liegen, wird für seinen konkreten
+ * Fixplatz ausgerechnet und vertraglich festgehalten.
+ *
+ * Alles Preisrelevante wird hier serverseitig neu berechnet und nichts aus dem
+ * Client übernommen. Der Client schickt nur die Auswahl.
+ */
+export async function aboAbschliessen(params: {
+  variante: AboVariante;
+  rhythmus: Rhythmus;
+  bookingMode: BookingMode;
+  fixplatz?: { weekday: number; time: string; parity: 0 | 1 | null };
+  autoRenew: boolean;
+  regelnBestaetigt: boolean;
+}): Promise<{ success: true; error: undefined } | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  if (!params.regelnBestaetigt) {
+    return { error: "Bitte bestätige zuerst alle Punkte." };
+  }
+  if (params.variante !== "halbjahr" && params.variante !== "jahr") {
+    return { error: "Ungültige Abo-Variante." };
+  }
+
+  const bookingMode: BookingMode = params.bookingMode === "fix" ? "fix" : "flex";
+  const rhythmus: Rhythmus =
+    params.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich";
+
+  if (bookingMode === "fix" && !params.fixplatz) {
+    return { error: "Bitte wähle einen festen Termin aus." };
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, role, price_single, price_10er, price_20er, travel_surcharge, vorname, nachname, adresse, email, payment_method")
+    .select("id, vorname, nachname, adresse, email, payment_method")
     .eq("id", user.id)
-    .single();
-
+    .maybeSingle();
   if (!profile) return { error: "Profil nicht gefunden." };
 
-  // Prüfen, ob bereits ein nutzbares Paket existiert (Spec §5)
-  const { data: existing } = await supabase
+  // Läuft schon ein Abo? Dann kein zweites – beendet wird über die
+  // Auto-Verlängerung, nicht durch Danebenkaufen.
+  const { data: bestehend } = await supabase
     .from("packages")
     .select("*")
     .eq("student_id", user.id)
     .eq("status", "active");
 
-  const usable = (existing ?? []).find(
-    (p) => !canBuyNewPackage(p as Paket)
-  );
-  if (usable) {
-    const state = computePackageState(usable as Paket);
+  const nutzbar = (bestehend ?? []).find((p) => !canBuyNewPackage(p as Paket));
+  if (nutzbar) {
     return {
-      error: `Du hast noch ${state.lessonsRemaining} Lektion${
-        state.lessonsRemaining !== 1 ? "en" : ""
-      } offen. Ein neues Paket kannst du erst danach buchen.`,
+      error:
+        "Du hast bereits ein laufendes Abo. Ein neues kannst du abschliessen, sobald das aktuelle endet.",
     };
   }
 
-  const lessonsTotal = PACKAGE_LESSONS[type];
-  const validityMonths = PACKAGE_VALIDITY_MONTHS[type];
-  const ppl = pricePerLessonFor(type, {
-    price_single: Number(profile.price_single),
-    price_10er: Number(profile.price_10er),
-    price_20er: Number(profile.price_20er),
-    travel_surcharge: Number(profile.travel_surcharge),
-  });
-  const totalPrice = ppl * lessonsTotal;
-
-  const startsAt = new Date();
-  const expiresAt =
-    validityMonths != null ? addMonths(startsAt, validityMonths) : null;
-
   const admin = await createAdminClient();
+
+  // Wochentag für die Berechnung: beim Fixplatz der gewählte Tag, bei Flex
+  // ein Referenztag (Mittwoch) – dort ist die Lektionszahl nur ein Richtwert,
+  // weil flexible Schüler ohnehin selbst buchen.
+  const rechenTag = params.fixplatz?.weekday ?? 3;
+  const periodeStart = naechsterPeriodenstart(todayInZurich());
+
+  const vorschau = await baueVorschau(admin, {
+    studentId: user.id,
+    variante: params.variante,
+    rhythmus,
+    bookingMode,
+    weekday: rechenTag,
+    periodeStart,
+  });
+
+  if (vorschau.lektionen < 1) {
+    return {
+      error:
+        "In diesem Zeitraum liegen keine Unterrichtstermine. Bitte melde dich bei mir.",
+    };
+  }
+
   const { data: pkg, error } = await admin
     .from("packages")
     .insert({
       student_id: user.id,
-      type,
-      lessons_total: lessonsTotal,
+      // `type` trägt weiterhin die alte Spalte, damit bestehende Auswertungen
+      // und Constraints nicht brechen. Die Wahrheit steht in abo_variante.
+      type: params.variante === "halbjahr" ? "10er" : "20er",
+      lessons_total: vorschau.lektionen,
       lessons_used: 0,
-      name: PACKAGE_LABELS[type],
-      price_per_lesson: ppl,
-      total_price: totalPrice,
-      starts_at: startsAt.toISOString(),
-      expires_at: expiresAt ? expiresAt.toISOString() : null,
+      name: `${ABO_LABELS[params.variante]} · ${
+        rhythmus === "woechentlich" ? "wöchentlich" : "alle zwei Wochen"
+      }`,
+      price_per_lesson: vorschau.preisProLektion,
+      total_price: vorschau.gesamtpreis,
+      starts_at: new Date(`${periodeStart}T00:00:00.000Z`).toISOString(),
+      expires_at: new Date(`${vorschau.periodeEnde}T23:59:59.000Z`).toISOString(),
       status: "active",
+      billing_mode: "raten",
+      term_months: vorschau.laufzeitMonate,
+      auto_renew: params.autoRenew,
+      deposit_amount: 0,
+      instalment_count: vorschau.laufzeitMonate,
+      instalment_amount: vorschau.monatsbetrag,
+      rhythmus,
+      booking_mode: bookingMode,
+      fixplatz_weekday: params.fixplatz?.weekday ?? null,
+      fixplatz_time: params.fixplatz?.time ?? null,
+      fixplatz_week_parity: params.fixplatz?.parity ?? null,
+      flex_surcharge_percent: bookingMode === "flex" ? FLEX_SURCHARGE_PERCENT : 0,
+      abo_variante: params.variante,
+      abo_lektionen: vorschau.lektionen,
+      monatsbetrag: vorschau.monatsbetrag,
+      periode_start: periodeStart,
+      periode_ende: vorschau.periodeEnde,
     })
     .select("id, student_id, type, total_price, price_per_lesson, payment_method")
     .single();
 
   if (error || !pkg) {
-    // 23505 = unique_violation: der partielle Unique-Index
-    // `packages_one_active_per_student` verhindert ein zweites aktives Paket
-    // (z. B. bei Doppelklick oder parallelen Requests).
-    if (error?.code === "23505") {
-      return { error: "Du hast bereits ein aktives Paket." };
-    }
-    return { error: "Paket konnte nicht gebucht werden. Bitte versuche es erneut." };
+    if (error?.code === "23505") return { error: "Du hast bereits ein aktives Abo." };
+    return { error: "Das Abo konnte nicht abgeschlossen werden." };
   }
 
-  // Gesamten Paketpreis sofort in Rechnung stellen (Zahlung innert 15 Tagen).
-  await createPackageInvoice(admin, pkg, {
-    vorname: profile.vorname,
-    nachname: profile.nachname,
-    adresse: profile.adresse,
-    email: profile.email,
-    payment_method: profile.payment_method,
+  // Monatsraten anlegen. Keine Anzahlung – jeder Monat ist gleich viel.
+  const raten = await legeMonatsratenAn(admin, {
+    packageId: pkg.id,
+    studentId: user.id,
+    gesamtpreis: vorschau.gesamtpreis,
+    laufzeitMonate: vorschau.laufzeitMonate,
+    periodeStart,
+  });
+  if ("error" in raten) {
+    console.error("[abo] Monatsraten:", pkg.id, raten.error);
+  }
+
+  // Fixplatz-Serie buchen.
+  let fixplatzText: string | null = null;
+  if (bookingMode === "fix" && params.fixplatz) {
+    fixplatzText = describeFixplatz(
+      params.fixplatz.weekday,
+      params.fixplatz.time,
+      rhythmus,
+      params.fixplatz.parity
+    );
+    const serie = await bookFixplatzSeries(admin, {
+      studentId: user.id,
+      packageId: pkg.id,
+      wunsch: {
+        weekday: params.fixplatz.weekday,
+        time: params.fixplatz.time,
+        rhythmus,
+        lessons: vorschau.lektionen,
+      },
+      parity: params.fixplatz.parity,
+    });
+    if ("error" in serie) {
+      console.error("[abo] Fixplatz-Serie:", pkg.id, serie.error);
+    }
+  }
+
+  const name = `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim();
+
+  await sendEmailNow(admin, "abo_gestartet", {
+    student_id: user.id,
+    student_name: name || undefined,
+    abo_label: ABO_LABELS[params.variante],
+    rhythmus_text: rhythmus === "woechentlich" ? "jede Woche" : "alle zwei Wochen",
+    fixplatz_text: fixplatzText,
+    lektionen: vorschau.lektionen,
+    monatsbetrag: vorschau.monatsbetrag,
+    laufzeit_monate: vorschau.laufzeitMonate,
+    periode_start: periodeStart,
+    periode_ende: vorschau.periodeEnde,
+    termine: vorschau.termine,
+    ferientage: vorschau.ferientage,
+    auto_renew: params.autoRenew,
+  });
+
+  await sendEmailNow(admin, "abo_gestartet_admin", {
+    student_id: user.id,
+    student_name: name || undefined,
+    abo_label: ABO_LABELS[params.variante],
+    rhythmus_text: rhythmus === "woechentlich" ? "jede Woche" : "alle zwei Wochen",
+    fixplatz_text: fixplatzText,
+    lektionen: vorschau.lektionen,
+    monatsbetrag: vorschau.monatsbetrag,
+    gesamtpreis: vorschau.gesamtpreis,
+    periode_start: periodeStart,
+    periode_ende: vorschau.periodeEnde,
   });
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
+}
+
+/**
+ * Auto-Verlängerung für das eigene Paket ein- oder ausschalten.
+ *
+ * Das ist gleichzeitig die Kündigung: wer abwählt, dessen Paket läuft am
+ * Ende der Laufzeit ersatzlos aus. Nach Ablauf der Kündigungsfrist
+ * (14 Tage vor Verfall) ist die laufende Periode nicht mehr kündbar –
+ * die Verlängerung ist dann bereits ausgelöst.
+ */
+export async function setAutoRenew(packageId: string, enabled: boolean) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const { data: pkg } = await supabase
+    .from("packages")
+    .select("id, student_id, status, expires_at, auto_renew, type")
+    .eq("id", packageId)
+    .maybeSingle();
+
+  if (!pkg || pkg.student_id !== user.id) {
+    return { error: "Paket nicht gefunden." };
+  }
+  if (pkg.status !== "active") {
+    return { error: "Dieses Paket ist nicht mehr aktiv." };
+  }
+
+  // Kündigungsfrist prüfen – nur beim Abwählen relevant.
+  if (!enabled && pkg.expires_at) {
+    const expiresOn = todayInZurich(new Date(pkg.expires_at));
+    if (!isCancellable(expiresOn, todayInZurich())) {
+      return {
+        error: `Die Kündigungsfrist von ${CANCELLATION_NOTICE_DAYS} Tagen ist abgelaufen. Melde dich bitte direkt bei mir.`,
+      };
+    }
+  }
+
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("packages")
+    .update({
+      auto_renew: enabled,
+      cancelled_at: enabled ? null : new Date().toISOString(),
+    })
+    .eq("id", packageId);
+
+  if (error) return { error: "Änderung konnte nicht gespeichert werden." };
+
+  // Kündigung bestätigen – Schüler und Admin (Mail + Push).
+  if (!enabled) {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("vorname, nachname")
+      .eq("id", user.id)
+      .maybeSingle();
+    const studentName =
+      `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined;
+    const label = PACKAGE_LABELS[pkg.type as string] ?? "Paket";
+
+    await sendEmailNow(admin, "subscription_cancelled", {
+      student_id: user.id,
+      student_name: studentName,
+      package_id: pkg.id,
+      package_label: label,
+      expires_at: pkg.expires_at,
+    });
+    await sendEmailNow(admin, "subscription_cancelled_admin", {
+      student_id: user.id,
+      student_name: studentName,
+      package_id: pkg.id,
+      package_label: label,
+      expires_at: pkg.expires_at,
+    });
+  }
+
+  revalidatePath("/schueler/portal");
+  return { success: true, error: undefined };
 }
 
 // ── Gruppenkurse ───────────────────────────────────────────────────────────
@@ -869,7 +1401,7 @@ export async function joinGroupSessionAction(sessionId: string) {
   if ("error" in result) return result;
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }
 
 export async function leaveGroupSessionAction(sessionId: string) {
@@ -884,5 +1416,5 @@ export async function leaveGroupSessionAction(sessionId: string) {
   if ("error" in result) return result;
 
   revalidatePath("/schueler/portal");
-  return { success: true };
+  return { success: true, error: undefined };
 }

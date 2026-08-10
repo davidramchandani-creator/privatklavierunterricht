@@ -3,9 +3,31 @@
  * Kein echtes Payment-API – nur Deep-Link-Generator.
  */
 
-const TWINT_BASE_URL =
-  process.env.TWINT_BASE_URL ??
-  "https://go.twint.ch/1/e/tw?tw=acq.6YabPo0CSR6u1rxllpn-W0WWPnkfZMQnBMX_JvCpUKrIMZZJaBhIz5pjf-UeImB-.";
+/**
+ * Der Acquirer-Link enthält ein Zahlungs-Token und gehört deshalb NICHT
+ * in den Quellcode (öffentliches Repo). Er kommt ausschliesslich aus der
+ * Umgebungsvariable TWINT_BASE_URL.
+ *
+ * Fehlt sie, liefern die Builder einen leeren String. Aufrufer behandeln
+ * das als "TWINT nicht verfügbar" und zeigen nur die QR-Rechnung an –
+ * es entstehen also keine kaputten Zahlungslinks.
+ */
+const TWINT_BASE_URL = (process.env.TWINT_BASE_URL ?? "").trim();
+
+let warned = false;
+function warnMissing(): void {
+  if (warned) return;
+  warned = true;
+  console.error(
+    "[twint] TWINT_BASE_URL ist nicht gesetzt – TWINT-Zahlungen sind deaktiviert, " +
+      "es wird nur die QR-Rechnung angeboten."
+  );
+}
+
+/** Ist TWINT konfiguriert? */
+export function isTwintConfigured(): boolean {
+  return TWINT_BASE_URL.length > 0;
+}
 
 /**
  * Baut den TWINT Deep-Link zusammen.
@@ -13,6 +35,10 @@ const TWINT_BASE_URL =
  * @param trxInfo Zahlungsreferenz / Beschreibung (z.B. Rechnungsnummer)
  */
 export function buildTwintLink(amount: number, trxInfo: string): string {
+  if (!TWINT_BASE_URL) {
+    warnMissing();
+    return "";
+  }
   return `${TWINT_BASE_URL}&trxInfo=${encodeURIComponent(trxInfo)}&amount=${amount.toFixed(2)}`;
 }
 
@@ -63,6 +89,10 @@ export function getTwintBaseUrl(): string {
  * offizielle TWINT-SVG. Klick öffnet den Acquirer-Link.
  */
 export function twintButtonHtml(): string {
+  if (!TWINT_BASE_URL) {
+    warnMissing();
+    return "";
+  }
   return `<a href="${TWINT_BASE_URL}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
   <img alt="Mit TWINT bezahlen" src="https://go.twint.ch/static/img/button_dark_en.svg" style="height:58px;width:auto;border:none;" />
 </a>`;

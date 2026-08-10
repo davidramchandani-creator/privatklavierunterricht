@@ -4,17 +4,22 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { MapPin, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-type PaketOption = "einzellektion" | "10er" | "20er";
+type PaketOption = "einzellektion" | "halbjahr" | "jahr";
 
 interface PaketConfig {
   label: string;
   preis: number;
 }
 
+/**
+ * Lektionspreise wie auf der Preisseite. Der Wegaufschlag kommt darauf,
+ * nicht statt dessen — die Zahlen hier waren früher um CHF 20 höher als die
+ * ausgewiesenen Preise und passten damit zu keiner anderen Stelle.
+ */
 const PAKETE: Record<PaketOption, PaketConfig> = {
-  einzellektion: { label: "Einzellektion", preis: 105 },
-  "10er": { label: "10er-Paket", preis: 90 },
-  "20er": { label: "20er-Paket", preis: 85 },
+  einzellektion: { label: "Einzellektion", preis: 85 },
+  halbjahr: { label: "Halbjahresabo", preis: 70 },
+  jahr: { label: "Jahresabo", preis: 65 },
 };
 
 const ZIEL = "Sattleracherstrasse 59, 8413 Neftenbach, Schweiz";
@@ -52,7 +57,7 @@ declare global {
 }
 
 export default function Preisrechner() {
-  const [paket, setPaket] = useState<PaketOption>("einzellektion");
+  const [paket, setPaket] = useState<PaketOption>("halbjahr");
   const [adresse, setAdresse] = useState("");
   const [status, setStatus] = useState<
     "idle" | "loading" | "success" | "error"

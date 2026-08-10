@@ -18,6 +18,19 @@ export const ADMIN_RECIPIENT_TYPES = [
   // Kontaktformular + Probelektion-Anfragen (nur Push; die Mail wird in den
   // jeweiligen Actions direkt versendet).
   "anfrage_admin",
+  // Schüler-Aktionen, über die der Admin informiert werden muss.
+  "payment_reported_admin",
+  "package_purchased_admin",
+  "proposal_accepted_admin",
+  // Abo-Modell
+  "subscription_renewed_admin",
+  "subscription_cancelled_admin",
+  // Fixplatz-Modell
+  "fixplatz_admin",
+  "ausfall_admin",
+  // Abo-Modell
+  "abo_gestartet_admin",
+  "abo_verlaengert_admin",
 ];
 
 export const STUDENT_PAYLOAD_TO_TYPES = [
@@ -47,6 +60,23 @@ export const STUDENT_LOOKUP_TYPES = [
   "appointment_cancelled_by_admin",
   "proposal_new",
   "package_settlement_paid",
+  // Abo-Modell
+  "subscription_renewal_notice",
+  "subscription_renewed",
+  "subscription_expired",
+  "subscription_cancelled",
+  "package_created",
+  // Fixplatz-Modell
+  "fixplatz_confirmed",
+  "ausfall_ersatz_vorschlag",
+  "ausfall_gutschrift",
+  "ausfall_kurzfristig",
+  "rhythmus_changed",
+  // Abo-Modell
+  "abo_gestartet",
+  "abo_verlaengert",
+  "abo_beendet",
+  "abo_endet_bald",
 ];
 
 async function getDisabledEmailTypes(admin: SupabaseClient): Promise<string[]> {
@@ -145,7 +175,8 @@ export async function dispatchEmail(
     const amount = Number(payload.amount ?? 0);
     if (!payload.lesson_date && payload.description) {
       // Paket-Rechnung: Paketname als Zahlungszweck (kein Lektionsdatum).
-      extraContext.twint_link = buildTwintLink(amount, String(payload.description));
+      extraContext.twint_link =
+        buildTwintLink(amount, String(payload.description)) || undefined;
     } else {
       extraContext.twint_link = buildLessonTwintLink(
         amount,
@@ -325,6 +356,16 @@ async function prepareGroupPayment(
     { price_tiers: course.price_tiers as Record<string, number> },
     participantCount
   );
+
+  // Ohne hinterlegte Preisstaffel liefert pricePerPersonFor 0. Dann lieber
+  // gar keine Rechnung stellen als eine über CHF 0 – die würde als bezahlt
+  // durchlaufen und der Betrag wäre für immer verloren.
+  if (!(amount > 0)) {
+    throw new Error(
+      `Gruppenkurs "${course.title}" hat keine gültige Preisstaffel – ` +
+        `Rechnung für Termin ${appointmentId} wurde nicht erstellt.`
+    );
+  }
 
   const { data: profile } = await admin
     .from("profiles")

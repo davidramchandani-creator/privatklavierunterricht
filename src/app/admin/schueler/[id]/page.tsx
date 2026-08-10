@@ -6,6 +6,9 @@ import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
 import { computePackageState, canCancelPackage, PACKAGE_LABELS, type Package } from "@/lib/packages";
 import SchuelerDetailActions, { InvoiceAction, PreiseForm, PackageFormNew, DirektBuchung, ProposalForm, ProposalWithdraw, AppointmentActions, PackageTimerActions, AdjustLessonsButton } from "./_components/SchuelerDetailActions";
 import { StatusBadge } from "@/components/ui/status-badge";
+import RatenplanPanel from "./_components/RatenplanPanel";
+import { buildPlanSummary, type InstalmentRow } from "@/lib/instalment-view";
+import { todayInZurich } from "@/lib/subscription";
 
 export default async function SchuelerDetailPage({
   params,
@@ -25,7 +28,7 @@ export default async function SchuelerDetailPage({
   ] = await Promise.all([
     admin
       .from("profiles")
-      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, erstellt_am, price_single, price_10er, price_20er, travel_surcharge, buffer_time_minutes, buffer_mode, payment_method")
+      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, erstellt_am, price_single, price_halbjahr, price_jahr, travel_surcharge, buffer_time_minutes, buffer_mode, payment_method")
       .eq("id", id)
       .maybeSingle(),
     admin
@@ -57,6 +60,27 @@ export default async function SchuelerDetailPage({
 
   if (!profile || profile.role === "admin") notFound();
 
+  // Ratenpläne aller Pakete dieses Schülers.
+  const { data: instalmentRows } = await admin
+    .from("package_instalments")
+    .select("id, package_id, sequence, kind, amount, due_date, status, invoice_id, paid_at")
+    .eq("student_id", id)
+    .order("sequence", { ascending: true });
+
+  const grouped = new Map<string, InstalmentRow[]>();
+  for (const row of (instalmentRows ?? []) as unknown as (InstalmentRow & {
+    package_id: string;
+  })[]) {
+    const list = grouped.get(row.package_id) ?? [];
+    list.push(row);
+    grouped.set(row.package_id, list);
+  }
+
+  const plaene = new Map<string, ReturnType<typeof buildPlanSummary>>();
+  for (const [pkgId, rows] of grouped) {
+    plaene.set(pkgId, buildPlanSummary(rows));
+  }
+
   // Dynamisch gezählte Lektionen pro Paket (booked + completed + no_show zählen als verbraucht)
   const lessonsUsedByPackage = new Map<string, number>();
   if (packages && packages.length > 0) {
@@ -74,8 +98,8 @@ export default async function SchuelerDetailPage({
 
   const prices = {
     price_single: Number(profile.price_single ?? 85),
-    price_10er: Number(profile.price_10er ?? 70),
-    price_20er: Number(profile.price_20er ?? 65),
+    price_halbjahr: Number(profile.price_halbjahr ?? 70),
+    price_jahr: Number(profile.price_jahr ?? 65),
     travel_surcharge: Number(profile.travel_surcharge ?? 0),
     buffer_time_minutes: Number(profile.buffer_time_minutes ?? 15),
     buffer_mode: (profile.buffer_mode as string) ?? "fixed",
@@ -157,8 +181,8 @@ export default async function SchuelerDetailPage({
           mapsConfigured={mapsConfigured}
           initial={{
             price_single: prices.price_single,
-            price_10er: prices.price_10er,
-            price_20er: prices.price_20er,
+            price_halbjahr: prices.price_halbjahr,
+            price_jahr: prices.price_jahr,
             travel_surcharge: prices.travel_surcharge,
             buffer_time_minutes: prices.buffer_time_minutes,
             buffer_mode: prices.buffer_mode,
@@ -247,12 +271,27 @@ export default async function SchuelerDetailPage({
           student_user_id={id}
           defaultPrices={{
             price_single: prices.price_single,
-            price_10er: prices.price_10er,
-            price_20er: prices.price_20er,
+            price_halbjahr: prices.price_halbjahr,
+            price_jahr: prices.price_jahr,
             travel_surcharge: prices.travel_surcharge,
           }}
         />
       </div>
+
+      {/* Ratenpläne */}
+      {(packages as Package[] | null)
+        ?.filter((pkg) => plaene.has(pkg.id))
+        .map((pkg) => (
+          <RatenplanPanel
+            key={pkg.id}
+            plan={plaene.get(pkg.id)!}
+            packageLabel={PACKAGE_LABELS[pkg.type] ?? pkg.name ?? pkg.type}
+            autoRenew={Boolean((pkg as { auto_renew?: boolean }).auto_renew)}
+            expiresOn={
+              pkg.expires_at ? todayInZurich(new Date(pkg.expires_at)) : null
+            }
+          />
+        ))}
 
       {/* Bevorstehende Lektionen */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">

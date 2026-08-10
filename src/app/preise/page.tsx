@@ -7,13 +7,41 @@ import Preisrechner from "@/components/sections/Preisrechner";
 export const metadata: Metadata = {
   title: "Preise & Transparenz – Privatklavierunterricht David Ramchandani",
   description:
-    "Wie sich meine Unterrichtspreise zusammensetzen und warum sie fair und nachhaltig sind. Einzellektion CHF 85, 10er-Paket CHF 70, 20er-Paket CHF 65 pro Lektion.",
+    "Wie sich meine Unterrichtspreise zusammensetzen und warum sie fair und nachhaltig sind. Einzellektion CHF 85, Halbjahresabo CHF 70, Jahresabo CHF 65 pro Lektion.",
 };
 
 const modelle = [
   { modell: "Einzellektion", preis: "CHF 85.–" },
-  { modell: "10er-Paket", preis: "CHF 70.–" },
-  { modell: "20er-Paket", preis: "CHF 65.–" },
+  { modell: "Halbjahresabo (6 Monate)", preis: "CHF 70.–" },
+  { modell: "Jahresabo (12 Monate)", preis: "CHF 65.–" },
+];
+
+/**
+ * Beispielwerte für einen Dienstagstermin ab 01.10.2026. Die tatsächliche
+ * Lektionszahl hängt von Wochentag und Ferienlage ab und wird beim Abschluss
+ * exakt gerechnet – darum steht hier "ca." und keine Festzusage.
+ */
+const abobeispiele = [
+  {
+    abo: "Halbjahresabo, wöchentlich",
+    lektionen: "ca. 20 Lektionen",
+    monat: "CHF 233.35",
+  },
+  {
+    abo: "Halbjahresabo, alle zwei Wochen",
+    lektionen: "ca. 10 Lektionen",
+    monat: "CHF 116.65",
+  },
+  {
+    abo: "Jahresabo, wöchentlich",
+    lektionen: "ca. 39 Lektionen",
+    monat: "CHF 211.25",
+  },
+  {
+    abo: "Jahresabo, alle zwei Wochen",
+    lektionen: "ca. 20 Lektionen",
+    monat: "CHF 108.35",
+  },
 ];
 
 const leistungen = [
@@ -21,7 +49,7 @@ const leistungen = [
   "Vorbereitung und Nachbearbeitung jeder Lektion",
   "Nutzung von Material, Equipment und Software",
   "Faire Entlohnung, damit ich Studium und Unterricht langfristig vereinbaren kann",
-  "Rabattierte Pakete für langfristige Schüler – Musik braucht Zeit und Entwicklung",
+  "Günstigere Abos für langfristige Schüler – Musik braucht Zeit und Entwicklung",
 ];
 
 export default function PreisePage() {
@@ -81,6 +109,56 @@ export default function PreisePage() {
             <p className="text-sm text-gray-500 mt-4 leading-relaxed">
               Die Pakete sind rabattiert, weil sie Verbindlichkeit schaffen und mir
               ermöglichen, den Unterricht verlässlich zu planen.
+            </p>
+          </div>
+
+          {/* Monatliche Zahlung */}
+          <div className="space-y-4">
+            <h2 className="text-2xl font-800 text-navy-900">
+              Monatlich zahlbar
+            </h2>
+            <p className="text-gray-600 leading-relaxed">
+              Beim Abo zahlst du jeden Monat denselben Betrag – unabhängig davon,
+              wie viele Lektionen in diesen Monat fallen. Im Dezember sind es wegen
+              der Weihnachtsferien vielleicht zwei, im März fünf. Der Betrag bleibt
+              gleich. Das ist der Sinn eines Abos: eine verlässliche Zahl auf beiden
+              Seiten.
+            </p>
+            <div className="overflow-hidden rounded-2xl border border-[#EAECEF]">
+              <table className="w-full text-left">
+                <thead className="bg-surface">
+                  <tr>
+                    <th className="px-5 py-3 text-sm font-700 text-navy-900">Abo</th>
+                    <th className="px-5 py-3 text-sm font-700 text-navy-900 text-right">
+                      Umfang
+                    </th>
+                    <th className="px-5 py-3 text-sm font-700 text-navy-900 text-right">
+                      Pro Monat
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {abobeispiele.map(({ abo, lektionen, monat }, i) => (
+                    <tr key={abo} className={i > 0 ? "border-t border-[#EAECEF]" : ""}>
+                      <td className="px-5 py-4 text-sm text-gray-700">{abo}</td>
+                      <td className="px-5 py-4 text-sm text-gray-700 text-right">
+                        {lektionen}
+                      </td>
+                      <td className="px-5 py-4 text-sm font-700 text-navy-900 text-right">
+                        {monat}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              In den Schulferien findet kein Unterricht statt – diese Termine sind
+              in der Lektionszahl bereits abgezogen und werden nicht verrechnet.
+              Wie viele Lektionen dein Abo genau enthält, hängt von deinem
+              Wochentag und der Ferienlage ab; du siehst die exakte Zahl mit allen
+              Terminen, bevor du abschliesst. Bezahlt wird per TWINT oder
+              QR-Rechnung.
             </p>
           </div>
 

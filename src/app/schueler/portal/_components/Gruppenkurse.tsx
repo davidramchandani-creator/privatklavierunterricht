@@ -108,7 +108,7 @@ function SessionRow({
     setError(null);
     startTransition(async () => {
       const result = await joinGroupSessionAction(session.id);
-      if (result && "error" in result) setError(result.error);
+      if (result && "error" in result) setError(result.error ?? null);
       else setJoined(true);
     });
   }

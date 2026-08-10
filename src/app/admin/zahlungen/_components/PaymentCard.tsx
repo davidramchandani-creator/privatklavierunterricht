@@ -32,6 +32,9 @@ export type Invoice = {
   lesson_date: string | null;
   paid_at: string | null;
   studentName: string;
+  /** z. B. "10er-Paket – Rate 2/4"; bei Lektionsrechnungen leer. */
+  description?: string | null;
+  due_date?: string | null;
 };
 
 function fmtCHF(n: number): string {
@@ -39,7 +42,7 @@ function fmtCHF(n: number): string {
 }
 
 function fmtDate(iso: string | null): string {
-  if (!iso) return "Stornierung";
+  if (!iso) return "—";
   try {
     return new Intl.DateTimeFormat("de-CH", {
       timeZone: "Europe/Zurich",
@@ -176,7 +179,14 @@ export default function PaymentCard({ invoice }: { invoice: Invoice }) {
             <div className="mt-0.5 flex items-center gap-1.5 text-[12px] text-gray-400 min-w-0">
               <MethodIcon className="w-3.5 h-3.5 flex-shrink-0" />
               <span className="truncate">
-                {fmtDate(invoice.lesson_date)} · {methodLabel}
+                {invoice.lesson_date
+                  ? fmtDate(invoice.lesson_date)
+                  : invoice.description
+                    ? invoice.description
+                    : invoice.due_date
+                      ? `zahlbar bis ${fmtDate(invoice.due_date)}`
+                      : "Rechnung"}{" "}
+                · {methodLabel}
                 {invoice.invoice_number ? ` · ${invoice.invoice_number}` : ""}
               </span>
             </div>
@@ -269,7 +279,10 @@ export default function PaymentCard({ invoice }: { invoice: Invoice }) {
             <div className="px-5 pt-2 pb-3">
               <p className="text-sm font-700 text-gray-900">{invoice.studentName}</p>
               <p className="text-xs text-gray-400">
-                {fmtCHF(Number(invoice.amount ?? 0))} · {fmtDate(invoice.lesson_date)}
+                {fmtCHF(Number(invoice.amount ?? 0))} ·{" "}
+                {invoice.lesson_date
+                  ? fmtDate(invoice.lesson_date)
+                  : (invoice.description ?? "Rechnung")}
               </p>
             </div>
 

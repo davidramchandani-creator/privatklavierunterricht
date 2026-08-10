@@ -14,7 +14,10 @@ export default function CalendarSettings({ configured }: { configured: boolean }
     setTestResult(null);
     startTest(async () => {
       const res = await testGoogleCalendar();
-      setTestResult(res);
+      // Fehlt die Berechtigung, kommt nur { error } zurück.
+      setTestResult(
+        "ok" in res ? res : { ok: false, message: res.error ?? "Keine Berechtigung." }
+      );
     });
   };
 

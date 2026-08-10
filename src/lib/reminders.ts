@@ -135,9 +135,18 @@ export async function scanForDueReminders(
   );
   const { data: packages } = await admin
     .from("packages")
-    .select("id, student_id, expires_at, lessons_total, lessons_used, paused")
+    .select(
+      "id, student_id, expires_at, lessons_total, lessons_used, paused, abo_variante"
+    )
     .eq("status", "active")
     .eq("paused", false)
+    // Abos bekommen keinen Verfalls-Hinweis.
+    //
+    // Die Nachricht „Dein Paket läuft ab, X Lektionen verfallen“ stammt aus
+    // dem Lektionspaket-Modell und wäre beim Abo doppelt falsch: Es verfällt
+    // nichts, und bei aktiver Verlängerung geht es ohnehin weiter. Abos
+    // werden über `sendRenewalNotices` informiert – mit dem passenden Text.
+    .is("abo_variante", null)
     .not("expires_at", "is", null)
     .gt("expires_at", now.toISOString())
     .lt("expires_at", warnUntil.toISOString())

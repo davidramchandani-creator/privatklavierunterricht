@@ -81,6 +81,59 @@ export function renderEmail(
   payload: Record<string, unknown>
 ): { subject: string; html: string } | null {
   switch (type) {
+    // ── Schüler-Aktionen an den Admin ───────────────────────────────
+    case "payment_reported_admin": {
+      const amount = Number(payload.amount ?? 0).toFixed(2);
+      return {
+        subject: `Zahlung gemeldet: CHF ${amount} von ${payload.student_name ?? "Schüler"}`,
+        html: baseWrapper(
+          `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat eine Zahlung als erledigt markiert.</p>
+           <p>
+             <strong>Betrag:</strong> CHF ${amount}<br/>
+             ${payload.invoice_number ? `<strong>Rechnung:</strong> ${payload.invoice_number}<br/>` : ""}
+             ${payload.lesson_date ? `<strong>Lektion:</strong> ${fmtDateTime(String(payload.lesson_date))}<br/>` : ""}
+           </p>
+           <p>Bitte prüfe den Zahlungseingang und bestätige oder lehne die Zahlung im Adminbereich ab.</p>
+           <p style="text-align:center;margin:24px 0;">
+             <a href="${APP_URL}/admin/zahlungen" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">Zahlungen öffnen</a>
+           </p>`
+        ),
+      };
+    }
+    case "package_purchased_admin": {
+      return {
+        subject: `Neues Paket gebucht: ${payload.package_label ?? "Paket"} – ${payload.student_name ?? "Schüler"}`,
+        html: baseWrapper(
+          `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat ein neues Paket gebucht.</p>
+           <p>
+             <strong>Paket:</strong> ${payload.package_label ?? "-"}<br/>
+             <strong>Lektionen:</strong> ${payload.lessons_total ?? "-"}<br/>
+             <strong>Preis pro Lektion:</strong> CHF ${Number(payload.price_per_lesson ?? 0).toFixed(2)}<br/>
+             <strong>Gesamtpreis:</strong> CHF ${Number(payload.total_price ?? 0).toFixed(2)}
+           </p>
+           <p>Die Rechnung wurde automatisch erstellt und dem Schüler zugestellt.</p>
+           <p style="text-align:center;margin:24px 0;">
+             <a href="${APP_URL}/admin/zahlungen" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">Zahlungen öffnen</a>
+           </p>`
+        ),
+      };
+    }
+    case "proposal_accepted_admin": {
+      return {
+        subject: `Terminvorschlag angenommen von ${payload.student_name ?? "Schüler"}`,
+        html: baseWrapper(
+          `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat deinen Terminvorschlag angenommen.</p>
+           <p>
+             <strong>Termin:</strong> ${payload.proposed_start ? fmtDateTime(String(payload.proposed_start)) : "-"}<br/>
+             ${Number(payload.lessons_count ?? 1) > 1 ? `<strong>Serie:</strong> ${payload.lessons_count} Lektionen alle ${payload.interval_days} Tage<br/>` : ""}
+           </p>
+           <p>Die Termine sind gebucht und im Kalender eingetragen.</p>
+           <p style="text-align:center;margin:24px 0;">
+             <a href="${APP_URL}/admin/kalender" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">Kalender öffnen</a>
+           </p>`
+        ),
+      };
+    }
     // ── Kontaktformular ─────────────────────────────────────────────
     case "kontakt_received": {
       return {
@@ -291,7 +344,7 @@ export function renderEmail(
           ${remaining > 0 ? `<li style="padding:4px 0;font-size:14px;color:#6b7280;">… und ${remaining} weitere Termine</li>` : ""}
         </ul>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Wir freuen uns auf die gemeinsamen Lektionen!
+          Ich freue mich auf die gemeinsamen Lektionen!
         </p>
       `;
       return { subject, html: baseWrapper(content) };
@@ -303,7 +356,7 @@ export function renderEmail(
       const subject = "Deine Terminanfrage – Absage";
       const content = `
         <p style="margin:0 0 16px;">
-          Leider können wir deinen angefragten Termin nicht bestätigen.
+          Leider kann ich deinen angefragten Termin nicht bestätigen.
         </p>
         ${
           reason
@@ -313,7 +366,7 @@ export function renderEmail(
             : ""
         }
         <p style="margin:0 0 24px;">
-          Gerne kannst du einen anderen Termin anfragen. Wir helfen dir, einen passenden Zeitpunkt zu finden.
+          Gerne kannst du einen anderen Termin anfragen. Ich helfe dir gerne, einen passenden Zeitpunkt zu finden.
         </p>
         <p style="margin:0 0 24px;">
           <a href="${APP_URL}/schueler/portal"
@@ -423,7 +476,7 @@ export function renderEmail(
 
       const subject = "Dein Verschiebungswunsch wurde erhalten";
       const content = `
-        <p style="margin:0 0 16px;">Vielen Dank – wir haben deinen Verschiebungswunsch erhalten.</p>
+        <p style="margin:0 0 16px;">Vielen Dank – ich habe deinen Verschiebungswunsch erhalten.</p>
         <p style="margin:0 0 16px;">
           David prüft den neuen Zeitpunkt und bestätigt ihn so bald wie möglich.
           Bis dahin bleibt dein bisheriger Termin gültig.
@@ -457,7 +510,7 @@ export function renderEmail(
             <td style="padding:6px 0;font-weight:600;font-size:14px;color:#1C244B;">${proposedStart ? fmtDateTime(proposedStart) : "–"}</td>
           </tr>
         </table>
-        <p style="margin:0;color:#6b7280;font-size:13px;">Wir freuen uns auf die Lektion!</p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">Ich freue mich auf die Lektion!</p>
       `;
       return { subject, html: baseWrapper(content) };
     }
@@ -469,7 +522,7 @@ export function renderEmail(
       const subject = "Dein Verschiebungswunsch – Absage";
       const content = `
         <p style="margin:0 0 16px;">
-          Leider können wir deinen Verschiebungswunsch nicht annehmen.
+          Leider kann ich deinen Verschiebungswunsch nicht annehmen.
           Dein bisheriger Termin${originalStart ? ` am <strong>${fmtDateTime(originalStart)}</strong>` : ""} bleibt bestehen.
         </p>
         ${
@@ -539,7 +592,7 @@ export function renderEmail(
       const studentName = String(payload.student_name ?? "");
       const lessonDate = String(payload.lesson_date ?? "");
       const amount = Number(payload.amount ?? 0);
-      const twintLink = String(payload.twint_link ?? "#");
+      const twintLink = String(payload.twint_link ?? "");
       const invoiceNumber = String(payload.invoice_number ?? "");
       const lessonsRemaining = payload.lessons_remaining != null ? Number(payload.lessons_remaining) : null;
       const packageType = payload.package_type ? String(payload.package_type) : null;
@@ -582,11 +635,11 @@ export function renderEmail(
             <td style="padding:6px 0;font-size:14px;">${lessonsRemaining} ${packageType === "10er" ? "(10er-Abo)" : packageType === "20er" ? "(20er-Abo)" : ""}</td>
           </tr>` : ""}
         </table>
-        <p style="margin:0 0 24px;">
+        ${twintLink ? `<p style="margin:0 0 24px;">
           <a href="${twintLink}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
             <img alt="Mit TWINT bezahlen" src="https://go.twint.ch/static/img/button_dark_en.svg" style="height:58px;width:auto;border:none;" />
           </a>
-        </p>
+        </p>` : ""}
         <p style="margin:0 0 16px;">
           Nach der Zahlung bitte im Portal bestätigen:
         </p>
@@ -808,10 +861,11 @@ export function renderEmail(
         </tr>` : ""}
       `;
 
+      const gruppenTwintLink = String(payload.twint_link ?? "");
       const payBlock =
-        method === "twint"
+        method === "twint" && gruppenTwintLink
           ? `<p style="margin:0 0 24px;">
-              <a href="${String(payload.twint_link ?? "#")}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
+              <a href="${gruppenTwintLink}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
                 <img alt="Mit TWINT bezahlen" src="https://go.twint.ch/static/img/button_dark_en.svg" style="height:58px;width:auto;border:none;" />
               </a>
             </p>`
@@ -851,9 +905,17 @@ export function renderEmail(
       const lessonDate = String(payload.lesson_date ?? "");
       const amount = Number(payload.amount ?? 0);
       const invoiceNumber = String(payload.invoice_number ?? "");
+      // Rechnungen ohne Lektionsdatum (Paket, Anzahlung, Rate) tragen ihre
+      // Bezeichnung in `description`.
+      const bezeichnung = payload.description ? String(payload.description) : null;
+      const unlocksBooking = payload.unlocks_booking === true;
 
       const chf = amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const subject = `Zahlung bestätigt – Klavierstunde vom ${lessonDate ? fmtDate(lessonDate) : ""}`;
+      const subject = lessonDate
+        ? `Zahlung bestätigt – Klavierstunde vom ${fmtDate(lessonDate)}`
+        : bezeichnung
+          ? `Zahlung bestätigt – ${bezeichnung}`
+          : "Zahlung bestätigt";
       const content = `
         <p style="margin:0 0 16px;">Hallo ${studentName ? studentName.split(" ")[0] : ""},</p>
         <p style="margin:0 0 16px;font-size:18px;font-weight:bold;color:#10b981;">
@@ -864,8 +926,10 @@ export function renderEmail(
         </p>
         <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f0fdf4;border-radius:6px;padding:16px;border:1px solid #bbf7d0;">
           <tr>
-            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Lektion</td>
-            <td style="padding:6px 0;font-weight:600;font-size:14px;">${lessonDate ? fmtDateTime(lessonDate) : "–"}</td>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">${lessonDate ? "Lektion" : "Position"}</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${
+              lessonDate ? fmtDateTime(lessonDate) : (bezeichnung ?? "–")
+            }</td>
           </tr>
           <tr>
             <td style="padding:6px 0;color:#6b7280;font-size:14px;">Betrag</td>
@@ -876,6 +940,18 @@ export function renderEmail(
             <td style="padding:6px 0;font-size:14px;">${invoiceNumber}</td>
           </tr>` : ""}
         </table>
+        ${unlocksBooking ? `
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin-bottom:24px;">
+          <p style="margin:0 0 8px;font-weight:600;color:#166534;">Du kannst jetzt Termine buchen</p>
+          <p style="margin:0;color:#166534;font-size:14px;">
+            Mit der Anzahlung ist dein Paket freigeschaltet. Alle Lektionen
+            stehen dir ab sofort zur Verfügung – die weiteren Raten laufen
+            monatlich weiter.
+          </p>
+        </div>
+        <p style="text-align:center;margin:0 0 24px;">
+          <a href="${APP_URL}/schueler/portal#termine" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Termine buchen</a>
+        </p>` : ""}
         <p style="margin:0;color:#6b7280;font-size:13px;">
           Liebe Grüsse<br/>David Ramchandani
         </p>
@@ -889,18 +965,29 @@ export function renderEmail(
       const amount = Number(payload.amount ?? 0);
       const invoiceNumber = String(payload.invoice_number ?? "");
       const reason = payload.reason ? String(payload.reason) : null;
+      // Paket-, Anzahlungs- und Ratenrechnungen haben kein Lektionsdatum;
+      // sie tragen ihre Bezeichnung in `description`.
+      const bezeichnung = payload.description ? String(payload.description) : null;
 
       const chf = amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const subject = `Zahlung nicht gefunden – Klavierstunde vom ${lessonDate ? fmtDate(lessonDate) : ""}`;
+      const subject = lessonDate
+        ? `Zahlung nicht gefunden – Klavierstunde vom ${fmtDate(lessonDate)}`
+        : bezeichnung
+          ? `Zahlung nicht gefunden – ${bezeichnung}`
+          : "Zahlung nicht gefunden";
       const content = `
         <p style="margin:0 0 16px;">Hallo ${studentName ? studentName.split(" ")[0] : ""},</p>
         <p style="margin:0 0 16px;">
-          Leider konnte deine Zahlung für die folgende Lektion nicht gefunden werden:
+          Leider konnte ich deine Zahlung für ${
+            lessonDate ? "die folgende Lektion" : "die folgende Position"
+          } nicht finden:
         </p>
         <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#fef2f2;border-radius:6px;padding:16px;border:1px solid #fecaca;">
           <tr>
-            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">Lektion</td>
-            <td style="padding:6px 0;font-weight:600;font-size:14px;">${lessonDate ? fmtDateTime(lessonDate) : "–"}</td>
+            <td style="padding:6px 0;color:#6b7280;width:180px;font-size:14px;">${lessonDate ? "Lektion" : "Position"}</td>
+            <td style="padding:6px 0;font-weight:600;font-size:14px;">${
+              lessonDate ? fmtDateTime(lessonDate) : (bezeichnung ?? "–")
+            }</td>
           </tr>
           <tr>
             <td style="padding:6px 0;color:#6b7280;font-size:14px;">Betrag</td>
@@ -1107,7 +1194,7 @@ export function renderEmail(
       const content = `
         <p style="margin:0 0 16px;">Hallo,</p>
         <p style="margin:0 0 24px;">
-          wir haben eine Anfrage erhalten, dein Passwort zurückzusetzen.
+          es liegt eine Anfrage vor, dein Passwort zurückzusetzen.
           Klicke auf den Button, um ein neues Passwort festzulegen:
         </p>
         <p style="text-align:center;margin:0 0 24px;">
@@ -1205,6 +1292,830 @@ export function renderEmail(
         </p>
       `;
       return { subject, html: baseWrapper(content) };
+    }
+
+    case "package_created": {
+      const raten = payload.billing_mode === "raten";
+      const lektionen = Number(payload.lessons_total ?? 0);
+      const chf = (n: unknown) =>
+        Number(n ?? 0).toLocaleString("de-CH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      const plan = Array.isArray(payload.plan)
+        ? (payload.plan as Array<{ label: string; amount: number; dueDate: string }>)
+        : [];
+
+      return {
+        subject: raten
+          ? `Dein ${payload.package_label ?? "Paket"} ist bereit – Anzahlung offen`
+          : `Dein ${payload.package_label ?? "Paket"} ist bereit`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Dein <strong>${payload.package_label ?? "Paket"}</strong> mit
+              <strong>${lektionen} Lektionen</strong> ist angelegt${
+                payload.expires_at
+                  ? `, gültig bis <strong>${fmtDate(String(payload.expires_at))}</strong>`
+                  : ""
+              }.</p>
+
+           ${
+             raten
+               ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#92400e;">Ein Schritt fehlt noch</p>
+                    <p style="margin:0;color:#92400e;font-size:14px;">
+                      Du hast Ratenzahlung gewählt. Sobald deine Anzahlung von
+                      <strong>CHF ${chf(payload.deposit_amount)}</strong> bei mir eingegangen
+                      und von mir bestätigt ist, kannst du deine Lektionen buchen.
+                      Die Rechnung dazu bekommst du in einer separaten E-Mail.
+                    </p>
+                  </div>`
+               : `<p>Du kannst ab sofort Termine buchen – du musst nicht auf den
+                    Zahlungseingang warten. Die Rechnung über
+                    <strong>CHF ${chf(payload.total_price)}</strong> erhältst du in einer
+                    separaten E-Mail, zahlbar innert 15 Tagen.</p>`
+           }
+
+           ${
+             plan.length > 0
+               ? `<p style="margin:0 0 8px;font-weight:600;">Dein Zahlungsplan</p>
+                  <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background:#f8fafc;border-radius:6px;">
+                    ${plan
+                      .map(
+                        (e) => `<tr>
+                          <td style="padding:8px 12px;color:#475569;font-size:14px;">${e.label}</td>
+                          <td style="padding:8px 12px;color:#64748b;font-size:13px;">${fmtDate(e.dueDate)}</td>
+                          <td style="padding:8px 12px;font-weight:600;font-size:14px;text-align:right;">CHF ${chf(e.amount)}</td>
+                        </tr>`
+                      )
+                      .join("")}
+                  </table>`
+               : ""
+           }
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal#zahlungen" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">${
+               raten ? "Zahlungsplan ansehen" : "Zum Portal"
+             }</a>
+           </p>
+           <p>Liebe Grüsse<br/>David</p>`
+        ),
+      };
+    }
+
+    // ── Abo-Modell ────────────────────────────────────────────────
+    case "subscription_renewal_notice": {
+      const remaining = Number(payload.lessons_remaining ?? 0);
+      return {
+        subject: "Dein Abo verlängert sich bald",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + payload.student_name : ""}</p>
+           <p>Dein <strong>${payload.package_label ?? "Paket"}</strong> läuft am
+              <strong>${fmtDate(String(payload.expires_at))}</strong> ab und verlängert
+              sich danach automatisch um eine neue Laufzeit.</p>
+           ${
+             remaining > 0
+               ? `<p>Du hast noch <strong>${remaining} Lektion${remaining === 1 ? "" : "en"}</strong> offen.
+                   Nicht genutzte Lektionen verfallen beim Ablauf – buch dir am besten
+                   jetzt noch die restlichen Termine.</p>`
+               : ""
+           }
+           <p>Wenn du nicht verlängern möchtest, kannst du die automatische Verlängerung
+              im Portal abschalten – bis 14 Tage vor Ablauf.</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>
+           <p>Liebe Grüsse<br/>David</p>`
+        ),
+      };
+    }
+    case "subscription_renewed": {
+      const raten = payload.billing_mode === "raten";
+      return {
+        subject: "Dein Abo wurde verlängert",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + payload.student_name : ""}</p>
+           <p>Dein <strong>${payload.package_label ?? "Paket"}</strong> wurde automatisch
+              verlängert und ist ab sofort wieder buchbar${
+                payload.expires_at
+                  ? `, gültig bis <strong>${fmtDate(String(payload.expires_at))}</strong>`
+                  : ""
+              }.</p>
+           <p>${
+             raten
+               ? "Die Anzahlung für die neue Laufzeit erhältst du separat per Rechnung, die weiteren Raten folgen monatlich."
+               : "Die Rechnung für die neue Laufzeit erhältst du separat."
+           }</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Termine buchen</a>
+           </p>
+           <p>Liebe Grüsse<br/>David</p>`
+        ),
+      };
+    }
+    case "subscription_expired": {
+      const verfallen = Number(payload.lessons_forfeited ?? 0);
+      return {
+        subject: "Dein Paket ist abgelaufen",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + payload.student_name : ""}</p>
+           <p>Dein <strong>${payload.package_label ?? "Paket"}</strong> ist am
+              <strong>${fmtDate(String(payload.expires_at))}</strong> abgelaufen.</p>
+           ${
+             verfallen > 0
+               ? `<p>Dabei sind <strong>${verfallen} nicht genutzte Lektion${verfallen === 1 ? "" : "en"}</strong> verfallen.</p>`
+               : ""
+           }
+           <p>Du kannst jederzeit ein neues Paket lösen – auf Wunsch auch in Monatsraten.</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Neues Paket wählen</a>
+           </p>
+           <p>Liebe Grüsse<br/>David</p>`
+        ),
+      };
+    }
+    case "subscription_cancelled": {
+      return {
+        subject: "Automatische Verlängerung beendet",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + payload.student_name : ""}</p>
+           <p>Die automatische Verlängerung für dein
+              <strong>${payload.package_label ?? "Paket"}</strong> ist abgeschaltet.</p>
+           <p>Dein Paket bleibt bis <strong>${fmtDate(String(payload.expires_at))}</strong>
+              wie gewohnt nutzbar. Danach läuft es aus, ohne dass ein neues startet.</p>
+           <p>Nicht genutzte Lektionen verfallen beim Ablauf – buch dir also
+              rechtzeitig deine restlichen Termine.</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Termine buchen</a>
+           </p>
+           <p>Liebe Grüsse<br/>David</p>`
+        ),
+      };
+    }
+    case "subscription_renewed_admin": {
+      return {
+        subject: `Abo verlängert – ${payload.student_name ?? "Schüler"}`,
+        html: baseWrapper(
+          `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat ein automatisch
+              verlängertes <strong>${payload.package_label ?? "Paket"}</strong>.</p>
+           <p>Zahlungsart: ${payload.billing_mode === "raten" ? "Monatsraten" : "Einmalzahlung"}<br/>
+              Gültig bis: ${payload.expires_at ? fmtDate(String(payload.expires_at)) : "–"}</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/schueler" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Im Admin öffnen</a>
+           </p>`
+        ),
+      };
+    }
+    case "subscription_cancelled_admin": {
+      return {
+        subject: `Abo gekündigt – ${payload.student_name ?? "Schüler"}`,
+        html: baseWrapper(
+          `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat die automatische
+              Verlängerung für das <strong>${payload.package_label ?? "Paket"}</strong>
+              abgeschaltet.</p>
+           <p>Das Paket läuft am
+              ${payload.expires_at ? fmtDate(String(payload.expires_at)) : "Ende der Laufzeit"}
+              aus und wird nicht erneuert.</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/schueler" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Im Admin öffnen</a>
+           </p>`
+        ),
+      };
+    }
+
+    // ── Fixplatz ─────────────────────────────────────────────
+    case "fixplatz_confirmed": {
+      const termine = Array.isArray(payload.termine)
+        ? (payload.termine as string[])
+        : [];
+      const verschoben = Array.isArray(payload.verschoben)
+        ? (payload.verschoben as Array<{ original: string; ersatz: string }>)
+        : [];
+      const offen = Array.isArray(payload.offen) ? (payload.offen as string[]) : [];
+
+      return {
+        subject: `Dein fester Platz steht: ${payload.fixplatz_text ?? "Fixplatz"}`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Dein fester Unterrichtsplatz ist eingerichtet:</p>
+
+           <div style="background:#F3F5F8;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0;font-size:16px;font-weight:600;color:#1C244B;">
+               ${payload.fixplatz_text ?? ""}
+             </p>
+             <p style="margin:8px 0 0;color:#475569;font-size:14px;">
+               ${termine.length} Termine sind bereits eingetragen – du musst nichts
+               mehr einzeln buchen.
+             </p>
+           </div>
+
+           ${
+             verschoben.length > 0
+               ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#92400e;">Ein paar Ausweichtermine</p>
+                    <p style="margin:0 0 8px;color:#92400e;font-size:14px;">
+                      An diesen Tagen war dein Platz belegt (Ferien oder Feiertag).
+                      Ich habe dir einen Ersatz in derselben oder der folgenden Woche
+                      gelegt:
+                    </p>
+                    <ul style="margin:0;padding-left:20px;color:#92400e;font-size:14px;">
+                      ${verschoben
+                        .map(
+                          (v) =>
+                            `<li>statt ${fmtDate(v.original)} → <strong>${fmtDateTime(v.ersatz)}</strong></li>`
+                        )
+                        .join("")}
+                    </ul>
+                  </div>`
+               : ""
+           }
+
+           ${
+             offen.length > 0
+               ? `<p><strong>${offen.length} Lektion${offen.length === 1 ? "" : "en"}</strong>
+                    konnte ich noch nicht platzieren. Ich melde mich dazu bei dir –
+                    die Lektionen sind dir gutgeschrieben und verfallen nicht.</p>`
+               : ""
+           }
+
+           <p style="margin:24px 0 8px;font-weight:600;">Deine Termine</p>
+           <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background:#f8fafc;border-radius:6px;">
+             ${termine
+               .map(
+                 (t, i) => `<tr>
+                   <td style="padding:6px 12px;color:#94a3b8;font-size:13px;width:32px;">${i + 1}.</td>
+                   <td style="padding:6px 12px;color:#334155;font-size:14px;">${fmtDateTime(t)}</td>
+                 </tr>`
+               )
+               .join("")}
+           </table>
+
+           <p style="color:#64748b;font-size:14px;">
+             Wenn du einmal nicht kannst: bitte spätestens 24 Stunden vorher im
+             Portal absagen. Du bekommst dann automatisch Ausweichtermine
+             vorgeschlagen.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal#termine" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Termine ansehen</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "fixplatz_admin": {
+      return {
+        subject: `Neuer Fixplatz – ${payload.student_name ?? "Schüler"}`,
+        html: baseWrapper(
+          `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat einen festen
+              Platz gebucht:</p>
+           <p style="font-size:16px;font-weight:600;color:#1C244B;">
+             ${payload.fixplatz_text ?? ""}
+           </p>
+           <p>${payload.anzahl_termine ?? 0} Termine angelegt${
+             payload.anzahl_verschoben
+               ? `, davon ${payload.anzahl_verschoben} als Ausweichtermin`
+               : ""
+           }${
+             payload.anzahl_offen
+               ? `. ${payload.anzahl_offen} Lektion(en) konnten nicht platziert werden und brauchen deine Hand.`
+               : "."
+           }</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/kalender" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Kalender öffnen</a>
+           </p>`
+        ),
+      };
+    }
+
+    // ── Ausfälle ─────────────────────────────────────────────
+    case "ausfall_ersatz_vorschlag": {
+      const vorschlaege = Array.isArray(payload.vorschlaege)
+        ? (payload.vorschlaege as Array<{ start: string; begruendung: string }>)
+        : [];
+      return {
+        subject: payload.original_datum
+          ? `Ausweichtermine für deine Lektion vom ${fmtDate(String(payload.original_datum))}`
+          : "Ausweichtermine für deine ausgefallene Lektion",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Deine Lektion vom
+              <strong>${payload.original_datum ? fmtDateTime(String(payload.original_datum)) : ""}</strong>
+              fällt aus${payload.grund ? ` (${payload.grund})` : ""}.</p>
+
+           <p><strong>Die Lektion ist dir erhalten</strong> – sie wird nicht abgezogen.
+              Such dir einen der folgenden Ausweichtermine aus:</p>
+
+           <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background:#f8fafc;border-radius:6px;">
+             ${vorschlaege
+               .map(
+                 (v) => `<tr>
+                   <td style="padding:10px 12px;color:#1C244B;font-size:14px;font-weight:600;">${fmtDateTime(v.start)}</td>
+                   <td style="padding:10px 12px;color:#64748b;font-size:13px;">${v.begruendung}</td>
+                 </tr>`
+               )
+               .join("")}
+           </table>
+
+           <p style="color:#64748b;font-size:14px;">
+             Passt keiner davon? Dann verlängert sich stattdessen die Laufzeit deines
+             Pakets um die entsprechende Zeit – du verlierst nichts.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal#termine" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Ausweichtermin wählen</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "ausfall_gutschrift": {
+      return {
+        subject: "Deine Laufzeit wurde verlängert",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Für die ausgefallene Lektion vom
+              <strong>${payload.original_datum ? fmtDate(String(payload.original_datum)) : ""}</strong>
+              liess sich kein Ausweichtermin finden.</p>
+
+           <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0;color:#065f46;font-size:14px;">
+               Die Lektion bleibt dir erhalten und die Laufzeit deines Pakets
+               verlängert sich um <strong>${payload.tage ?? 0} Tage</strong>${
+                 payload.neues_ablaufdatum
+                   ? ` – neu gültig bis <strong>${fmtDate(String(payload.neues_ablaufdatum))}</strong>`
+                   : ""
+               }.
+             </p>
+           </div>
+
+           <p>Beim nächsten Mal kannst du sie ganz normal buchen.</p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "ausfall_kurzfristig": {
+      return {
+        subject: `Absage erhalten – ${payload.original_datum ? fmtDate(String(payload.original_datum)) : ""}`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Deine Absage für den
+              <strong>${payload.original_datum ? fmtDateTime(String(payload.original_datum)) : ""}</strong>
+              ist bei mir angekommen.</p>
+
+           <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0;color:#92400e;font-size:14px;">
+               Weil die Absage weniger als 24 Stunden vorher kam, gilt die Lektion
+               als gehalten – die Zeit war für dich reserviert und liess sich nicht
+               mehr anderweitig vergeben.
+             </p>
+           </div>
+
+           <p style="color:#64748b;font-size:14px;">
+             Wenn etwas Aussergewöhnliches dazwischenkam, melde dich einfach bei mir.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal#termine" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zu meinen Terminen</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "ausfall_admin": {
+      return {
+        subject: `Absage: ${payload.student_name ?? "Schüler"} – ${payload.original_datum ? fmtDate(String(payload.original_datum)) : ""}`,
+        html: baseWrapper(
+          `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat die Lektion vom
+              <strong>${payload.original_datum ? fmtDateTime(String(payload.original_datum)) : ""}</strong>
+              abgesagt${payload.grund ? `: „${payload.grund}“` : "."}</p>
+           <p>${
+             payload.kurzfristig
+               ? "Kurzfristig (unter 24 Stunden) – die Lektion gilt als gehalten."
+               : "Rechtzeitig abgesagt – der Schüler hat Ausweichtermine vorgeschlagen bekommen."
+           }</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/kalender" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Kalender öffnen</a>
+           </p>`
+        ),
+      };
+    }
+
+    // ── Rhythmuswechsel ──────────────────────────────────────
+    case "rhythmus_changed": {
+      const laenger = Number(payload.differenz_tage ?? 0) > 0;
+      const tage = Math.abs(Number(payload.differenz_tage ?? 0));
+      return {
+        subject: `Dein Rhythmus ist jetzt ${payload.neuer_rhythmus_text ?? "geändert"}`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Dein Unterrichtsrhythmus wurde von
+              <strong>${payload.alter_rhythmus_text ?? ""}</strong> auf
+              <strong>${payload.neuer_rhythmus_text ?? ""}</strong> umgestellt.</p>
+
+           <div style="background:#F3F5F8;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0 0 6px;color:#475569;font-size:14px;">
+               <strong>${payload.lektionen_offen ?? 0}</strong> Lektionen sind noch offen.
+             </p>
+             <p style="margin:0;color:#475569;font-size:14px;">
+               Neu gültig bis
+               <strong>${payload.neues_ablaufdatum ? fmtDate(String(payload.neues_ablaufdatum)) : ""}</strong>
+               ${
+                 tage === 0
+                   ? "(unverändert)"
+                   : laenger
+                     ? `(${tage} Tage länger)`
+                     : `(${tage} Tage kürzer)`
+               }.
+             </p>
+           </div>
+
+           <p style="color:#64748b;font-size:14px;">
+             Der Preis bleibt gleich – gleiche Lektionszahl, gleicher Lektionspreis.
+             Der Rhythmus ändert nur, über welchen Zeitraum du sie beziehst.
+             ${
+               payload.raten_angepasst
+                 ? " Deine offenen Raten wurden entsprechend neu verteilt; der Gesamtbetrag bleibt unverändert."
+                 : ""
+             }
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>`
+        ),
+      };
+    }
+
+    // ── Abo ──────────────────────────────────────────────────
+    case "abo_gestartet": {
+      const chf = (n: unknown) =>
+        Number(n ?? 0).toLocaleString("de-CH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      const termine = Array.isArray(payload.termine)
+        ? (payload.termine as string[])
+        : [];
+      const ferientage = Array.isArray(payload.ferientage)
+        ? (payload.ferientage as { tag: string; grund: string }[])
+        : [];
+
+      return {
+        subject: `Dein ${payload.abo_label ?? "Abo"} läuft`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Dein <strong>${payload.abo_label ?? "Abo"}</strong> ist eingerichtet.
+              Hier steht alles Wichtige auf einen Blick:</p>
+
+           <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 24px;background:#F3F5F8;border-radius:8px;">
+             <tr>
+               <td style="padding:12px 16px;color:#64748b;font-size:14px;">Laufzeit</td>
+               <td style="padding:12px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;">
+                 ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""} –
+                 ${payload.periode_ende ? fmtDate(String(payload.periode_ende)) : ""}
+               </td>
+             </tr>
+             <tr>
+               <td style="padding:12px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Unterricht</td>
+               <td style="padding:12px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">
+                 ${payload.fixplatz_text ?? payload.rhythmus_text ?? ""}
+               </td>
+             </tr>
+             <tr>
+               <td style="padding:12px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Lektionen</td>
+               <td style="padding:12px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">
+                 ${payload.lektionen ?? 0}
+               </td>
+             </tr>
+             <tr>
+               <td style="padding:12px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Pro Monat</td>
+               <td style="padding:12px 16px;color:#1C244B;font-size:16px;font-weight:700;text-align:right;border-top:1px solid #e2e8f0;">
+                 CHF ${chf(payload.monatsbetrag)}
+               </td>
+             </tr>
+           </table>
+
+           <p>Der Monatsbetrag bleibt über die ganze Laufzeit gleich – auch in
+              Monaten mit mehr oder weniger Lektionen. Insgesamt sind es
+              <strong>${payload.lektionen ?? 0} Lektionen</strong> über
+              ${payload.laufzeit_monate ?? 0} Monate.</p>
+
+           ${
+             ferientage.length > 0
+               ? `<div style="background:#F3F5F8;border-radius:8px;padding:16px;margin:0 0 24px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#1C244B;font-size:14px;">
+                      In den Ferien findet kein Unterricht statt
+                    </p>
+                    <p style="margin:0 0 8px;color:#475569;font-size:14px;">
+                      Diese Termine sind <strong>bereits eingerechnet</strong> – du
+                      zahlst nichts dafür und verlierst nichts:
+                    </p>
+                    <ul style="margin:0;padding-left:20px;color:#475569;font-size:14px;">
+                      ${ferientage
+                        .map((f) => `<li>${fmtDate(f.tag)} · ${f.grund}</li>`)
+                        .join("")}
+                    </ul>
+                  </div>`
+               : ""
+           }
+
+           ${
+             termine.length > 0
+               ? `<p style="margin:0 0 8px;font-weight:600;">Deine Termine</p>
+                  <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background:#f8fafc;border-radius:6px;">
+                    ${termine
+                      .map(
+                        (t, i) => `<tr>
+                          <td style="padding:6px 12px;color:#94a3b8;font-size:13px;width:32px;">${i + 1}.</td>
+                          <td style="padding:6px 12px;color:#334155;font-size:14px;">${fmtDate(t)}</td>
+                        </tr>`
+                      )
+                      .join("")}
+                  </table>`
+               : ""
+           }
+
+           <p style="color:#64748b;font-size:14px;">
+             ${
+               payload.auto_renew
+                 ? "Dein Abo verlängert sich am Ende der Laufzeit automatisch um dieselbe Dauer. Kündbar bis 30 Tage vorher, jederzeit im Portal."
+                 : "Dein Abo endet am Ende der Laufzeit. Wenn du weitermachen möchtest, kannst du es im Portal verlängern."
+             }
+           </p>
+           <p style="color:#64748b;font-size:14px;">
+             Wenn du einmal nicht kannst: bitte spätestens 24 Stunden vorher im
+             Portal absagen. Du bekommst dann Ausweichtermine vorgeschlagen.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "abo_gestartet_admin": {
+      const chf = (n: unknown) =>
+        Number(n ?? 0).toLocaleString("de-CH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      return {
+        subject: `Neues Abo – ${payload.student_name ?? "Schüler"}`,
+        html: baseWrapper(
+          `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat ein
+              <strong>${payload.abo_label ?? "Abo"}</strong> abgeschlossen.</p>
+           <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 24px;background:#F3F5F8;border-radius:8px;">
+             <tr>
+               <td style="padding:10px 16px;color:#64748b;font-size:14px;">Unterricht</td>
+               <td style="padding:10px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;">${payload.fixplatz_text ?? payload.rhythmus_text ?? ""}</td>
+             </tr>
+             <tr>
+               <td style="padding:10px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Laufzeit</td>
+               <td style="padding:10px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">
+                 ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""} –
+                 ${payload.periode_ende ? fmtDate(String(payload.periode_ende)) : ""}
+               </td>
+             </tr>
+             <tr>
+               <td style="padding:10px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Lektionen</td>
+               <td style="padding:10px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">${payload.lektionen ?? 0}</td>
+             </tr>
+             <tr>
+               <td style="padding:10px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Pro Monat / Total</td>
+               <td style="padding:10px 16px;color:#1C244B;font-size:14px;font-weight:700;text-align:right;border-top:1px solid #e2e8f0;">
+                 CHF ${chf(payload.monatsbetrag)} / CHF ${chf(payload.gesamtpreis)}
+               </td>
+             </tr>
+           </table>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/schueler" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Im Admin öffnen</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "abo_verlaengert": {
+      const chf = (n: unknown) =>
+        Number(n ?? 0).toLocaleString("de-CH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      const ferientage = Array.isArray(payload.ferientage)
+        ? (payload.ferientage as { tag: string; grund: string }[])
+        : [];
+
+      // Die neue Periode kann eine andere Lektionszahl haben – im Sommer
+      // liegen mehr Ferien als im Winter. Das wird offen benannt, statt es
+      // in einer geänderten Zahl zu verstecken.
+      const vorherLekt = Number(payload.vorher_lektionen ?? 0);
+      const jetztLekt = Number(payload.lektionen ?? 0);
+      const anders = vorherLekt > 0 && vorherLekt !== jetztLekt;
+
+      return {
+        subject: `Dein ${payload.abo_label ?? "Abo"} geht weiter`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Dein <strong>${payload.abo_label ?? "Abo"}</strong> hat sich wie
+              vereinbart verlängert. Dein fester Platz bleibt derselbe.</p>
+
+           <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 24px;background:#F3F5F8;border-radius:8px;">
+             <tr>
+               <td style="padding:12px 16px;color:#64748b;font-size:14px;">Neue Laufzeit</td>
+               <td style="padding:12px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;">
+                 ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""} –
+                 ${payload.periode_ende ? fmtDate(String(payload.periode_ende)) : ""}
+               </td>
+             </tr>
+             <tr>
+               <td style="padding:12px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Lektionen</td>
+               <td style="padding:12px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">${jetztLekt}</td>
+             </tr>
+             <tr>
+               <td style="padding:12px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Pro Monat</td>
+               <td style="padding:12px 16px;color:#1C244B;font-size:16px;font-weight:700;text-align:right;border-top:1px solid #e2e8f0;">CHF ${chf(payload.monatsbetrag)}</td>
+             </tr>
+           </table>
+
+           ${
+             anders
+               ? `<div style="background:#F3F5F8;border-radius:8px;padding:16px;margin:0 0 24px;">
+                    <p style="margin:0;color:#475569;font-size:14px;">
+                      Diese Periode enthält <strong>${jetztLekt} statt ${vorherLekt} Lektionen</strong>
+                      ${
+                        jetztLekt < vorherLekt
+                          ? "– in diesem Zeitraum liegen mehr Ferien"
+                          : "– in diesem Zeitraum liegen weniger Ferien"
+                      }.
+                      Der Monatsbetrag ist entsprechend angepasst; der Preis pro
+                      Lektion bleibt unverändert.
+                    </p>
+                  </div>`
+               : ""
+           }
+
+           ${
+             ferientage.length > 0
+               ? `<p style="margin:0 0 8px;font-weight:600;">Unterrichtsfrei in dieser Periode</p>
+                  <ul style="margin:0 0 24px;padding-left:20px;color:#475569;font-size:14px;">
+                    ${ferientage
+                      .map((f) => `<li>${fmtDate(f.tag)} · ${f.grund}</li>`)
+                      .join("")}
+                  </ul>`
+               : ""
+           }
+
+           <p style="color:#64748b;font-size:14px;">
+             Wenn du nicht weitermachen möchtest, kannst du die Verlängerung
+             jederzeit im Portal abschalten – spätestens 30 Tage vor Ablauf der
+             laufenden Periode.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "abo_verlaengert_admin": {
+      const chf = (n: unknown) =>
+        Number(n ?? 0).toLocaleString("de-CH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      return {
+        subject: `Abo verlängert – ${payload.student_name ?? "Schüler"}`,
+        html: baseWrapper(
+          `<p>Das <strong>${payload.abo_label ?? "Abo"}</strong> von
+              <strong>${payload.student_name ?? "einem Schüler"}</strong> hat sich
+              verlängert.</p>
+           <p>Neue Periode
+              ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""} –
+              ${payload.periode_ende ? fmtDate(String(payload.periode_ende)) : ""}
+              mit <strong>${payload.lektionen ?? 0} Lektionen</strong> zu
+              CHF ${chf(payload.monatsbetrag)} pro Monat. Die Terminserie ist
+              bereits eingetragen.</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/kalender" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Kalender öffnen</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "abo_beendet": {
+      const chf = (n: unknown) =>
+        Number(n ?? 0).toLocaleString("de-CH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      const nachzahlung = Number(payload.nachzahlung ?? 0);
+      const rueckerstattung = Number(payload.rueckerstattung ?? 0);
+
+      return {
+        subject: "Dein Abo wurde beendet",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Dein Abo ist zum heutigen Tag beendet${
+             payload.grund ? ` (${payload.grund})` : ""
+           }.</p>
+
+           <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 24px;background:#F3F5F8;border-radius:8px;">
+             <tr>
+               <td style="padding:10px 16px;color:#64748b;font-size:14px;">Angefangene Monate</td>
+               <td style="padding:10px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;">${payload.monate_begonnen ?? 0}</td>
+             </tr>
+             <tr>
+               <td style="padding:10px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Dafür geschuldet</td>
+               <td style="padding:10px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">CHF ${chf(payload.geschuldet)}</td>
+             </tr>
+             <tr>
+               <td style="padding:10px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Bereits bezahlt</td>
+               <td style="padding:10px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">CHF ${chf(payload.bereits_bezahlt)}</td>
+             </tr>
+           </table>
+
+           <p style="color:#475569;font-size:14px;">
+             Angefangene Monate werden voll verrechnet – in diesen Monaten hat
+             Unterricht stattgefunden und dein Platz war reserviert. Die
+             restlichen ${payload.monate_offen ?? 0} Monate entfallen.
+           </p>
+
+           ${
+             nachzahlung > 0
+               ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
+                    <p style="margin:0;color:#92400e;font-size:14px;">
+                      Offen bleibt eine Restzahlung von
+                      <strong>CHF ${chf(nachzahlung)}</strong>. Die Rechnung dazu
+                      bekommst du separat.
+                    </p>
+                  </div>`
+               : ""
+           }
+           ${
+             rueckerstattung > 0
+               ? `<div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:16px;margin:0 0 24px;">
+                    <p style="margin:0;color:#065f46;font-size:14px;">
+                      Du bekommst <strong>CHF ${chf(rueckerstattung)}</strong>
+                      zurück. Ich melde mich für die Auszahlung bei dir.
+                    </p>
+                  </div>`
+               : ""
+           }
+           ${
+             nachzahlung === 0 && rueckerstattung === 0
+               ? `<p style="color:#475569;font-size:14px;">Es ist nichts mehr offen.</p>`
+               : ""
+           }
+
+           <p style="color:#64748b;font-size:14px;">
+             ${payload.stornierte_termine ?? 0} zukünftige Termine wurden
+             abgesagt. Wenn du später wieder einsteigen möchtest, melde dich
+             jederzeit.
+           </p>`
+        ),
+      };
+    }
+
+    case "abo_endet_bald": {
+      return {
+        subject: `Dein ${payload.package_label ?? "Abo"} endet bald`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Dein <strong>${payload.package_label ?? "Abo"}</strong> endet am
+              <strong>${
+                payload.periode_ende
+                  ? fmtDate(String(payload.periode_ende))
+                  : payload.expires_at
+                    ? fmtDate(String(payload.expires_at))
+                    : ""
+              }</strong>.</p>
+
+           <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0;color:#92400e;font-size:14px;">
+               Du hast die automatische Verlängerung abgeschaltet. Danach ist
+               dein fester Platz wieder frei — falls du weitermachen möchtest,
+               melde dich bitte vorher bei mir oder schalte die Verlängerung im
+               Portal wieder ein.
+             </p>
+           </div>
+
+           <p style="color:#64748b;font-size:14px;">
+             Solltest du bewusst aufhören wollen: alles gut, dann musst du
+             nichts tun. Die Termine bis zum Ende der Laufzeit bleiben natürlich
+             bestehen.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>`
+        ),
+      };
     }
 
     default:

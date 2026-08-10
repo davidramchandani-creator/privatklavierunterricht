@@ -10,6 +10,7 @@ const pakete = [
     preis: 85,
     preisAlt: null,
     rabatt: null,
+    einheit: "pro Lektion",
     highlight: false,
     badge: null,
     login: false,
@@ -18,53 +19,57 @@ const pakete = [
       "Ideal zum Ausprobieren oder Auffrischen",
       "Einmalige, flexible Buchung",
       "Gezieltes Arbeiten an einem Thema",
-      "Für spontane Termine ohne Verpflichtung",
+      "Ohne Bindung",
     ],
     hinweis: "Ab 5 km ab Neftenbach fallen Wegkosten an.",
     cta: "Jetzt anfragen",
     href: "/probelektion",
   },
   {
-    id: "10er",
-    name: "10er-Paket",
+    id: "halbjahr",
+    name: "Halbjahresabo",
     preis: 70,
     preisAlt: 85,
     rabatt: 18,
+    einheit: "pro Lektion",
     highlight: true,
     badge: "Beliebt",
     login: true,
     features: [
-      "Login erforderlich",
-      "10 Lektionen",
+      "6 Monate Laufzeit",
+      "Fester Wochentag zur festen Zeit",
+      "Alle Termine im Voraus eingetragen",
+      "Monatlich zahlbar",
+      "Schulferien bereits eingerechnet",
+      "Wöchentlich oder alle zwei Wochen",
       "Zugang zum Schülerportal",
-      "Ca. 5 Monate gültig",
-      "Aufbau über mehrere Lektionen hinweg",
-      "Regelmässige Zeitslots reservierbar",
-      "Flexibel einsetzbar",
     ],
-    hinweis: "Ab 5 km ab Neftenbach fallen Wegkosten an.",
+    hinweis:
+      "Wie viele Lektionen im Abo liegen, hängt von deinem Termin und den Ferien ab — du siehst die genaue Zahl vor dem Abschluss.",
     cta: "Jetzt anfragen",
     href: "/probelektion",
   },
   {
-    id: "20er",
-    name: "20er-Paket",
+    id: "jahr",
+    name: "Jahresabo",
     preis: 65,
     preisAlt: 85,
     rabatt: 24,
+    einheit: "pro Lektion",
     highlight: false,
     badge: "Bestes Angebot",
     login: true,
     features: [
-      "Login erforderlich",
-      "20 Lektionen",
-      "Zugang zum Schülerportal",
-      "Ca. 10 Monate gültig",
-      "Fester, flexibler Wochentermin",
-      "Ideal für langfristiges Lernen",
+      "12 Monate Laufzeit",
+      "Fester Wochentag zur festen Zeit",
+      "Günstigster Preis pro Lektion",
+      "Monatlich zahlbar",
+      "Schulferien bereits eingerechnet",
+      "Wöchentlich oder alle zwei Wochen",
       "Beste Planbarkeit für beide Seiten",
     ],
-    hinweis: "Ab 5 km ab Neftenbach fallen Wegkosten an.",
+    hinweis:
+      "Wie viele Lektionen im Abo liegen, hängt von deinem Termin und den Ferien ab — du siehst die genaue Zahl vor dem Abschluss.",
     cta: "Jetzt anfragen",
     href: "/probelektion",
   },
@@ -80,10 +85,10 @@ export default function Pakete() {
             Angebote
           </p>
           <h2 className="text-3xl sm:text-4xl font-800 text-navy-900 mb-4 tracking-tight">
-            Wähle dein Paket
+            Wähle dein Abo
           </h2>
           <p className="text-gray-500 max-w-xl mx-auto">
-            Ob einmalig zum Reinschnuppern oder regelmässig für langfristigen
+            Ob einmalig zum Reinschnuppern oder mit festem Platz für langfristigen
             Fortschritt – hier findest du das passende Angebot.
           </p>
         </div>

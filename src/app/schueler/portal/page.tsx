@@ -3,19 +3,32 @@ import { createClient } from "@/lib/supabase/server";
 import { Music } from "lucide-react";
 import PortalNav from "./_components/PortalNav";
 import PaketCard from "./_components/PaketCard";
-import NeuesPaket from "./_components/NeuesPaket";
+import NeuesAbo from "./_components/NeuesAbo";
 import NaechsteTermine from "./_components/NaechsteTermine";
 import TerminBuchen from "./_components/TerminBuchen";
 import ZahlungenSection from "./_components/ZahlungenSection";
+import ZahlungsplanCard from "./_components/ZahlungsplanCard";
 import ProposalCard from "./_components/ProposalCard";
+import AusweichTermine from "./_components/AusweichTermine";
 import PortalTabs from "./_components/PortalTabs";
 import PullToRefresh from "@/components/PullToRefresh";
 import RealtimeRefresh from "@/components/RealtimeRefresh";
-import { CalendarPlus } from "lucide-react";
-import { canBuyNewPackage, type Package as Paket } from "@/lib/packages";
+import { CalendarPlus, Lock } from "lucide-react";
+import { PACKAGE_LABELS, canBuyNewPackage, type Package as Paket } from "@/lib/packages";
 import { buildLessonTwintLink, buildTwintLink } from "@/lib/twint";
+import {
+  bookingLock,
+  bookingLockReason,
+  buildPlanSummary,
+  type InstalmentRow,
+} from "@/lib/instalment-view";
+import {
+  cancellationDeadline,
+  isCancellable,
+  todayInZurich,
+} from "@/lib/subscription";
 import Gruppenkurse from "./_components/Gruppenkurse";
-import { getGroupCourses } from "./actions";
+import { getGroupCourses, offeneAusfaelle } from "./actions";
 
 export default async function SchuelerPortalPage() {
   const supabase = await createClient();
@@ -63,14 +76,9 @@ export default async function SchuelerPortalPage() {
     .limit(1)
     .maybeSingle();
 
-  const prices = {
-    price_10er: Number(profile?.price_10er ?? 70),
-    price_20er: Number(profile?.price_20er ?? 65),
-    travel_surcharge: Number(profile?.travel_surcharge ?? 0),
-  };
 
-  const kannNeuesPaket = canBuyNewPackage(aktivesPackage);
-  const canBook = !!aktivesPackage && !canBuyNewPackage(aktivesPackage);
+  const kannNeuesAbo = canBuyNewPackage(aktivesPackage);
+  const paketNutzbar = !!aktivesPackage && !canBuyNewPackage(aktivesPackage);
 
   const { data: naechsteAppointments } = await supabase
     .from("appointments")
@@ -110,6 +118,29 @@ export default async function SchuelerPortalPage() {
     .order("erstellt_am", { ascending: false })
     .limit(20);
 
+  // Ratenplan des aktiven Pakets (nur bei Ratenkauf vorhanden).
+  const { data: instalmentRows } = aktivesPackage
+    ? await supabase
+        .from("package_instalments")
+        .select("id, sequence, kind, amount, due_date, status, invoice_id, paid_at")
+        .eq("package_id", aktivesPackage.id)
+        .order("sequence", { ascending: true })
+    : { data: null };
+
+  const plan =
+    instalmentRows && instalmentRows.length > 0
+      ? buildPlanSummary(instalmentRows as InstalmentRow[])
+      : null;
+
+  // Ratenkauf: Buchen erst nach bezahlter Anzahlung (Entscheid Dave).
+  const lock = bookingLock(
+    (aktivesPackage as { billing_mode?: string | null } | null)?.billing_mode,
+    (instalmentRows ?? []) as InstalmentRow[]
+  );
+  const lockReason = bookingLockReason(lock);
+
+  const canBook = paketNutzbar && !lock.locked;
+
   const vorname = profile?.vorname ?? user.email?.split("@")[0] ?? "Schüler";
 
   // Auf-einen-Blick-Stats für den Hero
@@ -133,15 +164,20 @@ export default async function SchuelerPortalPage() {
   // serverseitig gebaut (Spec §6 – trxInfo = Lektionsinfo).
   const invoicesForPortal = (invoices ?? []).map((inv) => ({
     ...inv,
+    // Leerer String = TWINT_BASE_URL nicht konfiguriert -> null, damit die
+    // UI den TWINT-Button gar nicht erst anbietet.
     twint_link:
       inv.method === "twint"
-        ? !inv.lesson_date && inv.description
-          ? buildTwintLink(Number(inv.amount ?? 0), inv.description)
-          : buildLessonTwintLink(Number(inv.amount ?? 0), inv.lesson_date)
+        ? (!inv.lesson_date && inv.description
+            ? buildTwintLink(Number(inv.amount ?? 0), inv.description)
+            : buildLessonTwintLink(Number(inv.amount ?? 0), inv.lesson_date)) || null
         : null,
   }));
 
   const groupCourses = await getGroupCourses();
+
+  // Ausgefallene Lektionen, für die noch kein Ersatz gewählt wurde.
+  const { ausfaelle } = await offeneAusfaelle();
 
   if (!profile) {
     return (
@@ -221,15 +257,17 @@ export default async function SchuelerPortalPage() {
       )}
 
       <div className="space-y-5">
-        <SectionHeader title="Mein Paket" />
+        <SectionHeader title="Mein Abo" />
         <PaketCard
           paket={aktivesPackage}
           lessonsUsed={lessonsUsed}
           upcomingAbsence={kommendeAbwesenheit}
         />
         <div className="pt-1">
-          <p className="text-[13px] font-600 text-gray-400 mb-2.5">Neues Paket buchen</p>
-          <NeuesPaket prices={prices} canBuy={kannNeuesPaket} />
+          <p className="text-[13px] font-600 text-gray-400 mb-2.5">
+            {kannNeuesAbo ? "Abo abschliessen" : "Dein laufendes Abo"}
+          </p>
+          <NeuesAbo canBuy={kannNeuesAbo} />
         </div>
       </div>
     </div>
@@ -237,6 +275,7 @@ export default async function SchuelerPortalPage() {
 
   const termine = (
     <div className="space-y-5">
+      <AusweichTermine ausfaelle={ausfaelle} />
       <ProposalCard proposals={offeneProposals ?? []} />
       <NaechsteTermine
         appointments={naechsteAppointments ?? []}
@@ -248,6 +287,27 @@ export default async function SchuelerPortalPage() {
           <TerminBuchen maxSlots={remainingLessons} />
         </div>
       )}
+      {aktivesPackage && lock.locked && lockReason && (
+        <div className="pt-1">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex items-start gap-3">
+            <Lock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="font-600 text-amber-900 text-sm">
+                Terminbuchung noch gesperrt
+              </p>
+              <p className="text-sm text-amber-800 mt-1 leading-relaxed">
+                {lockReason}
+              </p>
+              <a
+                href="#zahlungen"
+                className="inline-block mt-3 text-sm font-600 text-amber-900 underline underline-offset-2"
+              >
+                Zum Zahlungsplan
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="pt-2">
         <h2 className="text-base font-700 text-navy-900 tracking-tight mb-4">Gruppenkurse</h2>
         <Gruppenkurse courses={groupCourses} />
@@ -255,8 +315,38 @@ export default async function SchuelerPortalPage() {
     </div>
   );
 
+  // Der TWINT-Link zur nächsten Rate stammt aus der bereits gestellten
+  // Rechnung – ist sie noch nicht fakturiert, gibt es nichts zu zahlen.
+  const nextTwintLink =
+    plan?.next?.invoiceId
+      ? invoicesForPortal.find((i) => i.id === plan.next!.invoiceId)?.twint_link ??
+        null
+      : null;
+
+  const ablaufTag = aktivesPackage?.expires_at
+    ? todayInZurich(new Date(aktivesPackage.expires_at))
+    : null;
+
   const zahlungen = (
     <div className="space-y-5">
+      {plan && aktivesPackage && (
+        <ZahlungsplanCard
+          plan={plan}
+          packageId={aktivesPackage.id}
+          packageLabel={
+            aktivesPackage.name ??
+            PACKAGE_LABELS[aktivesPackage.type] ??
+            aktivesPackage.type
+          }
+          nextTwintLink={nextTwintLink}
+          autoRenew={Boolean(
+            (aktivesPackage as { auto_renew?: boolean }).auto_renew
+          )}
+          cancellationDeadline={ablaufTag ? cancellationDeadline(ablaufTag) : null}
+          canCancel={ablaufTag ? isCancellable(ablaufTag, todayInZurich()) : false}
+          bookingLocked={lock.locked}
+        />
+      )}
       <ZahlungenSection invoices={invoicesForPortal} />
     </div>
   );

@@ -10,7 +10,8 @@ import {
   resendInvite,
   updateInvoiceStatus,
   updateStudentPrices,
-  createPackageAdmin,
+  aboAnlegenAdmin,
+  aboVorschauAdmin,
   createDirectBooking,
   createProposal,
   withdrawProposal,
@@ -22,10 +23,16 @@ import {
   cancelPackage,
   calculateTravelBuffer,
   adjustPackageLessons,
+  fixplaetzeFuerSchueler,
 } from "../../../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatCHF } from "@/lib/utils";
+
+import type { BookingMode, Rhythmus } from "@/lib/rhythmus";
+import type { FixplatzAngebot } from "@/lib/fixplatz-suche";
+import type { AboVorschau } from "@/lib/abo-server";
+import { formatDay } from "@/lib/instalment-view";
 import {
   CANCELLATION_SINGLE_BASE,
   CANCELLATION_SINGLE_THRESHOLD,
@@ -56,7 +63,7 @@ function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       const result = await updateSchueler(profile.id, formData);
-      if (result?.error) setError(result.error);
+      if (result?.error) setError(result.error ?? null);
       else setEditing(false);
     });
   }
@@ -65,7 +72,7 @@ function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
     if (!confirm("Schüler deaktivieren?")) return;
     startTransition(async () => {
       const result = await deleteSchueler(profile.id);
-      if (result?.error) setError(result.error);
+      if (result?.error) setError(result.error ?? null);
       else router.refresh();
     });
   }
@@ -73,7 +80,7 @@ function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
   function handleReactivate() {
     startTransition(async () => {
       const result = await reactivateSchueler(profile.id);
-      if (result?.error) setError(result.error);
+      if (result?.error) setError(result.error ?? null);
       else router.refresh();
     });
   }
@@ -82,7 +89,7 @@ function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
     if (!confirm(`${profile.vorname} ${profile.nachname} wirklich permanent löschen? Alle Daten (Pakete, Termine, Zahlungen) werden unwiderruflich gelöscht.`)) return;
     startTransition(async () => {
       const result = await hardDeleteSchueler(profile.id);
-      if (result?.error) setError(result.error);
+      if (result?.error) setError(result.error ?? null);
       else router.push("/admin/schueler");
     });
   }
@@ -90,7 +97,7 @@ function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
   function handleResendInvite() {
     startTransition(async () => {
       const result = await resendInvite(profile.email);
-      if (result?.error) setError(result.error);
+      if (result?.error) setError(result.error ?? null);
       else setInviteSent(true);
     });
   }
@@ -274,8 +281,8 @@ function PreiseForm({
   mapsConfigured: boolean;
   initial: {
     price_single: number;
-    price_10er: number;
-    price_20er: number;
+    price_halbjahr: number;
+    price_jahr: number;
     travel_surcharge: number;
     buffer_time_minutes: number;
     buffer_mode: string;
@@ -288,8 +295,8 @@ function PreiseForm({
   const [success, setSuccess] = useState(false);
 
   const [priceSingle, setPriceSingle] = useState(String(initial.price_single));
-  const [price10er, setPrice10er] = useState(String(initial.price_10er));
-  const [price20er, setPrice20er] = useState(String(initial.price_20er));
+  const [priceHalbjahr, setPriceHalbjahr] = useState(String(initial.price_halbjahr));
+  const [priceJahr, setPriceJahr] = useState(String(initial.price_jahr));
   const [travel, setTravel] = useState(String(initial.travel_surcharge));
   const [buffer, setBuffer] = useState(String(initial.buffer_time_minutes));
   const [bufferMode, setBufferMode] = useState<"fixed" | "auto">(
@@ -303,8 +310,8 @@ function PreiseForm({
 
   const t = Number(travel) || 0;
   const effSingle = (Number(priceSingle) || 0) + t;
-  const eff10er = (Number(price10er) || 0) + t;
-  const eff20er = (Number(price20er) || 0) + t;
+  const effHalbjahr = (Number(priceHalbjahr) || 0) + t;
+  const effJahr = (Number(priceJahr) || 0) + t;
 
   async function handleCalculateMaps() {
     if (!studentAddress) return;
@@ -328,7 +335,7 @@ function PreiseForm({
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       const result = await updateStudentPrices(userId, schuelerId, formData);
-      if (result?.error) setError(result.error);
+      if (result?.error) setError(result.error ?? null);
       else {
         setSuccess(true);
         router.refresh();
@@ -345,14 +352,14 @@ function PreiseForm({
             onChange={(e) => setPriceSingle(e.target.value)} required />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-500 text-gray-600">10er (CHF)</label>
-          <Input name="price_10er" type="number" step="0.01" min="0" value={price10er}
-            onChange={(e) => setPrice10er(e.target.value)} required />
+          <label className="text-xs font-500 text-gray-600">Halbjahr (CHF)</label>
+          <Input name="price_halbjahr" type="number" step="0.01" min="0" value={priceHalbjahr}
+            onChange={(e) => setPriceHalbjahr(e.target.value)} required />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-500 text-gray-600">20er (CHF)</label>
-          <Input name="price_20er" type="number" step="0.01" min="0" value={price20er}
-            onChange={(e) => setPrice20er(e.target.value)} required />
+          <label className="text-xs font-500 text-gray-600">Jahr (CHF)</label>
+          <Input name="price_jahr" type="number" step="0.01" min="0" value={priceJahr}
+            onChange={(e) => setPriceJahr(e.target.value)} required />
         </div>
         <div className="space-y-1">
           <label className="text-xs font-500 text-gray-600">Wegaufschlag (CHF)</label>
@@ -486,8 +493,8 @@ function PreiseForm({
         <p className="text-xs font-600 uppercase tracking-wide text-[#1C244B]/70">Effektiver Preis/Lektion (inkl. Wegaufschlag)</p>
         <div className="flex flex-wrap gap-x-6 gap-y-1 font-500">
           <span>Einzellektion: {formatCHF(effSingle)}</span>
-          <span>10er: {formatCHF(eff10er)}</span>
-          <span>20er: {formatCHF(eff20er)}</span>
+          <span>Halbjahr: {formatCHF(effHalbjahr)}</span>
+          <span>Jahr: {formatCHF(effJahr)}</span>
         </div>
       </div>
 
@@ -509,38 +516,61 @@ function PreiseForm({
 function PackageFormNew({
   schueler_id,
   student_user_id,
-  defaultPrices,
 }: {
   schueler_id: string;
   student_user_id: string;
-  defaultPrices: {
-    price_single: number;
-    price_10er: number;
-    price_20er: number;
-    travel_surcharge: number;
-  };
+  defaultPrices?: unknown;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [ladend, startLaden] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const priceFor = (type: string) => {
-    const base =
-      type === "single"
-        ? defaultPrices.price_single
-        : type === "10er"
-        ? defaultPrices.price_10er
-        : defaultPrices.price_20er;
-    return (Number(base) || 0) + (Number(defaultPrices.travel_surcharge) || 0);
-  };
+  const [variante, setVariante] = useState<"halbjahr" | "jahr">("halbjahr");
+  const [rhythmus, setRhythmus] = useState<Rhythmus>("woechentlich");
+  const [bookingMode, setBookingMode] = useState<BookingMode>("fix");
+  const [autoRenew, setAutoRenew] = useState(true);
+  const [angebote, setAngebote] = useState<FixplatzAngebot[] | null>(null);
+  const [platz, setPlatz] = useState<FixplatzAngebot | null>(null);
+  const [vorschau, setVorschau] = useState<AboVorschau | null>(null);
 
-  const [type, setType] = useState<string>("10er");
-  const [price, setPrice] = useState(String(priceFor("10er")));
+  function plaetzeSuchen() {
+    setError(null);
+    setAngebote(null);
+    setPlatz(null);
+    setVorschau(null);
+    startLaden(async () => {
+      const res = await fixplaetzeFuerSchueler(
+        student_user_id,
+        variante === "halbjahr" ? "10er" : "20er",
+        rhythmus
+      );
+      if ("error" in res) {
+        setError(res.error ?? null);
+        setAngebote([]);
+        return;
+      }
+      setAngebote(res.angebote);
+    });
+  }
 
-  function handleTypeChange(value: string) {
-    setType(value);
-    setPrice(String(priceFor(value)));
+  function vorschauLaden(weekday: number) {
+    setVorschau(null);
+    startLaden(async () => {
+      const res = await aboVorschauAdmin({
+        studentUserId: student_user_id,
+        variante,
+        rhythmus,
+        bookingMode,
+        weekday,
+      });
+      if ("error" in res) {
+        setError(res.error ?? null);
+        return;
+      }
+      setVorschau(res.vorschau);
+    });
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -548,8 +578,8 @@ function PackageFormNew({
     setError(null);
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
-      const result = await createPackageAdmin(formData);
-      if (result?.error) setError(result.error);
+      const result = await aboAnlegenAdmin(formData);
+      if (result.error) setError(result.error);
       else {
         setOpen(false);
         router.refresh();
@@ -564,66 +594,197 @@ function PackageFormNew({
         className="flex items-center gap-2 text-sm font-600 text-[#1C244B] px-4 py-2.5 rounded-xl border border-[#1C244B]/20 hover:bg-[#1C244B]/5 transition-colors"
       >
         <Plus className="w-4 h-4" />
-        Neues Paket erstellen
+        Abo anlegen
       </button>
     );
   }
 
   return (
     <form onSubmit={handleSubmit} className="border border-gray-200 rounded-xl p-4 space-y-3">
-      <h3 className="text-sm font-600 text-gray-900">Neues Paket</h3>
+      <h3 className="text-sm font-600 text-gray-900">Neues Abo</h3>
       <input type="hidden" name="student_user_id" value={student_user_id} />
       <input type="hidden" name="schueler_id" value={schueler_id} />
+
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="text-xs font-500 text-gray-600">Typ</label>
+          <label className="text-xs font-500 text-gray-600">Abo</label>
           <select
-            name="type"
-            value={type}
-            onChange={(e) => handleTypeChange(e.target.value)}
+            name="abo_variante"
+            value={variante}
+            onChange={(e) => {
+              setVariante(e.target.value as "halbjahr" | "jahr");
+              setAngebote(null);
+              setPlatz(null);
+              setVorschau(null);
+            }}
             className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            required
           >
-            <option value="single">Einzellektion</option>
-            <option value="10er">10er-Paket</option>
-            <option value="20er">20er-Paket</option>
+            <option value="halbjahr">Halbjahr (6 Monate)</option>
+            <option value="jahr">Jahr (12 Monate)</option>
           </select>
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-500 text-gray-600">Zahlungsart</label>
+          <label className="text-xs font-500 text-gray-600">Rhythmus</label>
           <select
-            name="payment_method"
+            name="rhythmus"
+            value={rhythmus}
+            onChange={(e) => {
+              setRhythmus(e.target.value as Rhythmus);
+              setAngebote(null);
+              setPlatz(null);
+              setVorschau(null);
+            }}
             className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            required
           >
-            <option value="twint">TWINT</option>
-            <option value="qr">QR-Rechnung</option>
+            <option value="woechentlich">Jede Woche</option>
+            <option value="zweiwoechentlich">Alle zwei Wochen</option>
           </select>
         </div>
-        <div className="space-y-1">
-          <label className="text-xs font-500 text-gray-600">Preis/Lektion (CHF)</label>
-          <Input
-            name="price_per_lesson"
-            type="number"
-            step="0.01"
-            min="0"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            required
-          />
+        <div className="space-y-1 col-span-2">
+          <label className="text-xs font-500 text-gray-600">Buchungsart</label>
+          <select
+            name="booking_mode"
+            value={bookingMode}
+            onChange={(e) => {
+              setBookingMode(e.target.value as BookingMode);
+              setPlatz(null);
+              setVorschau(null);
+            }}
+            className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="fix">Fixplatz</option>
+            <option value="flex">Flexibel</option>
+          </select>
         </div>
       </div>
+
+      {bookingMode === "fix" && (
+        <div className="rounded-lg border border-gray-200 p-3 space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-600 text-gray-900">Fester Termin</p>
+            <button
+              type="button"
+              onClick={plaetzeSuchen}
+              disabled={ladend}
+              className="text-xs font-600 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 inline-flex items-center gap-1.5"
+            >
+              {ladend && <Loader2 className="w-3 h-3 animate-spin" />}
+              {angebote ? "Neu suchen" : "Freie Termine suchen"}
+            </button>
+          </div>
+
+          {angebote && angebote.length === 0 && !ladend && (
+            <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+              Kein Termin über die ganze Laufzeit frei.
+            </p>
+          )}
+
+          {angebote && angebote.length > 0 && (
+            <div className="space-y-1.5 max-h-56 overflow-y-auto">
+              {angebote.slice(0, 10).map((a) => {
+                const aktiv =
+                  platz?.weekday === a.weekday &&
+                  platz?.time === a.time &&
+                  platz?.parity === a.parity;
+                return (
+                  <button
+                    key={`${a.weekday}-${a.time}-${a.parity}`}
+                    type="button"
+                    onClick={() => {
+                      setPlatz(a);
+                      vorschauLaden(a.weekday);
+                    }}
+                    className={`w-full text-left rounded-lg border px-3 py-2 text-xs transition-colors ${
+                      aktiv
+                        ? "border-[#1C244B] bg-[#1C244B]/5"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <p className="font-600 text-gray-900">{a.beschreibung}</p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {platz && (
+            <>
+              <input type="hidden" name="fixplatz_weekday" value={platz.weekday} />
+              <input type="hidden" name="fixplatz_time" value={platz.time} />
+              {platz.parity != null && (
+                <input type="hidden" name="fixplatz_week_parity" value={platz.parity} />
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {bookingMode === "flex" && !vorschau && (
+        <button
+          type="button"
+          onClick={() => vorschauLaden(3)}
+          disabled={ladend}
+          className="text-xs font-600 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 inline-flex items-center gap-1.5"
+        >
+          {ladend && <Loader2 className="w-3 h-3 animate-spin" />}
+          Preis berechnen
+        </button>
+      )}
+
+      {vorschau && (
+        <div className="rounded-lg bg-gray-50 border border-gray-100 p-3 text-xs text-gray-600 space-y-1">
+          <p className="font-600 text-gray-900">
+            {vorschau.lektionen} Lektionen · {formatCHF(vorschau.monatsbetrag)} pro
+            Monat · total {formatCHF(vorschau.gesamtpreis)}
+          </p>
+          <p>
+            {formatDay(vorschau.periodeStart)} – {formatDay(vorschau.periodeEnde)} ·{" "}
+            {formatCHF(vorschau.preisProLektion)} pro Lektion
+          </p>
+          {vorschau.ferientage.length > 0 && (
+            <p className="text-gray-500">
+              {vorschau.ferientage.length} Termine fallen auf Ferien und sind bereits
+              abgezogen.
+            </p>
+          )}
+        </div>
+      )}
+
+      <label className="flex items-start gap-2.5 cursor-pointer">
+        <input
+          type="checkbox"
+          name="auto_renew"
+          checked={autoRenew}
+          onChange={(e) => setAutoRenew(e.target.checked)}
+          className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#1C244B] focus:ring-[#1C244B]"
+        />
+        <span className="text-xs text-gray-600 leading-snug">
+          Automatisch verlängern — das Abo geht am Ende der Periode mit demselben
+          Platz weiter. Der Schüler kann das im Portal abschalten.
+        </span>
+      </label>
+
       {error && (
         <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
       )}
+
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={isPending}>
-          {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Erstellen"}
+        <Button
+          type="submit"
+          size="sm"
+          disabled={isPending || (bookingMode === "fix" && !platz)}
+        >
+          {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Abo anlegen"}
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
           Abbrechen
         </Button>
       </div>
+      {bookingMode === "fix" && !platz && (
+        <p className="text-xs text-gray-400">
+          Zuerst einen freien Termin auswählen.
+        </p>
+      )}
     </form>
   );
 }
@@ -659,7 +820,7 @@ function DirektBuchung({
     formData.set("interval_days", intervalDays);
     startTransition(async () => {
       const result = await createDirectBooking(formData);
-      if (result && "error" in result && result.error) setError(result.error);
+      if (result && "error" in result && result.error) setError(result.error ?? null);
       else {
         setOpen(false);
         router.refresh();
@@ -765,7 +926,7 @@ function ProposalForm({
     formData.set("interval_days", intervalDays);
     startTransition(async () => {
       const result = await createProposal(formData);
-      if (result && "error" in result && result.error) setError(result.error);
+      if (result && "error" in result && result.error) setError(result.error ?? null);
       else {
         setOpen(false);
         setStart("");
@@ -983,7 +1144,7 @@ function PackageTimerActions({
     setCancelError(null);
     startTransition(async () => {
       const result = await cancelPackage(packageId, schuelerId);
-      if (result?.error) setCancelError(result.error);
+      if (result && "error" in result) setCancelError(result.error ?? null);
       else {
         setShowCancel(false);
         router.refresh();
@@ -1134,7 +1295,7 @@ function AdjustLessonsButton({
     startTransition(async () => {
       const result = await adjustPackageLessons(packageId, delta);
       if (result?.error) {
-        setError(result.error);
+        setError(result.error ?? null);
       } else {
         setOpen(false);
         setDelta(1);
