@@ -28,6 +28,8 @@ export const ADMIN_RECIPIENT_TYPES = [
   // Fixplatz-Modell
   "fixplatz_admin",
   "ausfall_admin",
+  // Abo-Modell
+  "abo_gestartet_admin",
 ];
 
 export const STUDENT_PAYLOAD_TO_TYPES = [
@@ -69,6 +71,8 @@ export const STUDENT_LOOKUP_TYPES = [
   "ausfall_gutschrift",
   "ausfall_kurzfristig",
   "rhythmus_changed",
+  // Abo-Modell
+  "abo_gestartet",
 ];
 
 async function getDisabledEmailTypes(admin: SupabaseClient): Promise<string[]> {

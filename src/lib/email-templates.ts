@@ -1751,6 +1751,155 @@ export function renderEmail(
       };
     }
 
+    // ── Abo ──────────────────────────────────────────────────
+    case "abo_gestartet": {
+      const chf = (n: unknown) =>
+        Number(n ?? 0).toLocaleString("de-CH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      const termine = Array.isArray(payload.termine)
+        ? (payload.termine as string[])
+        : [];
+      const ferientage = Array.isArray(payload.ferientage)
+        ? (payload.ferientage as { tag: string; grund: string }[])
+        : [];
+
+      return {
+        subject: `Dein ${payload.abo_label ?? "Abo"} läuft`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Dein <strong>${payload.abo_label ?? "Abo"}</strong> ist eingerichtet.
+              Hier steht alles Wichtige auf einen Blick:</p>
+
+           <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 24px;background:#F3F5F8;border-radius:8px;">
+             <tr>
+               <td style="padding:12px 16px;color:#64748b;font-size:14px;">Laufzeit</td>
+               <td style="padding:12px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;">
+                 ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""} –
+                 ${payload.periode_ende ? fmtDate(String(payload.periode_ende)) : ""}
+               </td>
+             </tr>
+             <tr>
+               <td style="padding:12px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Unterricht</td>
+               <td style="padding:12px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">
+                 ${payload.fixplatz_text ?? payload.rhythmus_text ?? ""}
+               </td>
+             </tr>
+             <tr>
+               <td style="padding:12px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Lektionen</td>
+               <td style="padding:12px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">
+                 ${payload.lektionen ?? 0}
+               </td>
+             </tr>
+             <tr>
+               <td style="padding:12px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Pro Monat</td>
+               <td style="padding:12px 16px;color:#1C244B;font-size:16px;font-weight:700;text-align:right;border-top:1px solid #e2e8f0;">
+                 CHF ${chf(payload.monatsbetrag)}
+               </td>
+             </tr>
+           </table>
+
+           <p>Der Monatsbetrag bleibt über die ganze Laufzeit gleich – auch in
+              Monaten mit mehr oder weniger Lektionen. Insgesamt sind es
+              <strong>${payload.lektionen ?? 0} Lektionen</strong> über
+              ${payload.laufzeit_monate ?? 0} Monate.</p>
+
+           ${
+             ferientage.length > 0
+               ? `<div style="background:#F3F5F8;border-radius:8px;padding:16px;margin:0 0 24px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#1C244B;font-size:14px;">
+                      In den Ferien findet kein Unterricht statt
+                    </p>
+                    <p style="margin:0 0 8px;color:#475569;font-size:14px;">
+                      Diese Termine sind <strong>bereits eingerechnet</strong> – du
+                      zahlst nichts dafür und verlierst nichts:
+                    </p>
+                    <ul style="margin:0;padding-left:20px;color:#475569;font-size:14px;">
+                      ${ferientage
+                        .map((f) => `<li>${fmtDate(f.tag)} · ${f.grund}</li>`)
+                        .join("")}
+                    </ul>
+                  </div>`
+               : ""
+           }
+
+           ${
+             termine.length > 0
+               ? `<p style="margin:0 0 8px;font-weight:600;">Deine Termine</p>
+                  <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background:#f8fafc;border-radius:6px;">
+                    ${termine
+                      .map(
+                        (t, i) => `<tr>
+                          <td style="padding:6px 12px;color:#94a3b8;font-size:13px;width:32px;">${i + 1}.</td>
+                          <td style="padding:6px 12px;color:#334155;font-size:14px;">${fmtDate(t)}</td>
+                        </tr>`
+                      )
+                      .join("")}
+                  </table>`
+               : ""
+           }
+
+           <p style="color:#64748b;font-size:14px;">
+             ${
+               payload.auto_renew
+                 ? "Dein Abo verlängert sich am Ende der Laufzeit automatisch um dieselbe Dauer. Kündbar bis 30 Tage vorher, jederzeit im Portal."
+                 : "Dein Abo endet am Ende der Laufzeit. Wenn du weitermachen möchtest, kannst du es im Portal verlängern."
+             }
+           </p>
+           <p style="color:#64748b;font-size:14px;">
+             Wenn du einmal nicht kannst: bitte spätestens 24 Stunden vorher im
+             Portal absagen. Du bekommst dann Ausweichtermine vorgeschlagen.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "abo_gestartet_admin": {
+      const chf = (n: unknown) =>
+        Number(n ?? 0).toLocaleString("de-CH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      return {
+        subject: `Neues Abo – ${payload.student_name ?? "Schüler"}`,
+        html: baseWrapper(
+          `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat ein
+              <strong>${payload.abo_label ?? "Abo"}</strong> abgeschlossen.</p>
+           <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 24px;background:#F3F5F8;border-radius:8px;">
+             <tr>
+               <td style="padding:10px 16px;color:#64748b;font-size:14px;">Unterricht</td>
+               <td style="padding:10px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;">${payload.fixplatz_text ?? payload.rhythmus_text ?? ""}</td>
+             </tr>
+             <tr>
+               <td style="padding:10px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Laufzeit</td>
+               <td style="padding:10px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">
+                 ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""} –
+                 ${payload.periode_ende ? fmtDate(String(payload.periode_ende)) : ""}
+               </td>
+             </tr>
+             <tr>
+               <td style="padding:10px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Lektionen</td>
+               <td style="padding:10px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">${payload.lektionen ?? 0}</td>
+             </tr>
+             <tr>
+               <td style="padding:10px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Pro Monat / Total</td>
+               <td style="padding:10px 16px;color:#1C244B;font-size:14px;font-weight:700;text-align:right;border-top:1px solid #e2e8f0;">
+                 CHF ${chf(payload.monatsbetrag)} / CHF ${chf(payload.gesamtpreis)}
+               </td>
+             </tr>
+           </table>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/schueler" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Im Admin öffnen</a>
+           </p>`
+        ),
+      };
+    }
+
     default:
       return null;
   }

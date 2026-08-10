@@ -280,14 +280,16 @@ describe("Flex-Aufschlag", () => {
     expect(priceWithBookingMode(65, "fix")).toBe(65);
   });
 
-  it("schlägt bei Flex 10 % auf", () => {
-    expect(priceWithBookingMode(70, "flex")).toBe(77);
-    expect(priceWithBookingMode(65, "flex")).toBe(71.5);
+  it("schlägt bei Flex 15 % auf", () => {
+    // Halbjahrespreis 70 → 80.50, Jahrespreis 65 → 74.75
+    expect(priceWithBookingMode(70, "flex")).toBe(80.5);
+    expect(priceWithBookingMode(65, "flex")).toBe(74.75);
   });
 
-  it("beziffert die Mehrkosten über das ganze Paket", () => {
-    expect(flexMehrkosten(70, 10)).toBe(70);
-    expect(flexMehrkosten(65, 20)).toBe(130);
+  it("beziffert die Mehrkosten über die ganze Periode", () => {
+    // Halbjahr wöchentlich (20 Lektionen) und Jahr zweiwöchentlich (20).
+    expect(flexMehrkosten(70, 20)).toBe(210);
+    expect(flexMehrkosten(65, 20)).toBe(195);
   });
 
   it("respektiert einen abweichenden Aufschlag", () => {

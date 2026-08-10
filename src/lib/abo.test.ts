@@ -110,7 +110,8 @@ describe("Unterrichtstermine einer Periode", () => {
 });
 
 describe("Abo-Angebot", () => {
-  const preise = { halbjahr: 65, jahr: 60 };
+  /** Daves Preise: Halbjahr 70, Jahr 65 pro Lektion. */
+  const preise = { halbjahr: 70, jahr: 65 };
 
   it("trifft die erwarteten Lektionszahlen", () => {
     const faelle = [
@@ -138,12 +139,12 @@ describe("Abo-Angebot", () => {
       rhythmus: "woechentlich",
       weekday: DIENSTAG,
       periodeStart: "2026-10-01",
-      preisProLektion: 65,
+      preisProLektion: 70,
       ferien: FERIEN,
     });
-    expect(a.gesamtpreis).toBe(1300);
+    expect(a.gesamtpreis).toBe(1400);
     expect(a.laufzeitMonate).toBe(6);
-    expect(a.monatsbetrag).toBe(216.65);
+    expect(a.monatsbetrag).toBe(233.35);
   });
 
   it("macht das Jahresabo pro Monat günstiger als das Halbjahr", () => {
@@ -154,7 +155,7 @@ describe("Abo-Angebot", () => {
       rhythmus: "woechentlich",
       weekday: DIENSTAG,
       periodeStart: "2026-10-01",
-      preisProLektion: 65,
+      preisProLektion: 70,
       ferien: FERIEN,
     });
     const jahr = baueAboAngebot({
@@ -162,9 +163,11 @@ describe("Abo-Angebot", () => {
       rhythmus: "woechentlich",
       weekday: DIENSTAG,
       periodeStart: "2026-10-01",
-      preisProLektion: 60,
+      preisProLektion: 65,
       ferien: FERIEN,
     });
+    expect(halb.monatsbetrag).toBe(233.35);
+    expect(jahr.monatsbetrag).toBe(211.25);
     expect(jahr.monatsbetrag).toBeLessThan(halb.monatsbetrag);
   });
 
@@ -174,7 +177,7 @@ describe("Abo-Angebot", () => {
       rhythmus: "woechentlich",
       weekday: DIENSTAG,
       periodeStart: "2026-10-01",
-      preisProLektion: 65,
+      preisProLektion: 70,
       ferien: FERIEN,
     });
     expect(a.ferientage.length).toBeGreaterThan(0);
@@ -189,7 +192,7 @@ describe("Abo-Angebot", () => {
       rhythmus: "woechentlich",
       weekday: DIENSTAG,
       periodeStart: "2026-10-01",
-      preisProLektion: 65,
+      preisProLektion: 70,
       ferien: FERIEN,
     });
     const sommer = baueAboAngebot({
@@ -197,13 +200,13 @@ describe("Abo-Angebot", () => {
       rhythmus: "woechentlich",
       weekday: DIENSTAG,
       periodeStart: "2027-04-01",
-      preisProLektion: 65,
+      preisProLektion: 70,
       ferien: FERIEN,
     });
     expect(winter.lektionen).not.toBe(sommer.lektionen);
     // Und der Preis folgt der Lektionszahl, nicht umgekehrt.
-    expect(winter.gesamtpreis).toBe(winter.lektionen * 65);
-    expect(sommer.gesamtpreis).toBe(sommer.lektionen * 65);
+    expect(winter.gesamtpreis).toBe(winter.lektionen * 70);
+    expect(sommer.gesamtpreis).toBe(sommer.lektionen * 70);
   });
 });
 

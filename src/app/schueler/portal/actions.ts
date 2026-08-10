@@ -8,7 +8,6 @@ import {
   PACKAGE_LESSONS,
   canBuyNewPackage,
   computePackageState,
-  pricePerLessonFor,
 } from "@/lib/packages";
 import {
   type CalDate,
@@ -24,24 +23,29 @@ import {
 import { loadAvailabilityContext } from "@/lib/booking-server";
 import { gapAwareSlots, isGapAwareStartBookable, DEFAULT_BLOCK_SETTINGS } from "@/lib/booking-gap";
 import { sendEmailNow } from "@/lib/emails-outbox";
-import { createInstalmentSchedule, createPackageInvoice } from "@/lib/package-invoice";
 import {
   CANCELLATION_NOTICE_DAYS,
   isCancellable,
   todayInZurich,
 } from "@/lib/subscription";
 import {
-  buildPlanForRhythmus,
-  expiryFor,
   FLEX_SURCHARGE_PERCENT,
-  priceWithBookingMode,
-  termMonthsForType,
   type BookingMode,
   type Rhythmus,
 } from "@/lib/rhythmus";
 import { describeFixplatz } from "@/lib/fixplatz";
 import { bookFixplatzSeries } from "@/lib/fixplatz-server";
 import { findeFixplaetze, type FixplatzAngebot } from "@/lib/fixplatz-suche";
+import {
+  ABO_LABELS,
+  type AboVariante,
+} from "@/lib/abo";
+import {
+  baueVorschau,
+  legeMonatsratenAn,
+  naechsterPeriodenstart,
+  type AboVorschau,
+} from "@/lib/abo-server";
 import {
   bookingLock,
   bookingLockReason,
@@ -746,35 +750,53 @@ export async function markInvoicePaid(invoiceId: string) {
   return { success: true, error: undefined };
 }
 
+// ── Abo ────────────────────────────────────────────────────
+
 /**
- * Schüler bucht ein neues Paket (10er oder 20er) im Portal.
- * Preis wird serverseitig aus dem Profil berechnet – nie aus dem Client
- * übernommen. Insert läuft über den Service-Role-Client, da die RLS auf
- * `packages` nur Admin-Inserts erlaubt; sämtliche Geschäftsregeln werden
- * vorher serverseitig geprüft.
+ * Abo-Vorschau für den angemeldeten Schüler.
+ *
+ * Liefert die **exakten** Termine für den gewählten Fixplatz, die Ferien, die
+ * darin ausfallen, und den Monatsbetrag. Bewusst serverseitig gerechnet: Der
+ * Preis darf nie aus dem Browser kommen, und die Zahl in der Vorschau muss
+ * dieselbe sein, die nachher auf der Rechnung steht.
  */
-export type BuyPackageOptions = {
-  /** "einmalig" = Gesamtbetrag sofort, "raten" = 25 % Anzahlung + Monatsraten. */
-  billingMode?: "einmalig" | "raten";
-  /** Opt-in: Paket verlängert sich am Ende der Laufzeit automatisch. */
-  autoRenew?: boolean;
-  /** Bestimmt die Laufzeit: wöchentlich kürzer, zweiwöchentlich länger. */
-  rhythmus?: Rhythmus;
-  /** "fix" = fester Slot über die ganze Laufzeit, "flex" = freie Buchung. */
-  bookingMode?: BookingMode;
-  /** Nur bei bookingMode "fix": der gewünschte feste Platz. */
-  fixplatz?: {
-    weekday: number;
-    /** "HH:MM" */
-    time: string;
-    parity: 0 | 1 | null;
-  };
-};
+export async function aboVorschau(params: {
+  variante: AboVariante;
+  rhythmus: Rhythmus;
+  bookingMode: BookingMode;
+  weekday: number;
+}): Promise<{ vorschau: AboVorschau } | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  if (params.variante !== "halbjahr" && params.variante !== "jahr") {
+    return { error: "Ungültige Abo-Variante." };
+  }
+  if (params.weekday < 0 || params.weekday > 6) {
+    return { error: "Ungültiger Wochentag." };
+  }
+
+  const admin = await createAdminClient();
+  const vorschau = await baueVorschau(admin, {
+    studentId: user.id,
+    variante: params.variante,
+    rhythmus:
+      params.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich",
+    bookingMode: params.bookingMode === "fix" ? "fix" : "flex",
+    weekday: params.weekday,
+    periodeStart: naechsterPeriodenstart(todayInZurich()),
+  });
+
+  return { vorschau };
+}
 
 /**
  * Freie Fixplätze für den angemeldeten Schüler.
  *
- * Geprüft wird die **ganze Serie** über die Paketlaufzeit, nicht nur der
+ * Geprüft wird die **ganze Serie** über die Abo-Laufzeit, nicht nur der
  * nächste Termin. Ein Platz, der nächste Woche frei ist, aber ab Oktober
  * jedes zweite Mal kollidiert, taugt nicht als fester Platz.
  */
@@ -800,276 +822,201 @@ export async function fixplaetzeSuchen(
   return { angebote };
 }
 
-export async function buyPackage(
-  type: "10er" | "20er",
-  agbAccepted: boolean,
-  options: BuyPackageOptions = {}
-) {
+/**
+ * Abo abschliessen.
+ *
+ * Der Schüler kauft eine Laufzeit (Halbjahr oder Jahr), nicht eine
+ * Lektionszahl — wie viele Lektionen darin liegen, wird für seinen konkreten
+ * Fixplatz ausgerechnet und vertraglich festgehalten.
+ *
+ * Alles Preisrelevante wird hier serverseitig neu berechnet und nichts aus dem
+ * Client übernommen. Der Client schickt nur die Auswahl.
+ */
+export async function aboAbschliessen(params: {
+  variante: AboVariante;
+  rhythmus: Rhythmus;
+  bookingMode: BookingMode;
+  fixplatz?: { weekday: number; time: string; parity: 0 | 1 | null };
+  autoRenew: boolean;
+  regelnBestaetigt: boolean;
+}): Promise<{ success: true; error: undefined } | { error: string }> {
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Nicht angemeldet." };
 
-  if (!agbAccepted) return { error: "Bitte akzeptiere zuerst die AGB." };
-  if (type !== "10er" && type !== "20er") {
-    return { error: "Ungültiger Pakettyp." };
+  if (!params.regelnBestaetigt) {
+    return { error: "Bitte bestätige zuerst alle Punkte." };
+  }
+  if (params.variante !== "halbjahr" && params.variante !== "jahr") {
+    return { error: "Ungültige Abo-Variante." };
   }
 
-  // Profil + Preise des angemeldeten Schülers laden
+  const bookingMode: BookingMode = params.bookingMode === "fix" ? "fix" : "flex";
+  const rhythmus: Rhythmus =
+    params.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich";
+
+  if (bookingMode === "fix" && !params.fixplatz) {
+    return { error: "Bitte wähle einen festen Termin aus." };
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, role, price_single, price_10er, price_20er, travel_surcharge, vorname, nachname, adresse, email, payment_method")
+    .select("id, vorname, nachname, adresse, email, payment_method")
     .eq("id", user.id)
-    .single();
-
+    .maybeSingle();
   if (!profile) return { error: "Profil nicht gefunden." };
 
-  // Prüfen, ob bereits ein nutzbares Paket existiert (Spec §5)
-  const { data: existing } = await supabase
+  // Läuft schon ein Abo? Dann kein zweites – beendet wird über die
+  // Auto-Verlängerung, nicht durch Danebenkaufen.
+  const { data: bestehend } = await supabase
     .from("packages")
     .select("*")
     .eq("student_id", user.id)
     .eq("status", "active");
 
-  const usable = (existing ?? []).find(
-    (p) => !canBuyNewPackage(p as Paket)
-  );
-  if (usable) {
-    const state = computePackageState(usable as Paket);
+  const nutzbar = (bestehend ?? []).find((p) => !canBuyNewPackage(p as Paket));
+  if (nutzbar) {
     return {
-      error: `Du hast noch ${state.lessonsRemaining} Lektion${
-        state.lessonsRemaining !== 1 ? "en" : ""
-      } offen. Ein neues Paket kannst du erst danach buchen.`,
+      error:
+        "Du hast bereits ein laufendes Abo. Ein neues kannst du abschliessen, sobald das aktuelle endet.",
     };
   }
 
-  const lessonsTotal = PACKAGE_LESSONS[type];
+  const admin = await createAdminClient();
 
-  // Rhythmus und Buchungsart bestimmen Laufzeit und Preis.
-  const rhythmus: Rhythmus =
-    options.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich";
-  const bookingMode: BookingMode = options.bookingMode === "fix" ? "fix" : "flex";
+  // Wochentag für die Berechnung: beim Fixplatz der gewählte Tag, bei Flex
+  // ein Referenztag (Mittwoch) – dort ist die Lektionszahl nur ein Richtwert,
+  // weil flexible Schüler ohnehin selbst buchen.
+  const rechenTag = params.fixplatz?.weekday ?? 3;
+  const periodeStart = naechsterPeriodenstart(todayInZurich());
 
-  if (bookingMode === "fix" && !options.fixplatz) {
-    return { error: "Bitte wähle einen festen Termin aus." };
+  const vorschau = await baueVorschau(admin, {
+    studentId: user.id,
+    variante: params.variante,
+    rhythmus,
+    bookingMode,
+    weekday: rechenTag,
+    periodeStart,
+  });
+
+  if (vorschau.lektionen < 1) {
+    return {
+      error:
+        "In diesem Zeitraum liegen keine Unterrichtstermine. Bitte melde dich bei mir.",
+    };
   }
 
-  const basisPreis = pricePerLessonFor(type, {
-    price_single: Number(profile.price_single),
-    price_10er: Number(profile.price_10er),
-    price_20er: Number(profile.price_20er),
-    travel_surcharge: Number(profile.travel_surcharge),
-  });
-  // Flex kostet Aufschlag: wechselnde Termine zerstören die Routenplanung
-  // und erzeugen laufenden Verwaltungsaufwand.
-  const ppl = priceWithBookingMode(basisPreis, bookingMode);
-  const totalPrice = ppl * lessonsTotal;
-  const flexAufschlag = bookingMode === "flex" ? FLEX_SURCHARGE_PERCENT : 0;
-
-  const startsAt = new Date();
-  const startDay = todayInZurich(startsAt);
-  const termMonths = termMonthsForType(type, rhythmus);
-  const expiresOn = expiryFor(lessonsTotal, rhythmus, startDay);
-  const expiresAt = new Date(`${expiresOn}T23:59:59.000Z`);
-
-  // Zahlungsmodus: Ratenkauf nur für 10er/20er, Laufzeit = Gültigkeit.
-  const billingMode = options.billingMode === "raten" ? "raten" : "einmalig";
-  const autoRenew = options.autoRenew === true;
-  const ratenPlan =
-    billingMode === "raten"
-      ? buildPlanForRhythmus(type, totalPrice, startDay, rhythmus)
-      : null;
-
-  const admin = await createAdminClient();
   const { data: pkg, error } = await admin
     .from("packages")
     .insert({
       student_id: user.id,
-      type,
-      lessons_total: lessonsTotal,
+      // `type` trägt weiterhin die alte Spalte, damit bestehende Auswertungen
+      // und Constraints nicht brechen. Die Wahrheit steht in abo_variante.
+      type: params.variante === "halbjahr" ? "10er" : "20er",
+      lessons_total: vorschau.lektionen,
       lessons_used: 0,
-      name: PACKAGE_LABELS[type],
-      price_per_lesson: ppl,
-      total_price: totalPrice,
-      starts_at: startsAt.toISOString(),
-      expires_at: expiresAt.toISOString(),
+      name: `${ABO_LABELS[params.variante]} · ${
+        rhythmus === "woechentlich" ? "wöchentlich" : "alle zwei Wochen"
+      }`,
+      price_per_lesson: vorschau.preisProLektion,
+      total_price: vorschau.gesamtpreis,
+      starts_at: new Date(`${periodeStart}T00:00:00.000Z`).toISOString(),
+      expires_at: new Date(`${vorschau.periodeEnde}T23:59:59.000Z`).toISOString(),
       status: "active",
-      billing_mode: billingMode,
-      // term_months ist als smallint angelegt; gebrochene Laufzeiten gibt es
-      // nur nach einem Rhythmuswechsel, beim Kauf ist der Wert immer ganz.
-      term_months: Math.round(termMonths),
-      auto_renew: autoRenew,
-      deposit_amount: ratenPlan ? ratenPlan.depositAmount : null,
-      instalment_count: ratenPlan ? ratenPlan.instalmentCount : null,
-      instalment_amount: ratenPlan ? ratenPlan.instalmentAmount : null,
+      billing_mode: "raten",
+      term_months: vorschau.laufzeitMonate,
+      auto_renew: params.autoRenew,
+      deposit_amount: 0,
+      instalment_count: vorschau.laufzeitMonate,
+      instalment_amount: vorschau.monatsbetrag,
       rhythmus,
       booking_mode: bookingMode,
-      fixplatz_weekday: options.fixplatz?.weekday ?? null,
-      fixplatz_time: options.fixplatz?.time ?? null,
-      fixplatz_week_parity: options.fixplatz?.parity ?? null,
-      flex_surcharge_percent: flexAufschlag,
+      fixplatz_weekday: params.fixplatz?.weekday ?? null,
+      fixplatz_time: params.fixplatz?.time ?? null,
+      fixplatz_week_parity: params.fixplatz?.parity ?? null,
+      flex_surcharge_percent: bookingMode === "flex" ? FLEX_SURCHARGE_PERCENT : 0,
+      abo_variante: params.variante,
+      abo_lektionen: vorschau.lektionen,
+      monatsbetrag: vorschau.monatsbetrag,
+      periode_start: periodeStart,
+      periode_ende: vorschau.periodeEnde,
     })
     .select("id, student_id, type, total_price, price_per_lesson, payment_method")
     .single();
 
   if (error || !pkg) {
-    // 23505 = unique_violation: der partielle Unique-Index
-    // `packages_one_active_per_student` verhindert ein zweites aktives Paket
-    // (z. B. bei Doppelklick oder parallelen Requests).
-    if (error?.code === "23505") {
-      return { error: "Du hast bereits ein aktives Paket." };
-    }
-    return { error: "Paket konnte nicht gebucht werden. Bitte versuche es erneut." };
+    if (error?.code === "23505") return { error: "Du hast bereits ein aktives Abo." };
+    return { error: "Das Abo konnte nicht abgeschlossen werden." };
   }
 
-  const payer = {
-    vorname: profile.vorname,
-    nachname: profile.nachname,
-    adresse: profile.adresse,
-    email: profile.email,
-    payment_method: profile.payment_method,
-  };
+  // Monatsraten anlegen. Keine Anzahlung – jeder Monat ist gleich viel.
+  const raten = await legeMonatsratenAn(admin, {
+    packageId: pkg.id,
+    studentId: user.id,
+    gesamtpreis: vorschau.gesamtpreis,
+    laufzeitMonate: vorschau.laufzeitMonate,
+    periodeStart,
+  });
+  if ("error" in raten) {
+    console.error("[abo] Monatsraten:", pkg.id, raten.error);
+  }
 
-  if (ratenPlan) {
-    // Ratenkauf: kompletten Plan anlegen, sofort nur die Anzahlung
-    // fakturieren. Die Monatsraten stellt der Tagesjob am Stichtag.
-    await createInstalmentSchedule(admin, pkg, payer, {
-      type,
-      totalPrice,
-      startDate: startDay,
+  // Fixplatz-Serie buchen.
+  let fixplatzText: string | null = null;
+  if (bookingMode === "fix" && params.fixplatz) {
+    fixplatzText = describeFixplatz(
+      params.fixplatz.weekday,
+      params.fixplatz.time,
       rhythmus,
-    });
-  } else {
-    // Einmalzahlung: Gesamtpreis sofort in Rechnung stellen (15 Tage Frist).
-    await createPackageInvoice(admin, pkg, payer);
-  }
-
-  // Fixplatz: die ganze Terminserie sofort anlegen. Das ist der eigentliche
-  // Nutzen für beide Seiten – der Schüler muss nie wieder einzeln buchen,
-  // und die Route steht für Monate fest.
-  //
-  // Bei Ratenzahlung wird bewusst trotzdem gebucht: der feste Platz ist das,
-  // was der Schüler kauft, und ihn bis zum Zahlungseingang freizulassen hiesse,
-  // ihn an jemand anderen zu verlieren. Die Buchungssperre bei offener
-  // Anzahlung greift nur für *zusätzliche* Termine.
-  let fixplatzInfo: {
-    text: string;
-    termine: string[];
-    verschoben: { original: string; ersatz: string }[];
-    offen: string[];
-  } | null = null;
-
-  if (bookingMode === "fix" && options.fixplatz) {
-    const ergebnis = await bookFixplatzSeries(admin, {
+      params.fixplatz.parity
+    );
+    const serie = await bookFixplatzSeries(admin, {
       studentId: user.id,
       packageId: pkg.id,
       wunsch: {
-        weekday: options.fixplatz.weekday,
-        time: options.fixplatz.time,
+        weekday: params.fixplatz.weekday,
+        time: params.fixplatz.time,
         rhythmus,
-        lessons: lessonsTotal,
+        lessons: vorschau.lektionen,
       },
-      parity: options.fixplatz.parity,
+      parity: params.fixplatz.parity,
     });
-
-    if ("error" in ergebnis) {
-      // Das Paket bleibt bestehen – die Lektionen sind bezahlt und
-      // gutgeschrieben. Nur die Serie fehlt, das kann der Admin nachholen.
-      // Ein Rollback wäre schlechter: der Schüler stünde ohne Paket da,
-      // obwohl die Rechnung schon draussen ist.
-      await sendEmailNow(admin, "fixplatz_admin", {
-        student_id: user.id,
-        student_name:
-          `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim() || undefined,
-        fixplatz_text: `${describeFixplatz(
-          options.fixplatz.weekday,
-          options.fixplatz.time,
-          rhythmus,
-          options.fixplatz.parity
-        )} – Serie konnte nicht angelegt werden: ${ergebnis.error}`,
-        anzahl_termine: 0,
-        anzahl_offen: lessonsTotal,
-      });
-    } else {
-      const { data: termine } = await admin
-        .from("appointments")
-        .select("start_at")
-        .in("id", ergebnis.appointmentIds)
-        .order("start_at");
-
-      fixplatzInfo = {
-        text: describeFixplatz(
-          options.fixplatz.weekday,
-          options.fixplatz.time,
-          rhythmus,
-          options.fixplatz.parity
-        ),
-        termine: (termine ?? []).map((t) => t.start_at as string),
-        verschoben: ergebnis.verschoben.map((v) => ({
-          original: v.original.toISOString(),
-          ersatz: v.ersatz.toISOString(),
-        })),
-        offen: ergebnis.offen.map((d) => d.toISOString()),
-      };
-
-      await sendEmailNow(admin, "fixplatz_confirmed", {
-        student_id: user.id,
-        student_name:
-          `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim() || undefined,
-        fixplatz_text: fixplatzInfo.text,
-        termine: fixplatzInfo.termine,
-        verschoben: fixplatzInfo.verschoben,
-        offen: fixplatzInfo.offen,
-      });
-
-      await sendEmailNow(admin, "fixplatz_admin", {
-        student_id: user.id,
-        student_name:
-          `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim() || undefined,
-        fixplatz_text: fixplatzInfo.text,
-        anzahl_termine: fixplatzInfo.termine.length,
-        anzahl_verschoben: fixplatzInfo.verschoben.length,
-        anzahl_offen: fixplatzInfo.offen.length,
-      });
+    if ("error" in serie) {
+      console.error("[abo] Fixplatz-Serie:", pkg.id, serie.error);
     }
   }
 
-  // Paketbestätigung an den Schüler – erklärt, was als Nächstes zu tun ist.
-  await sendEmailNow(admin, "package_created", {
+  const name = `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim();
+
+  await sendEmailNow(admin, "abo_gestartet", {
     student_id: user.id,
-    student_name: `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim() || undefined,
-    package_label: PACKAGE_LABELS[type],
-    lessons_total: lessonsTotal,
-    total_price: totalPrice,
-    billing_mode: billingMode,
-    deposit_amount: ratenPlan?.depositAmount,
-    expires_at: expiresAt ? expiresAt.toISOString() : null,
-    plan: ratenPlan
-      ? ratenPlan.entries.map((e) => ({
-          label: e.kind === "anzahlung" ? "Anzahlung" : `Rate ${e.sequence}`,
-          amount: e.amount,
-          dueDate: e.dueDate,
-        }))
-      : null,
+    student_name: name || undefined,
+    abo_label: ABO_LABELS[params.variante],
+    rhythmus_text: rhythmus === "woechentlich" ? "jede Woche" : "alle zwei Wochen",
+    fixplatz_text: fixplatzText,
+    lektionen: vorschau.lektionen,
+    monatsbetrag: vorschau.monatsbetrag,
+    laufzeit_monate: vorschau.laufzeitMonate,
+    periode_start: periodeStart,
+    periode_ende: vorschau.periodeEnde,
+    termine: vorschau.termine,
+    ferientage: vorschau.ferientage,
+    auto_renew: params.autoRenew,
   });
 
-  // Admin über den Paketkauf informieren (Mail + Push).
-  await sendEmailNow(admin, "package_purchased_admin", {
+  await sendEmailNow(admin, "abo_gestartet_admin", {
     student_id: user.id,
-    student_name: `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim() || undefined,
-    package_label: PACKAGE_LABELS[type],
-    lessons_total: lessonsTotal,
-    price_per_lesson: ppl,
-    total_price: totalPrice,
-    billing_mode: billingMode,
-    deposit_amount: ratenPlan?.depositAmount,
-    instalment_count: ratenPlan?.instalmentCount,
-    instalment_amount: ratenPlan?.instalmentAmount,
-    auto_renew: autoRenew,
-    rhythmus,
-    booking_mode: bookingMode,
+    student_name: name || undefined,
+    abo_label: ABO_LABELS[params.variante],
+    rhythmus_text: rhythmus === "woechentlich" ? "jede Woche" : "alle zwei Wochen",
+    fixplatz_text: fixplatzText,
+    lektionen: vorschau.lektionen,
+    monatsbetrag: vorschau.monatsbetrag,
+    gesamtpreis: vorschau.gesamtpreis,
+    periode_start: periodeStart,
+    periode_ende: vorschau.periodeEnde,
   });
 
   revalidatePath("/schueler/portal");

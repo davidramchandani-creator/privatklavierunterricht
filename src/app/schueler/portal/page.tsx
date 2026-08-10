@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Music } from "lucide-react";
 import PortalNav from "./_components/PortalNav";
 import PaketCard from "./_components/PaketCard";
-import NeuesPaket from "./_components/NeuesPaket";
+import NeuesAbo from "./_components/NeuesAbo";
 import NaechsteTermine from "./_components/NaechsteTermine";
 import TerminBuchen from "./_components/TerminBuchen";
 import ZahlungenSection from "./_components/ZahlungenSection";
@@ -75,13 +75,8 @@ export default async function SchuelerPortalPage() {
     .limit(1)
     .maybeSingle();
 
-  const prices = {
-    price_10er: Number(profile?.price_10er ?? 70),
-    price_20er: Number(profile?.price_20er ?? 65),
-    travel_surcharge: Number(profile?.travel_surcharge ?? 0),
-  };
 
-  const kannNeuesPaket = canBuyNewPackage(aktivesPackage);
+  const kannNeuesAbo = canBuyNewPackage(aktivesPackage);
   const paketNutzbar = !!aktivesPackage && !canBuyNewPackage(aktivesPackage);
 
   const { data: naechsteAppointments } = await supabase
@@ -258,15 +253,17 @@ export default async function SchuelerPortalPage() {
       )}
 
       <div className="space-y-5">
-        <SectionHeader title="Mein Paket" />
+        <SectionHeader title="Mein Abo" />
         <PaketCard
           paket={aktivesPackage}
           lessonsUsed={lessonsUsed}
           upcomingAbsence={kommendeAbwesenheit}
         />
         <div className="pt-1">
-          <p className="text-[13px] font-600 text-gray-400 mb-2.5">Neues Paket buchen</p>
-          <NeuesPaket prices={prices} canBuy={kannNeuesPaket} />
+          <p className="text-[13px] font-600 text-gray-400 mb-2.5">
+            {kannNeuesAbo ? "Abo abschliessen" : "Dein laufendes Abo"}
+          </p>
+          <NeuesAbo canBuy={kannNeuesAbo} />
         </div>
       </div>
     </div>

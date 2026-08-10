@@ -110,9 +110,9 @@ export const ABSCHLUSS_PUFFER_TAGE = 7;
  *
  * Begründung: Flex-Schüler verursachen wechselnde Routen und laufenden
  * Verwaltungsaufwand. Der Aufschlag verrechnet diesen Zeitverlust, statt ihn
- * stillschweigend zu tragen. Fixplatz kostet den normalen Paketpreis.
+ * stillschweigend zu tragen. Fixplatz kostet den normalen Preis.
  */
-export const FLEX_SURCHARGE_PERCENT = 10;
+export const FLEX_SURCHARGE_PERCENT = 15;
 
 export function intervalDaysFor(rhythmus: Rhythmus): number {
   return INTERVAL_DAYS[rhythmus];

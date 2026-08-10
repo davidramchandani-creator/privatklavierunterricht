@@ -49,6 +49,7 @@ export const navEntries: NavEntry[] = [
       { href: "/admin/kalender", label: "Kalenderansicht", icon: Calendar, exact: true },
       { href: "/admin/abwesenheiten", label: "Abwesenheiten", icon: CalendarOff },
       { href: "/admin/verfuegbarkeit", label: "Verfügbarkeit", icon: Clock },
+      { href: "/admin/schulferien", label: "Schulferien", icon: CalendarOff },
       { href: "/admin/routenplanung", label: "Routenplanung", icon: Route },
     ],
   },
