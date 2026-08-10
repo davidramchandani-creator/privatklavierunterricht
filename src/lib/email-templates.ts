@@ -1806,6 +1806,19 @@ export function renderEmail(
               ${payload.laufzeit_monate ?? 0} Monate.</p>
 
            ${
+             payload.termin_offen
+               ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#92400e;">Dein Termin folgt</p>
+                    <p style="margin:0;color:#92400e;font-size:14px;">
+                      Ich lege die Termine aller Schüler gemeinsam fest, damit die
+                      Fahrwege aufgehen. Sobald dein fester Platz steht, bekommst du
+                      ihn per E-Mail — mit allen Daten der ganzen Laufzeit.
+                    </p>
+                  </div>`
+               : ""
+           }
+
+           ${
              ferientage.length > 0
                ? `<div style="background:#F3F5F8;border-radius:8px;padding:16px;margin:0 0 24px;">
                     <p style="margin:0 0 8px;font-weight:600;color:#1C244B;font-size:14px;">

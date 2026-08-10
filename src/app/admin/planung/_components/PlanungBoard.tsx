@@ -334,6 +334,32 @@ export default function PlanungBoard({
             </p>
           </Infobox>
 
+          {/* Wer zahlt schon, hat aber noch keinen Termin */}
+          {ansicht.kontext.wartend.length > 0 && (
+            <div className="bg-white rounded-2xl border border-[#1C244B]/30 p-4 sm:p-5">
+              <p className="font-600 text-[#1C244B] mb-1">
+                {ansicht.kontext.wartend.length} Schüler warten auf einen Termin
+              </p>
+              <p className="text-sm text-gray-500 leading-snug mb-2.5">
+                Sie haben ein laufendes Abo, aber noch keinen festen Platz — sie
+                zahlen also bereits. Diese Runde sollte sie unterbringen.
+              </p>
+              <ul className="space-y-1">
+                {ansicht.kontext.wartend.map((w) => (
+                  <li key={w.name} className="text-sm text-gray-700">
+                    {w.name}
+                    {!w.hatZeiten && (
+                      <span className="text-xs text-red-600 font-600">
+                        {" "}
+                        · hat noch keine Zeiten angegeben
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Zuteilung nach Tagen */}
           <Tagesliste ansicht={ansicht} />
 

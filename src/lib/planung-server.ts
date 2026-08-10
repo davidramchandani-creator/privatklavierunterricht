@@ -145,6 +145,11 @@ export type ZuteilKontext = {
   ohneEinschraenkung: number;
   schuelerGesamt: number;
   mitAntwort: number;
+  /**
+   * Schüler mit laufendem Abo, die noch keinen Termin haben. Sie zahlen
+   * bereits — sie dürfen in keiner Runde untergehen.
+   */
+  wartend: { name: string; hatZeiten: boolean }[];
 };
 
 /**
@@ -186,14 +191,23 @@ export async function rechneZuteilung(
       ohneEinschraenkung: 0,
       schuelerGesamt: 0,
       mitAntwort: 0,
+      wartend: [],
     };
   }
 
-  const [{ data: verf }, { data: pakete }] = await Promise.all([
+  const [{ data: verf }, { data: dauerhaft }, { data: pakete }] = await Promise.all([
     admin
       .from("student_verfuegbarkeit")
       .select("student_id, wochentag, fruehestens, spaetestens, praeferenz")
       .eq("runde_id", rundeId)
+      .in("student_id", ids),
+    // Dauerangaben aus dem Abo-Abschluss (ohne Runde). Sie greifen, wenn
+    // jemand zur laufenden Runde nichts eingetragen hat — sonst müsste er
+    // dieselben Zeiten zweimal angeben und fiele sonst grundlos heraus.
+    admin
+      .from("student_verfuegbarkeit")
+      .select("student_id, wochentag, fruehestens, spaetestens, praeferenz")
+      .is("runde_id", null)
       .in("student_id", ids),
     admin
       .from("packages")
@@ -202,16 +216,31 @@ export async function rechneZuteilung(
       .eq("status", "active"),
   ]);
 
+  const alsFenster = (v: {
+    wochentag: number;
+    fruehestens: unknown;
+    spaetestens: unknown;
+    praeferenz: unknown;
+  }): Verfuegbarkeit => ({
+    wochentag: Number(v.wochentag),
+    fruehestens: String(v.fruehestens ?? "16:30").slice(0, 5),
+    spaetestens: String(v.spaetestens ?? "20:30").slice(0, 5),
+    praeferenz: Number(v.praeferenz ?? 2),
+  });
+
   const verfVon = new Map<string, Verfuegbarkeit[]>();
   for (const v of verf ?? []) {
     const id = v.student_id as string;
     const liste = verfVon.get(id) ?? [];
-    liste.push({
-      wochentag: Number(v.wochentag),
-      fruehestens: String(v.fruehestens ?? "16:30").slice(0, 5),
-      spaetestens: String(v.spaetestens ?? "20:30").slice(0, 5),
-      praeferenz: Number(v.praeferenz ?? 2),
-    });
+    liste.push(alsFenster(v));
+    verfVon.set(id, liste);
+  }
+  // Nur für Schüler ohne Rundenantwort ergänzen, nicht zusätzlich.
+  for (const v of dauerhaft ?? []) {
+    const id = v.student_id as string;
+    if ((verf ?? []).some((x) => x.student_id === id)) continue;
+    const liste = verfVon.get(id) ?? [];
+    liste.push(alsFenster(v));
     verfVon.set(id, liste);
   }
 
@@ -265,10 +294,18 @@ export async function rechneZuteilung(
     fahrzeit,
   });
 
+  // Wer bezahlt schon, hat aber noch keinen Termin? Diese Liste ist das
+  // Wichtigste an der ganzen Ansicht — hier darf niemand durchrutschen.
+  const mitAbo = new Set((pakete ?? []).map((p) => p.student_id as string));
+  const wartend = schueler
+    .filter((s) => mitAbo.has(s.id) && s.bisher == null)
+    .map((s) => ({ name: s.name, hatZeiten: s.verfuegbarkeiten.length > 0 }));
+
   return {
     ergebnis,
     ohneEinschraenkung: frei.fahrzeitProWoche,
     schuelerGesamt: schueler.length,
     mitAntwort: schueler.filter((s) => s.verfuegbarkeiten.length > 0).length,
+    wartend,
   };
 }

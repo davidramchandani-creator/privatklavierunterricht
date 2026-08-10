@@ -94,14 +94,35 @@ Drei Schritte, jeder mit Erklärkasten:
 
 1. **Rhythmus** — jede Woche oder alle zwei Wochen
 2. **Buchungsart** — Fixplatz oder Flex, mit dem Aufpreis in Franken
-3. **Fester Termin** — nur Plätze, die über die **ganze Laufzeit** frei sind
+3. **Wann kannst du?** — Tage und Zeitfenster, plus Wunschzeit
 
-Danach die Übersicht mit dem Monatsbetrag gross und seinen echten Terminen:
+**Beim Fixplatz sucht sich der Schüler den Termin nicht selbst aus.** Er sagt,
+wann er grundsätzlich kann; den konkreten Platz teilst du zu (Abschnitt 9b).
+Alles andere wäre ein Widerspruch: Wer zuerst bucht, bekäme den besten Slot,
+und deine Route wäre wieder das, was übrig bleibt.
 
-> Halbjahresabo · 01.10.2026 – 31.03.2027 · 20 Lektionen · jeden Dienstag 17:15
-> **CHF 233.35 pro Monat**
-> In den Ferien kein Unterricht: 06.10., 13.10., 22.12., 29.12., 09.02., 16.02.
-> — bereits abgezogen, du zahlst nichts dafür
+Selbst buchen bleibt genau da, wo es hingehört — bei **Flex**. Dafür zahlt man
+schliesslich den Aufschlag.
+
+Danach die Übersicht mit dem Monatsbetrag:
+
+> Halbjahresabo · 01.10.2026 – 31.03.2027 · 20 Lektionen
+> **CHF 233.35 pro Monat** · Termin wird dir zugeteilt
+> In den Ferien kein Unterricht — bereits abgezogen, du zahlst nichts dafür
+
+### Warum der Preis trotzdem feststeht
+
+Die Lektionszahl hängt vom Wochentag ab (je nachdem, welche Ferien darauf
+fallen). Beim Kauf ist der Tag noch offen — gerechnet wird deshalb mit dem
+**ungünstigsten** der angegebenen Tage.
+
+Damit wird nie mehr versprochen, als sich halten lässt. Fällt die Zuteilung
+später auf einen Tag mit einer Lektion mehr, wird trotzdem nur die zugesicherte
+Zahl gebucht: Der Preis steht bereits fest, und eine Gratislektion wäre bei
+15 Schülern kein kleiner Betrag.
+
+Die Spanne ist ohnehin schmal — über ein Halbjahr unterscheiden sich die
+Wochentage um höchstens eine Lektion (CHF 70).
 
 **Fünf Punkte einzeln bestätigen.** Ein Sammelhäkchen liest niemand:
 
@@ -272,13 +293,13 @@ gibt.
 
 ## 11. Was noch offen ist
 
-- **Bestandsschüler aus WordPress**: die Datenübernahme ist bewusst nicht
-  gebaut.
-- **Die zwei Wege zum Termin stehen nebeneinander.** Ein Schüler kann sich
-  beim Abschluss selbst einen Fixplatz aussuchen, und du kannst über die
-  Terminplanung zuteilen. Für den Alltag ist das brauchbar (neue Schüler
-  buchen selbst, zum Semesterstart planst du alle), aber es ist eine
-  bewusste Entscheidung wert, ob die Selbstbuchung langfristig bleiben soll.
+- **Bestandsschüler aus WordPress**: die Datenübernahme machst du selbst.
+- **Ein Schüler, der zwischen zwei Planungsrunden abschliesst, wartet** auf
+  seinen Termin, zahlt aber schon ab Periodenbeginn. Die Planungsseite zeigt
+  diese Wartenden gesondert an, damit sie nicht untergehen — aber wenn zwischen
+  Abschluss und nächster Runde Wochen liegen, solltest du entweder häufiger
+  Runden starten oder ihm den Platz von Hand geben (Schülerdetail → Abo
+  anlegen mit gewähltem Termin).
 - **Der Build läuft in meiner Umgebung nicht** (Next.js stürzt dort im nativen
   Binary ab). Geprüft ist alles über TypeScript, ESLint und 265 Tests — der
   echte Build passiert auf Vercel.
