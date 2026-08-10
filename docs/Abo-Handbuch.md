@@ -275,6 +275,67 @@ Die Differenz ist keine Kritik an den Schülern, sondern deine
 Entscheidungsgrundlage: Ist sie gross, lohnt es sich, bei einzelnen um ein
 zusätzliches Zeitfenster zu bitten. Ist sie klein, ist alles in Ordnung.
 
+### Einen Einzelnen nachträglich einpassen
+
+Der Alltagsfall zwischen zwei Runden: Jemand schliesst im November ab, die
+nächste Planungsrunde ist im Februar. Ihn bis dahin warten zu lassen wäre
+falsch — er zahlt ja bereits.
+
+Auf der Planungsseite gibt es dafür die Karte **„Einzelnen Schüler
+einpassen"**. Sie beantwortet eine andere Frage als die Runde: nicht „wie sähe
+der beste Plan für alle aus", sondern **„wo passt dieser eine hin, ohne dass
+ich die anderen anfassen muss"**. Der bestehende Stundenplan bleibt
+unverändert.
+
+Gerechnet wird die **Mehrfahrzeit**: Was kostet dieser Abend mit ihm,
+verglichen mit ohne ihn — einschliesslich Umweg und veränderter Reihenfolge.
+Die Vorschläge sind danach sortiert, günstigster zuerst.
+
+Ein Vorschlag sieht so aus:
+
+> **Di 18:30** · Pfungen → *hier* → Winterthur Zt.
+> ✓ liegt auf dem Weg · kostet 3 Min. mehr Fahrzeit · Wunschzeit
+
+Gegenüber:
+
+> **Mi 18:00** · Andelfingen → *hier* → Heimweg
+> kostet 11 Min. mehr Fahrzeit
+
+Der Unterschied ist die ganze Idee: Der Dienstagsplatz liegt **zwischen** zwei
+Terminen, an denen du ohnehin vorbeifährst. Drei Minuten für eine ganze
+Lektion. Der Mittwoch ist ein echter Umweg — bei 20 Wochen sind 11 Minuten
+gegenüber 3 rund **2,7 Stunden Fahrzeit im Halbjahr**, für dieselbe Lektion
+und dasselbe Geld.
+
+Wer „Setzen" drückt, bekommt seine Serie gebucht — aber nur die **noch
+offenen** Lektionen. Wer im November einsteigt, bekommt nicht rückwirkend die
+Termine seit September.
+
+Vorausgesetzt ist, dass der Schüler seine Zeiten angegeben hat. Ohne die steht
+er in der Liste mit dem Vermerk „keine Zeiten angegeben" — dann zuerst die
+Anfrage schicken.
+
+---
+
+## 9c. Die Route zum Abfahren
+
+Der Routenplaner zeigt jeden Abend als das, was er ist: eine Fahrt. Oben die
+**Abfahrtszeit zuhause** (erste Lektion minus Anfahrt), dann die Halte
+durchnummeriert in der Reihenfolge, in der du sie abfährst, jeweils mit der
+Fahrzeit vom vorherigen Halt. Unten der Heimweg — der zählt mit, sonst sähe
+ein weit entfernter letzter Schüler künstlich günstig aus.
+
+Die Schaltfläche **„Route öffnen"** übergibt genau diese Reihenfolge an Google
+Maps: Start zuhause, alle Halte als Zwischenstopps, Ziel wieder zuhause.
+Google sortiert nichts um — was du auf dem Handy siehst, ist die gerechnete
+Route.
+
+Übergeben werden **Koordinaten, keine Adressen**. Eine Adresse könnte Google
+anders auflösen als der Planer sie geokodiert hat, und dann stimmte die
+angezeigte Route nicht mehr mit der gerechneten überein. Bei mehr als neun
+Halten wird gekappt — mehr nimmt Google Maps in einem Link nicht an; das
+betrifft dich erst ab zehn Lektionen an einem Abend.
+
 ---
 
 ## 10. Was du im Admin tust
@@ -287,21 +348,21 @@ gibt.
 
 **Schulferien** (Kalender → Schulferien): Zeiträume anlegen und löschen.
 
-**Routenplanung** (Kalender → Routenplanung): siehe Fixplatz-Handbuch.
+**Planungsrunde** (Kalender → Planung): Runde starten, erinnern, Zuteilung
+rechnen und anwenden. Auf derselben Seite: einzelne Schüler nachträglich
+einpassen (Abschnitt 9b).
+
+**Routenplanung** (Kalender → Routenplanung): Wochenplan rechnen,
+Tagesreihenfolge ansehen, Route in Google Maps öffnen, Fahrzeiten von Hand
+korrigieren.
 
 ---
 
 ## 11. Was noch offen ist
 
 - **Bestandsschüler aus WordPress**: die Datenübernahme machst du selbst.
-- **Ein Schüler, der zwischen zwei Planungsrunden abschliesst, wartet** auf
-  seinen Termin, zahlt aber schon ab Periodenbeginn. Die Planungsseite zeigt
-  diese Wartenden gesondert an, damit sie nicht untergehen — aber wenn zwischen
-  Abschluss und nächster Runde Wochen liegen, solltest du entweder häufiger
-  Runden starten oder ihm den Platz von Hand geben (Schülerdetail → Abo
-  anlegen mit gewähltem Termin).
 - **Der Build läuft in meiner Umgebung nicht** (Next.js stürzt dort im nativen
-  Binary ab). Geprüft ist alles über TypeScript, ESLint und 265 Tests — der
+  Binary ab). Geprüft ist alles über TypeScript, ESLint und 273 Tests — der
   echte Build passiert auf Vercel.
 
 ## 12. Branch zusammenführen

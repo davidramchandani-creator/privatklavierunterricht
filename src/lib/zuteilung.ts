@@ -511,6 +511,169 @@ function verbessereDurchTausch(
   }
 }
 
+// ── Einzelnen Schüler nachträglich einpassen ───────────────
+
+export type BestehenderTermin = {
+  schuelerId: string;
+  name: string;
+  lat: number;
+  lng: number;
+  wochentag: number;
+  /** "HH:MM" */
+  beginn: string;
+  lektionMinuten: number;
+  paritaet: 0 | 1 | null;
+};
+
+export type Einpassung = {
+  wochentag: number;
+  /** "HH:MM" */
+  beginn: string;
+  paritaet: 0 | 1 | null;
+  praeferenz: number;
+  /** Zusätzliche Fahrzeit dieses Tages in Sekunden. */
+  zusatzSekunden: number;
+  /** Zwischen wem der Termin liegt – für die Anzeige. */
+  davor: string | null;
+  danach: string | null;
+  /**
+   * Füllt der Termin eine bestehende Lücke, ohne die Route zu verlängern?
+   * Das ist der Idealfall: man fährt ohnehin vorbei.
+   */
+  aufDemWeg: boolean;
+};
+
+/**
+ * Findet die besten Plätze für einen einzelnen Schüler im **laufenden** Plan.
+ *
+ * Anders als `teileZu` wird hier nichts umgestellt: Die bestehenden Termine
+ * bleiben, wo sie sind. Gesucht wird nur, wo der Neue am wenigsten kostet.
+ *
+ * Das ist der Alltagsfall — mitten in der Periode meldet sich jemand an, und
+ * die Frage ist nicht „wie sähe der perfekte Plan aus“, sondern „wo passt er
+ * rein, ohne dass ich alle anderen umbuchen muss“.
+ *
+ * Der Idealfall ist ein Platz **auf dem Weg**: zwischen zwei Terminen, an
+ * denen man ohnehin vorbeifährt. Dann kostet der neue Schüler fast nichts
+ * an zusätzlicher Fahrzeit. Solche Plätze werden eigens markiert.
+ */
+export function findeEinpassung(params: {
+  zuhause: Punkt;
+  neuer: ZuteilSchueler;
+  bestehend: BestehenderTermin[];
+  fenster: Tagesfenster[];
+  pufferMinuten: number;
+  fahrzeit?: Fahrzeitfunktion;
+  /** Wie viele Vorschläge zurückgegeben werden. */
+  maxVorschlaege?: number;
+  /** Ab wie vielen Sekunden Zusatzfahrzeit ein Platz nicht mehr „auf dem Weg“ ist. */
+  aufDemWegGrenze?: number;
+}): Einpassung[] {
+  const fahrzeit = params.fahrzeit ?? schaetzeFahrzeit;
+  const puffer = params.pufferMinuten;
+  const grenze = params.aufDemWegGrenze ?? 300; // 5 Minuten
+
+  if (!Number.isFinite(params.neuer.lat) || !Number.isFinite(params.neuer.lng)) {
+    return [];
+  }
+
+  // Bestehende Termine je Tag, in Routenreihenfolge (nach Uhrzeit).
+  const proTag = new Map<number, Belegung[]>();
+  for (const f of params.fenster) proTag.set(f.wochentag, []);
+  for (const t of params.bestehend) {
+    const liste = proTag.get(t.wochentag);
+    if (!liste) continue;
+    liste.push({
+      schueler: {
+        id: t.schuelerId,
+        name: t.name,
+        lat: t.lat,
+        lng: t.lng,
+        rhythmus: t.paritaet === null ? "woechentlich" : "zweiwoechentlich",
+        lektionMinuten: t.lektionMinuten,
+        verfuegbarkeiten: [],
+      },
+      beginnMin: minutenVon(t.beginn),
+      endeMin: minutenVon(t.beginn) + t.lektionMinuten,
+      paritaet: t.paritaet,
+      praeferenz: 2,
+    });
+  }
+  for (const liste of proTag.values()) {
+    liste.sort((a, b) => a.beginnMin - b.beginnMin);
+  }
+
+  const kandidaten: Einpassung[] = [];
+
+  for (const p of moeglichePlaetze(params.neuer, params.fenster)) {
+    const beginnMin = minutenVon(p.beginn);
+    const endeMin = beginnMin + params.neuer.lektionMinuten;
+    const tag = proTag.get(p.wochentag) ?? [];
+
+    const paritaeten: Array<0 | 1 | null> =
+      params.neuer.rhythmus === "zweiwoechentlich" ? [0, 1] : [null];
+
+    for (const paritaet of paritaeten) {
+      const kandidat = { beginnMin, endeMin, paritaet };
+      if (tag.some((b) => kollidiert(kandidat, b, puffer))) continue;
+
+      const vorher = tagesFahrzeit(tag, params.zuhause, fahrzeit);
+      const nachher = tagesFahrzeit(
+        [
+          ...tag,
+          {
+            schueler: params.neuer,
+            beginnMin,
+            endeMin,
+            paritaet,
+            praeferenz: p.praeferenz,
+          },
+        ],
+        params.zuhause,
+        fahrzeit
+      );
+      const zusatz = Math.round(nachher - vorher);
+
+      // Wer kommt direkt davor und danach? Für die Anzeige, damit sichtbar
+      // wird, warum ein Platz günstig ist.
+      const davor = [...tag]
+        .filter((b) => b.endeMin <= beginnMin)
+        .sort((a, b) => b.beginnMin - a.beginnMin)[0];
+      const danach = [...tag]
+        .filter((b) => b.beginnMin >= endeMin)
+        .sort((a, b) => a.beginnMin - b.beginnMin)[0];
+
+      kandidaten.push({
+        wochentag: p.wochentag,
+        beginn: p.beginn,
+        paritaet,
+        praeferenz: p.praeferenz,
+        zusatzSekunden: zusatz,
+        davor: davor?.schueler.name ?? null,
+        danach: danach?.schueler.name ?? null,
+        aufDemWeg: zusatz <= grenze,
+      });
+    }
+  }
+
+  // Wenig Zusatzfahrzeit zuerst, bei Gleichstand die lieber gesehene Zeit.
+  kandidaten.sort(
+    (a, b) => a.zusatzSekunden - b.zusatzSekunden || b.praeferenz - a.praeferenz
+  );
+
+  // Pro Tag höchstens zwei Vorschläge, damit die Liste über die Woche streut
+  // statt fünfmal denselben Abend anzubieten.
+  const proTagZahl = new Map<number, number>();
+  const gefiltert = kandidaten.filter((k) => {
+    const n = (proTagZahl.get(k.wochentag) ?? 0) + 1;
+    if (n > 2) return false;
+    proTagZahl.set(k.wochentag, n);
+    return true;
+  });
+
+  return gefiltert.slice(0, params.maxVorschlaege ?? 8);
+}
+
 /** Lesbare Beschreibung einer Zuteilung. */
 export function beschreibeZuteilung(z: Zuteilung): string {
   const tag = WEEKDAY_LABELS[z.wochentag] ?? String(z.wochentag);

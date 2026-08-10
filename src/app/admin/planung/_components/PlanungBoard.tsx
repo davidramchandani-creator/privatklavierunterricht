@@ -24,6 +24,7 @@ import {
   zuteilungRechnen,
   type PlanungsAnsicht,
 } from "../actions";
+import EinpassenKarte from "./EinpassenKarte";
 
 function tag(iso: string): string {
   const [y, m, d] = iso.split("-");
@@ -276,6 +277,8 @@ export default function PlanungBoard({
           )}
         </button>
       </div>
+
+      <EinpassenKarte puffer={puffer} />
 
       {fehler && (
         <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{fehler}</p>

@@ -13,7 +13,10 @@ import { LESSON_DURATION_MIN } from "./booking";
 import { fahrzeitMitCache } from "./geo";
 import { ladeFahrzeiten, ladeFenster, ladeZuhause } from "./routing-server";
 import {
+  findeEinpassung,
   teileZu,
+  type BestehenderTermin,
+  type Einpassung,
   type Verfuegbarkeit,
   type ZuteilSchueler,
   type Zuteilungsergebnis,
@@ -137,6 +140,138 @@ export async function ladeVerfuegbarkeit(
     spaetestens: String(v.spaetestens ?? "20:30").slice(0, 5),
     praeferenz: Number(v.praeferenz ?? 2),
   }));
+}
+
+/**
+ * Der laufende Stundenplan: alle Schüler mit gesetztem Fixplatz.
+ *
+ * Grundlage fürs Einpassen einzelner Schüler mitten in der Periode — dort
+ * wird nichts umgestellt, sondern nur gesucht, wo der Neue am wenigsten
+ * zusätzliche Fahrzeit kostet.
+ */
+export async function ladeBestehendenPlan(
+  admin: SupabaseClient
+): Promise<BestehenderTermin[]> {
+  const { data } = await admin
+    .from("packages")
+    .select(
+      "student_id, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, rhythmus, profiles(vorname, nachname, lat, lng)"
+    )
+    .eq("status", "active")
+    .eq("booking_mode", "fix")
+    .not("fixplatz_weekday", "is", null);
+
+  const termine: BestehenderTermin[] = [];
+  for (const p of data ?? []) {
+    const prof = (
+      Array.isArray(p.profiles) ? p.profiles[0] : p.profiles
+    ) as { vorname: string; nachname: string; lat: number | null; lng: number | null } | null;
+    if (!prof || prof.lat == null || prof.lng == null) continue;
+
+    termine.push({
+      schuelerId: p.student_id as string,
+      name: `${prof.vorname ?? ""} ${prof.nachname ?? ""}`.trim() || "Ohne Namen",
+      lat: Number(prof.lat),
+      lng: Number(prof.lng),
+      wochentag: Number(p.fixplatz_weekday),
+      beginn: String(p.fixplatz_time).slice(0, 5),
+      lektionMinuten: LESSON_DURATION_MIN,
+      paritaet:
+        p.fixplatz_week_parity == null
+          ? null
+          : ((Number(p.fixplatz_week_parity) === 1 ? 1 : 0) as 0 | 1),
+    });
+  }
+  return termine;
+}
+
+export type EinpassKontext = {
+  vorschlaege: Einpassung[];
+  schuelerName: string;
+  hatZeiten: boolean;
+};
+
+/**
+ * Sucht die besten Plätze für einen einzelnen Schüler im laufenden Plan.
+ *
+ * Nimmt seine Verfügbarkeiten — bevorzugt die der offenen Runde, sonst die
+ * Dauerangabe aus dem Abo-Abschluss.
+ */
+export async function findeEinpassungFuer(
+  admin: SupabaseClient,
+  studentId: string,
+  pufferMinuten: number
+): Promise<EinpassKontext | { error: string }> {
+  const [zuhause, fenster, fahrzeitCache, bestehend] = await Promise.all([
+    ladeZuhause(admin),
+    ladeFenster(admin),
+    ladeFahrzeiten(admin),
+    ladeBestehendenPlan(admin),
+  ]);
+
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("id, vorname, nachname, lat, lng")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (!prof) return { error: "Schüler nicht gefunden." };
+  if (prof.lat == null || prof.lng == null) {
+    return {
+      error:
+        "Für diesen Schüler fehlen die Koordinaten. Bitte zuerst die Adresse auflösen lassen.",
+    };
+  }
+
+  const { data: verf } = await admin
+    .from("student_verfuegbarkeit")
+    .select("wochentag, fruehestens, spaetestens, praeferenz, runde_id")
+    .eq("student_id", studentId);
+
+  // Rundenspezifische Angaben schlagen die Dauerangabe.
+  const mitRunde = (verf ?? []).filter((v) => v.runde_id != null);
+  const roh = mitRunde.length > 0 ? mitRunde : (verf ?? []);
+
+  const verfuegbarkeiten: Verfuegbarkeit[] = roh.map((v) => ({
+    wochentag: Number(v.wochentag),
+    fruehestens: String(v.fruehestens ?? "16:30").slice(0, 5),
+    spaetestens: String(v.spaetestens ?? "20:30").slice(0, 5),
+    praeferenz: Number(v.praeferenz ?? 2),
+  }));
+
+  const name = `${prof.vorname ?? ""} ${prof.nachname ?? ""}`.trim() || "Schüler";
+
+  if (verfuegbarkeiten.length === 0) {
+    return { vorschlaege: [], schuelerName: name, hatZeiten: false };
+  }
+
+  const { data: paket } = await admin
+    .from("packages")
+    .select("rhythmus")
+    .eq("student_id", studentId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  const vorschlaege = findeEinpassung({
+    zuhause: { lat: zuhause.lat, lng: zuhause.lng },
+    neuer: {
+      id: studentId,
+      name,
+      lat: Number(prof.lat),
+      lng: Number(prof.lng),
+      rhythmus: (paket?.rhythmus === "zweiwoechentlich"
+        ? "zweiwoechentlich"
+        : "woechentlich") as Rhythmus,
+      lektionMinuten: LESSON_DURATION_MIN,
+      verfuegbarkeiten,
+    },
+    // Der Schüler selbst darf nicht als eigener Nachbar auftauchen.
+    bestehend: bestehend.filter((b) => b.schuelerId !== studentId),
+    fenster,
+    pufferMinuten,
+    fahrzeit: fahrzeitMitCache(fahrzeitCache),
+  });
+
+  return { vorschlaege, schuelerName: name, hatZeiten: true };
 }
 
 export type ZuteilKontext = {

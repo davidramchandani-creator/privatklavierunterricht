@@ -7,10 +7,12 @@ import { todayInZurich } from "@/lib/subscription";
 import { describeFixplatz } from "@/lib/fixplatz";
 import { bookFixplatzSeries } from "@/lib/fixplatz-server";
 import {
+  findeEinpassungFuer,
   ladeAntwortStand,
   ladeOffeneRunde,
   rechneZuteilung,
   type AntwortStand,
+  type EinpassKontext,
   type Runde,
   type ZuteilKontext,
 } from "@/lib/planung-server";
@@ -300,6 +302,158 @@ export async function zuteilungAnwenden(
   revalidatePath("/admin/kalender");
   revalidatePath("/schueler/portal");
   return { success: true, error: undefined, gesetzt, uebersprungen };
+}
+
+/**
+ * Wer wartet auf einen Termin?
+ *
+ * Schüler mit laufendem Abo und Fixplatz-Wunsch, aber ohne gesetzten Platz —
+ * genau die, die mitten in der Periode eingepasst werden müssen.
+ */
+export async function wartendeSchueler(): Promise<{
+  schueler: { id: string; name: string; hatZeiten: boolean }[];
+}> {
+  const verboten = await assertAdmin();
+  if (verboten) return { schueler: [] };
+
+  const admin = await createAdminClient();
+
+  const { data: pakete } = await admin
+    .from("packages")
+    .select("student_id, profiles(vorname, nachname)")
+    .eq("status", "active")
+    .eq("booking_mode", "fix")
+    .is("fixplatz_weekday", null);
+
+  const ids = (pakete ?? []).map((p) => p.student_id as string);
+  if (ids.length === 0) return { schueler: [] };
+
+  const { data: verf } = await admin
+    .from("student_verfuegbarkeit")
+    .select("student_id")
+    .in("student_id", ids);
+
+  const mitZeiten = new Set((verf ?? []).map((v) => v.student_id as string));
+
+  return {
+    schueler: (pakete ?? []).map((p) => {
+      const prof = (
+        Array.isArray(p.profiles) ? p.profiles[0] : p.profiles
+      ) as { vorname: string; nachname: string } | null;
+      return {
+        id: p.student_id as string,
+        name:
+          `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || "Ohne Namen",
+        hatZeiten: mitZeiten.has(p.student_id as string),
+      };
+    }),
+  };
+}
+
+/** Beste Plätze für einen einzelnen Schüler im laufenden Plan. */
+export async function einpassungSuchen(
+  studentId: string,
+  pufferMinuten: number
+): Promise<EinpassKontext | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+  if (!studentId) return { error: "Kein Schüler gewählt." };
+
+  const admin = await createAdminClient();
+  return findeEinpassungFuer(admin, studentId, pufferMinuten);
+}
+
+/**
+ * Einen einzelnen Schüler auf einen Platz setzen.
+ *
+ * Der laufende Plan bleibt unangetastet — es wird nur dieser eine Termin
+ * gesetzt und seine Serie gebucht.
+ */
+export async function einzelnEinpassen(params: {
+  studentId: string;
+  wochentag: number;
+  beginn: string;
+  paritaet: 0 | 1 | null;
+}): Promise<
+  { success: true; error: undefined; termine: number } | { error: string }
+> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+
+  const { data: pkg } = await admin
+    .from("packages")
+    .select("id, rhythmus, abo_lektionen, lessons_total, lessons_used")
+    .eq("student_id", params.studentId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!pkg) return { error: "Dieser Schüler hat kein aktives Abo." };
+
+  const rhythmus: Rhythmus =
+    pkg.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich";
+
+  // Nur die noch offenen Lektionen buchen. Wer mitten in der Periode
+  // einsteigt, bekommt nicht rückwirkend die ganze Serie.
+  const gesamt = Number(pkg.abo_lektionen ?? pkg.lessons_total ?? 0);
+  const offen = Math.max(1, gesamt - Number(pkg.lessons_used ?? 0));
+
+  // Bestehende, noch nicht gehaltene Fixplatz-Termine räumen.
+  await admin
+    .from("appointments")
+    .update({ status: "cancelled" })
+    .eq("package_id", pkg.id)
+    .eq("is_fixplatz", true)
+    .eq("status", "booked")
+    .gt("start_at", new Date().toISOString());
+
+  await admin
+    .from("packages")
+    .update({
+      booking_mode: "fix",
+      fixplatz_weekday: params.wochentag,
+      fixplatz_time: params.beginn,
+      fixplatz_week_parity: params.paritaet,
+    })
+    .eq("id", pkg.id);
+
+  const serie = await bookFixplatzSeries(admin, {
+    studentId: params.studentId,
+    packageId: pkg.id,
+    wunsch: {
+      weekday: params.wochentag,
+      time: params.beginn,
+      rhythmus,
+      lessons: offen,
+    },
+    parity: params.paritaet,
+  });
+
+  if ("error" in serie) return { error: serie.error };
+
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("vorname, nachname")
+    .eq("id", params.studentId)
+    .maybeSingle();
+
+  await sendEmailNow(admin, "verfuegbarkeit_zuteilung", {
+    student_id: params.studentId,
+    student_name: `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined,
+    fixplatz_text: describeFixplatz(
+      params.wochentag,
+      params.beginn,
+      rhythmus,
+      params.paritaet
+    ),
+    anzahl_termine: serie.appointmentIds.length,
+    wunsch_erfuellt: true,
+  });
+
+  revalidatePath("/admin/planung");
+  revalidatePath("/admin/kalender");
+  return { success: true, error: undefined, termine: serie.appointmentIds.length };
 }
 
 /** Runde schliessen, ohne sie anzuwenden. */

@@ -112,6 +112,40 @@ export function formatDauer(sekunden: number): string {
   return rest === 0 ? `${h} Std.` : `${h} Std. ${String(rest).padStart(2, "0")} Min.`;
 }
 
+/**
+ * Navigationslink für eine ganze Tagesroute.
+ *
+ * Google Maps übernimmt Start, Zwischenstopps und Ziel in genau der
+ * übergebenen Reihenfolge — die vom Planer berechnete wird also nicht
+ * nachträglich umsortiert. Der Rückweg nach Hause ist mit drin, weil er zur
+ * Route gehört und mitgefahren werden muss.
+ *
+ * Bewusst über Koordinaten statt Adressen: eine Adresse kann Google anders
+ * auflösen als der Planer sie geokodiert hat, und dann stimmt die Route nicht
+ * mehr mit der gerechneten überein.
+ */
+export function navigationsLink(zuhause: Punkt, stationen: Punkt[]): string | null {
+  if (stationen.length === 0) return null;
+
+  const koord = (p: Punkt) =>
+    `${rundeKoordinate(p.lat)},${rundeKoordinate(p.lng)}`;
+
+  // Google Maps nimmt höchstens 9 Zwischenstopps entgegen.
+  const zwischen = stationen.slice(0, 9);
+
+  const params = new URLSearchParams({
+    api: "1",
+    origin: koord(zuhause),
+    destination: koord(zuhause),
+    travelmode: "driving",
+  });
+  if (zwischen.length > 0) {
+    params.set("waypoints", zwischen.map(koord).join("|"));
+  }
+
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
 /** Mittelpunkt mehrerer Punkte – für Cluster-Zentren. */
 export function schwerpunkt(punkte: Punkt[]): Punkt {
   if (punkte.length === 0) return { lat: 0, lng: 0 };
