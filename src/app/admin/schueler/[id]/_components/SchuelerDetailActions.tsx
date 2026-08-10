@@ -22,11 +22,20 @@ import {
   cancelPackage,
   calculateTravelBuffer,
   adjustPackageLessons,
+  fixplaetzeFuerSchueler,
 } from "../../../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatCHF } from "@/lib/utils";
-import { buildInstalmentPlan, todayInZurich } from "@/lib/subscription";
+import { todayInZurich } from "@/lib/subscription";
+import {
+  buildPlanForRhythmus,
+  expiryFor,
+  termMonthsForType,
+  type BookingMode,
+  type Rhythmus,
+} from "@/lib/rhythmus";
+import type { FixplatzAngebot } from "@/lib/fixplatz-suche";
 import { formatDay } from "@/lib/instalment-view";
 import {
   CANCELLATION_SINGLE_BASE,
@@ -541,24 +550,62 @@ function PackageFormNew({
   const [price, setPrice] = useState(String(priceFor("10er")));
   const [billingMode, setBillingMode] = useState<"einmalig" | "raten">("einmalig");
   const [autoRenew, setAutoRenew] = useState(false);
+  const [rhythmus, setRhythmus] = useState<Rhythmus>("woechentlich");
+  const [bookingMode, setBookingMode] = useState<BookingMode>("fix");
+  const [angebote, setAngebote] = useState<FixplatzAngebot[] | null>(null);
+  const [platz, setPlatz] = useState<FixplatzAngebot | null>(null);
+  const [suchePending, startSuche] = useTransition();
 
-  // Einzellektionen gibt es weder auf Raten noch mit Verlängerung.
+  // Einzellektionen gibt es weder auf Raten noch mit Rhythmus oder Fixplatz.
   const istPaket = type === "10er" || type === "20er";
 
   function handleTypeChange(value: string) {
     setType(value);
     setPrice(String(priceFor(value)));
+    setAngebote(null);
+    setPlatz(null);
     if (value === "single") {
       setBillingMode("einmalig");
       setAutoRenew(false);
+      setBookingMode("flex");
     }
+  }
+
+  function plaetzeSuchen() {
+    if (!istPaket) return;
+    setAngebote(null);
+    setPlatz(null);
+    startSuche(async () => {
+      const res = await fixplaetzeFuerSchueler(
+        student_user_id,
+        type as "10er" | "20er",
+        rhythmus
+      );
+      if ("error" in res) {
+        setError(res.error ?? null);
+        setAngebote([]);
+        return;
+      }
+      setAngebote(res.angebote);
+    });
   }
 
   const lektionen = type === "10er" ? 10 : type === "20er" ? 20 : 1;
   const gesamt = (Number(price) || 0) * lektionen;
+  const laufzeit = istPaket
+    ? termMonthsForType(type as "10er" | "20er", rhythmus)
+    : null;
+  const ablauf = istPaket
+    ? expiryFor(lektionen, rhythmus, todayInZurich())
+    : null;
   const plan =
     istPaket && billingMode === "raten"
-      ? buildInstalmentPlan(type as "10er" | "20er", gesamt, todayInZurich())
+      ? buildPlanForRhythmus(
+          type as "10er" | "20er",
+          gesamt,
+          todayInZurich(),
+          rhythmus
+        )
       : null;
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -648,6 +695,129 @@ function PackageFormNew({
         )}
       </div>
 
+      {/* Rhythmus + Buchungsart – bestimmen Laufzeit und ob eine Serie entsteht */}
+      {istPaket && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="text-xs font-500 text-gray-600">Rhythmus</label>
+            <select
+              name="rhythmus"
+              value={rhythmus}
+              onChange={(e) => {
+                setRhythmus(e.target.value as Rhythmus);
+                setAngebote(null);
+                setPlatz(null);
+              }}
+              className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="woechentlich">Jede Woche</option>
+              <option value="zweiwoechentlich">Alle zwei Wochen</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-500 text-gray-600">Buchungsart</label>
+            <select
+              name="booking_mode"
+              value={bookingMode}
+              onChange={(e) => {
+                setBookingMode(e.target.value as BookingMode);
+                setPlatz(null);
+              }}
+              className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="fix">Fixplatz</option>
+              <option value="flex">Flexibel</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {istPaket && laufzeit != null && ablauf && (
+        <p className="text-xs text-gray-500 leading-snug">
+          Laufzeit <strong className="text-gray-700">{laufzeit} Monate</strong>,
+          gültig bis {formatDay(ablauf)}.
+          {rhythmus === "zweiwoechentlich"
+            ? " Zweiwöchentlich braucht länger für dieselben Lektionen – der Preis bleibt gleich."
+            : ""}
+        </p>
+      )}
+
+      {/* Fixplatz wählen */}
+      {istPaket && bookingMode === "fix" && (
+        <div className="rounded-lg border border-gray-200 p-3 space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-600 text-gray-900">Fester Termin</p>
+            <button
+              type="button"
+              onClick={plaetzeSuchen}
+              disabled={suchePending}
+              className="text-xs font-600 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 inline-flex items-center gap-1.5"
+            >
+              {suchePending && <Loader2 className="w-3 h-3 animate-spin" />}
+              {angebote ? "Neu suchen" : "Freie Termine suchen"}
+            </button>
+          </div>
+
+          <p className="text-xs text-gray-500 leading-snug">
+            Gesucht wird ein Termin, der über die ganze Laufzeit frei ist. Beim
+            Anlegen wird die komplette Serie gebucht – der Schüler muss nichts
+            mehr einzeln buchen.
+          </p>
+
+          {angebote && angebote.length === 0 && !suchePending && (
+            <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+              Kein Termin über die ganze Laufzeit frei. Buchungsart auf
+              „Flexibel“ stellen oder Verfügbarkeit erweitern.
+            </p>
+          )}
+
+          {angebote && angebote.length > 0 && (
+            <div className="space-y-1.5 max-h-56 overflow-y-auto">
+              {angebote.slice(0, 10).map((a) => {
+                const aktiv =
+                  platz?.weekday === a.weekday &&
+                  platz?.time === a.time &&
+                  platz?.parity === a.parity;
+                return (
+                  <button
+                    key={`${a.weekday}-${a.time}-${a.parity}`}
+                    type="button"
+                    onClick={() => setPlatz(a)}
+                    className={`w-full text-left rounded-lg border px-3 py-2 text-xs transition-colors ${
+                      aktiv
+                        ? "border-[#1C244B] bg-[#1C244B]/5"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <p className="font-600 text-gray-900">{a.beschreibung}</p>
+                    <p className="text-gray-500 mt-0.5">
+                      {a.freie} von {a.gesamt} Terminen frei
+                      {a.belegteTage.length > 0
+                        ? ` · ${a.belegteTage.length} brauchen Ausweichtermin`
+                        : ""}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {platz && (
+            <>
+              <input type="hidden" name="fixplatz_weekday" value={platz.weekday} />
+              <input type="hidden" name="fixplatz_time" value={platz.time} />
+              {platz.parity != null && (
+                <input
+                  type="hidden"
+                  name="fixplatz_week_parity"
+                  value={platz.parity}
+                />
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {plan && (
         <div className="rounded-lg bg-gray-50 border border-gray-100 p-3 text-xs text-gray-600 space-y-1">
           <p className="font-600 text-gray-900">
@@ -684,13 +854,22 @@ function PackageFormNew({
         <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
       )}
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={isPending}>
+        <Button
+          type="submit"
+          size="sm"
+          disabled={isPending || (istPaket && bookingMode === "fix" && !platz)}
+        >
           {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Erstellen"}
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
           Abbrechen
         </Button>
       </div>
+      {istPaket && bookingMode === "fix" && !platz && (
+        <p className="text-xs text-gray-400">
+          Für einen Fixplatz zuerst einen freien Termin auswählen.
+        </p>
+      )}
     </form>
   );
 }

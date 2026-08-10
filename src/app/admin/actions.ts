@@ -18,22 +18,33 @@ import {
   issueInstalmentInvoice,
 } from "@/lib/package-invoice";
 import {
-  buildInstalmentPlan,
   todayInZurich,
   type SubscriptionType,
 } from "@/lib/subscription";
+import {
+  buildPlanForRhythmus,
+  computeRhythmusChange,
+  expiryFor,
+  rescheduleOpenInstalments,
+  RHYTHMUS_LABELS,
+  termMonthsForType,
+  type BookingMode,
+  type Rhythmus,
+} from "@/lib/rhythmus";
+import { describeFixplatz } from "@/lib/fixplatz";
+import { bookFixplatzSeries } from "@/lib/fixplatz-server";
+import { findeFixplaetze, type FixplatzAngebot } from "@/lib/fixplatz-suche";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   type Package as Paket,
   PACKAGE_LABELS,
   PACKAGE_LESSONS,
-  PACKAGE_VALIDITY_MONTHS,
   canBuyNewPackage,
   canCancelPackage,
   computeCancellationSettlement,
   computePackageState,
 } from "@/lib/packages";
-import { addMonths, zurichLocalToIso } from "@/lib/utils";
+import { zurichLocalToIso } from "@/lib/utils";
 import { cancelLessonReminders, scheduleLessonReminders } from "@/lib/reminders";
 import { travelToBuffer } from "@/lib/gap-slots";
 import {
@@ -849,22 +860,59 @@ export async function createPackageAdmin(formData: FormData) {
   }
 
   const lessonsTotal = PACKAGE_LESSONS[type];
-  const validityMonths = PACKAGE_VALIDITY_MONTHS[type];
   const startsAt = new Date();
-  const expiresAt = validityMonths != null ? addMonths(startsAt, validityMonths) : null;
+  const startDay = todayInZurich(startsAt);
   const totalPrice = pricePerLesson * lessonsTotal;
+
+  // Rhythmus und Buchungsart – bei einer Einzellektion gibt es beides nicht.
+  const istPaket = type !== "single";
+  const rhythmus: Rhythmus =
+    istPaket && (formData.get("rhythmus") as string) === "zweiwoechentlich"
+      ? "zweiwoechentlich"
+      : "woechentlich";
+  const bookingMode: BookingMode =
+    istPaket && (formData.get("booking_mode") as string) === "fix" ? "fix" : "flex";
+
+  const fixWeekdayRaw = formData.get("fixplatz_weekday") as string | null;
+  const fixTime = (formData.get("fixplatz_time") as string) || null;
+  const fixParityRaw = formData.get("fixplatz_week_parity") as string | null;
+  const fixplatz =
+    bookingMode === "fix" && fixWeekdayRaw && fixTime
+      ? {
+          weekday: Number(fixWeekdayRaw),
+          time: fixTime,
+          parity:
+            rhythmus === "zweiwoechentlich" && fixParityRaw
+              ? ((Number(fixParityRaw) === 1 ? 1 : 0) as 0 | 1)
+              : null,
+        }
+      : null;
+
+  if (bookingMode === "fix" && !fixplatz) {
+    return { error: "Für einen Fixplatz braucht es Wochentag und Uhrzeit." };
+  }
+
+  // Laufzeit: bei Paketen nach Rhythmus, bei der Einzellektion unbegrenzt.
+  const termMonths = istPaket ? termMonthsForType(type as SubscriptionType, rhythmus) : null;
+  const expiresAt = istPaket
+    ? new Date(`${expiryFor(lessonsTotal, rhythmus, startDay)}T23:59:59.000Z`)
+    : null;
 
   // Zahlungsmodell – identisch zum Schülerportal. Ratenkauf gibt es nur
   // für 10er/20er, eine Einzellektion wird immer einmalig verrechnet.
   const billingMode =
-    (formData.get("billing_mode") as string) === "raten" && type !== "single"
+    (formData.get("billing_mode") as string) === "raten" && istPaket
       ? "raten"
       : "einmalig";
-  const autoRenew = formData.get("auto_renew") === "on" && type !== "single";
-  const startDay = todayInZurich(startsAt);
+  const autoRenew = formData.get("auto_renew") === "on" && istPaket;
   const ratenPlan =
     billingMode === "raten"
-      ? buildInstalmentPlan(type as SubscriptionType, totalPrice, startDay)
+      ? buildPlanForRhythmus(
+          type as SubscriptionType,
+          totalPrice,
+          startDay,
+          rhythmus
+        )
       : null;
 
   const { data: pkg, error } = await admin
@@ -882,11 +930,19 @@ export async function createPackageAdmin(formData: FormData) {
       expires_at: expiresAt ? expiresAt.toISOString() : null,
       status: "active",
       billing_mode: billingMode,
-      term_months: validityMonths,
+      term_months: termMonths != null ? Math.round(termMonths) : null,
       auto_renew: autoRenew,
       deposit_amount: ratenPlan ? ratenPlan.depositAmount : null,
       instalment_count: ratenPlan ? ratenPlan.instalmentCount : null,
       instalment_amount: ratenPlan ? ratenPlan.instalmentAmount : null,
+      rhythmus: istPaket ? rhythmus : null,
+      booking_mode: bookingMode,
+      fixplatz_weekday: fixplatz?.weekday ?? null,
+      fixplatz_time: fixplatz?.time ?? null,
+      fixplatz_week_parity: fixplatz?.parity ?? null,
+      // Der Admin setzt den Preis von Hand – ein automatischer Flex-Aufschlag
+      // würde ihn überschreiben. Darum hier bewusst 0.
+      flex_surcharge_percent: 0,
     })
     .select(
       "id, student_id, type, total_price, price_per_lesson, payment_method, instalment_count"
@@ -939,8 +995,209 @@ export async function createPackageAdmin(formData: FormData) {
       : null,
   });
 
+  // Fixplatz: die ganze Serie sofort anlegen, damit der Platz belegt ist und
+  // der Schüler nichts mehr einzeln buchen muss.
+  if (fixplatz && istPaket) {
+    const serie = await bookFixplatzSeries(admin, {
+      studentId: userId,
+      packageId: pkg.id,
+      wunsch: {
+        weekday: fixplatz.weekday,
+        time: fixplatz.time,
+        rhythmus,
+        lessons: lessonsTotal,
+      },
+      parity: fixplatz.parity,
+    });
+
+    if (!("error" in serie)) {
+      const { data: termine } = await admin
+        .from("appointments")
+        .select("start_at")
+        .in("id", serie.appointmentIds)
+        .order("start_at");
+
+      await sendEmailNow(admin, "fixplatz_confirmed", {
+        student_id: userId,
+        student_name:
+          `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined,
+        fixplatz_text: describeFixplatz(
+          fixplatz.weekday,
+          fixplatz.time,
+          rhythmus,
+          fixplatz.parity
+        ),
+        termine: (termine ?? []).map((t) => t.start_at as string),
+        verschoben: serie.verschoben.map((v) => ({
+          original: v.original.toISOString(),
+          ersatz: v.ersatz.toISOString(),
+        })),
+        offen: serie.offen.map((d) => d.toISOString()),
+      });
+    }
+    // Bei einem Fehler bleibt das Paket bestehen – die Lektionen sind
+    // gutgeschrieben, nur die Serie fehlt und lässt sich nachtragen.
+  }
+
   revalidatePath(`/admin/schueler/${schuelerId}`);
   revalidatePath("/admin/zahlungen");
+  revalidatePath("/admin/kalender");
+  return { success: true, error: undefined };
+}
+
+/**
+ * Freie Fixplätze für einen Schüler – dieselbe Suche wie im Portal.
+ * Geprüft wird die ganze Serie über die Laufzeit, nicht nur der nächste Termin.
+ */
+export async function fixplaetzeFuerSchueler(
+  studentUserId: string,
+  type: "10er" | "20er",
+  rhythmus: Rhythmus
+): Promise<{ angebote: FixplatzAngebot[] } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  if (!studentUserId) return { error: "Kein Schüler angegeben." };
+  if (type !== "10er" && type !== "20er") return { error: "Ungültiger Pakettyp." };
+
+  const admin = await createAdminClient();
+  const angebote = await findeFixplaetze(admin, {
+    studentId: studentUserId,
+    rhythmus: rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich",
+    lessons: PACKAGE_LESSONS[type],
+  });
+  return { angebote };
+}
+
+/**
+ * Rhythmus eines laufenden Pakets wechseln – in beide Richtungen.
+ *
+ * Die Restlaufzeit richtet sich nach den **verbleibenden** Lektionen, nicht
+ * nach dem Wechselzeitpunkt. Damit ist der Wechsel fair und nicht ausnutzbar:
+ * wer kurz vor Ablauf auf zweiwöchentlich wechselt, gewinnt nur die Zeit, die
+ * seine Restlektionen wirklich brauchen. Auf den langsameren Rhythmus zu
+ * wechseln nimmt nie Zeit weg.
+ *
+ * Der Preis bleibt unverändert – gleiche Lektionszahl, gleicher Lektionspreis.
+ * Noch nicht fakturierte Raten werden über die neue Laufzeit neu verteilt;
+ * bereits gestellte Rechnungen bleiben unangetastet.
+ */
+export async function rhythmusWechseln(
+  packageId: string,
+  neuerRhythmus: Rhythmus
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+
+  const { data: pkg } = await admin
+    .from("packages")
+    .select(
+      "id, student_id, status, rhythmus, expires_at, lessons_total, lessons_used, billing_mode, booking_mode"
+    )
+    .eq("id", packageId)
+    .maybeSingle();
+
+  if (!pkg) return { error: "Paket nicht gefunden." };
+  if (pkg.status !== "active") return { error: "Dieses Paket ist nicht aktiv." };
+
+  const alt: Rhythmus =
+    pkg.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich";
+  if (alt === neuerRhythmus) {
+    return { error: "Dieser Rhythmus ist bereits eingestellt." };
+  }
+  if (!pkg.expires_at) {
+    return { error: "Dieses Paket hat keine Laufzeit, die sich umrechnen liesse." };
+  }
+
+  const heute = todayInZurich();
+  const offen = Math.max(
+    0,
+    Number(pkg.lessons_total ?? 0) - Number(pkg.lessons_used ?? 0)
+  );
+
+  const wechsel = computeRhythmusChange({
+    von: alt,
+    nach: neuerRhythmus,
+    lessonsRemaining: offen,
+    today: heute,
+    bisherigesAblaufdatum: String(pkg.expires_at).slice(0, 10),
+  });
+
+  await admin
+    .from("packages")
+    .update({
+      rhythmus: neuerRhythmus,
+      expires_at: `${wechsel.neuesAblaufdatum}T23:59:59.000Z`,
+      term_months: Math.max(1, Math.round(wechsel.restMonate)),
+    })
+    .eq("id", pkg.id);
+
+  // Offene Raten neu verteilen. Was schon fakturiert oder bezahlt ist, bleibt
+  // wie es ist – eine Rechnung, die draussen ist, schreibt man nicht um.
+  let ratenAngepasst = false;
+  if (pkg.billing_mode === "raten") {
+    const { data: raten } = await admin
+      .from("package_instalments")
+      .select("id, sequence, amount, due_date, status, invoice_id")
+      .eq("package_id", pkg.id)
+      .eq("status", "open")
+      .is("invoice_id", null)
+      .order("sequence");
+
+    if (raten && raten.length > 0) {
+      const neu = rescheduleOpenInstalments(
+        raten.map((r) => ({
+          id: r.id,
+          sequence: Number(r.sequence),
+          amount: Number(r.amount),
+          dueDate: String(r.due_date),
+        })),
+        wechsel.neuesAblaufdatum,
+        heute
+      );
+
+      for (const r of neu) {
+        if (r.neuerBetrag <= 0) {
+          // Zusammengelegt – der Betrag steckt jetzt in einer anderen Rate.
+          await admin
+            .from("package_instalments")
+            .update({ status: "cancelled", amount: 0 })
+            .eq("id", r.id);
+        } else {
+          await admin
+            .from("package_instalments")
+            .update({
+              amount: r.neuerBetrag,
+              due_date: r.neuesFaelligkeitsdatum,
+            })
+            .eq("id", r.id);
+        }
+      }
+      ratenAngepasst = true;
+    }
+  }
+
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("vorname, nachname")
+    .eq("id", pkg.student_id)
+    .maybeSingle();
+
+  await sendEmailNow(admin, "rhythmus_changed", {
+    student_id: pkg.student_id,
+    student_name: `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined,
+    alter_rhythmus_text: RHYTHMUS_LABELS[alt],
+    neuer_rhythmus_text: RHYTHMUS_LABELS[neuerRhythmus],
+    lektionen_offen: offen,
+    neues_ablaufdatum: wechsel.neuesAblaufdatum,
+    differenz_tage: wechsel.differenzTage,
+    raten_angepasst: ratenAngepasst,
+  });
+
+  revalidatePath("/admin/schueler");
+  revalidatePath("/schueler/portal");
   return { success: true, error: undefined };
 }
 

@@ -1594,7 +1594,9 @@ export function renderEmail(
         ? (payload.vorschlaege as Array<{ start: string; begruendung: string }>)
         : [];
       return {
-        subject: `Ausweichtermine für den ${payload.original_datum ? fmtDate(String(payload.original_datum)) : "ausgefallenen Termin"}`,
+        subject: payload.original_datum
+          ? `Ausweichtermine für deine Lektion vom ${fmtDate(String(payload.original_datum))}`
+          : "Ausweichtermine für deine ausgefallene Lektion",
         html: baseWrapper(
           `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
            <p>Deine Lektion vom

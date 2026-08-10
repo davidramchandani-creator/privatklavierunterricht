@@ -2,12 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { addMonths } from "@/lib/utils";
 import {
   type Package as Paket,
   PACKAGE_LABELS,
   PACKAGE_LESSONS,
-  PACKAGE_VALIDITY_MONTHS,
   canBuyNewPackage,
   computePackageState,
   pricePerLessonFor,
@@ -28,11 +26,22 @@ import { gapAwareSlots, isGapAwareStartBookable, DEFAULT_BLOCK_SETTINGS } from "
 import { sendEmailNow } from "@/lib/emails-outbox";
 import { createInstalmentSchedule, createPackageInvoice } from "@/lib/package-invoice";
 import {
-  buildInstalmentPlan,
   CANCELLATION_NOTICE_DAYS,
   isCancellable,
   todayInZurich,
 } from "@/lib/subscription";
+import {
+  buildPlanForRhythmus,
+  expiryFor,
+  FLEX_SURCHARGE_PERCENT,
+  priceWithBookingMode,
+  termMonthsForType,
+  type BookingMode,
+  type Rhythmus,
+} from "@/lib/rhythmus";
+import { describeFixplatz } from "@/lib/fixplatz";
+import { bookFixplatzSeries } from "@/lib/fixplatz-server";
+import { findeFixplaetze, type FixplatzAngebot } from "@/lib/fixplatz-suche";
 import {
   bookingLock,
   bookingLockReason,
@@ -749,7 +758,47 @@ export type BuyPackageOptions = {
   billingMode?: "einmalig" | "raten";
   /** Opt-in: Paket verlängert sich am Ende der Laufzeit automatisch. */
   autoRenew?: boolean;
+  /** Bestimmt die Laufzeit: wöchentlich kürzer, zweiwöchentlich länger. */
+  rhythmus?: Rhythmus;
+  /** "fix" = fester Slot über die ganze Laufzeit, "flex" = freie Buchung. */
+  bookingMode?: BookingMode;
+  /** Nur bei bookingMode "fix": der gewünschte feste Platz. */
+  fixplatz?: {
+    weekday: number;
+    /** "HH:MM" */
+    time: string;
+    parity: 0 | 1 | null;
+  };
 };
+
+/**
+ * Freie Fixplätze für den angemeldeten Schüler.
+ *
+ * Geprüft wird die **ganze Serie** über die Paketlaufzeit, nicht nur der
+ * nächste Termin. Ein Platz, der nächste Woche frei ist, aber ab Oktober
+ * jedes zweite Mal kollidiert, taugt nicht als fester Platz.
+ */
+export async function fixplaetzeSuchen(
+  type: "10er" | "20er",
+  rhythmus: Rhythmus
+): Promise<{ angebote: FixplatzAngebot[] } | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  if (type !== "10er" && type !== "20er") return { error: "Ungültiger Pakettyp." };
+
+  const admin = await createAdminClient();
+  const angebote = await findeFixplaetze(admin, {
+    studentId: user.id,
+    rhythmus: rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich",
+    lessons: PACKAGE_LESSONS[type],
+  });
+
+  return { angebote };
+}
 
 export async function buyPackage(
   type: "10er" | "20er",
@@ -797,26 +846,40 @@ export async function buyPackage(
   }
 
   const lessonsTotal = PACKAGE_LESSONS[type];
-  const validityMonths = PACKAGE_VALIDITY_MONTHS[type];
-  const ppl = pricePerLessonFor(type, {
+
+  // Rhythmus und Buchungsart bestimmen Laufzeit und Preis.
+  const rhythmus: Rhythmus =
+    options.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich";
+  const bookingMode: BookingMode = options.bookingMode === "fix" ? "fix" : "flex";
+
+  if (bookingMode === "fix" && !options.fixplatz) {
+    return { error: "Bitte wähle einen festen Termin aus." };
+  }
+
+  const basisPreis = pricePerLessonFor(type, {
     price_single: Number(profile.price_single),
     price_10er: Number(profile.price_10er),
     price_20er: Number(profile.price_20er),
     travel_surcharge: Number(profile.travel_surcharge),
   });
+  // Flex kostet Aufschlag: wechselnde Termine zerstören die Routenplanung
+  // und erzeugen laufenden Verwaltungsaufwand.
+  const ppl = priceWithBookingMode(basisPreis, bookingMode);
   const totalPrice = ppl * lessonsTotal;
+  const flexAufschlag = bookingMode === "flex" ? FLEX_SURCHARGE_PERCENT : 0;
 
   const startsAt = new Date();
-  const expiresAt =
-    validityMonths != null ? addMonths(startsAt, validityMonths) : null;
+  const startDay = todayInZurich(startsAt);
+  const termMonths = termMonthsForType(type, rhythmus);
+  const expiresOn = expiryFor(lessonsTotal, rhythmus, startDay);
+  const expiresAt = new Date(`${expiresOn}T23:59:59.000Z`);
 
   // Zahlungsmodus: Ratenkauf nur für 10er/20er, Laufzeit = Gültigkeit.
   const billingMode = options.billingMode === "raten" ? "raten" : "einmalig";
   const autoRenew = options.autoRenew === true;
-  const startDay = todayInZurich(startsAt);
   const ratenPlan =
     billingMode === "raten"
-      ? buildInstalmentPlan(type, totalPrice, startDay)
+      ? buildPlanForRhythmus(type, totalPrice, startDay, rhythmus)
       : null;
 
   const admin = await createAdminClient();
@@ -831,14 +894,22 @@ export async function buyPackage(
       price_per_lesson: ppl,
       total_price: totalPrice,
       starts_at: startsAt.toISOString(),
-      expires_at: expiresAt ? expiresAt.toISOString() : null,
+      expires_at: expiresAt.toISOString(),
       status: "active",
       billing_mode: billingMode,
-      term_months: validityMonths,
+      // term_months ist als smallint angelegt; gebrochene Laufzeiten gibt es
+      // nur nach einem Rhythmuswechsel, beim Kauf ist der Wert immer ganz.
+      term_months: Math.round(termMonths),
       auto_renew: autoRenew,
       deposit_amount: ratenPlan ? ratenPlan.depositAmount : null,
       instalment_count: ratenPlan ? ratenPlan.instalmentCount : null,
       instalment_amount: ratenPlan ? ratenPlan.instalmentAmount : null,
+      rhythmus,
+      booking_mode: bookingMode,
+      fixplatz_weekday: options.fixplatz?.weekday ?? null,
+      fixplatz_time: options.fixplatz?.time ?? null,
+      fixplatz_week_parity: options.fixplatz?.parity ?? null,
+      flex_surcharge_percent: flexAufschlag,
     })
     .select("id, student_id, type, total_price, price_per_lesson, payment_method")
     .single();
@@ -874,6 +945,96 @@ export async function buyPackage(
     await createPackageInvoice(admin, pkg, payer);
   }
 
+  // Fixplatz: die ganze Terminserie sofort anlegen. Das ist der eigentliche
+  // Nutzen für beide Seiten – der Schüler muss nie wieder einzeln buchen,
+  // und die Route steht für Monate fest.
+  //
+  // Bei Ratenzahlung wird bewusst trotzdem gebucht: der feste Platz ist das,
+  // was der Schüler kauft, und ihn bis zum Zahlungseingang freizulassen hiesse,
+  // ihn an jemand anderen zu verlieren. Die Buchungssperre bei offener
+  // Anzahlung greift nur für *zusätzliche* Termine.
+  let fixplatzInfo: {
+    text: string;
+    termine: string[];
+    verschoben: { original: string; ersatz: string }[];
+    offen: string[];
+  } | null = null;
+
+  if (bookingMode === "fix" && options.fixplatz) {
+    const ergebnis = await bookFixplatzSeries(admin, {
+      studentId: user.id,
+      packageId: pkg.id,
+      wunsch: {
+        weekday: options.fixplatz.weekday,
+        time: options.fixplatz.time,
+        rhythmus,
+        lessons: lessonsTotal,
+      },
+      parity: options.fixplatz.parity,
+    });
+
+    if ("error" in ergebnis) {
+      // Das Paket bleibt bestehen – die Lektionen sind bezahlt und
+      // gutgeschrieben. Nur die Serie fehlt, das kann der Admin nachholen.
+      // Ein Rollback wäre schlechter: der Schüler stünde ohne Paket da,
+      // obwohl die Rechnung schon draussen ist.
+      await sendEmailNow(admin, "fixplatz_admin", {
+        student_id: user.id,
+        student_name:
+          `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim() || undefined,
+        fixplatz_text: `${describeFixplatz(
+          options.fixplatz.weekday,
+          options.fixplatz.time,
+          rhythmus,
+          options.fixplatz.parity
+        )} – Serie konnte nicht angelegt werden: ${ergebnis.error}`,
+        anzahl_termine: 0,
+        anzahl_offen: lessonsTotal,
+      });
+    } else {
+      const { data: termine } = await admin
+        .from("appointments")
+        .select("start_at")
+        .in("id", ergebnis.appointmentIds)
+        .order("start_at");
+
+      fixplatzInfo = {
+        text: describeFixplatz(
+          options.fixplatz.weekday,
+          options.fixplatz.time,
+          rhythmus,
+          options.fixplatz.parity
+        ),
+        termine: (termine ?? []).map((t) => t.start_at as string),
+        verschoben: ergebnis.verschoben.map((v) => ({
+          original: v.original.toISOString(),
+          ersatz: v.ersatz.toISOString(),
+        })),
+        offen: ergebnis.offen.map((d) => d.toISOString()),
+      };
+
+      await sendEmailNow(admin, "fixplatz_confirmed", {
+        student_id: user.id,
+        student_name:
+          `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim() || undefined,
+        fixplatz_text: fixplatzInfo.text,
+        termine: fixplatzInfo.termine,
+        verschoben: fixplatzInfo.verschoben,
+        offen: fixplatzInfo.offen,
+      });
+
+      await sendEmailNow(admin, "fixplatz_admin", {
+        student_id: user.id,
+        student_name:
+          `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim() || undefined,
+        fixplatz_text: fixplatzInfo.text,
+        anzahl_termine: fixplatzInfo.termine.length,
+        anzahl_verschoben: fixplatzInfo.verschoben.length,
+        anzahl_offen: fixplatzInfo.offen.length,
+      });
+    }
+  }
+
   // Paketbestätigung an den Schüler – erklärt, was als Nächstes zu tun ist.
   await sendEmailNow(admin, "package_created", {
     student_id: user.id,
@@ -906,6 +1067,8 @@ export async function buyPackage(
     instalment_count: ratenPlan?.instalmentCount,
     instalment_amount: ratenPlan?.instalmentAmount,
     auto_renew: autoRenew,
+    rhythmus,
+    booking_mode: bookingMode,
   });
 
   revalidatePath("/schueler/portal");
