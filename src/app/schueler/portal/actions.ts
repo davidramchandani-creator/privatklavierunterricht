@@ -12,6 +12,7 @@ import {
 import {
   type CalDate,
   DEFAULT_BUFFER_MIN,
+  LESSON_DURATION_MIN,
   addDaysCal,
   generateSeriesStarts,
   isAtLeast24hAway,
@@ -34,7 +35,8 @@ import {
   type Rhythmus,
 } from "@/lib/rhythmus";
 import { describeFixplatz } from "@/lib/fixplatz";
-import { bookFixplatzSeries } from "@/lib/fixplatz-server";
+import { bookFixplatzSeries, findeAusweichtermine } from "@/lib/fixplatz-server";
+import { meldeAusfall } from "@/lib/ausfall";
 import { findeFixplaetze, type FixplatzAngebot } from "@/lib/fixplatz-suche";
 import {
   ABO_LABELS,
@@ -51,8 +53,8 @@ import {
   bookingLockReason,
   type InstalmentRow,
 } from "@/lib/instalment-view";
-import { deleteCalendarEvent } from "@/lib/google-calendar";
-import { cancelLessonReminders } from "@/lib/reminders";
+import { deleteCalendarEvent, syncAppointmentToCalendar } from "@/lib/google-calendar";
+import { cancelLessonReminders, scheduleLessonReminders } from "@/lib/reminders";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   joinGroupSession,
@@ -336,7 +338,7 @@ export async function cancelAppointment(appointmentId: string) {
 
   const { data: appt } = await supabase
     .from("appointments")
-    .select("id, start_at, student_id, status")
+    .select("id, start_at, student_id, status, package_id")
     .eq("id", appointmentId)
     .single();
 
@@ -344,14 +346,24 @@ export async function cancelAppointment(appointmentId: string) {
     return { error: "Termin nicht gefunden." };
   }
   if (appt.status === "cancelled") return { success: true, error: undefined };
-  if (!isAtLeast24hAway(appt.start_at, new Date())) {
-    return { error: "Stornierungen sind nur bis 24 Stunden vorher möglich." };
-  }
+
+  const jetzt = new Date();
+  // Kurzfristige Absagen sind bewusst **erlaubt**, nicht blockiert.
+  //
+  // Vorher wurde unter 24 Stunden abgewiesen – wer morgens krank wurde,
+  // konnte es über das System gar nicht mitteilen und musste anrufen. Die
+  // Lektion gilt in diesem Fall trotzdem als gehalten; das entscheidet die
+  // Ausfall-Logik, nicht diese Funktion.
+  const kurzfristig = !isAtLeast24hAway(appt.start_at, jetzt);
 
   const admin = await createAdminClient();
   const { error } = await admin
     .from("appointments")
-    .update({ status: "cancelled" })
+    .update({
+      status: "cancelled",
+      ausfall_verursacher: "schueler",
+      ausfall_gemeldet_am: jetzt.toISOString(),
+    })
     .eq("id", appointmentId);
   if (error) return { error: "Termin konnte nicht storniert werden." };
 
@@ -388,16 +400,187 @@ export async function cancelAppointment(appointmentId: string) {
     }
   }
 
-  // Sofortversand: Mail an Admin (Info) + Bestätigung an Schüler (Spec §9).
-  await sendEmailNow(admin, "appointment_cancelled_by_student", {
-    student_id: user.id,
-    appointment_id: appointmentId,
-    start_at: appt.start_at,
+  // Ausfall-Kaskade anstossen: sucht Ausweichtermine, schreibt bei
+  // rechtzeitiger Absage eine Gutschrift, wenn nichts zu finden ist, und
+  // verschickt die passende Mail. Sie entscheidet auch, ob die Lektion
+  // erhalten bleibt oder als gehalten gilt.
+  const ausfall = await meldeAusfall(admin, {
+    appointmentId,
+    studentId: user.id,
+    packageId: appt.package_id ?? null,
+    verursacher: "schueler",
+    originalStart: new Date(appt.start_at),
+    now: jetzt,
   });
-  await sendEmailNow(admin, "appointment_cancelled_student", {
+
+  if ("error" in ausfall) {
+    // Der Termin ist storniert – das ist der wichtigere Teil. Nur die
+    // Kompensation fehlt; darüber wird der Admin ohnehin informiert.
+    console.error("[ausfall] Kaskade fehlgeschlagen:", appointmentId, ausfall.error);
+    await sendEmailNow(admin, "appointment_cancelled_by_student", {
+      student_id: user.id,
+      appointment_id: appointmentId,
+      start_at: appt.start_at,
+    });
+  }
+
+  revalidatePath("/schueler/portal");
+  return {
+    success: true,
+    error: undefined,
+    kurzfristig,
+    vorschlaege: "error" in ausfall ? [] : ausfall.vorschlaege,
+  };
+}
+
+/**
+ * Offene Ausfälle des angemeldeten Schülers samt Ausweichvorschlägen.
+ *
+ * Bisher standen die Vorschläge nur in der E-Mail. Wer sie dort übersah,
+ * hatte keine Möglichkeit mehr, einen Ersatztermin zu wählen.
+ */
+export async function offeneAusfaelle(): Promise<{
+  ausfaelle: {
+    id: string;
+    originalStart: string;
+    vorschlaege: { start: string; begruendung: string }[];
+  }[];
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ausfaelle: [] };
+
+  const { data: rows } = await supabase
+    .from("lesson_ausfaelle")
+    .select("id, appointment_id, original_start, status")
+    .eq("student_id", user.id)
+    .eq("status", "offen")
+    .order("original_start");
+
+  if (!rows || rows.length === 0) return { ausfaelle: [] };
+
+  const admin = await createAdminClient();
+  const ausfaelle = [];
+
+  for (const r of rows) {
+    const kandidaten = await findeAusweichtermine(admin, {
+      studentId: user.id,
+      originalStart: new Date(r.original_start as string),
+      excludeAppointmentId: r.appointment_id as string,
+    });
+    ausfaelle.push({
+      id: r.id as string,
+      originalStart: r.original_start as string,
+      vorschlaege: kandidaten.map((k) => ({
+        start: k.slot.start.toISOString(),
+        begruendung: k.begruendung,
+      })),
+    });
+  }
+
+  return { ausfaelle };
+}
+
+/**
+ * Schüler wählt einen Ausweichtermin für eine ausgefallene Lektion.
+ *
+ * Der Slot wird serverseitig nochmals geprüft — zwischen dem Vorschlag in
+ * der E-Mail und dem Klick können Tage liegen, in denen der Platz
+ * anderweitig vergeben wurde.
+ */
+export async function ausweichterminWaehlen(
+  ausfallId: string,
+  startIso: string
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const { data: ausfall } = await supabase
+    .from("lesson_ausfaelle")
+    .select("id, student_id, package_id, appointment_id, original_start, status")
+    .eq("id", ausfallId)
+    .maybeSingle();
+
+  if (!ausfall || ausfall.student_id !== user.id) {
+    return { error: "Ausfall nicht gefunden." };
+  }
+  if (ausfall.status !== "offen") {
+    return { error: "Für diese Lektion ist bereits ein Ersatz eingetragen." };
+  }
+
+  const admin = await createAdminClient();
+  const gewuenscht = new Date(startIso);
+
+  // Ist der Slot noch frei? Der Vorschlag kann alt sein.
+  const kandidaten = await findeAusweichtermine(admin, {
+    studentId: user.id,
+    originalStart: new Date(ausfall.original_start as string),
+    excludeAppointmentId: ausfall.appointment_id as string,
+  });
+  const passt = kandidaten.some(
+    (k) => k.slot.start.getTime() === gewuenscht.getTime()
+  );
+  if (!passt) {
+    return {
+      error:
+        "Dieser Termin ist inzwischen belegt. Bitte wähle einen der aktuellen Vorschläge.",
+    };
+  }
+
+  const { data: erstellt, error } = await admin
+    .from("appointments")
+    .insert({
+      student_id: user.id,
+      package_id: ausfall.package_id,
+      start_at: gewuenscht.toISOString(),
+      end_at: new Date(
+        gewuenscht.getTime() + LESSON_DURATION_MIN * 60000
+      ).toISOString(),
+      status: "booked",
+      source: "reschedule",
+      ersetzt_appointment_id: ausfall.appointment_id,
+      notes: `Ausweichtermin für ${String(ausfall.original_start).slice(0, 10)}`,
+    })
+    .select("id, start_at")
+    .single();
+
+  if (error || !erstellt) {
+    return { error: "Der Ausweichtermin konnte nicht gebucht werden." };
+  }
+
+  await admin
+    .from("lesson_ausfaelle")
+    .update({
+      status: "ersatz_gebucht",
+      ersatz_appointment_id: erstellt.id,
+      erledigt_am: new Date().toISOString(),
+    })
+    .eq("id", ausfallId);
+
+  await scheduleLessonReminders(admin, {
+    id: erstellt.id,
     student_id: user.id,
-    appointment_id: appointmentId,
-    start_at: appt.start_at,
+    start_at: erstellt.start_at as string,
+  });
+  await syncAppointmentToCalendar(admin, erstellt.id);
+
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("vorname, nachname")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  await sendEmailNow(admin, "reschedule_confirmed", {
+    to: undefined,
+    student_id: user.id,
+    student_name: `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined,
+    original_start: ausfall.original_start,
+    new_start: erstellt.start_at,
   });
 
   revalidatePath("/schueler/portal");

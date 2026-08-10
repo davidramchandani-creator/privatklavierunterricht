@@ -9,6 +9,7 @@ import TerminBuchen from "./_components/TerminBuchen";
 import ZahlungenSection from "./_components/ZahlungenSection";
 import ZahlungsplanCard from "./_components/ZahlungsplanCard";
 import ProposalCard from "./_components/ProposalCard";
+import AusweichTermine from "./_components/AusweichTermine";
 import PortalTabs from "./_components/PortalTabs";
 import PullToRefresh from "@/components/PullToRefresh";
 import RealtimeRefresh from "@/components/RealtimeRefresh";
@@ -27,7 +28,7 @@ import {
   todayInZurich,
 } from "@/lib/subscription";
 import Gruppenkurse from "./_components/Gruppenkurse";
-import { getGroupCourses } from "./actions";
+import { getGroupCourses, offeneAusfaelle } from "./actions";
 
 export default async function SchuelerPortalPage() {
   const supabase = await createClient();
@@ -175,6 +176,9 @@ export default async function SchuelerPortalPage() {
 
   const groupCourses = await getGroupCourses();
 
+  // Ausgefallene Lektionen, für die noch kein Ersatz gewählt wurde.
+  const { ausfaelle } = await offeneAusfaelle();
+
   if (!profile) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-5">
@@ -271,6 +275,7 @@ export default async function SchuelerPortalPage() {
 
   const termine = (
     <div className="space-y-5">
+      <AusweichTermine ausfaelle={ausfaelle} />
       <ProposalCard proposals={offeneProposals ?? []} />
       <NaechsteTermine
         appointments={naechsteAppointments ?? []}

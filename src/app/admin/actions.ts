@@ -33,6 +33,7 @@ import {
 } from "@/lib/rhythmus";
 import { describeFixplatz } from "@/lib/fixplatz";
 import { bookFixplatzSeries } from "@/lib/fixplatz-server";
+import { meldeAusfall } from "@/lib/ausfall";
 import { findeFixplaetze, type FixplatzAngebot } from "@/lib/fixplatz-suche";
 import {
   ABO_LABELS,
@@ -1707,16 +1708,20 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
 
   const admin = await createAdminClient();
 
-  // Termin laden (für Schüler-Benachrichtigung).
+  // Termin laden (für Schüler-Benachrichtigung und Ausfall-Kaskade).
   const { data: appt } = await admin
     .from("appointments")
-    .select("start_at, student_id, status")
+    .select("start_at, student_id, status, package_id")
     .eq("id", id)
     .maybeSingle();
 
   const { error } = await admin
     .from("appointments")
-    .update({ status: "cancelled" })
+    .update({
+      status: "cancelled",
+      ausfall_verursacher: "admin",
+      ausfall_gemeldet_am: new Date().toISOString(),
+    })
     .eq("id", id);
   if (error) return { error: error.message };
 
@@ -1759,6 +1764,22 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
       appointment_id: id,
       start_at: appt.start_at,
     });
+
+    // Ausfall-Kaskade: Ausweichtermine suchen, sonst Laufzeitgutschrift.
+    //
+    // Bei einer Absage durch die Lehrperson gibt es die 24-Stunden-Ausnahme
+    // nicht – die Lektion bleibt in jedem Fall erhalten. Das entscheidet
+    // `meldeAusfall`, nicht diese Funktion.
+    const ausfall = await meldeAusfall(admin, {
+      appointmentId: id,
+      studentId: appt.student_id,
+      packageId: appt.package_id ?? null,
+      verursacher: "admin",
+      originalStart: new Date(appt.start_at),
+    });
+    if ("error" in ausfall) {
+      console.error("[ausfall] Kaskade fehlgeschlagen:", id, ausfall.error);
+    }
   }
 
   revalidatePath(`/admin/schueler/${schuelerId}`);
