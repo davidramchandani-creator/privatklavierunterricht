@@ -28,7 +28,7 @@ export default async function SchuelerDetailPage({
   ] = await Promise.all([
     admin
       .from("profiles")
-      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, erstellt_am, price_single, price_10er, price_20er, travel_surcharge, buffer_time_minutes, buffer_mode, payment_method")
+      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, erstellt_am, price_single, price_halbjahr, price_jahr, travel_surcharge, buffer_time_minutes, buffer_mode, payment_method")
       .eq("id", id)
       .maybeSingle(),
     admin
@@ -98,8 +98,8 @@ export default async function SchuelerDetailPage({
 
   const prices = {
     price_single: Number(profile.price_single ?? 85),
-    price_10er: Number(profile.price_10er ?? 70),
-    price_20er: Number(profile.price_20er ?? 65),
+    price_halbjahr: Number(profile.price_halbjahr ?? 70),
+    price_jahr: Number(profile.price_jahr ?? 65),
     travel_surcharge: Number(profile.travel_surcharge ?? 0),
     buffer_time_minutes: Number(profile.buffer_time_minutes ?? 15),
     buffer_mode: (profile.buffer_mode as string) ?? "fixed",
@@ -181,8 +181,8 @@ export default async function SchuelerDetailPage({
           mapsConfigured={mapsConfigured}
           initial={{
             price_single: prices.price_single,
-            price_10er: prices.price_10er,
-            price_20er: prices.price_20er,
+            price_halbjahr: prices.price_halbjahr,
+            price_jahr: prices.price_jahr,
             travel_surcharge: prices.travel_surcharge,
             buffer_time_minutes: prices.buffer_time_minutes,
             buffer_mode: prices.buffer_mode,
@@ -271,8 +271,8 @@ export default async function SchuelerDetailPage({
           student_user_id={id}
           defaultPrices={{
             price_single: prices.price_single,
-            price_10er: prices.price_10er,
-            price_20er: prices.price_20er,
+            price_halbjahr: prices.price_halbjahr,
+            price_jahr: prices.price_jahr,
             travel_surcharge: prices.travel_surcharge,
           }}
         />

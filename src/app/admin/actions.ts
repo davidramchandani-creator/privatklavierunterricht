@@ -770,7 +770,15 @@ export async function updateStudentPrices(
   const admin = await createAdminClient();
 
   const update: Record<string, number | string> = {};
-  const fields = ["price_single", "price_10er", "price_20er", "travel_surcharge"] as const;
+  // price_10er/price_20er bleiben in der Datenbank, werden aber nicht mehr
+  // gepflegt: sie gehören zu den auslaufenden Lektionspaketen. Die Abo-Preise
+  // stehen in price_halbjahr/price_jahr.
+  const fields = [
+    "price_single",
+    "price_halbjahr",
+    "price_jahr",
+    "travel_surcharge",
+  ] as const;
   for (const f of fields) {
     const v = parseFloat(formData.get(f) as string);
     if (!isNaN(v) && v >= 0) update[f] = v;

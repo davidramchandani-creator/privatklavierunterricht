@@ -281,8 +281,8 @@ function PreiseForm({
   mapsConfigured: boolean;
   initial: {
     price_single: number;
-    price_10er: number;
-    price_20er: number;
+    price_halbjahr: number;
+    price_jahr: number;
     travel_surcharge: number;
     buffer_time_minutes: number;
     buffer_mode: string;
@@ -295,8 +295,8 @@ function PreiseForm({
   const [success, setSuccess] = useState(false);
 
   const [priceSingle, setPriceSingle] = useState(String(initial.price_single));
-  const [price10er, setPrice10er] = useState(String(initial.price_10er));
-  const [price20er, setPrice20er] = useState(String(initial.price_20er));
+  const [priceHalbjahr, setPriceHalbjahr] = useState(String(initial.price_halbjahr));
+  const [priceJahr, setPriceJahr] = useState(String(initial.price_jahr));
   const [travel, setTravel] = useState(String(initial.travel_surcharge));
   const [buffer, setBuffer] = useState(String(initial.buffer_time_minutes));
   const [bufferMode, setBufferMode] = useState<"fixed" | "auto">(
@@ -310,8 +310,8 @@ function PreiseForm({
 
   const t = Number(travel) || 0;
   const effSingle = (Number(priceSingle) || 0) + t;
-  const eff10er = (Number(price10er) || 0) + t;
-  const eff20er = (Number(price20er) || 0) + t;
+  const effHalbjahr = (Number(priceHalbjahr) || 0) + t;
+  const effJahr = (Number(priceJahr) || 0) + t;
 
   async function handleCalculateMaps() {
     if (!studentAddress) return;
@@ -352,14 +352,14 @@ function PreiseForm({
             onChange={(e) => setPriceSingle(e.target.value)} required />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-500 text-gray-600">10er (CHF)</label>
-          <Input name="price_10er" type="number" step="0.01" min="0" value={price10er}
-            onChange={(e) => setPrice10er(e.target.value)} required />
+          <label className="text-xs font-500 text-gray-600">Halbjahr (CHF)</label>
+          <Input name="price_halbjahr" type="number" step="0.01" min="0" value={priceHalbjahr}
+            onChange={(e) => setPriceHalbjahr(e.target.value)} required />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-500 text-gray-600">20er (CHF)</label>
-          <Input name="price_20er" type="number" step="0.01" min="0" value={price20er}
-            onChange={(e) => setPrice20er(e.target.value)} required />
+          <label className="text-xs font-500 text-gray-600">Jahr (CHF)</label>
+          <Input name="price_jahr" type="number" step="0.01" min="0" value={priceJahr}
+            onChange={(e) => setPriceJahr(e.target.value)} required />
         </div>
         <div className="space-y-1">
           <label className="text-xs font-500 text-gray-600">Wegaufschlag (CHF)</label>
@@ -493,8 +493,8 @@ function PreiseForm({
         <p className="text-xs font-600 uppercase tracking-wide text-[#1C244B]/70">Effektiver Preis/Lektion (inkl. Wegaufschlag)</p>
         <div className="flex flex-wrap gap-x-6 gap-y-1 font-500">
           <span>Einzellektion: {formatCHF(effSingle)}</span>
-          <span>10er: {formatCHF(eff10er)}</span>
-          <span>20er: {formatCHF(eff20er)}</span>
+          <span>Halbjahr: {formatCHF(effHalbjahr)}</span>
+          <span>Jahr: {formatCHF(effJahr)}</span>
         </div>
       </div>
 

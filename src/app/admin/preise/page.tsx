@@ -9,15 +9,15 @@ import { createClient } from "@/lib/supabase/client";
 
 const TYPEN = [
   { key: "einzellektion", label: "Einzellektion" },
-  { key: "10er", label: "10er-Paket (pro Lektion)" },
-  { key: "20er", label: "20er-Paket (pro Lektion)" },
+  { key: "halbjahr", label: "Halbjahresabo (pro Lektion)" },
+  { key: "jahr", label: "Jahresabo (pro Lektion)" },
 ] as const;
 
 export default function PreisePage() {
   const [prices, setPrices] = useState<Record<string, string>>({
     einzellektion: "",
-    "10er": "",
-    "20er": "",
+    halbjahr: "",
+    jahr: "",
   });
   const [isPending, startTransition] = useTransition();
   const [success, setSuccess] = useState(false);
@@ -69,7 +69,12 @@ export default function PreisePage() {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
         <form onSubmit={handleSubmit} className="space-y-4">
           <p className="text-sm text-gray-500">
-            Lege die Preise pro Lektion für jeden Pakettyp fest (in CHF).
+            Richtwerte pro Lektion in CHF, für die Preisübersicht.
+          </p>
+          <p className="text-xs text-gray-400 leading-snug">
+            Verbindlich ist der Preis, der beim einzelnen Schüler hinterlegt
+            ist — dort wird auch der Wegaufschlag gesetzt. Diese Werte werden
+            nicht automatisch übernommen.
           </p>
 
           {TYPEN.map(({ key, label }) => (
