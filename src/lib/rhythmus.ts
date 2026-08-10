@@ -34,10 +34,6 @@ export const RHYTHMUS_LABELS: Record<Rhythmus, string> = {
   zweiwoechentlich: "alle zwei Wochen",
 };
 
-export const BOOKING_MODE_LABELS: Record<BookingMode, string> = {
-  fix: "Fixplatz",
-  flex: "Flexibel",
-};
 
 /**
  * Monate Laufzeit pro Lektion. Enthält bereits einen Puffer gegenüber der

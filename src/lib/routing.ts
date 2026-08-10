@@ -13,11 +13,16 @@
 //
 // Verfahren (Heuristik, kein exakter Optimierer — das wäre ein VRP und für
 // 15–25 Schüler überdimensioniert):
-//   1. Schüler geografisch in so viele Gruppen teilen, wie es Tage gibt
-//   2. Zweiwöchentliche Schüler paarweise auf gemeinsame Positionen legen
+//   1. Zweiwöchentliche Schüler paarweise auf gemeinsame Positionen legen
+//   2. Positionen nach Fahrtrichtung gruppieren („Sweep“), so viele Gruppen
+//      wie es Unterrichtstage gibt
 //   3. Reihenfolge je Tag optimieren (Nächster Nachbar + 2-opt)
 //   4. Uhrzeiten vergeben und prüfen, ob alles ins Fenster passt
-//   5. Verbessern: Schüler zwischen Tagen verschieben und tauschen
+//   5. Übriggebliebene auf Tage mit Luft nachsetzen
+//
+// Die Reihenfolge von 1 und 2 ist wesentlich: Wird zuerst gruppiert, landen
+// zweiwöchentliche Schüler in verschiedenen Tagesgruppen und finden keinen
+// Partner mehr — genau der Partner ist aber der Kapazitätsgewinn.
 //
 // Reine Funktionen — DB-Zugriff und Geokodierung liegen in routing-server.ts.
 // ============================================================
@@ -79,6 +84,13 @@ export type Position = {
   ende: string;
   /** Fahrzeit vom vorherigen Halt (bzw. von zuhause) in Sekunden. */
   anfahrtSekunden: number;
+  /**
+   * Start- und Zielpunkt dieser Teilstrecke. Nötig, damit sich die Fahrzeit
+   * im Admin von Hand korrigieren lässt – Daves Ortskenntnis schlägt jede
+   * Schätzung.
+   */
+  vonKoordinate: Punkt;
+  nachKoordinate: Punkt;
 };
 
 export type Tagesplan = {
@@ -142,66 +154,6 @@ function zeitErlaubt(s: PlanSchueler, beginnMin: number, endeMin: number): boole
 }
 
 // ── Schritt 1: geografische Gruppen ────────────────────────
-
-/**
- * Teilt Schüler in `k` geografische Gruppen (k-Means auf Luftlinie).
- *
- * Deterministisch: die Startzentren werden nicht zufällig gewählt, sondern
- * als die k am weitesten auseinanderliegenden Schüler. Sonst käme bei jedem
- * Klick ein anderer Plan heraus, und niemand würde dem Ding vertrauen.
- */
-export function gruppiereGeografisch(
-  schueler: PlanSchueler[],
-  k: number,
-  iterationen = 20
-): PlanSchueler[][] {
-  if (k <= 0) return [];
-  if (schueler.length <= k) return schueler.map((s) => [s]);
-
-  // Startzentren: erst der westlichste Punkt, dann jeweils der Punkt mit dem
-  // grössten Abstand zum nächstgelegenen bereits gewählten Zentrum.
-  const sortiert = [...schueler].sort((a, b) => a.lng - b.lng || a.lat - b.lat);
-  const zentren: Punkt[] = [{ lat: sortiert[0].lat, lng: sortiert[0].lng }];
-  while (zentren.length < k) {
-    let bester: PlanSchueler | null = null;
-    let besteDistanz = -1;
-    for (const s of sortiert) {
-      const d = Math.min(...zentren.map((z) => haversineMeter(z, s)));
-      if (d > besteDistanz) {
-        besteDistanz = d;
-        bester = s;
-      }
-    }
-    if (!bester) break;
-    zentren.push({ lat: bester.lat, lng: bester.lng });
-  }
-
-  let gruppen: PlanSchueler[][] = [];
-  for (let it = 0; it < iterationen; it++) {
-    gruppen = Array.from({ length: zentren.length }, () => [] as PlanSchueler[]);
-    for (const s of sortiert) {
-      let beste = 0;
-      let besteDistanz = Infinity;
-      for (let i = 0; i < zentren.length; i++) {
-        const d = haversineMeter(zentren[i], s);
-        if (d < besteDistanz) {
-          besteDistanz = d;
-          beste = i;
-        }
-      }
-      gruppen[beste].push(s);
-    }
-    let bewegt = false;
-    for (let i = 0; i < zentren.length; i++) {
-      if (gruppen[i].length === 0) continue;
-      const neu = schwerpunkt(gruppen[i]);
-      if (haversineMeter(neu, zentren[i]) > 1) bewegt = true;
-      zentren[i] = neu;
-    }
-    if (!bewegt) break;
-  }
-  return gruppen;
-}
 
 /**
  * Peilung (Kompassrichtung) eines Punktes von zuhause aus, in Radiant.
@@ -493,6 +445,8 @@ function baueTag(
       beginn: alsZeit(start),
       ende: alsZeit(schluss),
       anfahrtSekunden: anfahrt,
+      vonKoordinate: { lat: vorherigerOrt.lat, lng: vorherigerOrt.lng },
+      nachKoordinate: { lat: ort.lat, lng: ort.lng },
     });
     fahrzeitSumme += anfahrt;
     uhr = schluss;

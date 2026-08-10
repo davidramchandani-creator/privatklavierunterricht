@@ -19,6 +19,7 @@ import { WEEKDAY_LABELS, WEEKDAY_SHORT } from "@/lib/fixplatz";
 import {
   adressenGeokodieren,
   berechnePlan,
+  fahrzeitKorrigieren,
   planSpeichern,
   zuhauseSetzen,
   type PlanErgebnis,
@@ -293,6 +294,91 @@ export default function RoutenplanerBoard({
   );
 }
 
+/**
+ * Fahrzeit einer Teilstrecke, per Klick korrigierbar.
+ *
+ * Die Schätzung aus Luftlinie und Umwegfaktor liegt für die meisten Strecken
+ * nahe genug. Wo sie danebenliegt — Baustelle, Stau zur Unterrichtszeit, eine
+ * Abkürzung, die kein Algorithmus kennt — ist die eingetippte Zahl die
+ * richtige. Sie gilt ab dem nächsten Rechnen und bleibt gespeichert.
+ */
+function Fahrzeit({
+  sekunden,
+  von,
+  nach,
+}: {
+  sekunden: number;
+  von: { lat: number; lng: number };
+  nach: { lat: number; lng: number };
+}) {
+  const [offen, setOffen] = useState(false);
+  const [minuten, setMinuten] = useState(String(Math.round(sekunden / 60)));
+  const [gespeichert, setGespeichert] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  function speichern() {
+    startTransition(async () => {
+      const res = await fahrzeitKorrigieren({
+        vonLat: von.lat,
+        vonLng: von.lng,
+        nachLat: nach.lat,
+        nachLng: nach.lng,
+        minuten: Number(minuten),
+      });
+      if (!res.error) {
+        setGespeichert(true);
+        setOffen(false);
+      }
+    });
+  }
+
+  if (!offen) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOffen(true)}
+        title="Fahrzeit korrigieren"
+        className={`text-xs whitespace-nowrap flex items-center gap-1 rounded px-1 -mx-1 hover:bg-gray-100 transition-colors ${
+          gespeichert ? "text-emerald-600 font-600" : "text-gray-400"
+        }`}
+      >
+        <Car className="w-3 h-3" />
+        {gespeichert ? `${minuten} Min.` : formatDauer(sekunden)}
+      </button>
+    );
+  }
+
+  return (
+    <span className="flex items-center gap-1 whitespace-nowrap">
+      <input
+        type="number"
+        min={0}
+        max={180}
+        value={minuten}
+        onChange={(e) => setMinuten(e.target.value)}
+        autoFocus
+        className="w-14 text-xs rounded border border-gray-200 px-1.5 py-1 focus:outline-none focus:border-[#1C244B]"
+      />
+      <span className="text-xs text-gray-400">Min.</span>
+      <button
+        type="button"
+        onClick={speichern}
+        disabled={isPending}
+        className="text-xs font-600 text-[#1C244B] px-1.5 py-1 rounded hover:bg-gray-100 disabled:opacity-40"
+      >
+        {isPending ? "…" : "OK"}
+      </button>
+      <button
+        type="button"
+        onClick={() => setOffen(false)}
+        className="text-xs text-gray-400 px-1 py-1 rounded hover:bg-gray-100"
+      >
+        ×
+      </button>
+    </span>
+  );
+}
+
 function Ergebnisansicht({
   ergebnis,
   onSpeichern,
@@ -474,10 +560,11 @@ function Ergebnisansicht({
                             : "abwechselnd, alle zwei Wochen"}
                         </p>
                       </div>
-                      <span className="text-xs text-gray-400 whitespace-nowrap flex items-center gap-1">
-                        <Car className="w-3 h-3" />
-                        {formatDauer(p.anfahrtSekunden)}
-                      </span>
+                      <Fahrzeit
+                        sekunden={p.anfahrtSekunden}
+                        von={p.vonKoordinate}
+                        nach={p.nachKoordinate}
+                      />
                     </div>
                   </li>
                 );

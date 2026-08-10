@@ -14,6 +14,7 @@ import {
 import {
   geokodiereOffene,
   ladePlanEingabe,
+  setzeFahrzeitManuell,
   setzeZuhause,
   speicherePlan,
 } from "@/lib/routing-server";
@@ -121,6 +122,45 @@ export async function zuhauseSetzen(
   const admin = await createAdminClient();
   const ergebnis = await setzeZuhause(admin, adresse.trim());
   if ("error" in ergebnis) return ergebnis;
+
+  revalidatePath("/admin/routenplanung");
+  return { success: true, error: undefined };
+}
+
+/**
+ * Eine Fahrzeit von Hand korrigieren.
+ *
+ * Daves Ortskenntnis schlägt jede Schätzung: Wenn er weiss, dass eine Strecke
+ * um 17 Uhr zwanzig Minuten dauert, ist das der richtige Wert. Der Eintrag
+ * gilt ab dem nächsten Rechnen und bleibt dauerhaft gespeichert.
+ */
+export async function fahrzeitKorrigieren(params: {
+  vonLat: number;
+  vonLng: number;
+  nachLat: number;
+  nachLng: number;
+  minuten: number;
+}): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  if (!Number.isFinite(params.minuten) || params.minuten < 0) {
+    return { error: "Bitte eine Zeit in Minuten angeben." };
+  }
+  if (params.minuten > 180) {
+    return { error: "Über drei Stunden Fahrzeit ist vermutlich ein Vertipper." };
+  }
+  for (const w of [params.vonLat, params.vonLng, params.nachLat, params.nachLng]) {
+    if (!Number.isFinite(w)) return { error: "Ungültige Koordinaten." };
+  }
+
+  const admin = await createAdminClient();
+  await setzeFahrzeitManuell(
+    admin,
+    { lat: params.vonLat, lng: params.vonLng },
+    { lat: params.nachLat, lng: params.nachLng },
+    params.minuten
+  );
 
   revalidatePath("/admin/routenplanung");
   return { success: true, error: undefined };

@@ -134,28 +134,6 @@ export async function geocode(adresse: string): Promise<GeocodeTreffer | null> {
   return viaNominatim(sauber);
 }
 
-/**
- * Mehrere Adressen nacheinander auflösen, mit Pause dazwischen.
- *
- * Bewusst seriell und gedrosselt: Nominatim erlaubt höchstens eine Anfrage
- * pro Sekunde, und ein Schwung paralleler Anfragen brächte uns dort auf die
- * Sperrliste. Bei 20 Schülern dauert das gut 20 Sekunden — das passiert
- * einmal und wird danach gespeichert.
- */
-export async function geocodeMehrere(
-  adressen: Array<{ id: string; adresse: string }>,
-  pauseMs = 1100
-): Promise<Map<string, GeocodeTreffer | null>> {
-  const ergebnis = new Map<string, GeocodeTreffer | null>();
-  for (let i = 0; i < adressen.length; i++) {
-    const { id, adresse } = adressen[i];
-    ergebnis.set(id, await geocode(adresse));
-    if (i < adressen.length - 1) {
-      await new Promise((r) => setTimeout(r, pauseMs));
-    }
-  }
-  return ergebnis;
-}
 
 /**
  * Ist die gespeicherte Geokodierung noch gültig?
