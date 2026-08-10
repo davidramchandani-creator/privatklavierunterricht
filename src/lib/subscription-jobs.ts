@@ -30,9 +30,12 @@ import {
   buildPlanForRhythmus,
   expiryFor,
   termMonthsForType,
+  type BookingMode,
   type Rhythmus,
 } from "@/lib/rhythmus";
 import { bookFixplatzSeries } from "@/lib/fixplatz-server";
+import { ABO_LABELS } from "@/lib/abo";
+import { baueVorschau, legeMonatsratenAn } from "@/lib/abo-server";
 
 export type SubscriptionJobResult = {
   instalmentsInvoiced: number;
@@ -72,6 +75,11 @@ type PackageJobRow = {
   fixplatz_weekday: number | null;
   fixplatz_time: string | null;
   fixplatz_week_parity: number | null;
+  abo_variante: string | null;
+  abo_lektionen: number | null;
+  monatsbetrag: number | string | null;
+  periode_start: string | null;
+  periode_ende: string | null;
 };
 
 type InstalmentJobRow = {
@@ -87,7 +95,7 @@ type InstalmentJobRow = {
 
 const PROFILE_FIELDS = "vorname, nachname, adresse, email, payment_method";
 const PACKAGE_FIELDS =
-  "id, student_id, type, total_price, price_per_lesson, payment_method, lessons_total, lessons_used, expires_at, auto_renew, billing_mode, term_months, instalment_count, renewal_notice_sent_at, status, rhythmus, booking_mode, fixplatz_weekday, fixplatz_time, fixplatz_week_parity";
+  "id, student_id, type, total_price, price_per_lesson, payment_method, lessons_total, lessons_used, expires_at, auto_renew, billing_mode, term_months, instalment_count, renewal_notice_sent_at, status, rhythmus, booking_mode, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, abo_variante, abo_lektionen, monatsbetrag, periode_start, periode_ende";
 
 /** Outbox-Eintrag, idempotent über `dedupe_key`. */
 async function enqueueOnce(
@@ -274,6 +282,15 @@ async function findeAufgebrauchtePakete(
   const grenze = now.getTime() - ABSCHLUSS_PUFFER_TAGE * 86400000;
 
   for (const pkg of kandidaten ?? []) {
+    // Abos laufen ihre Periode, auch wenn alle Lektionen schon bezogen sind.
+    //
+    // Beim alten Lektionspaket war "aufgebraucht" gleichbedeutend mit
+    // "fertig". Beim Abo ist es das nicht: Gekauft wird die Laufzeit, nicht
+    // die Lektionszahl. Ein flexibler Schüler, der seine 20 Lektionen in zwei
+    // statt sechs Monaten bezieht, würde hier sonst sein Abo beenden – und
+    // die vier restlichen Monatsbeträge nie bezahlen.
+    if (pkg.abo_variante) continue;
+
     const total = Number(pkg.lessons_total ?? 0);
     const used = Number(pkg.lessons_used ?? 0);
     if (total <= 0 || used < total) continue;
@@ -374,6 +391,166 @@ async function zieheRestratenZusammen(
   }
 }
 
+/**
+ * Verlängert ein Abo um eine weitere Periode.
+ *
+ * Anders als beim alten Lektionspaket wird hier **alles neu gerechnet**: In
+ * einem Winterhalbjahr liegen andere Ferien als in einem Sommerhalbjahr, also
+ * enthält es eine andere Lektionszahl und kostet einen anderen Monatsbetrag.
+ * Die Werte des Vorgängers einfach zu übernehmen wäre in der Hälfte der Fälle
+ * falsch.
+ *
+ * Übernommen werden dagegen Rhythmus, Buchungsart und Fixplatz – das ist die
+ * Leistung, die der Schüler gekauft hat.
+ */
+async function verlaengereAbo(
+  admin: SupabaseClient,
+  pkg: PackageJobRow,
+  profile: ProfileRow,
+  now: Date
+): Promise<boolean> {
+  const variante = pkg.abo_variante === "jahr" ? "jahr" : "halbjahr";
+  const rhythmus: Rhythmus =
+    pkg.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich";
+  const bookingMode: BookingMode = pkg.booking_mode === "fix" ? "fix" : "flex";
+
+  // Die neue Periode schliesst nahtlos an die alte an.
+  const periodeStart = pkg.periode_ende
+    ? addDaysIso(String(pkg.periode_ende), 1)
+    : todayInZurich(now);
+
+  const rechenTag = pkg.fixplatz_weekday ?? 3;
+
+  const vorschau = await baueVorschau(admin, {
+    studentId: pkg.student_id,
+    variante,
+    rhythmus,
+    bookingMode,
+    weekday: Number(rechenTag),
+    periodeStart,
+  });
+
+  if (vorschau.lektionen < 1) {
+    console.error("[abo] Verlängerung ohne Lektionen:", pkg.id, periodeStart);
+    return false;
+  }
+
+  const { data: next, error } = await admin
+    .from("packages")
+    .insert({
+      student_id: pkg.student_id,
+      type: pkg.type,
+      lessons_total: vorschau.lektionen,
+      lessons_used: 0,
+      name: `${ABO_LABELS[variante]} · ${
+        rhythmus === "woechentlich" ? "wöchentlich" : "alle zwei Wochen"
+      }`,
+      price_per_lesson: vorschau.preisProLektion,
+      total_price: vorschau.gesamtpreis,
+      starts_at: new Date(`${periodeStart}T00:00:00.000Z`).toISOString(),
+      expires_at: new Date(`${vorschau.periodeEnde}T23:59:59.000Z`).toISOString(),
+      status: "active",
+      billing_mode: "raten",
+      term_months: vorschau.laufzeitMonate,
+      auto_renew: true,
+      renewed_from_package_id: pkg.id,
+      deposit_amount: 0,
+      instalment_count: vorschau.laufzeitMonate,
+      instalment_amount: vorschau.monatsbetrag,
+      rhythmus,
+      booking_mode: bookingMode,
+      fixplatz_weekday: pkg.fixplatz_weekday,
+      fixplatz_time: pkg.fixplatz_time,
+      fixplatz_week_parity: pkg.fixplatz_week_parity,
+      abo_variante: variante,
+      abo_lektionen: vorschau.lektionen,
+      monatsbetrag: vorschau.monatsbetrag,
+      periode_start: periodeStart,
+      periode_ende: vorschau.periodeEnde,
+    })
+    .select(PACKAGE_FIELDS)
+    .maybeSingle<PackageJobRow>();
+
+  if (error || !next) {
+    // 23505 = es läuft bereits ein aktives Abo (paralleler Lauf).
+    if (error?.code !== "23505") {
+      console.error("[abo] Verlängerung fehlgeschlagen:", pkg.id, error?.message);
+    }
+    return false;
+  }
+
+  const raten = await legeMonatsratenAn(admin, {
+    packageId: next.id,
+    studentId: pkg.student_id,
+    gesamtpreis: vorschau.gesamtpreis,
+    laufzeitMonate: vorschau.laufzeitMonate,
+    periodeStart,
+  });
+  if ("error" in raten) {
+    console.error("[abo] Monatsraten der Verlängerung:", next.id, raten.error);
+  }
+
+  // Fixplatz nahtlos fortsetzen.
+  if (bookingMode === "fix" && pkg.fixplatz_weekday != null && pkg.fixplatz_time) {
+    const serie = await bookFixplatzSeries(admin, {
+      studentId: pkg.student_id,
+      packageId: next.id,
+      wunsch: {
+        weekday: Number(pkg.fixplatz_weekday),
+        time: String(pkg.fixplatz_time).slice(0, 5),
+        rhythmus,
+        lessons: vorschau.lektionen,
+      },
+      parity:
+        pkg.fixplatz_week_parity == null
+          ? null
+          : ((Number(pkg.fixplatz_week_parity) === 1 ? 1 : 0) as 0 | 1),
+      now: new Date(`${periodeStart}T00:00:00.000Z`),
+    });
+    if ("error" in serie) {
+      console.error("[abo] Fixplatz-Serie der Verlängerung:", next.id, serie.error);
+    }
+  }
+
+  await enqueueOnce(
+    admin,
+    "abo_verlaengert",
+    {
+      student_id: pkg.student_id,
+      student_name:
+        `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim() || undefined,
+      abo_label: ABO_LABELS[variante],
+      lektionen: vorschau.lektionen,
+      monatsbetrag: vorschau.monatsbetrag,
+      laufzeit_monate: vorschau.laufzeitMonate,
+      periode_start: periodeStart,
+      periode_ende: vorschau.periodeEnde,
+      ferientage: vorschau.ferientage,
+      vorher_lektionen: pkg.abo_lektionen,
+      vorher_monatsbetrag: pkg.monatsbetrag,
+    },
+    `abo_verlaengert:${next.id}`
+  );
+
+  await enqueueOnce(
+    admin,
+    "abo_verlaengert_admin",
+    {
+      student_id: pkg.student_id,
+      student_name:
+        `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim() || undefined,
+      abo_label: ABO_LABELS[variante],
+      lektionen: vorschau.lektionen,
+      monatsbetrag: vorschau.monatsbetrag,
+      periode_start: periodeStart,
+      periode_ende: vorschau.periodeEnde,
+    },
+    `abo_verlaengert_admin:${next.id}`
+  );
+
+  return true;
+}
+
 async function processExpiredPackages(
   admin: SupabaseClient,
   now: Date
@@ -461,6 +638,16 @@ async function processExpiredPackages(
       .eq("id", pkg.student_id)
       .maybeSingle<ProfileRow>();
     if (!profile) continue;
+
+    // Abos haben ihren eigenen Weg: die neue Periode wird komplett neu
+    // gerechnet, weil in einem Winterhalbjahr andere Ferien liegen als in
+    // einem Sommerhalbjahr – und damit eine andere Lektionszahl und ein
+    // anderer Monatsbetrag herauskommt.
+    if (pkg.abo_variante) {
+      const ok = await verlaengereAbo(admin, pkg, profile, now);
+      if (ok) renewed++;
+      continue;
+    }
 
     // Rhythmus und Buchungsart des Vorgängers weiterführen. Wer einen
     // Fixplatz am Dienstag um 17:15 hatte, will ihn behalten – ein

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ABO_KUENDIGUNGSFRIST_TAGE,
   ABO_LAUFZEIT_MONATE,
+  aboAusstiegAbrechnung,
   baueAboAngebot,
   baueMonatsraten,
   berechneAboTermine,
@@ -255,6 +256,86 @@ describe("Kündigung", () => {
     expect(istKuendbar("2027-03-31", "2027-02-15")).toBe(true);
     expect(istKuendbar("2027-03-31", "2027-03-01")).toBe(true);
     expect(istKuendbar("2027-03-31", "2027-03-02")).toBe(false);
+  });
+});
+
+describe("Vorzeitiger Ausstieg", () => {
+  const basis = {
+    periodeStart: "2026-10-01",
+    laufzeitMonate: 6,
+    monatsbetrag: 233.35,
+    gesamtpreis: 1400,
+  };
+
+  it("rechnet angefangene Monate voll ab", () => {
+    // Wer am 15. Oktober aussteigt, zahlt den Oktober – in diesem Monat hat
+    // Unterricht stattgefunden und der Platz war reserviert.
+    const a = aboAusstiegAbrechnung({
+      ...basis,
+      austritt: "2026-10-15",
+      bereitsBezahlt: 0,
+    });
+    expect(a.monateBegonnen).toBe(1);
+    expect(a.monateOffen).toBe(5);
+    expect(a.geschuldet).toBe(233.35);
+    expect(a.nachzahlung).toBe(233.35);
+  });
+
+  it("zählt jeden angefangenen Monat, nicht die bezogenen Lektionen", () => {
+    // Der Dezember hat wegen der Ferien wenige Lektionen. Trotzdem zählt er
+    // voll – sonst wäre der Ausstieg im Dezember günstiger als im März,
+    // obwohl der Platz gleich lang blockiert war.
+    const a = aboAusstiegAbrechnung({
+      ...basis,
+      austritt: "2026-12-05",
+      bereitsBezahlt: 0,
+    });
+    expect(a.monateBegonnen).toBe(3);
+    expect(a.geschuldet).toBe(700.05);
+  });
+
+  it("weist eine Rückerstattung aus, wenn zu viel bezahlt wurde", () => {
+    const a = aboAusstiegAbrechnung({
+      ...basis,
+      austritt: "2027-01-20",
+      bereitsBezahlt: 1400,
+    });
+    expect(a.monateBegonnen).toBe(4);
+    expect(a.rueckerstattung).toBe(466.6);
+    expect(a.nachzahlung).toBe(0);
+  });
+
+  it("fordert bei vollständig abgelaufener Periode keinen Rundungsrest", () => {
+    // 6 × 233.35 = 1400.10, der Gesamtpreis ist aber 1400.00. Ohne Deckel
+    // entstünde eine Restforderung von 10 Rappen.
+    const a = aboAusstiegAbrechnung({
+      ...basis,
+      austritt: "2027-03-28",
+      bereitsBezahlt: 1400,
+    });
+    expect(a.monateBegonnen).toBe(6);
+    expect(a.geschuldet).toBe(1400);
+    expect(a.nachzahlung).toBe(0);
+    expect(a.rueckerstattung).toBe(0);
+  });
+
+  it("zählt mindestens einen Monat, auch am ersten Tag", () => {
+    const a = aboAusstiegAbrechnung({
+      ...basis,
+      austritt: "2026-10-01",
+      bereitsBezahlt: 0,
+    });
+    expect(a.monateBegonnen).toBe(1);
+  });
+
+  it("geht nie über die Laufzeit hinaus", () => {
+    const a = aboAusstiegAbrechnung({
+      ...basis,
+      austritt: "2028-01-01",
+      bereitsBezahlt: 0,
+    });
+    expect(a.monateBegonnen).toBe(6);
+    expect(a.monateOffen).toBe(0);
   });
 });
 

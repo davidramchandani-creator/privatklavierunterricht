@@ -1900,6 +1900,188 @@ export function renderEmail(
       };
     }
 
+    case "abo_verlaengert": {
+      const chf = (n: unknown) =>
+        Number(n ?? 0).toLocaleString("de-CH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      const ferientage = Array.isArray(payload.ferientage)
+        ? (payload.ferientage as { tag: string; grund: string }[])
+        : [];
+
+      // Die neue Periode kann eine andere Lektionszahl haben – im Sommer
+      // liegen mehr Ferien als im Winter. Das wird offen benannt, statt es
+      // in einer geänderten Zahl zu verstecken.
+      const vorherLekt = Number(payload.vorher_lektionen ?? 0);
+      const jetztLekt = Number(payload.lektionen ?? 0);
+      const anders = vorherLekt > 0 && vorherLekt !== jetztLekt;
+
+      return {
+        subject: `Dein ${payload.abo_label ?? "Abo"} geht weiter`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Dein <strong>${payload.abo_label ?? "Abo"}</strong> hat sich wie
+              vereinbart verlängert. Dein fester Platz bleibt derselbe.</p>
+
+           <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 24px;background:#F3F5F8;border-radius:8px;">
+             <tr>
+               <td style="padding:12px 16px;color:#64748b;font-size:14px;">Neue Laufzeit</td>
+               <td style="padding:12px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;">
+                 ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""} –
+                 ${payload.periode_ende ? fmtDate(String(payload.periode_ende)) : ""}
+               </td>
+             </tr>
+             <tr>
+               <td style="padding:12px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Lektionen</td>
+               <td style="padding:12px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">${jetztLekt}</td>
+             </tr>
+             <tr>
+               <td style="padding:12px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Pro Monat</td>
+               <td style="padding:12px 16px;color:#1C244B;font-size:16px;font-weight:700;text-align:right;border-top:1px solid #e2e8f0;">CHF ${chf(payload.monatsbetrag)}</td>
+             </tr>
+           </table>
+
+           ${
+             anders
+               ? `<div style="background:#F3F5F8;border-radius:8px;padding:16px;margin:0 0 24px;">
+                    <p style="margin:0;color:#475569;font-size:14px;">
+                      Diese Periode enthält <strong>${jetztLekt} statt ${vorherLekt} Lektionen</strong>
+                      ${
+                        jetztLekt < vorherLekt
+                          ? "– in diesem Zeitraum liegen mehr Ferien"
+                          : "– in diesem Zeitraum liegen weniger Ferien"
+                      }.
+                      Der Monatsbetrag ist entsprechend angepasst; der Preis pro
+                      Lektion bleibt unverändert.
+                    </p>
+                  </div>`
+               : ""
+           }
+
+           ${
+             ferientage.length > 0
+               ? `<p style="margin:0 0 8px;font-weight:600;">Unterrichtsfrei in dieser Periode</p>
+                  <ul style="margin:0 0 24px;padding-left:20px;color:#475569;font-size:14px;">
+                    ${ferientage
+                      .map((f) => `<li>${fmtDate(f.tag)} · ${f.grund}</li>`)
+                      .join("")}
+                  </ul>`
+               : ""
+           }
+
+           <p style="color:#64748b;font-size:14px;">
+             Wenn du nicht weitermachen möchtest, kannst du die Verlängerung
+             jederzeit im Portal abschalten – spätestens 30 Tage vor Ablauf der
+             laufenden Periode.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "abo_verlaengert_admin": {
+      const chf = (n: unknown) =>
+        Number(n ?? 0).toLocaleString("de-CH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      return {
+        subject: `Abo verlängert – ${payload.student_name ?? "Schüler"}`,
+        html: baseWrapper(
+          `<p>Das <strong>${payload.abo_label ?? "Abo"}</strong> von
+              <strong>${payload.student_name ?? "einem Schüler"}</strong> hat sich
+              verlängert.</p>
+           <p>Neue Periode
+              ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""} –
+              ${payload.periode_ende ? fmtDate(String(payload.periode_ende)) : ""}
+              mit <strong>${payload.lektionen ?? 0} Lektionen</strong> zu
+              CHF ${chf(payload.monatsbetrag)} pro Monat. Die Terminserie ist
+              bereits eingetragen.</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/kalender" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Kalender öffnen</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "abo_beendet": {
+      const chf = (n: unknown) =>
+        Number(n ?? 0).toLocaleString("de-CH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      const nachzahlung = Number(payload.nachzahlung ?? 0);
+      const rueckerstattung = Number(payload.rueckerstattung ?? 0);
+
+      return {
+        subject: "Dein Abo wurde beendet",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Dein Abo ist zum heutigen Tag beendet${
+             payload.grund ? ` (${payload.grund})` : ""
+           }.</p>
+
+           <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 24px;background:#F3F5F8;border-radius:8px;">
+             <tr>
+               <td style="padding:10px 16px;color:#64748b;font-size:14px;">Angefangene Monate</td>
+               <td style="padding:10px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;">${payload.monate_begonnen ?? 0}</td>
+             </tr>
+             <tr>
+               <td style="padding:10px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Dafür geschuldet</td>
+               <td style="padding:10px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">CHF ${chf(payload.geschuldet)}</td>
+             </tr>
+             <tr>
+               <td style="padding:10px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Bereits bezahlt</td>
+               <td style="padding:10px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">CHF ${chf(payload.bereits_bezahlt)}</td>
+             </tr>
+           </table>
+
+           <p style="color:#475569;font-size:14px;">
+             Angefangene Monate werden voll verrechnet – in diesen Monaten hat
+             Unterricht stattgefunden und dein Platz war reserviert. Die
+             restlichen ${payload.monate_offen ?? 0} Monate entfallen.
+           </p>
+
+           ${
+             nachzahlung > 0
+               ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
+                    <p style="margin:0;color:#92400e;font-size:14px;">
+                      Offen bleibt eine Restzahlung von
+                      <strong>CHF ${chf(nachzahlung)}</strong>. Die Rechnung dazu
+                      bekommst du separat.
+                    </p>
+                  </div>`
+               : ""
+           }
+           ${
+             rueckerstattung > 0
+               ? `<div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:16px;margin:0 0 24px;">
+                    <p style="margin:0;color:#065f46;font-size:14px;">
+                      Du bekommst <strong>CHF ${chf(rueckerstattung)}</strong>
+                      zurück. Ich melde mich für die Auszahlung bei dir.
+                    </p>
+                  </div>`
+               : ""
+           }
+           ${
+             nachzahlung === 0 && rueckerstattung === 0
+               ? `<p style="color:#475569;font-size:14px;">Es ist nichts mehr offen.</p>`
+               : ""
+           }
+
+           <p style="color:#64748b;font-size:14px;">
+             ${payload.stornierte_termine ?? 0} zukünftige Termine wurden
+             abgesagt. Wenn du später wieder einsteigen möchtest, melde dich
+             jederzeit.
+           </p>`
+        ),
+      };
+    }
+
     default:
       return null;
   }

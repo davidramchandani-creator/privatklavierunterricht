@@ -30,6 +30,7 @@ export const ADMIN_RECIPIENT_TYPES = [
   "ausfall_admin",
   // Abo-Modell
   "abo_gestartet_admin",
+  "abo_verlaengert_admin",
 ];
 
 export const STUDENT_PAYLOAD_TO_TYPES = [
@@ -73,6 +74,8 @@ export const STUDENT_LOOKUP_TYPES = [
   "rhythmus_changed",
   // Abo-Modell
   "abo_gestartet",
+  "abo_verlaengert",
+  "abo_beendet",
 ];
 
 async function getDisabledEmailTypes(admin: SupabaseClient): Promise<string[]> {

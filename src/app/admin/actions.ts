@@ -34,6 +34,17 @@ import {
 import { describeFixplatz } from "@/lib/fixplatz";
 import { bookFixplatzSeries } from "@/lib/fixplatz-server";
 import { findeFixplaetze, type FixplatzAngebot } from "@/lib/fixplatz-suche";
+import {
+  ABO_LABELS,
+  aboAusstiegAbrechnung,
+  type AusstiegAbrechnung,
+} from "@/lib/abo";
+import {
+  baueVorschau,
+  legeMonatsratenAn,
+  naechsterPeriodenstart,
+  type AboVorschau,
+} from "@/lib/abo-server";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   type Package as Paket,
@@ -1044,6 +1055,345 @@ export async function createPackageAdmin(formData: FormData) {
   revalidatePath("/admin/zahlungen");
   revalidatePath("/admin/kalender");
   return { success: true, error: undefined };
+}
+
+/**
+ * Abo für einen Schüler anlegen – dieselbe Rechnung wie im Portal.
+ *
+ * Bewusst über dieselbe `baueVorschau`, damit im Admin garantiert dieselbe
+ * Lektionszahl und derselbe Monatsbetrag herauskommen wie beim
+ * Selbstabschluss. Zwei getrennte Rechenwege wären die sichere Quelle für
+ * Abweichungen, die niemand bemerkt.
+ */
+export async function aboAnlegenAdmin(
+  formData: FormData
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const studentId = String(formData.get("student_user_id") ?? "");
+  const schuelerId = String(formData.get("schueler_id") ?? "");
+  const variante = String(formData.get("abo_variante") ?? "halbjahr") as
+    | "halbjahr"
+    | "jahr";
+  const rhythmus: Rhythmus =
+    String(formData.get("rhythmus")) === "zweiwoechentlich"
+      ? "zweiwoechentlich"
+      : "woechentlich";
+  const bookingMode: BookingMode =
+    String(formData.get("booking_mode")) === "flex" ? "flex" : "fix";
+  const autoRenew = formData.get("auto_renew") === "on";
+
+  const fixWeekdayRaw = formData.get("fixplatz_weekday") as string | null;
+  const fixTime = (formData.get("fixplatz_time") as string) || null;
+  const fixParityRaw = formData.get("fixplatz_week_parity") as string | null;
+
+  if (!studentId) return { error: "Kein Schüler angegeben." };
+  if (variante !== "halbjahr" && variante !== "jahr") {
+    return { error: "Ungültige Abo-Variante." };
+  }
+
+  const fixplatz =
+    bookingMode === "fix" && fixWeekdayRaw && fixTime
+      ? {
+          weekday: Number(fixWeekdayRaw),
+          time: fixTime,
+          parity:
+            rhythmus === "zweiwoechentlich" && fixParityRaw
+              ? ((Number(fixParityRaw) === 1 ? 1 : 0) as 0 | 1)
+              : null,
+        }
+      : null;
+
+  if (bookingMode === "fix" && !fixplatz) {
+    return { error: "Für einen Fixplatz braucht es Wochentag und Uhrzeit." };
+  }
+
+  const admin = await createAdminClient();
+
+  const { data: bestehend } = await admin
+    .from("packages")
+    .select("id, status")
+    .eq("student_id", studentId)
+    .eq("status", "active")
+    .maybeSingle();
+  if (bestehend) {
+    return { error: "Dieser Schüler hat bereits ein aktives Abo oder Paket." };
+  }
+
+  const periodeStart = naechsterPeriodenstart(todayInZurich());
+  const vorschau = await baueVorschau(admin, {
+    studentId,
+    variante,
+    rhythmus,
+    bookingMode,
+    weekday: fixplatz?.weekday ?? 3,
+    periodeStart,
+  });
+
+  if (vorschau.lektionen < 1) {
+    return { error: "In diesem Zeitraum liegen keine Unterrichtstermine." };
+  }
+
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("vorname, nachname, adresse, email, payment_method")
+    .eq("id", studentId)
+    .maybeSingle();
+
+  const { data: pkg, error } = await admin
+    .from("packages")
+    .insert({
+      student_id: studentId,
+      type: variante === "halbjahr" ? "10er" : "20er",
+      lessons_total: vorschau.lektionen,
+      lessons_used: 0,
+      name: `${ABO_LABELS[variante]} · ${
+        rhythmus === "woechentlich" ? "wöchentlich" : "alle zwei Wochen"
+      }`,
+      price_per_lesson: vorschau.preisProLektion,
+      total_price: vorschau.gesamtpreis,
+      payment_method: prof?.payment_method ?? "qr",
+      starts_at: new Date(`${periodeStart}T00:00:00.000Z`).toISOString(),
+      expires_at: new Date(`${vorschau.periodeEnde}T23:59:59.000Z`).toISOString(),
+      status: "active",
+      billing_mode: "raten",
+      term_months: vorschau.laufzeitMonate,
+      auto_renew: autoRenew,
+      deposit_amount: 0,
+      instalment_count: vorschau.laufzeitMonate,
+      instalment_amount: vorschau.monatsbetrag,
+      rhythmus,
+      booking_mode: bookingMode,
+      fixplatz_weekday: fixplatz?.weekday ?? null,
+      fixplatz_time: fixplatz?.time ?? null,
+      fixplatz_week_parity: fixplatz?.parity ?? null,
+      flex_surcharge_percent: 0,
+      abo_variante: variante,
+      abo_lektionen: vorschau.lektionen,
+      monatsbetrag: vorschau.monatsbetrag,
+      periode_start: periodeStart,
+      periode_ende: vorschau.periodeEnde,
+    })
+    .select("id")
+    .single();
+
+  if (error || !pkg) {
+    if (error?.code === "23505") return { error: "Es läuft bereits ein Abo." };
+    return { error: "Das Abo konnte nicht angelegt werden." };
+  }
+
+  const raten = await legeMonatsratenAn(admin, {
+    packageId: pkg.id,
+    studentId,
+    gesamtpreis: vorschau.gesamtpreis,
+    laufzeitMonate: vorschau.laufzeitMonate,
+    periodeStart,
+  });
+  if ("error" in raten) {
+    console.error("[abo] Monatsraten (Admin):", pkg.id, raten.error);
+  }
+
+  let fixplatzText: string | null = null;
+  if (fixplatz) {
+    fixplatzText = describeFixplatz(
+      fixplatz.weekday,
+      fixplatz.time,
+      rhythmus,
+      fixplatz.parity
+    );
+    const serie = await bookFixplatzSeries(admin, {
+      studentId,
+      packageId: pkg.id,
+      wunsch: {
+        weekday: fixplatz.weekday,
+        time: fixplatz.time,
+        rhythmus,
+        lessons: vorschau.lektionen,
+      },
+      parity: fixplatz.parity,
+    });
+    if ("error" in serie) {
+      console.error("[abo] Fixplatz-Serie (Admin):", pkg.id, serie.error);
+    }
+  }
+
+  await sendEmailNow(admin, "abo_gestartet", {
+    student_id: studentId,
+    student_name: `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined,
+    abo_label: ABO_LABELS[variante],
+    rhythmus_text: rhythmus === "woechentlich" ? "jede Woche" : "alle zwei Wochen",
+    fixplatz_text: fixplatzText,
+    lektionen: vorschau.lektionen,
+    monatsbetrag: vorschau.monatsbetrag,
+    laufzeit_monate: vorschau.laufzeitMonate,
+    periode_start: periodeStart,
+    periode_ende: vorschau.periodeEnde,
+    termine: vorschau.termine,
+    ferientage: vorschau.ferientage,
+    auto_renew: autoRenew,
+  });
+
+  revalidatePath(`/admin/schueler/${schuelerId}`);
+  revalidatePath("/admin/kalender");
+  revalidatePath("/admin/zahlungen");
+  return { success: true, error: undefined };
+}
+
+/**
+ * Abo vorzeitig beenden – der Ausnahmefall.
+ *
+ * Der Normalfall ist ein anderer: Wer aufhören will, schaltet die
+ * Verlängerung ab und läuft die Periode zu Ende. Diese Aktion ist für den
+ * echten Vertragsbruch — Wegzug, längere Krankheit, Kulanz.
+ *
+ * Angefangene Monate bleiben geschuldet, die restlichen entfallen. Zukünftige
+ * Termine werden storniert, noch nicht gestellte Raten der offenen Monate
+ * ebenfalls. Was bereits fakturiert ist, bleibt stehen — eine Rechnung, die
+ * draussen ist, schreibt man nicht um.
+ */
+export async function aboVorzeitigBeenden(
+  packageId: string,
+  schuelerId: string,
+  grund?: string
+): Promise<
+  | { success: true; error: undefined; abrechnung: AusstiegAbrechnung }
+  | { error: string }
+> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+
+  const { data: pkg } = await admin
+    .from("packages")
+    .select(
+      "id, student_id, status, abo_variante, periode_start, periode_ende, term_months, monatsbetrag, total_price"
+    )
+    .eq("id", packageId)
+    .maybeSingle();
+
+  if (!pkg) return { error: "Abo nicht gefunden." };
+  if (!pkg.abo_variante) {
+    return { error: "Das ist kein Abo – bitte die Paket-Stornierung verwenden." };
+  }
+  if (pkg.status !== "active") return { error: "Dieses Abo ist nicht aktiv." };
+
+  const heute = todayInZurich();
+
+  const { data: bezahlt } = await admin
+    .from("invoices")
+    .select("amount")
+    .eq("package_id", packageId)
+    .eq("status", "paid");
+  const bereitsBezahlt = (bezahlt ?? []).reduce(
+    (s, r) => s + Number(r.amount ?? 0),
+    0
+  );
+
+  const abrechnung = aboAusstiegAbrechnung({
+    periodeStart: String(pkg.periode_start ?? heute),
+    laufzeitMonate: Number(pkg.term_months ?? 6),
+    monatsbetrag: Number(pkg.monatsbetrag ?? 0),
+    austritt: heute,
+    bereitsBezahlt,
+    gesamtpreis: Number(pkg.total_price ?? 0),
+  });
+
+  // Zukünftige Termine stornieren.
+  const { data: kommende } = await admin
+    .from("appointments")
+    .select("id")
+    .eq("package_id", packageId)
+    .in("status", ["booked", "pending"])
+    .gt("start_at", new Date().toISOString());
+
+  for (const t of kommende ?? []) {
+    await admin
+      .from("appointments")
+      .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
+      .eq("id", t.id);
+    await cancelLessonReminders(admin, t.id);
+    await deleteCalendarEvent(admin, t.id);
+  }
+
+  // Noch nicht fakturierte Raten der nicht mehr anfallenden Monate schliessen.
+  const { data: offeneRaten } = await admin
+    .from("package_instalments")
+    .select("id, sequence")
+    .eq("package_id", packageId)
+    .eq("status", "open")
+    .is("invoice_id", null);
+
+  for (const r of offeneRaten ?? []) {
+    if (Number(r.sequence) > abrechnung.monateBegonnen) {
+      await admin
+        .from("package_instalments")
+        .update({ status: "cancelled", amount: 0 })
+        .eq("id", r.id);
+    }
+  }
+
+  await admin
+    .from("packages")
+    .update({
+      status: "cancelled",
+      cancelled_at: new Date().toISOString(),
+      auto_renew: false,
+    })
+    .eq("id", packageId);
+
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("vorname, nachname")
+    .eq("id", pkg.student_id)
+    .maybeSingle();
+
+  await sendEmailNow(admin, "abo_beendet", {
+    student_id: pkg.student_id,
+    student_name: `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined,
+    grund: grund ?? undefined,
+    monate_begonnen: abrechnung.monateBegonnen,
+    monate_offen: abrechnung.monateOffen,
+    geschuldet: abrechnung.geschuldet,
+    bereits_bezahlt: abrechnung.bereitsBezahlt,
+    nachzahlung: abrechnung.nachzahlung,
+    rueckerstattung: abrechnung.rueckerstattung,
+    stornierte_termine: (kommende ?? []).length,
+  });
+
+  revalidatePath(`/admin/schueler/${schuelerId}`);
+  revalidatePath("/admin/kalender");
+  revalidatePath("/admin/zahlungen");
+  return { success: true, error: undefined, abrechnung };
+}
+
+/**
+ * Abo-Vorschau für den Admin – zeigt vor dem Anlegen die exakte
+ * Lektionszahl und den Monatsbetrag.
+ */
+export async function aboVorschauAdmin(params: {
+  studentUserId: string;
+  variante: "halbjahr" | "jahr";
+  rhythmus: Rhythmus;
+  bookingMode: BookingMode;
+  weekday: number;
+}): Promise<{ vorschau: AboVorschau } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  if (!params.studentUserId) return { error: "Kein Schüler angegeben." };
+
+  const admin = await createAdminClient();
+  const vorschau = await baueVorschau(admin, {
+    studentId: params.studentUserId,
+    variante: params.variante,
+    rhythmus: params.rhythmus,
+    bookingMode: params.bookingMode,
+    weekday: params.weekday,
+    periodeStart: naechsterPeriodenstart(todayInZurich()),
+  });
+  return { vorschau };
 }
 
 /**

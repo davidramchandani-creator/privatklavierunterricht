@@ -228,6 +228,83 @@ export function baueMonatsraten(
   return raten;
 }
 
+// ── Vorzeitiger Ausstieg ───────────────────────────────────
+
+export type AusstiegAbrechnung = {
+  /** Angefangene Monate der Periode – diese sind geschuldet. */
+  monateBegonnen: number;
+  /** Monate, die nicht mehr anfallen. */
+  monateOffen: number;
+  /** Gesamtbetrag für die angefangenen Monate. */
+  geschuldet: number;
+  bereitsBezahlt: number;
+  /** Was der Schüler noch zahlen muss. */
+  nachzahlung: number;
+  /** Was zurückgeht (selten – meist wurde monatlich gezahlt). */
+  rueckerstattung: number;
+};
+
+/**
+ * Abrechnung bei vorzeitigem Ausstieg aus einem Abo.
+ *
+ * Regel: **Angefangene Monate sind geschuldet.** Wer am 10. März aussteigt,
+ * zahlt den März – in diesem Monat hat Unterricht stattgefunden und der Platz
+ * war für ihn reserviert. Die Monate danach entfallen.
+ *
+ * Bewusst nicht nach bezogenen Lektionen gerechnet: Beim Abo ist der
+ * Monatsbetrag die Einheit, nicht die einzelne Lektion. Andernfalls wäre der
+ * Ausstieg im Dezember (wenige Lektionen wegen Ferien) günstiger als im März,
+ * obwohl der Platz gleich lang blockiert war.
+ *
+ * Der Normalfall ist ohnehin ein anderer: Wer aufhören will, schaltet die
+ * Verlängerung ab und läuft die Periode zu Ende. Diese Rechnung greift nur
+ * beim echten Vertragsbruch – Wegzug, längere Krankheit, Kulanzfälle.
+ */
+export function aboAusstiegAbrechnung(params: {
+  periodeStart: string;
+  laufzeitMonate: number;
+  monatsbetrag: number;
+  /** Datum des Ausstiegs (ISO). */
+  austritt: string;
+  bereitsBezahlt: number;
+  /**
+   * Gesamtpreis der Periode. Deckelt die Forderung: Monatsbetrag × Monate
+   * ergibt wegen der Rundung leicht mehr als der Gesamtpreis (6 × 233.35 =
+   * 1400.10 statt 1400.00). Ohne Deckel würde bei vollständig abgelaufener
+   * Periode eine Restforderung von 10 Rappen entstehen.
+   */
+  gesamtpreis?: number;
+}): AusstiegAbrechnung {
+  const [sy, sm] = params.periodeStart.split("-").map(Number);
+  const [ay, am] = params.austritt.split("-").map(Number);
+
+  // Wie viele Monate der Periode haben bereits begonnen? Der Startmonat
+  // zählt als erster.
+  const differenz = (ay - sy) * 12 + (am - sm);
+  const monateBegonnen = Math.max(
+    1,
+    Math.min(params.laufzeitMonate, differenz + 1)
+  );
+  const monateOffen = params.laufzeitMonate - monateBegonnen;
+
+  const roh = roundRappen(monateBegonnen * params.monatsbetrag);
+  const geschuldet =
+    params.gesamtpreis != null
+      ? Math.min(roh, roundRappen(params.gesamtpreis))
+      : roh;
+  const bezahlt = roundRappen(params.bereitsBezahlt);
+  const differenzBetrag = roundRappen(geschuldet - bezahlt);
+
+  return {
+    monateBegonnen,
+    monateOffen,
+    geschuldet,
+    bereitsBezahlt: bezahlt,
+    nachzahlung: Math.max(0, differenzBetrag),
+    rueckerstattung: Math.max(0, -differenzBetrag),
+  };
+}
+
 /**
  * Kündigungsfrist vor Ablauf der Periode, in Tagen.
  * Danach verlängert sich das Abo automatisch um dieselbe Laufzeit.

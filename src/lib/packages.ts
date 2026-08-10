@@ -22,6 +22,21 @@ export type Package = {
   pause_remaining_seconds: number | null;
   paused_at: string | null;
   erstellt_am: string;
+  // ── Abo-Modell ──
+  // Gesetzt, sobald es sich um ein Abo handelt (Halbjahr/Jahr) und nicht um
+  // ein altes Lektionspaket. Die Unterscheidung ist an vielen Stellen nötig:
+  // ein Abo läuft seine Periode, ein Paket endet, wenn die Lektionen weg sind.
+  abo_variante?: string | null;
+  abo_lektionen?: number | null;
+  monatsbetrag?: number | string | null;
+  periode_start?: string | null;
+  periode_ende?: string | null;
+  rhythmus?: string | null;
+  booking_mode?: string | null;
+  auto_renew?: boolean | null;
+  fixplatz_weekday?: number | null;
+  fixplatz_time?: string | null;
+  fixplatz_week_parity?: number | null;
 };
 
 export const PACKAGE_LABELS: Record<string, string> = {
