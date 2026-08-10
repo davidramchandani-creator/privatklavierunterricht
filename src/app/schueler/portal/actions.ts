@@ -5,7 +5,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import {
   type Package as Paket,
   PACKAGE_LABELS,
-  PACKAGE_LESSONS,
+
   canBuyNewPackage,
   computePackageState,
 } from "@/lib/packages";
@@ -34,16 +34,17 @@ import {
   type BookingMode,
   type Rhythmus,
 } from "@/lib/rhythmus";
-import { describeFixplatz } from "@/lib/fixplatz";
-import { bookFixplatzSeries, findeAusweichtermine } from "@/lib/fixplatz-server";
+import { findeAusweichtermine } from "@/lib/fixplatz-server";
 import { meldeAusfall } from "@/lib/ausfall";
-import { findeFixplaetze, type FixplatzAngebot } from "@/lib/fixplatz-suche";
+import { ladeOffeneRunde, ladeVerfuegbarkeit } from "@/lib/planung-server";
+import { ladeFenster } from "@/lib/routing-server";
 import {
   ABO_LABELS,
   type AboVariante,
 } from "@/lib/abo";
 import {
   baueVorschau,
+  baueVorschauOhneTermin,
   legeMonatsratenAn,
   naechsterPeriodenstart,
   type AboVorschau,
@@ -933,6 +934,141 @@ export async function markInvoicePaid(invoiceId: string) {
   return { success: true, error: undefined };
 }
 
+// ── Verfügbarkeit für die Planungsrunde ────────────────────
+
+/**
+ * Schüler trägt ein, wann er kann.
+ *
+ * Ersetzt jedes Mal alle Fenster dieser Runde, statt sie zu ergänzen — sonst
+ * bliebe ein gelöschter Tag stehen und der Planer würde einen Termin
+ * ansetzen, an dem der Schüler längst nicht mehr kann.
+ */
+export async function verfuegbarkeitSpeichern(params: {
+  rundeId: string;
+  fenster: {
+    wochentag: number;
+    fruehestens: string;
+    spaetestens: string;
+    praeferenz: number;
+  }[];
+  bemerkung: string | null;
+}): Promise<{ success: true; error: undefined } | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  if (params.fenster.length === 0) {
+    return { error: "Bitte wähle mindestens einen Tag aus." };
+  }
+
+  const admin = await createAdminClient();
+
+  const { data: runde } = await admin
+    .from("planungsrunden")
+    .select("id, status, frist")
+    .eq("id", params.rundeId)
+    .maybeSingle();
+
+  if (!runde) return { error: "Diese Abfrage gibt es nicht mehr." };
+  if (runde.status !== "offen") {
+    return { error: "Diese Abfrage ist bereits abgeschlossen." };
+  }
+
+  for (const f of params.fenster) {
+    if (f.wochentag < 0 || f.wochentag > 6) return { error: "Ungültiger Wochentag." };
+    if (f.fruehestens >= f.spaetestens) {
+      return { error: "Das Ende liegt vor dem Beginn." };
+    }
+    if (f.praeferenz < 1 || f.praeferenz > 3) {
+      return { error: "Ungültige Präferenz." };
+    }
+  }
+
+  await admin
+    .from("student_verfuegbarkeit")
+    .delete()
+    .eq("student_id", user.id)
+    .eq("runde_id", params.rundeId);
+
+  const { error } = await admin.from("student_verfuegbarkeit").insert(
+    params.fenster.map((f) => ({
+      student_id: user.id,
+      runde_id: params.rundeId,
+      wochentag: f.wochentag,
+      fruehestens: f.fruehestens,
+      spaetestens: f.spaetestens,
+      praeferenz: f.praeferenz,
+    }))
+  );
+  if (error) return { error: "Die Zeiten konnten nicht gespeichert werden." };
+
+  await admin.from("planungs_antworten").upsert(
+    {
+      runde_id: params.rundeId,
+      student_id: user.id,
+      geantwortet_am: new Date().toISOString(),
+      bemerkung: params.bemerkung,
+    },
+    { onConflict: "runde_id,student_id" }
+  );
+
+  revalidatePath("/schueler/portal");
+  return { success: true, error: undefined };
+}
+
+/** Die laufende Abfrage samt bereits eingetragener Zeiten. */
+export async function offeneVerfuegbarkeitsabfrage(): Promise<{
+  runde: { id: string; titel: string; frist: string } | null;
+  fenster: { wochentag: number; beginn: string; ende: string }[];
+  vorhanden: {
+    wochentag: number;
+    fruehestens: string;
+    spaetestens: string;
+    praeferenz: number;
+  }[];
+  bemerkung: string | null;
+  geantwortet: boolean;
+}> {
+  const leer = {
+    runde: null,
+    fenster: [],
+    vorhanden: [],
+    bemerkung: null,
+    geantwortet: false,
+  };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return leer;
+
+  const admin = await createAdminClient();
+  const runde = await ladeOffeneRunde(admin);
+  if (!runde) return leer;
+
+  const [fenster, vorhanden, { data: antwort }] = await Promise.all([
+    ladeFenster(admin),
+    ladeVerfuegbarkeit(admin, user.id, runde.id),
+    admin
+      .from("planungs_antworten")
+      .select("geantwortet_am, bemerkung")
+      .eq("runde_id", runde.id)
+      .eq("student_id", user.id)
+      .maybeSingle(),
+  ]);
+
+  return {
+    runde: { id: runde.id, titel: runde.titel, frist: runde.frist },
+    fenster,
+    vorhanden,
+    bemerkung: (antwort?.bemerkung as string) ?? null,
+    geantwortet: antwort?.geantwortet_am != null,
+  };
+}
+
 // ── Abo ────────────────────────────────────────────────────
 
 /**
@@ -947,7 +1083,8 @@ export async function aboVorschau(params: {
   variante: AboVariante;
   rhythmus: Rhythmus;
   bookingMode: BookingMode;
-  weekday: number;
+  /** Nur bei Fixplatz: Tage, an denen der Schüler kann. */
+  moeglicheTage?: number[];
 }): Promise<{ vorschau: AboVorschau } | { error: string }> {
   const supabase = await createClient();
   const {
@@ -958,51 +1095,40 @@ export async function aboVorschau(params: {
   if (params.variante !== "halbjahr" && params.variante !== "jahr") {
     return { error: "Ungültige Abo-Variante." };
   }
-  if (params.weekday < 0 || params.weekday > 6) {
-    return { error: "Ungültiger Wochentag." };
+
+  const rhythmus: Rhythmus =
+    params.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich";
+  const periodeStart = naechsterPeriodenstart(todayInZurich());
+  const admin = await createAdminClient();
+
+  // Fixplatz: der Termin wird zugeteilt, der Wochentag steht also noch nicht
+  // fest. Gerechnet wird mit dem ungünstigsten der möglichen Tage, damit der
+  // genannte Preis in jedem Fall hält.
+  if (params.bookingMode === "fix") {
+    const tage = (params.moeglicheTage ?? []).filter((t) => t >= 0 && t <= 6);
+    if (tage.length === 0) {
+      return { error: "Bitte gib zuerst an, an welchen Tagen du kannst." };
+    }
+    const vorschau = await baueVorschauOhneTermin(admin, {
+      studentId: user.id,
+      variante: params.variante,
+      rhythmus,
+      moeglicheTage: tage,
+      periodeStart,
+    });
+    return { vorschau };
   }
 
-  const admin = await createAdminClient();
+  // Flex: der Schüler bucht selbst, ein Referenztag genügt für die Rechnung.
   const vorschau = await baueVorschau(admin, {
     studentId: user.id,
     variante: params.variante,
-    rhythmus:
-      params.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich",
-    bookingMode: params.bookingMode === "fix" ? "fix" : "flex",
-    weekday: params.weekday,
-    periodeStart: naechsterPeriodenstart(todayInZurich()),
+    rhythmus,
+    bookingMode: "flex",
+    weekday: 3,
+    periodeStart,
   });
-
   return { vorschau };
-}
-
-/**
- * Freie Fixplätze für den angemeldeten Schüler.
- *
- * Geprüft wird die **ganze Serie** über die Abo-Laufzeit, nicht nur der
- * nächste Termin. Ein Platz, der nächste Woche frei ist, aber ab Oktober
- * jedes zweite Mal kollidiert, taugt nicht als fester Platz.
- */
-export async function fixplaetzeSuchen(
-  type: "10er" | "20er",
-  rhythmus: Rhythmus
-): Promise<{ angebote: FixplatzAngebot[] } | { error: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Nicht angemeldet." };
-
-  if (type !== "10er" && type !== "20er") return { error: "Ungültiger Pakettyp." };
-
-  const admin = await createAdminClient();
-  const angebote = await findeFixplaetze(admin, {
-    studentId: user.id,
-    rhythmus: rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich",
-    lessons: PACKAGE_LESSONS[type],
-  });
-
-  return { angebote };
 }
 
 /**
@@ -1019,7 +1145,16 @@ export async function aboAbschliessen(params: {
   variante: AboVariante;
   rhythmus: Rhythmus;
   bookingMode: BookingMode;
-  fixplatz?: { weekday: number; time: string; parity: 0 | 1 | null };
+  /**
+   * Nur bei Fixplatz: wann der Schüler kann. Den konkreten Termin teilt
+   * David zu — der Schüler wählt ihn bewusst nicht selbst.
+   */
+  verfuegbarkeiten?: {
+    wochentag: number;
+    fruehestens: string;
+    spaetestens: string;
+    praeferenz: number;
+  }[];
   autoRenew: boolean;
   regelnBestaetigt: boolean;
 }): Promise<{ success: true; error: undefined } | { error: string }> {
@@ -1040,8 +1175,17 @@ export async function aboAbschliessen(params: {
   const rhythmus: Rhythmus =
     params.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich";
 
-  if (bookingMode === "fix" && !params.fixplatz) {
-    return { error: "Bitte wähle einen festen Termin aus." };
+  const verfuegbarkeiten = (params.verfuegbarkeiten ?? []).filter(
+    (v) =>
+      v.wochentag >= 0 &&
+      v.wochentag <= 6 &&
+      v.fruehestens < v.spaetestens &&
+      v.praeferenz >= 1 &&
+      v.praeferenz <= 3
+  );
+
+  if (bookingMode === "fix" && verfuegbarkeiten.length === 0) {
+    return { error: "Bitte gib an, an welchen Tagen du kannst." };
   }
 
   const { data: profile } = await supabase
@@ -1051,8 +1195,6 @@ export async function aboAbschliessen(params: {
     .maybeSingle();
   if (!profile) return { error: "Profil nicht gefunden." };
 
-  // Läuft schon ein Abo? Dann kein zweites – beendet wird über die
-  // Auto-Verlängerung, nicht durch Danebenkaufen.
   const { data: bestehend } = await supabase
     .from("packages")
     .select("*")
@@ -1068,21 +1210,27 @@ export async function aboAbschliessen(params: {
   }
 
   const admin = await createAdminClient();
-
-  // Wochentag für die Berechnung: beim Fixplatz der gewählte Tag, bei Flex
-  // ein Referenztag (Mittwoch) – dort ist die Lektionszahl nur ein Richtwert,
-  // weil flexible Schüler ohnehin selbst buchen.
-  const rechenTag = params.fixplatz?.weekday ?? 3;
   const periodeStart = naechsterPeriodenstart(todayInZurich());
 
-  const vorschau = await baueVorschau(admin, {
-    studentId: user.id,
-    variante: params.variante,
-    rhythmus,
-    bookingMode,
-    weekday: rechenTag,
-    periodeStart,
-  });
+  // Fixplatz: Lektionszahl über den ungünstigsten der möglichen Tage, damit
+  // der genannte Preis unabhängig von der späteren Zuteilung hält.
+  const vorschau =
+    bookingMode === "fix"
+      ? await baueVorschauOhneTermin(admin, {
+          studentId: user.id,
+          variante: params.variante,
+          rhythmus,
+          moeglicheTage: [...new Set(verfuegbarkeiten.map((v) => v.wochentag))],
+          periodeStart,
+        })
+      : await baueVorschau(admin, {
+          studentId: user.id,
+          variante: params.variante,
+          rhythmus,
+          bookingMode: "flex",
+          weekday: 3,
+          periodeStart,
+        });
 
   if (vorschau.lektionen < 1) {
     return {
@@ -1095,8 +1243,6 @@ export async function aboAbschliessen(params: {
     .from("packages")
     .insert({
       student_id: user.id,
-      // `type` trägt weiterhin die alte Spalte, damit bestehende Auswertungen
-      // und Constraints nicht brechen. Die Wahrheit steht in abo_variante.
       type: params.variante === "halbjahr" ? "10er" : "20er",
       lessons_total: vorschau.lektionen,
       lessons_used: 0,
@@ -1116,9 +1262,10 @@ export async function aboAbschliessen(params: {
       instalment_amount: vorschau.monatsbetrag,
       rhythmus,
       booking_mode: bookingMode,
-      fixplatz_weekday: params.fixplatz?.weekday ?? null,
-      fixplatz_time: params.fixplatz?.time ?? null,
-      fixplatz_week_parity: params.fixplatz?.parity ?? null,
+      // Beim Fixplatz bleibt der Termin offen, bis er zugeteilt wird.
+      fixplatz_weekday: null,
+      fixplatz_time: null,
+      fixplatz_week_parity: null,
       flex_surcharge_percent: bookingMode === "flex" ? FLEX_SURCHARGE_PERCENT : 0,
       abo_variante: params.variante,
       abo_lektionen: vorschau.lektionen,
@@ -1134,7 +1281,6 @@ export async function aboAbschliessen(params: {
     return { error: "Das Abo konnte nicht abgeschlossen werden." };
   }
 
-  // Monatsraten anlegen. Keine Anzahlung – jeder Monat ist gleich viel.
   const raten = await legeMonatsratenAn(admin, {
     packageId: pkg.id,
     studentId: user.id,
@@ -1146,28 +1292,41 @@ export async function aboAbschliessen(params: {
     console.error("[abo] Monatsraten:", pkg.id, raten.error);
   }
 
-  // Fixplatz-Serie buchen.
-  let fixplatzText: string | null = null;
-  if (bookingMode === "fix" && params.fixplatz) {
-    fixplatzText = describeFixplatz(
-      params.fixplatz.weekday,
-      params.fixplatz.time,
-      rhythmus,
-      params.fixplatz.parity
+  // Verfügbarkeit für die Zuteilung ablegen. Ohne offene Runde als
+  // Dauerangabe (runde_id null) – die nächste Runde greift darauf zurück,
+  // sonst müsste der Schüler dasselbe zweimal eintragen.
+  if (bookingMode === "fix") {
+    const runde = await ladeOffeneRunde(admin);
+
+    // Nur die Einträge desselben Geltungsbereichs ersetzen: läuft eine Runde,
+    // deren Einträge – sonst die Dauerangabe. Alles zu löschen würde die
+    // Antwort auf eine laufende Runde mitreissen.
+    const loeschen = admin
+      .from("student_verfuegbarkeit")
+      .delete()
+      .eq("student_id", user.id);
+    await (runde ? loeschen.eq("runde_id", runde.id) : loeschen.is("runde_id", null));
+
+    await admin.from("student_verfuegbarkeit").insert(
+      verfuegbarkeiten.map((v) => ({
+        student_id: user.id,
+        runde_id: runde?.id ?? null,
+        wochentag: v.wochentag,
+        fruehestens: v.fruehestens,
+        spaetestens: v.spaetestens,
+        praeferenz: v.praeferenz,
+      }))
     );
-    const serie = await bookFixplatzSeries(admin, {
-      studentId: user.id,
-      packageId: pkg.id,
-      wunsch: {
-        weekday: params.fixplatz.weekday,
-        time: params.fixplatz.time,
-        rhythmus,
-        lessons: vorschau.lektionen,
-      },
-      parity: params.fixplatz.parity,
-    });
-    if ("error" in serie) {
-      console.error("[abo] Fixplatz-Serie:", pkg.id, serie.error);
+
+    if (runde) {
+      await admin.from("planungs_antworten").upsert(
+        {
+          runde_id: runde.id,
+          student_id: user.id,
+          geantwortet_am: new Date().toISOString(),
+        },
+        { onConflict: "runde_id,student_id" }
+      );
     }
   }
 
@@ -1178,13 +1337,16 @@ export async function aboAbschliessen(params: {
     student_name: name || undefined,
     abo_label: ABO_LABELS[params.variante],
     rhythmus_text: rhythmus === "woechentlich" ? "jede Woche" : "alle zwei Wochen",
-    fixplatz_text: fixplatzText,
+    // Beim Fixplatz steht der Termin noch aus – das wird offen benannt,
+    // statt eine Zeit zu suggerieren, die es noch nicht gibt.
+    fixplatz_text: null,
+    termin_offen: bookingMode === "fix",
     lektionen: vorschau.lektionen,
     monatsbetrag: vorschau.monatsbetrag,
     laufzeit_monate: vorschau.laufzeitMonate,
     periode_start: periodeStart,
     periode_ende: vorschau.periodeEnde,
-    termine: vorschau.termine,
+    termine: [],
     ferientage: vorschau.ferientage,
     auto_renew: params.autoRenew,
   });
@@ -1194,7 +1356,7 @@ export async function aboAbschliessen(params: {
     student_name: name || undefined,
     abo_label: ABO_LABELS[params.variante],
     rhythmus_text: rhythmus === "woechentlich" ? "jede Woche" : "alle zwei Wochen",
-    fixplatz_text: fixplatzText,
+    fixplatz_text: bookingMode === "fix" ? "Termin noch zuzuteilen" : "frei buchend",
     lektionen: vorschau.lektionen,
     monatsbetrag: vorschau.monatsbetrag,
     gesamtpreis: vorschau.gesamtpreis,

@@ -1806,6 +1806,19 @@ export function renderEmail(
               ${payload.laufzeit_monate ?? 0} Monate.</p>
 
            ${
+             payload.termin_offen
+               ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#92400e;">Dein Termin folgt</p>
+                    <p style="margin:0;color:#92400e;font-size:14px;">
+                      Ich lege die Termine aller Schüler gemeinsam fest, damit die
+                      Fahrwege aufgehen. Sobald dein fester Platz steht, bekommst du
+                      ihn per E-Mail — mit allen Daten der ganzen Laufzeit.
+                    </p>
+                  </div>`
+               : ""
+           }
+
+           ${
              ferientage.length > 0
                ? `<div style="background:#F3F5F8;border-radius:8px;padding:16px;margin:0 0 24px;">
                     <p style="margin:0 0 8px;font-weight:600;color:#1C244B;font-size:14px;">
@@ -2113,6 +2126,87 @@ export function renderEmail(
 
            <p style="text-align:center;margin:28px 0;">
              <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>`
+        ),
+      };
+    }
+
+    // ── Terminplanung ────────────────────────────────────────
+    case "verfuegbarkeit_anfrage":
+    case "verfuegbarkeit_erinnerung": {
+      const erinnerung = type === "verfuegbarkeit_erinnerung";
+      return {
+        subject: erinnerung
+          ? "Erinnerung: Wann kannst du?"
+          : "Wann kannst du? Bitte kurz eintragen",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+
+           ${
+             erinnerung
+               ? `<p>Von dir fehlen noch die Zeiten für <strong>${payload.titel ?? "die kommende Planung"}</strong>.
+                    Ohne sie kann ich dir keinen Termin zuteilen.</p>`
+               : `<p>Ich plane gerade <strong>${payload.titel ?? "die kommende Periode"}</strong>
+                    und brauche von dir, wann du kannst.</p>`
+           }
+
+           <div style="background:#F3F5F8;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0 0 8px;color:#1C244B;font-size:14px;font-weight:600;">
+               Bitte bis ${payload.frist ? fmtDate(String(payload.frist)) : ""} eintragen
+             </p>
+             <p style="margin:0;color:#475569;font-size:14px;">
+               Es dauert eine Minute: Tage antippen, Zeitspanne wählen, fertig.
+             </p>
+           </div>
+
+           <p><strong>Warum ich frage:</strong> Ich fahre zu allen Schülern und
+              lege die Termine so, dass möglichst wenig Leerfahrt entsteht. Wenn
+              ich von allen weiss, wann sie können, finde ich eine Reihenfolge,
+              die für alle passt — statt dass der Schnellste den besten Platz
+              bekommt.</p>
+
+           <p style="color:#64748b;font-size:14px;">
+             Gib gern <strong>mehrere</strong> Zeitfenster an. Je mehr Auswahl,
+             desto eher bekommst du eine Zeit, die dir wirklich passt. Deine
+             Wunschzeit kannst du markieren.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zeiten eintragen</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "verfuegbarkeit_zuteilung": {
+      return {
+        subject: `Dein Termin steht: ${payload.fixplatz_text ?? ""}`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Danke fürs Eintragen deiner Zeiten. Dein fester Termin steht:</p>
+
+           <div style="background:#F3F5F8;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0;font-size:16px;font-weight:600;color:#1C244B;">
+               ${payload.fixplatz_text ?? ""}
+             </p>
+             <p style="margin:8px 0 0;color:#475569;font-size:14px;">
+               ${payload.anzahl_termine ?? 0} Termine sind eingetragen – du musst
+               nichts mehr einzeln buchen.
+             </p>
+           </div>
+
+           ${
+             payload.wunsch_erfuellt
+               ? `<p style="color:#065f46;font-size:14px;">Das ist die Zeit, die du als
+                    Wunschtermin markiert hattest.</p>`
+               : `<p style="color:#64748b;font-size:14px;">Deine Wunschzeit liess sich
+                    diesmal nicht mit allen anderen Terminen vereinbaren — dieser Platz
+                    war der beste, der für alle aufging. Wenn er gar nicht passt, melde
+                    dich bitte, dann schauen wir nochmals.</p>`
+           }
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal#termine" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Termine ansehen</a>
            </p>`
         ),
       };

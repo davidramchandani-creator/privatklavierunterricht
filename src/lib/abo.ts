@@ -182,6 +182,53 @@ export function baueAboAngebot(params: {
   };
 }
 
+/**
+ * Lektionszahl, wenn der Wochentag beim Kauf noch nicht feststeht.
+ *
+ * Beim Fixplatz sucht der Schüler sich den Termin nicht selbst aus — er gibt
+ * an, wann er kann, und bekommt den Termin zugeteilt. Beim Kauf ist der
+ * Wochentag also offen, die Lektionszahl hängt aber davon ab (je nachdem,
+ * welche Ferien auf welchen Tag fallen).
+ *
+ * Gelöst über das **Minimum** aller Tage, die in Frage kommen: Es wird nie
+ * mehr versprochen, als sich auf jedem möglichen Tag auch halten lässt.
+ * Fällt die Zuteilung später auf einen Tag mit einer Lektion mehr, wird
+ * trotzdem nur die zugesicherte Zahl gebucht — der Preis steht schon fest,
+ * und eine Gratislektion wäre bei 15 Schülern kein kleiner Betrag.
+ *
+ * Die Spanne ist ohnehin schmal: über ein Halbjahr unterscheiden sich die
+ * Wochentage um höchstens eine Lektion.
+ */
+export function lektionenMinimum(params: {
+  periodeStart: string;
+  laufzeitMonate: number;
+  /** Wochentage, die in Frage kommen (0 = So … 6 = Sa). */
+  moeglicheTage: number[];
+  rhythmus: Rhythmus;
+  ferien: Ferienzeitraum[];
+}): { lektionen: number; proTag: Record<number, number> } {
+  const ende = periodenEnde(params.periodeStart, params.laufzeitMonate);
+  const tage =
+    params.moeglicheTage.length > 0 ? params.moeglicheTage : [1, 2, 3, 4, 5];
+
+  const proTag: Record<number, number> = {};
+  for (const wd of tage) {
+    proTag[wd] = berechneAboTermine({
+      start: params.periodeStart,
+      ende,
+      weekday: wd,
+      rhythmus: params.rhythmus,
+      ferien: params.ferien,
+    }).anzahl;
+  }
+
+  const werte = Object.values(proTag);
+  return {
+    lektionen: werte.length > 0 ? Math.min(...werte) : 0,
+    proTag,
+  };
+}
+
 export type Monatsrate = {
   sequenz: number;
   betrag: number;

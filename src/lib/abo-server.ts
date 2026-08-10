@@ -7,8 +7,10 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  ABO_LAUFZEIT_MONATE,
   baueAboAngebot,
   baueMonatsraten,
+  lektionenMinimum,
   type AboAngebot,
   type AboVariante,
   type Ferienzeitraum,
@@ -123,6 +125,66 @@ export async function baueVorschau(
       angebot.laufzeitMonate,
       angebot.periodeStart
     ),
+  };
+}
+
+/**
+ * Angebot, wenn der Termin noch zugeteilt werden muss.
+ *
+ * Beim Fixplatz wählt der Schüler den Slot nicht selbst — er gibt an, wann er
+ * kann. Die Lektionszahl richtet sich nach dem ungünstigsten der möglichen
+ * Tage, damit der beim Kauf genannte Preis in jedem Fall hält.
+ */
+export async function baueVorschauOhneTermin(
+  admin: SupabaseClient,
+  params: {
+    studentId: string;
+    variante: AboVariante;
+    rhythmus: Rhythmus;
+    moeglicheTage: number[];
+    periodeStart: string;
+  }
+): Promise<AboVorschau> {
+  const [preise, ferien] = await Promise.all([
+    ladeAboPreise(admin, params.studentId),
+    ladeFerien(admin, params.periodeStart),
+  ]);
+
+  const laufzeitMonate = ABO_LAUFZEIT_MONATE[params.variante];
+  const { lektionen, proTag } = lektionenMinimum({
+    periodeStart: params.periodeStart,
+    laufzeitMonate,
+    moeglicheTage: params.moeglicheTage,
+    rhythmus: params.rhythmus,
+    ferien,
+  });
+
+  // Der ungünstigste Tag bestimmt die zugesicherte Zahl – also mit genau dem
+  // rechnen, damit Termine, Ferienliste und Preis zusammenpassen.
+  const schlechtesterTag =
+    Object.entries(proTag).sort((a, b) => a[1] - b[1])[0]?.[0] ?? "3";
+
+  const angebot = baueAboAngebot({
+    variante: params.variante,
+    rhythmus: params.rhythmus,
+    weekday: Number(schlechtesterTag),
+    periodeStart: params.periodeStart,
+    preisProLektion: aboLektionspreis(preise, params.variante, "fix"),
+    ferien,
+  });
+
+  // Auf die zugesicherte Zahl kürzen, falls der gewählte Tag doch mehr hergibt.
+  const termine = angebot.termine.slice(0, lektionen);
+  const gesamtpreis = Math.round(lektionen * angebot.preisProLektion * 20) / 20;
+
+  return {
+    ...angebot,
+    lektionen,
+    termine,
+    gesamtpreis,
+    monatsbetrag: Math.round((gesamtpreis / laufzeitMonate) * 20) / 20,
+    bookingMode: "fix",
+    monatsraten: baueMonatsraten(gesamtpreis, laufzeitMonate, params.periodeStart),
   };
 }
 

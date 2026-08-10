@@ -11,7 +11,6 @@ import {
   Shuffle,
   ChevronLeft,
   Info,
-  AlertTriangle,
   CalendarOff,
   RefreshCw,
   CalendarRange,
@@ -20,10 +19,30 @@ import { formatCHF } from "@/lib/utils";
 import { ABO_LABELS, ABO_LAUFZEIT_MONATE, type AboVariante } from "@/lib/abo";
 import { FLEX_SURCHARGE_PERCENT, type BookingMode, type Rhythmus } from "@/lib/rhythmus";
 import type { AboVorschau } from "@/lib/abo-server";
-import type { FixplatzAngebot } from "@/lib/fixplatz-suche";
-import { aboAbschliessen, aboVorschau, fixplaetzeSuchen } from "../actions";
+import { aboAbschliessen, aboVorschau } from "../actions";
 
-type Schritt = "variante" | "rhythmus" | "art" | "platz" | "uebersicht";
+const TAGE = [
+  { nr: 1, lang: "Montag" },
+  { nr: 2, lang: "Dienstag" },
+  { nr: 3, lang: "Mittwoch" },
+  { nr: 4, lang: "Donnerstag" },
+  { nr: 5, lang: "Freitag" },
+];
+
+type TagStand = { aktiv: boolean; von: string; bis: string; praeferenz: number };
+
+/** Auswahlraster 16:30–20:30 in Viertelstunden, wie die Unterrichtszeiten. */
+const ZEITEN = (() => {
+  const out: string[] = [];
+  for (let m = 16 * 60 + 30; m <= 20 * 60 + 30; m += 15) {
+    out.push(
+      `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`
+    );
+  }
+  return out;
+})();
+
+type Schritt = "variante" | "rhythmus" | "art" | "zeiten" | "uebersicht";
 
 function tag(iso: string): string {
   const [y, m, d] = iso.split("-");
@@ -140,8 +159,13 @@ export default function NeuesAbo({
   const [variante, setVariante] = useState<AboVariante>("halbjahr");
   const [rhythmus, setRhythmus] = useState<Rhythmus>("woechentlich");
   const [bookingMode, setBookingMode] = useState<BookingMode>("fix");
-  const [angebote, setAngebote] = useState<FixplatzAngebot[] | null>(null);
-  const [platz, setPlatz] = useState<FixplatzAngebot | null>(null);
+  const [zeiten, setZeiten] = useState<Record<number, TagStand>>(() => {
+    const init: Record<number, TagStand> = {};
+    for (const t of TAGE) {
+      init[t.nr] = { aktiv: false, von: "16:30", bis: "20:30", praeferenz: 2 };
+    }
+    return init;
+  });
   const [vorschau, setVorschau] = useState<AboVorschau | null>(null);
   const [autoRenew, setAutoRenew] = useState(true);
 
@@ -164,8 +188,13 @@ export default function NeuesAbo({
     setVariante("halbjahr");
     setRhythmus("woechentlich");
     setBookingMode("fix");
-    setAngebote(null);
-    setPlatz(null);
+    setZeiten(() => {
+      const init: Record<number, TagStand> = {};
+      for (const t of TAGE) {
+        init[t.nr] = { aktiv: false, von: "16:30", bis: "20:30", praeferenz: 2 };
+      }
+      return init;
+    });
     setVorschau(null);
     setAutoRenew(true);
     setRegeln({
@@ -184,27 +213,18 @@ export default function NeuesAbo({
     zuruecksetzen();
   }
 
-  function plaetzeLaden() {
-    setAngebote(null);
-    setPlatz(null);
-    startLaden(async () => {
-      const res = await fixplaetzeSuchen(
-        variante === "halbjahr" ? "10er" : "20er",
-        rhythmus
-      );
-      if ("error" in res) {
-        setFehler(res.error);
-        setAngebote([]);
-        return;
-      }
-      setAngebote(res.angebote);
-    });
-  }
+  /** Tage, an denen der Schüler kann – Grundlage für Preis und Zuteilung. */
+  const aktiveTage = TAGE.filter((t) => zeiten[t.nr].aktiv);
 
-  function vorschauLaden(weekday: number) {
+  function vorschauLaden() {
     setVorschau(null);
     startLaden(async () => {
-      const res = await aboVorschau({ variante, rhythmus, bookingMode, weekday });
+      const res = await aboVorschau({
+        variante,
+        rhythmus,
+        bookingMode,
+        moeglicheTage: aktiveTage.map((t) => t.nr),
+      });
       if ("error" in res) {
         setFehler(res.error);
         return;
@@ -219,22 +239,31 @@ export default function NeuesAbo({
     else if (schritt === "rhythmus") setSchritt("art");
     else if (schritt === "art") {
       if (bookingMode === "fix") {
-        plaetzeLaden();
-        setSchritt("platz");
+        setSchritt("zeiten");
       } else {
-        vorschauLaden(3);
+        vorschauLaden();
         setSchritt("uebersicht");
       }
-    } else if (schritt === "platz" && platz) {
-      vorschauLaden(platz.weekday);
+    } else if (schritt === "zeiten") {
+      if (aktiveTage.length === 0) {
+        setFehler("Bitte wähle mindestens einen Tag aus.");
+        return;
+      }
+      for (const t of aktiveTage) {
+        if (zeiten[t.nr].von >= zeiten[t.nr].bis) {
+          setFehler(`${t.lang}: Das Ende liegt vor dem Beginn.`);
+          return;
+        }
+      }
+      vorschauLaden();
       setSchritt("uebersicht");
     }
   }
 
   function zurueck() {
     setFehler(null);
-    if (schritt === "uebersicht") setSchritt(bookingMode === "fix" ? "platz" : "art");
-    else if (schritt === "platz") setSchritt("art");
+    if (schritt === "uebersicht") setSchritt(bookingMode === "fix" ? "zeiten" : "art");
+    else if (schritt === "zeiten") setSchritt("art");
     else if (schritt === "art") setSchritt("rhythmus");
     else if (schritt === "rhythmus") setSchritt("variante");
   }
@@ -247,9 +276,14 @@ export default function NeuesAbo({
         variante,
         rhythmus,
         bookingMode,
-        fixplatz:
-          bookingMode === "fix" && platz
-            ? { weekday: platz.weekday, time: platz.time, parity: platz.parity }
+        verfuegbarkeiten:
+          bookingMode === "fix"
+            ? aktiveTage.map((t) => ({
+                wochentag: t.nr,
+                fruehestens: zeiten[t.nr].von,
+                spaetestens: zeiten[t.nr].bis,
+                praeferenz: zeiten[t.nr].praeferenz,
+              }))
             : undefined,
         autoRenew,
         regelnBestaetigt: true,
@@ -267,7 +301,7 @@ export default function NeuesAbo({
     schritt === "variante" ||
     schritt === "rhythmus" ||
     schritt === "art" ||
-    (schritt === "platz" && platz != null);
+    (schritt === "zeiten" && aktiveTage.length > 0);
 
   if (!canBuy) {
     return (
@@ -345,7 +379,7 @@ export default function NeuesAbo({
                   <p className="text-xs text-gray-500">
                     {schritt === "rhythmus" && "Schritt 1 von 3 · Rhythmus"}
                     {schritt === "art" && "Schritt 2 von 3 · Buchungsart"}
-                    {schritt === "platz" && "Schritt 3 von 3 · Fester Termin"}
+                    {schritt === "zeiten" && "Schritt 3 von 3 · Wann kannst du?"}
                     {schritt === "uebersicht" && "Übersicht und Bestätigung"}
                   </p>
                 </div>
@@ -424,70 +458,130 @@ export default function NeuesAbo({
                 </>
               )}
 
-              {schritt === "platz" && (
+              {schritt === "zeiten" && (
                 <>
                   <Infobox>
                     <p>
-                      Angeboten werden nur Termine, die über die{" "}
-                      <strong>ganze Laufzeit</strong> frei sind.
+                      Deinen festen Termin bekommst du <strong>zugeteilt</strong> —
+                      du musst nicht selbst suchen. Sag mir einfach, wann du
+                      grundsätzlich kannst.
+                    </p>
+                    <p>
+                      Ich fahre zu allen Schülern und lege die Termine so, dass
+                      möglichst wenig Leerfahrt entsteht. Je mehr Auswahl ich habe,
+                      desto eher bekommst du eine Zeit, die dir wirklich passt.
                     </p>
                   </Infobox>
 
-                  {ladend && (
-                    <div className="py-8 text-center">
-                      <Loader2 className="w-5 h-5 animate-spin text-gray-400 mx-auto" />
-                      <p className="text-sm text-gray-500 mt-2">
-                        Freie Termine werden gesucht…
-                      </p>
-                    </div>
-                  )}
+                  <div className="space-y-2.5">
+                    {TAGE.map((t) => {
+                      const z = zeiten[t.nr];
+                      return (
+                        <div
+                          key={t.nr}
+                          className={`rounded-xl border transition-colors ${
+                            z.aktiv
+                              ? "border-[#1C244B]/30 bg-[#1C244B]/[0.03]"
+                              : "border-gray-200"
+                          }`}
+                        >
+                          <label className="flex items-center gap-3 p-3.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={z.aktiv}
+                              onChange={(e) =>
+                                setZeiten((v) => ({
+                                  ...v,
+                                  [t.nr]: { ...v[t.nr], aktiv: e.target.checked },
+                                }))
+                              }
+                              className="w-4 h-4 rounded border-gray-300 text-[#1C244B] focus:ring-[#1C244B]"
+                            />
+                            <span className="font-600 text-gray-900 text-sm flex-1">
+                              {t.lang}
+                            </span>
+                          </label>
 
-                  {!ladend && angebote && angebote.length === 0 && (
-                    <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 flex gap-2.5">
-                      <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                      <p className="text-sm text-amber-900 leading-snug">
-                        Im Moment ist kein Platz über die ganze Laufzeit frei. Wähle
-                        „Flexibel“ oder melde dich bei mir.
-                      </p>
-                    </div>
-                  )}
+                          {z.aktiv && (
+                            <div className="px-3.5 pb-3.5 space-y-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-500 w-8">von</span>
+                                <select
+                                  value={z.von}
+                                  onChange={(e) =>
+                                    setZeiten((v) => ({
+                                      ...v,
+                                      [t.nr]: { ...v[t.nr], von: e.target.value },
+                                    }))
+                                  }
+                                  className="flex-1 rounded-lg border border-gray-200 px-2.5 min-h-[40px] text-sm focus:outline-none focus:border-[#1C244B]"
+                                >
+                                  {ZEITEN.map((x) => (
+                                    <option key={x} value={x}>
+                                      {x}
+                                    </option>
+                                  ))}
+                                </select>
+                                <span className="text-xs text-gray-500 w-6 text-right">
+                                  bis
+                                </span>
+                                <select
+                                  value={z.bis}
+                                  onChange={(e) =>
+                                    setZeiten((v) => ({
+                                      ...v,
+                                      [t.nr]: { ...v[t.nr], bis: e.target.value },
+                                    }))
+                                  }
+                                  className="flex-1 rounded-lg border border-gray-200 px-2.5 min-h-[40px] text-sm focus:outline-none focus:border-[#1C244B]"
+                                >
+                                  {ZEITEN.map((x) => (
+                                    <option key={x} value={x}>
+                                      {x}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
 
-                  {!ladend && angebote && angebote.length > 0 && (
-                    <div className="space-y-2">
-                      {angebote.slice(0, 12).map((a) => {
-                        const aktiv =
-                          platz?.weekday === a.weekday &&
-                          platz?.time === a.time &&
-                          platz?.parity === a.parity;
-                        return (
-                          <button
-                            key={`${a.weekday}-${a.time}-${a.parity}`}
-                            type="button"
-                            onClick={() => setPlatz(a)}
-                            className={`w-full text-left rounded-xl border p-3.5 transition-colors ${
-                              aktiv
-                                ? "border-[#1C244B] bg-[#1C244B]/5"
-                                : "border-gray-200 hover:border-gray-300"
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <p className="font-600 text-gray-900 text-sm min-w-0">
-                                {a.beschreibung}
-                              </p>
-                              <span
-                                className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                                  aktiv
-                                    ? "border-[#1C244B] bg-[#1C244B]"
-                                    : "border-gray-300"
-                                }`}
-                              >
-                                {aktiv && <Check className="w-3 h-3 text-white" />}
-                              </span>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs text-gray-500">Passt mir</span>
+                                {[
+                                  { wert: 1, text: "zur Not" },
+                                  { wert: 2, text: "gut" },
+                                  { wert: 3, text: "am besten" },
+                                ].map((pr) => (
+                                  <button
+                                    key={pr.wert}
+                                    type="button"
+                                    onClick={() =>
+                                      setZeiten((v) => ({
+                                        ...v,
+                                        [t.nr]: { ...v[t.nr], praeferenz: pr.wert },
+                                      }))
+                                    }
+                                    className={`text-xs font-600 px-2.5 min-h-[32px] rounded-lg border transition-colors ${
+                                      z.praeferenz === pr.wert
+                                        ? "border-[#1C244B] bg-[#1C244B] text-white"
+                                        : "border-gray-200 text-gray-600"
+                                    }`}
+                                  >
+                                    {pr.text}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
-                          </button>
-                        );
-                      })}
-                    </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {aktiveTage.length === 1 && (
+                    <p className="text-xs text-gray-500 leading-snug">
+                      Nur ein Tag ausgewählt. Mit mehreren Tagen findet sich eher
+                      eine Zeit, die dir wirklich passt — und du bekommst deinen
+                      Termin schneller.
+                    </p>
                   )}
                 </>
               )}
@@ -529,7 +623,9 @@ export default function NeuesAbo({
                         <div className="flex justify-between gap-4">
                           <span className="text-gray-500 flex-shrink-0">Termin</span>
                           <span className="font-600 text-gray-900 text-right">
-                            {platz ? platz.beschreibung : "frei wählbar"}
+                            {bookingMode === "fix"
+                              ? "wird dir zugeteilt"
+                              : "frei wählbar"}
                           </span>
                         </div>
                         <div className="flex justify-between gap-4">
@@ -694,9 +790,9 @@ export default function NeuesAbo({
                   Weiter
                 </button>
               )}
-              {schritt === "platz" && !platz && !ladend && (
+              {schritt === "zeiten" && aktiveTage.length === 0 && (
                 <p className="text-xs text-gray-400 text-center mt-2">
-                  Bitte einen Termin auswählen
+                  Bitte mindestens einen Tag auswählen
                 </p>
               )}
               {schritt === "uebersicht" && vorschau && !alleRegeln && (

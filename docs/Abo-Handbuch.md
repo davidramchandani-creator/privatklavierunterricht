@@ -94,14 +94,35 @@ Drei Schritte, jeder mit Erklärkasten:
 
 1. **Rhythmus** — jede Woche oder alle zwei Wochen
 2. **Buchungsart** — Fixplatz oder Flex, mit dem Aufpreis in Franken
-3. **Fester Termin** — nur Plätze, die über die **ganze Laufzeit** frei sind
+3. **Wann kannst du?** — Tage und Zeitfenster, plus Wunschzeit
 
-Danach die Übersicht mit dem Monatsbetrag gross und seinen echten Terminen:
+**Beim Fixplatz sucht sich der Schüler den Termin nicht selbst aus.** Er sagt,
+wann er grundsätzlich kann; den konkreten Platz teilst du zu (Abschnitt 9b).
+Alles andere wäre ein Widerspruch: Wer zuerst bucht, bekäme den besten Slot,
+und deine Route wäre wieder das, was übrig bleibt.
 
-> Halbjahresabo · 01.10.2026 – 31.03.2027 · 20 Lektionen · jeden Dienstag 17:15
-> **CHF 233.35 pro Monat**
-> In den Ferien kein Unterricht: 06.10., 13.10., 22.12., 29.12., 09.02., 16.02.
-> — bereits abgezogen, du zahlst nichts dafür
+Selbst buchen bleibt genau da, wo es hingehört — bei **Flex**. Dafür zahlt man
+schliesslich den Aufschlag.
+
+Danach die Übersicht mit dem Monatsbetrag:
+
+> Halbjahresabo · 01.10.2026 – 31.03.2027 · 20 Lektionen
+> **CHF 233.35 pro Monat** · Termin wird dir zugeteilt
+> In den Ferien kein Unterricht — bereits abgezogen, du zahlst nichts dafür
+
+### Warum der Preis trotzdem feststeht
+
+Die Lektionszahl hängt vom Wochentag ab (je nachdem, welche Ferien darauf
+fallen). Beim Kauf ist der Tag noch offen — gerechnet wird deshalb mit dem
+**ungünstigsten** der angegebenen Tage.
+
+Damit wird nie mehr versprochen, als sich halten lässt. Fällt die Zuteilung
+später auf einen Tag mit einer Lektion mehr, wird trotzdem nur die zugesicherte
+Zahl gebucht: Der Preis steht bereits fest, und eine Gratislektion wäre bei
+15 Schülern kein kleiner Betrag.
+
+Die Spanne ist ohnehin schmal — über ein Halbjahr unterscheiden sich die
+Wochentage um höchstens eine Lektion (CHF 70).
 
 **Fünf Punkte einzeln bestätigen.** Ein Sammelhäkchen liest niemand:
 
@@ -204,6 +225,119 @@ Monate geschlossen. Bereits gestellte Rechnungen bleiben unangetastet.
 
 ---
 
+## 9b. Terminplanung: erst fragen, dann zuteilen
+
+Das ist der bessere Weg, wenn du mehrere Schüler gleichzeitig einplanst —
+etwa zum Semesterstart.
+
+**Das Problem beim Selberbuchen:** Jeder Schüler sucht sich einen freien Platz.
+Wer zuerst kommt, bekommt den besten. Die Route ist dann, was übrig bleibt —
+und niemand merkt, dass ein Platz jemand anderem viel besser gepasst hätte.
+
+**Der bessere Ablauf** (Admin → Kalender → Terminplanung):
+
+1. **Runde starten** mit Titel und Antwortfrist. Alle aktiven Schüler bekommen
+   automatisch eine Anfrage.
+2. **Schüler tragen ein**, wann sie können — im Portal, direkt auf der
+   Startseite. Tag antippen, Zeitspanne wählen, Wunschzeit markieren.
+3. **Du siehst den Stand**: wer geantwortet hat, wer nicht. Mit einem Klick
+   kannst du an alle Nachzügler erinnern.
+4. **Zuteilung rechnen.** Jeder bekommt einen Termin, den er auch kann, bei
+   möglichst wenig Fahrzeit.
+5. **Anwenden.** Fixplätze werden gesetzt und die Terminserien gebucht. Jeder
+   bekommt seinen Termin per Mail.
+
+### Was die Zuteilung anders macht
+
+Die Verfügbarkeit ist eine **harte Bedingung**. Ein Termin, den jemand nicht
+kann, ist keine Lösung — egal wie gut er in die Route passt. Lieber wird
+jemand nicht zugeteilt und dir gemeldet.
+
+**Wer die wenigsten Möglichkeiten hat, kommt zuerst dran.** Ein Schüler, der
+nur dienstags um 17:00 kann, muss diesen Platz bekommen. Käme der flexible
+zuerst dran und besetzte ihn, fiele der andere heraus.
+
+**Danach wird getauscht.** Paare tauschen ihre Zeiten, wenn beide den Platz
+des anderen können und die Fahrzeit dadurch sinkt. In der Testrechnung mit
+16 Schülern bringt das 6:12 auf 5:06 pro Woche.
+
+**Bestehende Plätze werden bevorzugt.** Ohne diesen Bonus würde der Planer
+jedes Mal alles umwerfen, um zwei Minuten zu sparen — und deine Schüler
+hätten jedes Semester eine neue Zeit.
+
+### Was die Einschränkungen kosten
+
+Der Planer weist beides aus: die Fahrzeit mit den angegebenen Zeiten, und was
+ohne jede Einschränkung möglich wäre. In der Testrechnung 5:06 gegenüber
+3:37.
+
+Die Differenz ist keine Kritik an den Schülern, sondern deine
+Entscheidungsgrundlage: Ist sie gross, lohnt es sich, bei einzelnen um ein
+zusätzliches Zeitfenster zu bitten. Ist sie klein, ist alles in Ordnung.
+
+### Einen Einzelnen nachträglich einpassen
+
+Der Alltagsfall zwischen zwei Runden: Jemand schliesst im November ab, die
+nächste Planungsrunde ist im Februar. Ihn bis dahin warten zu lassen wäre
+falsch — er zahlt ja bereits.
+
+Auf der Planungsseite gibt es dafür die Karte **„Einzelnen Schüler
+einpassen"**. Sie beantwortet eine andere Frage als die Runde: nicht „wie sähe
+der beste Plan für alle aus", sondern **„wo passt dieser eine hin, ohne dass
+ich die anderen anfassen muss"**. Der bestehende Stundenplan bleibt
+unverändert.
+
+Gerechnet wird die **Mehrfahrzeit**: Was kostet dieser Abend mit ihm,
+verglichen mit ohne ihn — einschliesslich Umweg und veränderter Reihenfolge.
+Die Vorschläge sind danach sortiert, günstigster zuerst.
+
+Ein Vorschlag sieht so aus:
+
+> **Di 18:30** · Pfungen → *hier* → Winterthur Zt.
+> ✓ liegt auf dem Weg · kostet 3 Min. mehr Fahrzeit · Wunschzeit
+
+Gegenüber:
+
+> **Mi 18:00** · Andelfingen → *hier* → Heimweg
+> kostet 11 Min. mehr Fahrzeit
+
+Der Unterschied ist die ganze Idee: Der Dienstagsplatz liegt **zwischen** zwei
+Terminen, an denen du ohnehin vorbeifährst. Drei Minuten für eine ganze
+Lektion. Der Mittwoch ist ein echter Umweg — bei 20 Wochen sind 11 Minuten
+gegenüber 3 rund **2,7 Stunden Fahrzeit im Halbjahr**, für dieselbe Lektion
+und dasselbe Geld.
+
+Wer „Setzen" drückt, bekommt seine Serie gebucht — aber nur die **noch
+offenen** Lektionen. Wer im November einsteigt, bekommt nicht rückwirkend die
+Termine seit September.
+
+Vorausgesetzt ist, dass der Schüler seine Zeiten angegeben hat. Ohne die steht
+er in der Liste mit dem Vermerk „keine Zeiten angegeben" — dann zuerst die
+Anfrage schicken.
+
+---
+
+## 9c. Die Route zum Abfahren
+
+Der Routenplaner zeigt jeden Abend als das, was er ist: eine Fahrt. Oben die
+**Abfahrtszeit zuhause** (erste Lektion minus Anfahrt), dann die Halte
+durchnummeriert in der Reihenfolge, in der du sie abfährst, jeweils mit der
+Fahrzeit vom vorherigen Halt. Unten der Heimweg — der zählt mit, sonst sähe
+ein weit entfernter letzter Schüler künstlich günstig aus.
+
+Die Schaltfläche **„Route öffnen"** übergibt genau diese Reihenfolge an Google
+Maps: Start zuhause, alle Halte als Zwischenstopps, Ziel wieder zuhause.
+Google sortiert nichts um — was du auf dem Handy siehst, ist die gerechnete
+Route.
+
+Übergeben werden **Koordinaten, keine Adressen**. Eine Adresse könnte Google
+anders auflösen als der Planer sie geokodiert hat, und dann stimmte die
+angezeigte Route nicht mehr mit der gerechneten überein. Bei mehr als neun
+Halten wird gekappt — mehr nimmt Google Maps in einem Link nicht an; das
+betrifft dich erst ab zehn Lektionen an einem Abend.
+
+---
+
 ## 10. Was du im Admin tust
 
 **Abo anlegen** (Schülerdetail → Abo anlegen): Variante, Rhythmus,
@@ -214,19 +348,30 @@ gibt.
 
 **Schulferien** (Kalender → Schulferien): Zeiträume anlegen und löschen.
 
-**Routenplanung** (Kalender → Routenplanung): siehe Fixplatz-Handbuch.
+**Planungsrunde** (Kalender → Planung): Runde starten, erinnern, Zuteilung
+rechnen und anwenden. Auf derselben Seite: einzelne Schüler nachträglich
+einpassen (Abschnitt 9b).
+
+**Routenplanung** (Kalender → Routenplanung): Wochenplan rechnen,
+Tagesreihenfolge ansehen, Route in Google Maps öffnen, Fahrzeiten von Hand
+korrigieren.
 
 ---
 
 ## 11. Was noch offen ist
 
-- **Bestandsschüler**: laufen ihre alten Pakete zu Ende und wechseln danach.
-  Ein Migrationsweg ist noch nicht gebaut.
-- **AGB-Text**: die fünf Bestätigungspunkte entsprechen dem Modell, die AGB
-  selbst sind noch auf dem alten Stand.
-- **Ausweichtermin-Auswahl im Portal**: die Vorschläge stehen in der E-Mail;
-  die Auswahl direkt im Portal fehlt noch.
-- **Preisseite der Website**: zeigt noch die alten Pakete.
+- **Bestandsschüler aus WordPress**: die Datenübernahme machst du selbst.
 - **Der Build läuft in meiner Umgebung nicht** (Next.js stürzt dort im nativen
-  Binary ab). Geprüft ist alles über TypeScript, ESLint und 247 Tests — der
+  Binary ab). Geprüft ist alles über TypeScript, ESLint und 273 Tests — der
   echte Build passiert auf Vercel.
+
+## 12. Branch zusammenführen
+
+Der Arbeitsbranch `claude/redesign-website-yAf3u` ist 58 Commits vor `main`.
+Umgekehrt bringt `main` **keine** eigenen Änderungen mit — die 9 Commits dort
+sind Merge-Commits früherer Runden desselben Branches. Nachgeprüft über einen
+Dateivergleich gegen die gemeinsame Basis, nicht bloss angenommen.
+
+Der Zusammenschluss ist damit gefahrlos. Auf GitHub einen Pull Request von
+`claude/redesign-website-yAf3u` nach `main` öffnen und zusammenführen — so wie
+bei den bisherigen Runden.

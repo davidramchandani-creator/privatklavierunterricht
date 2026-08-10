@@ -13,8 +13,9 @@ import {
   Check,
   Info,
   Users,
+  Navigation,
 } from "lucide-react";
-import { formatDauer } from "@/lib/geo";
+import { formatDauer, navigationsLink } from "@/lib/geo";
 import { WEEKDAY_LABELS, WEEKDAY_SHORT } from "@/lib/fixplatz";
 import {
   adressenGeokodieren,
@@ -24,6 +25,17 @@ import {
   zuhauseSetzen,
   type PlanErgebnis,
 } from "../actions";
+
+/**
+ * Uhrzeit minus Sekunden, als "HH:MM".
+ * Für die Abfahrtszeit zuhause: erste Lektion minus Anfahrt.
+ */
+function minusSekunden(hhmm: string, sekunden: number): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  let min = h * 60 + m - Math.round(sekunden / 60);
+  if (min < 0) min += 24 * 60;
+  return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+}
 
 /** Kleiner Erklärkasten – überall gleich, damit nichts unerklärt bleibt. */
 function Infobox({
@@ -521,6 +533,23 @@ function Ergebnisansicht({
               </div>
             </div>
 
+            {tag.positionen.length > 0 && (
+              <div className="px-4 sm:px-5 py-2.5 bg-[#FAFBFC] border-b border-[#F1F3F6] flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-[#1C244B] text-white text-[11px] font-700 flex items-center justify-center flex-shrink-0">
+                  <Home className="w-3 h-3" />
+                </span>
+                <p className="text-xs text-gray-600">
+                  Abfahrt zuhause ca.{" "}
+                  <strong className="tabular-nums text-[#1C244B]">
+                    {minusSekunden(
+                      tag.positionen[0].beginn,
+                      tag.positionen[0].anfahrtSekunden
+                    )}
+                  </strong>
+                </p>
+              </div>
+            )}
+
             <ul className="divide-y divide-[#F1F3F6]">
               {tag.positionen.map((p, i) => {
                 const woechentlich =
@@ -530,6 +559,12 @@ function Ergebnisansicht({
                 return (
                   <li key={i} className="px-4 sm:px-5 py-3">
                     <div className="flex items-start gap-3">
+                      <span
+                        className="w-6 h-6 rounded-full bg-[#F3F5F8] text-[#1C244B] text-[11px] font-700 flex items-center justify-center flex-shrink-0 tabular-nums"
+                        title={`${i + 1}. Halt der Route`}
+                      >
+                        {i + 1}
+                      </span>
                       <span className="text-sm font-700 text-[#1C244B] tabular-nums whitespace-nowrap w-[92px] flex-shrink-0">
                         {p.beginn}–{p.ende}
                       </span>
@@ -571,9 +606,27 @@ function Ergebnisansicht({
               })}
             </ul>
 
-            <div className="px-4 sm:px-5 py-2.5 bg-[#FAFBFC] text-xs text-gray-500 flex items-center gap-1.5">
-              <Home className="w-3 h-3" />
-              Heimweg {formatDauer(tag.heimwegSekunden)}
+            <div className="px-4 sm:px-5 py-2.5 bg-[#FAFBFC] flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                <Home className="w-3 h-3" />
+                Heimweg {formatDauer(tag.heimwegSekunden)}
+              </span>
+              {tag.positionen.length > 0 && (
+                <a
+                  href={
+                    navigationsLink(
+                      tag.positionen[0].vonKoordinate,
+                      tag.positionen.map((p) => p.nachKoordinate)
+                    ) ?? "#"
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-600 text-[#1C244B] inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
+                >
+                  <Navigation className="w-3 h-3" />
+                  Route öffnen
+                </a>
+              )}
             </div>
 
             {tag.warnungen.length > 0 && (

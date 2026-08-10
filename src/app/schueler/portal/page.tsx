@@ -10,6 +10,7 @@ import ZahlungenSection from "./_components/ZahlungenSection";
 import ZahlungsplanCard from "./_components/ZahlungsplanCard";
 import ProposalCard from "./_components/ProposalCard";
 import AusweichTermine from "./_components/AusweichTermine";
+import VerfuegbarkeitFormular from "./_components/VerfuegbarkeitFormular";
 import PortalTabs from "./_components/PortalTabs";
 import PullToRefresh from "@/components/PullToRefresh";
 import RealtimeRefresh from "@/components/RealtimeRefresh";
@@ -28,7 +29,11 @@ import {
   todayInZurich,
 } from "@/lib/subscription";
 import Gruppenkurse from "./_components/Gruppenkurse";
-import { getGroupCourses, offeneAusfaelle } from "./actions";
+import {
+  getGroupCourses,
+  offeneAusfaelle,
+  offeneVerfuegbarkeitsabfrage,
+} from "./actions";
 
 export default async function SchuelerPortalPage() {
   const supabase = await createClient();
@@ -179,6 +184,9 @@ export default async function SchuelerPortalPage() {
   // Ausgefallene Lektionen, für die noch kein Ersatz gewählt wurde.
   const { ausfaelle } = await offeneAusfaelle();
 
+  // Laufende Verfügbarkeitsabfrage, falls eine offen ist.
+  const abfrage = await offeneVerfuegbarkeitsabfrage();
+
   if (!profile) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-5">
@@ -275,6 +283,15 @@ export default async function SchuelerPortalPage() {
 
   const termine = (
     <div className="space-y-5">
+      {abfrage.runde && (
+        <VerfuegbarkeitFormular
+          runde={abfrage.runde}
+          fenster={abfrage.fenster}
+          vorhanden={abfrage.vorhanden}
+          bemerkungVorhanden={abfrage.bemerkung}
+          bereitsGeantwortet={abfrage.geantwortet}
+        />
+      )}
       <AusweichTermine ausfaelle={ausfaelle} />
       <ProposalCard proposals={offeneProposals ?? []} />
       <NaechsteTermine
