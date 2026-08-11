@@ -222,6 +222,16 @@ function AboKarte({
       year: "numeric",
     });
 
+  // Drei Fälle, und alle drei müssen stimmen:
+  //
+  //   1. Fixplatz steht     → der konkrete Termin
+  //   2. Fixplatz vereinbart, Termin noch offen → ehrlich sagen, dass er kommt
+  //   3. Flexibel           → frei wählbar
+  //
+  // Fall 2 fiel vorher in den Flex-Zweig und las sich als „Jede Woche, frei
+  // wählbar". Das ist falsch: der Schüler hat gar keine freie Wahl, sein
+  // Termin kommt aus der Zuteilung. Er hätte vergeblich nach einem
+  // Buchungsknopf gesucht.
   const fixplatzText =
     paket.booking_mode === "fix" &&
     paket.fixplatz_weekday != null &&
@@ -234,9 +244,13 @@ function AboKarte({
             ? null
             : ((Number(paket.fixplatz_week_parity) === 1 ? 1 : 0) as 0 | 1)
         )
-      : paket.rhythmus === "zweiwoechentlich"
-        ? "Alle zwei Wochen, frei wählbar"
-        : "Jede Woche, frei wählbar";
+      : paket.booking_mode === "fix"
+        ? paket.rhythmus === "zweiwoechentlich"
+          ? "Fester Termin alle zwei Wochen – wird noch festgelegt"
+          : "Fester Termin jede Woche – wird noch festgelegt"
+        : paket.rhythmus === "zweiwoechentlich"
+          ? "Alle zwei Wochen, frei wählbar"
+          : "Jede Woche, frei wählbar";
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6">
