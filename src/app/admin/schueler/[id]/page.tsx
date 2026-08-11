@@ -6,6 +6,7 @@ import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
 import { computePackageState, canCancelPackage, PACKAGE_LABELS, type Package } from "@/lib/packages";
 import { describeFixplatz } from "@/lib/fixplatz";
 import type { Rhythmus } from "@/lib/rhythmus";
+import { parseSchweizerAdresse } from "@/lib/qr-pdf";
 import SchuelerDetailActions, { InvoiceAction, PreiseForm, PackageFormNew, DirektBuchung, ProposalForm, ProposalWithdraw, AppointmentActions, PackageTimerActions, AdjustLessonsButton } from "./_components/SchuelerDetailActions";
 import { StatusBadge } from "@/components/ui/status-badge";
 import RatenplanPanel from "./_components/RatenplanPanel";
@@ -160,6 +161,23 @@ export default async function SchuelerDetailPage({
             <div className="col-span-2 md:col-span-3">
               <p className="text-gray-400 text-xs font-600 uppercase tracking-wide mb-1">Adresse</p>
               <p className="text-gray-900">{profile.adresse}</p>
+              {/*
+                Für die QR-Rechnung muss die Adresse in Strasse, Nummer, PLZ
+                und Ort zerlegbar sein — der Schweizer Standard verlangt die
+                Felder einzeln. Ohne diesen Hinweis fiele erst beim Versand
+                auf, dass keine Rechnung erzeugt werden kann, und dann steht
+                es nur im Serverlog.
+              */}
+              {prices.payment_method !== "twint" &&
+                !parseSchweizerAdresse(profile.adresse) && (
+                  <p className="mt-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-snug">
+                    Für die QR-Rechnung fehlt hier etwas. Erwartet wird{" "}
+                    <strong>Strasse Nr., PLZ Ort</strong> — zum Beispiel
+                    „Sattleracherstrasse 59, 8413 Neftenbach“. Solange das
+                    nicht stimmt, lässt sich für {profile.vorname} keine
+                    Rechnung erzeugen.
+                  </p>
+                )}
             </div>
           )}
           {profile.notizen && (

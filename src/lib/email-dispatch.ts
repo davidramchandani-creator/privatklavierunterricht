@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendEmail } from "@/lib/email-sender";
 import { renderEmail } from "@/lib/email-templates";
-import { generateQRInvoicePdf, buildSpcData } from "@/lib/qr-invoice";
+import { generateQRInvoicePdf } from "@/lib/qr-invoice";
 import { buildLessonTwintLink, buildTwintLink } from "@/lib/twint";
 import { pricePerPersonFor } from "@/lib/group-courses";
 import { sendPushToUser, sendPushToAdmin } from "@/lib/push";
@@ -291,7 +291,16 @@ async function ensureInvoicePdfLink(
       debtorAddress: inv.payer_address ?? "",
     });
 
-    let pdfUrl: string;
+    // Nur ein echtes PDF wird festgeschrieben.
+    //
+    // Vorher landete auch der SPC-Notbehelf dauerhaft in `pdf_url` — mit der
+    // Folge, dass eine einmal fehlgeschlagene Erzeugung die Rechnung für
+    // immer kaputt liess: beim nächsten Aufruf war `pdf_url` ja gesetzt, also
+    // wurde nichts mehr versucht, und der Schüler bekam bis ans Ende eine
+    // Textdatei statt eines Einzahlungsscheins. Genau so steht es im Bestand.
+    //
+    // Jetzt bleibt `pdf_url` bei einem Fehlschlag leer, und der nächste
+    // Versuch erzeugt sie neu.
     if (result.type === "pdf") {
       const storagePath = `invoices/${invoiceId}.pdf`;
       const { error: uploadErr } = await admin.storage
@@ -300,19 +309,19 @@ async function ensureInvoicePdfLink(
           contentType: "application/pdf",
           upsert: true,
         });
-      pdfUrl = uploadErr
-        ? `spc:${buildSpcData({
-            invoiceNumber: inv.invoice_number ?? invoiceId,
-            amount: Number(inv.amount ?? 0),
-            debtorName: inv.payer_name ?? "Unbekannt",
-            debtorAddress: inv.payer_address ?? "",
-          })}`
-        : storagePath;
+      if (uploadErr) {
+        console.error(`[qr] Upload der Rechnung ${invoiceId} fehlgeschlagen:`, uploadErr);
+      } else {
+        await admin
+          .from("invoices")
+          .update({ pdf_url: storagePath })
+          .eq("id", invoiceId);
+      }
     } else {
-      pdfUrl = `spc:${result.spcData}`;
+      console.error(
+        `[qr] Rechnung ${invoiceId}: kein PDF erzeugbar, bleibt offen für einen neuen Versuch.`
+      );
     }
-
-    await admin.from("invoices").update({ pdf_url: pdfUrl }).eq("id", invoiceId);
   }
 
   return `${appUrl}/api/invoices/${invoiceId}/pdf?token=${inv.access_token}`;
