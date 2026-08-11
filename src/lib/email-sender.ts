@@ -15,6 +15,27 @@ function fromAddress(): string {
 }
 
 /**
+ * Testmodus: Umleitungsadresse, falls gesetzt.
+ *
+ * Solange `EMAIL_REDIRECT_TO` gesetzt ist, bekommt **kein** Schüler Post. Das
+ * ist der einzige Ort, an dem umgeleitet wird — bewusst ganz unten am
+ * Versand, damit auch geplante Mails aus der Outbox und jede künftige
+ * Mailstelle erfasst sind, ohne dass jemand daran denken muss.
+ */
+export function redirectAddress(): string | null {
+  const wert = process.env.EMAIL_REDIRECT_TO?.trim();
+  return wert ? wert : null;
+}
+
+/** Sichtbarer Hinweis im Mailkopf, wer sie eigentlich bekommen hätte. */
+function testBanner(echterEmpfaenger: string): string {
+  return `<div style="background:#f59e0b;color:#1c1917;padding:12px 16px;font-family:sans-serif;font-size:13px;line-height:1.5;">
+    <strong>Testmodus.</strong> Diese Mail wurde umgeleitet.
+    Empfänger wäre gewesen: <strong>${echterEmpfaenger}</strong>.
+  </div>`;
+}
+
+/**
  * Versand bevorzugt über die Resend-HTTP-API (läuft über 443, serverless-sicher).
  * Fällt nur ohne RESEND_API_KEY auf SMTP zurück (lokale Entwicklung).
  */
@@ -24,6 +45,16 @@ export async function sendEmail(opts: {
   html: string;
 }): Promise<void> {
   const resendKey = process.env.RESEND_API_KEY;
+
+  // Umleitung vor allem anderen: ab hier gibt es keinen Weg mehr zum Schüler.
+  const umleitung = redirectAddress();
+  if (umleitung) {
+    opts = {
+      to: umleitung,
+      subject: `[TEST → ${opts.to}] ${opts.subject}`,
+      html: testBanner(opts.to) + opts.html,
+    };
+  }
 
   if (resendKey) {
     const res = await fetch("https://api.resend.com/emails", {
