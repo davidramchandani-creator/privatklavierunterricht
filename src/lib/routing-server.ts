@@ -11,6 +11,7 @@ import { fahrzeitMitCache, punktSchluessel, type Punkt } from "./geo";
 import { geocode, geokodierungAktuell } from "./geocoding";
 import type { PlanEingabe, PlanSchueler, Tagesfenster } from "./routing";
 import type { Rhythmus } from "./rhythmus";
+import { istTest, type Kreis } from "./kreis";
 
 /**
  * Daves Ausgangspunkt. Steht in den Einstellungen, damit er nicht im Code
@@ -179,13 +180,17 @@ export type SchuelerRohdaten = {
  * weil sie mehr Platz reserviert.
  */
 export async function ladeSchueler(
-  admin: SupabaseClient
+  admin: SupabaseClient,
+  kreis: Kreis = "echt"
 ): Promise<SchuelerRohdaten[]> {
   const { data: profile } = await admin
     .from("profiles")
     .select("id, vorname, nachname, adresse, lat, lng, geocode_adresse, aktiv, role")
     .eq("role", "student")
     .eq("aktiv", true)
+    // Test und Ernst nie vermischen – sonst rechnet die Route über erfundene
+    // und echte Adressen zugleich und stimmt für keinen der beiden Fälle.
+    .eq("ist_test", istTest(kreis))
     .order("nachname");
 
   const ids = (profile ?? []).map((p) => p.id);
@@ -263,6 +268,9 @@ export async function ladeSchueler(
 export async function geokodiereOffene(
   admin: SupabaseClient
 ): Promise<{ erledigt: number; fehlgeschlagen: { name: string; adresse: string }[] }> {
+  // kreis-uebergreifend: Adressen auflösen gilt für alle. Testadressen
+  // brauchen genauso Koordinaten, sonst fällt der Testschüler still aus dem
+  // Plan – und das Auflösen wertet nichts aus, es füllt nur Stammdaten.
   const { data: profile } = await admin
     .from("profiles")
     .select("id, vorname, nachname, adresse, lat, lng, geocode_adresse")
@@ -315,12 +323,17 @@ export type PlanKontext = {
 
 export async function ladePlanEingabe(
   admin: SupabaseClient,
-  optionen: { nurFixplatz?: boolean; pufferMinuten?: number } = {}
+  optionen: {
+    nurFixplatz?: boolean;
+    pufferMinuten?: number;
+    kreis?: Kreis;
+  } = {}
 ): Promise<PlanKontext> {
+  const kreis = optionen.kreis ?? "echt";
   const [zuhause, fenster, schuelerRoh, fahrzeitCache] = await Promise.all([
     ladeZuhause(admin),
     ladeFenster(admin),
-    ladeSchueler(admin),
+    ladeSchueler(admin, kreis),
     ladeFahrzeiten(admin),
   ]);
 

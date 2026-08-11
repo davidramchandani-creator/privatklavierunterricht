@@ -111,6 +111,31 @@ Schüler.
 
 ---
 
+## Test und Ernst bleiben getrennt
+
+Nicht nur bei den Mails. Solange Testschüler existieren, rechnet **jede**
+Auswertung entweder mit den einen oder mit den anderen — nie mit beiden.
+
+| Wo | Was gilt |
+|---|---|
+| Routenplanung | Umschalter oben: Testschüler oder echte. Vorgabe ist die Testsicht, solange Testschüler da sind. |
+| Terminplanung, Runde | Ein Probelauf betrifft nur Testschüler, eine echte Runde nur echte. |
+| Einzelnen einpassen | Auswahl und Vergleichsplan folgen demselben Kreis. |
+| Abwesenheiten | Auswahlliste folgt dem, woran gerade gearbeitet wird. |
+| Dashboard | Zählt immer nur echte Schüler — die Kennzahlen sollen die Wirklichkeit zeigen. |
+| Adressen auflösen | Gilt bewusst für alle: Testadressen brauchen genauso Koordinaten. |
+
+Der Grund ist nicht Ordnungsliebe. Eine Route über fünf erfundene und sieben
+echte Adressen ergibt Fahrzeiten, Gruppen und Empfehlungen, die für keinen der
+beiden Fälle stimmen — und das Ergebnis sieht dabei völlig plausibel aus. Das
+ist die unangenehmste Sorte Fehler.
+
+Ein Test im Projekt wacht darüber: Wer künftig eine Auswertung über Schüler
+baut und den Kreis nicht angibt, bekommt einen roten Testlauf statt eines
+stillen Mischergebnisses.
+
+---
+
 ## Was der Probelauf nicht abdeckt
 
 - **Der Weg des Schülers durchs Portal.** Die Testschüler haben ihre Zeiten

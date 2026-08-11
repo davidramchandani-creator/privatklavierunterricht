@@ -16,6 +16,7 @@ import {
   Navigation,
 } from "lucide-react";
 import { formatDauer, navigationsLink } from "@/lib/geo";
+import { KREIS_LABEL, type Kreis } from "@/lib/kreis";
 import { WEEKDAY_LABELS, WEEKDAY_SHORT } from "@/lib/fixplatz";
 import {
   adressenGeokodieren,
@@ -90,16 +91,23 @@ export default function RoutenplanerBoard({
   zuhauseAdresse,
   schuelerGesamt,
   ohneAdresse,
+  kreisVorgabe,
+  anzahlEcht,
+  anzahlTest,
 }: {
   zuhauseAdresse: string;
   schuelerGesamt: number;
   ohneAdresse: number;
+  kreisVorgabe: Kreis;
+  anzahlEcht: number;
+  anzahlTest: number;
 }) {
   const [ergebnis, setErgebnis] = useState<PlanErgebnis | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [meldung, setMeldung] = useState<string | null>(null);
   const [nurFixplatz, setNurFixplatz] = useState(false);
   const [puffer, setPuffer] = useState(15);
+  const [kreis, setKreis] = useState<Kreis>(kreisVorgabe);
   const [adresse, setAdresse] = useState(zuhauseAdresse);
   const [isPending, startTransition] = useTransition();
   const [geoPending, startGeo] = useTransition();
@@ -108,7 +116,11 @@ export default function RoutenplanerBoard({
     setFehler(null);
     setMeldung(null);
     startTransition(async () => {
-      const res = await berechnePlan({ nurFixplatz, pufferMinuten: puffer });
+      const res = await berechnePlan({
+        nurFixplatz,
+        pufferMinuten: puffer,
+        kreis,
+      });
       if ("error" in res) {
         setFehler(res.error ?? null);
         setErgebnis(null);
@@ -232,6 +244,43 @@ export default function RoutenplanerBoard({
               {geoPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               Adressen auflösen
             </button>
+          </div>
+        </div>
+      )}
+
+      {anzahlTest > 0 && (
+        <div className="bg-white rounded-2xl border border-amber-200 p-4 sm:p-5 space-y-3">
+          <p className="text-sm font-600 text-[#1C244B]">Womit rechnen?</p>
+          <p className="text-sm text-gray-600 leading-snug">
+            Es sind gerade Testschüler angelegt. Beide zusammen zu rechnen
+            ergäbe Fahrzeiten, die für keinen der beiden Fälle stimmen — darum
+            entweder oder.
+          </p>
+          <div className="flex gap-2">
+            {(["test", "echt"] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => {
+                  setKreis(k);
+                  setErgebnis(null);
+                  setMeldung(null);
+                }}
+                className={`flex-1 sm:flex-none text-sm font-600 px-4 min-h-[44px] rounded-xl border transition-colors ${
+                  kreis === k
+                    ? "bg-[#1C244B] text-white border-[#1C244B]"
+                    : "bg-white text-gray-600 border-gray-200 active:bg-gray-50"
+                }`}
+              >
+                {KREIS_LABEL[k]}
+                <span
+                  className={`ml-1.5 font-400 ${
+                    kreis === k ? "text-white/70" : "text-gray-400"
+                  }`}
+                >
+                  ({k === "test" ? anzahlTest : anzahlEcht})
+                </span>
+              </button>
+            ))}
           </div>
         </div>
       )}
