@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { istTest, standardKreis } from "@/lib/kreis";
 import { formatDate } from "@/lib/utils";
 import {
   AbwesenheitForm,
@@ -11,6 +12,7 @@ import {
 
 export default async function AbwesenheitenPage() {
   const supabase = await createClient();
+  const kreis = await standardKreis(await createAdminClient());
 
   const [
     { data: absences },
@@ -34,6 +36,9 @@ export default async function AbwesenheitenPage() {
       .from("profiles")
       .select("id, vorname, nachname")
       .eq("role", "student")
+      // Während eines Testlaufs die Testschüler, sonst die echten – beide
+      // gemischt anzubieten lädt zum Fehlklick ein.
+      .eq("ist_test", istTest(kreis))
       .order("vorname"),
   ]);
 

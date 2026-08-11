@@ -25,7 +25,10 @@ export default async function AdminDashboardPage() {
       .from("profiles")
       .select("*", { count: "exact", head: true })
       .eq("role", "student")
-      .eq("aktiv", true),
+      .eq("aktiv", true)
+      // Testschüler bleiben aussen vor: die Kennzahlen sollen die
+      // Wirklichkeit zeigen, nicht den Testlauf.
+      .eq("ist_test", false),
     supabase
       .from("appointments")
       .select("id")

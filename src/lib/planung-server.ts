@@ -9,6 +9,7 @@
 // ============================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { istTest, type Kreis } from "./kreis";
 import { LESSON_DURATION_MIN } from "./booking";
 import { fahrzeitMitCache } from "./geo";
 import { ladeFahrzeiten, ladeFenster, ladeZuhause } from "./routing-server";
@@ -162,15 +163,19 @@ export async function ladeVerfuegbarkeit(
  * zusätzliche Fahrzeit kostet.
  */
 export async function ladeBestehendenPlan(
-  admin: SupabaseClient
+  admin: SupabaseClient,
+  kreis: Kreis = "echt"
 ): Promise<BestehenderTermin[]> {
   const { data } = await admin
     .from("packages")
     .select(
-      "student_id, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, rhythmus, profiles(vorname, nachname, lat, lng)"
+      "student_id, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, rhythmus, profiles!inner(vorname, nachname, lat, lng, ist_test)"
     )
     .eq("status", "active")
     .eq("booking_mode", "fix")
+    // Ein Testschüler wird gegen den Testplan eingepasst, nicht gegen die
+    // echten Termine – sonst wäre die Zusatzfahrzeit frei erfunden.
+    .eq("profiles.ist_test", istTest(kreis))
     .not("fixplatz_weekday", "is", null);
 
   const termine: BestehenderTermin[] = [];
@@ -245,11 +250,21 @@ export async function findeEinpassungFuer(
   studentId: string,
   pufferMinuten: number
 ): Promise<EinpassKontext | { error: string }> {
+  // Der Kreis ergibt sich aus dem Schüler selbst: ein Testschüler wird gegen
+  // den Testplan eingepasst, ein echter gegen den echten. So kann man es
+  // nicht falsch aufrufen.
+  const { data: wer } = await admin
+    .from("profiles")
+    .select("ist_test")
+    .eq("id", studentId)
+    .maybeSingle();
+  const kreis: Kreis = wer?.ist_test ? "test" : "echt";
+
   const [zuhause, fenster, fahrzeitCache, bestehend] = await Promise.all([
     ladeZuhause(admin),
     ladeFenster(admin),
     ladeFahrzeiten(admin),
-    ladeBestehendenPlan(admin),
+    ladeBestehendenPlan(admin, kreis),
   ]);
 
   const { data: prof } = await admin

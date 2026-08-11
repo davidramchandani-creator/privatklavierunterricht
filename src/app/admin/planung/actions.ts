@@ -19,6 +19,7 @@ import {
 } from "@/lib/planung-server";
 import { beschreibeZuteilung, type Zuteilung } from "@/lib/zuteilung";
 import type { Rhythmus } from "@/lib/rhythmus";
+import { istTest, standardKreis } from "@/lib/kreis";
 
 async function assertAdmin(): Promise<{ error: string } | null> {
   const supabase = await createClient();
@@ -356,11 +357,17 @@ export async function wartendeSchueler(): Promise<{
 
   const admin = await createAdminClient();
 
+  // Während eines Testlaufs stehen die Testschüler zur Auswahl, sonst die
+  // echten. Beides zusammen anzubieten hiesse, dass ein Fehlklick einen
+  // echten Schüler in den Testplan setzt.
+  const kreis = await standardKreis(admin);
+
   const { data: profile } = await admin
     .from("profiles")
     .select("id, vorname, nachname")
     .eq("role", "student")
-    .eq("aktiv", true);
+    .eq("aktiv", true)
+    .eq("ist_test", istTest(kreis));
 
   const ids = (profile ?? []).map((p) => p.id as string);
   if (ids.length === 0) return { schueler: [] };

@@ -1,14 +1,22 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { ladeSchueler, ladeZuhause } from "@/lib/routing-server";
+import { standardKreis } from "@/lib/kreis";
 import RoutenplanerBoard from "./_components/RoutenplanerBoard";
 
 export const dynamic = "force-dynamic";
 
 export default async function RoutenplanungPage() {
   const admin = await createAdminClient();
-  const [zuhause, schueler] = await Promise.all([
+
+  // Läuft ein Testlauf, ist die Testsicht die Vorgabe – sonst mischte sich
+  // beides und die Fahrzeiten stimmten für keinen der beiden Fälle.
+  const kreis = await standardKreis(admin);
+
+  const [zuhause, schueler, echte, test] = await Promise.all([
     ladeZuhause(admin),
-    ladeSchueler(admin),
+    ladeSchueler(admin, kreis),
+    ladeSchueler(admin, "echt"),
+    ladeSchueler(admin, "test"),
   ]);
 
   const ohneAdresse = schueler.filter((s) => s.lat == null || s.lng == null).length;
@@ -27,6 +35,9 @@ export default async function RoutenplanungPage() {
         zuhauseAdresse={zuhause.adresse}
         schuelerGesamt={schueler.length}
         ohneAdresse={ohneAdresse}
+        kreisVorgabe={kreis}
+        anzahlEcht={echte.length}
+        anzahlTest={test.length}
       />
     </div>
   );

@@ -11,6 +11,7 @@ import {
   type TagesanzahlVariante,
   type Vergleich,
 } from "@/lib/routing";
+import { standardKreis, type Kreis } from "@/lib/kreis";
 import {
   geokodiereOffene,
   ladePlanEingabe,
@@ -59,17 +60,26 @@ export type PlanErgebnis = {
 export async function berechnePlan(optionen: {
   nurFixplatz?: boolean;
   pufferMinuten?: number;
+  kreis?: Kreis;
 }): Promise<PlanErgebnis | { error: string }> {
   const verboten = await assertAdmin();
   if (verboten) return verboten;
 
   const admin = await createAdminClient();
+  const kreis = optionen.kreis ?? (await standardKreis(admin));
   const kontext = await ladePlanEingabe(admin, {
     nurFixplatz: optionen.nurFixplatz,
     pufferMinuten: optionen.pufferMinuten,
+    kreis,
   });
 
   if (kontext.eingabe.schueler.length === 0) {
+    if (kreis === "test") {
+      return {
+        error:
+          "Es gibt keine Testschüler. Lege sie unter Testmodus an oder wechsle auf die echten Schüler.",
+      };
+    }
     return {
       error: optionen.nurFixplatz
         ? "Es gibt noch keine Schüler mit Fixplatz."
