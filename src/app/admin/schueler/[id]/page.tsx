@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
 import { computePackageState, canCancelPackage, PACKAGE_LABELS, type Package } from "@/lib/packages";
+import { describeFixplatz } from "@/lib/fixplatz";
+import type { Rhythmus } from "@/lib/rhythmus";
 import SchuelerDetailActions, { InvoiceAction, PreiseForm, PackageFormNew, DirektBuchung, ProposalForm, ProposalWithdraw, AppointmentActions, PackageTimerActions, AdjustLessonsButton } from "./_components/SchuelerDetailActions";
 import { StatusBadge } from "@/components/ui/status-badge";
 import RatenplanPanel from "./_components/RatenplanPanel";
@@ -200,6 +202,7 @@ export default async function SchuelerDetailPage({
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2">Typ</th>
+                <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2">Termin</th>
                 <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2">Lektionen</th>
                 <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2 hidden sm:table-cell">Preis/Lekt.</th>
                 <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2 hidden md:table-cell">Gültig bis</th>
@@ -211,10 +214,53 @@ export default async function SchuelerDetailPage({
               {(packages as Package[]).map((pkg) => {
                 const usedCount = lessonsUsedByPackage.get(pkg.id) ?? pkg.lessons_used ?? 0;
                 const state = computePackageState(pkg, usedCount);
+                // Halbjahr/Jahr, Rhythmus und Fix/Flex stehen sonst nirgends im
+                // Admin – ohne diese Zeile sieht ein Abo aus wie jedes andere
+                // Paket, und man weiss nicht, was man vor sich hat.
+                const varianteText =
+                  pkg.abo_variante === "halbjahr"
+                    ? "Halbjahr"
+                    : pkg.abo_variante === "jahr"
+                      ? "Jahr"
+                      : null;
+                const rhythmusText =
+                  pkg.rhythmus === "zweiwoechentlich"
+                    ? "alle zwei Wochen"
+                    : pkg.rhythmus
+                      ? "wöchentlich"
+                      : null;
+                const artText = [varianteText, rhythmusText]
+                  .filter(Boolean)
+                  .join(" · ");
+
+                const terminText =
+                  pkg.booking_mode === "flex"
+                    ? "Flexibel – selbst buchen"
+                    : pkg.fixplatz_weekday != null && pkg.fixplatz_time != null
+                      ? describeFixplatz(
+                          pkg.fixplatz_weekday,
+                          pkg.fixplatz_time,
+                          (pkg.rhythmus === "zweiwoechentlich"
+                            ? "zweiwoechentlich"
+                            : "woechentlich") as Rhythmus,
+                          (pkg.fixplatz_week_parity as 0 | 1 | null) ?? null
+                        )
+                      : pkg.booking_mode === "fix"
+                        ? "Fixplatz – Termin folgt aus der Planung"
+                        : "—";
+
                 return (
                   <tr key={pkg.id}>
                     <td className="py-3 text-sm font-500 text-gray-900">
                       {PACKAGE_LABELS[pkg.type] ?? pkg.name ?? pkg.type}
+                      {artText && (
+                        <span className="block text-xs font-400 text-gray-500 mt-0.5">
+                          {artText}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 text-sm text-gray-600">
+                      {terminText}
                     </td>
                     <td className="py-3 text-sm text-gray-600">
                       {state.lessonsUsed}/{state.lessonsTotal}
