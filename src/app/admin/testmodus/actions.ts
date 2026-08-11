@@ -99,6 +99,62 @@ export async function testStand(): Promise<TestStand> {
 }
 
 /**
+ * Legt das Abo eines Testschülers an – bewusst **ohne** Fixplatz.
+ *
+ * Genau das soll die Zuteilung ja finden. Bis vor Kurzem verbot eine Regel in
+ * der Datenbank diesen Zustand („Fixplatz heisst, der Platz steht"), weshalb
+ * das Anlegen stillschweigend fehlschlug und die Testschüler ohne Abo
+ * dastanden.
+ */
+async function legeTestAboAn(
+  admin: Awaited<ReturnType<typeof createAdminClient>>,
+  userId: string,
+  t: (typeof TEST_SCHUELER)[number],
+  unterrichtstage: { wochentag: number; beginn: string; ende: string }[]
+): Promise<string | null> {
+  const periodeStart = naechsterPeriodenstart(todayInZurich());
+  const vorschau = await baueVorschau(admin, {
+    studentId: userId,
+    variante: t.variante,
+    rhythmus: t.rhythmus as Rhythmus,
+    bookingMode: "fix",
+    weekday:
+      testVerfuegbarkeit(t, unterrichtstage)[0]?.wochentag ??
+      unterrichtstage[0].wochentag,
+    periodeStart,
+  });
+
+  const { error } = await admin.from("packages").insert({
+    student_id: userId,
+    type: t.variante === "halbjahr" ? "10er" : "20er",
+    name: `Testabo ${t.variante}`,
+    lessons_total: vorschau.lektionen,
+    price_per_lesson: vorschau.preisProLektion,
+    total_price: vorschau.gesamtpreis,
+    payment_method: "qr",
+    starts_at: new Date(`${periodeStart}T00:00:00.000Z`).toISOString(),
+    expires_at: new Date(`${vorschau.periodeEnde}T23:59:59.000Z`).toISOString(),
+    status: "active",
+    billing_mode: "raten",
+    term_months: vorschau.laufzeitMonate,
+    auto_renew: false,
+    deposit_amount: 0,
+    instalment_count: vorschau.laufzeitMonate,
+    instalment_amount: vorschau.monatsbetrag,
+    rhythmus: t.rhythmus,
+    booking_mode: "fix",
+    flex_surcharge_percent: 0,
+    abo_variante: t.variante,
+    abo_lektionen: vorschau.lektionen,
+    monatsbetrag: vorschau.monatsbetrag,
+    periode_start: periodeStart,
+    periode_ende: vorschau.periodeEnde,
+  });
+
+  return error ? error.message : null;
+}
+
+/**
  * Legt die Testschüler an: Konto, Profil, Adresse geokodiert, aktives Abo
  * und die Zeiten, die sie „angegeben" hätten.
  *
@@ -111,7 +167,9 @@ export async function testdatenAnlegen(): Promise<
   | {
       angelegt: number;
       aufgefrischt: number;
+      nachgeliefert: number;
       ohneKoordinaten: string[];
+      ohneAbo: string[];
       error: undefined;
     }
   | { error: string }
@@ -133,6 +191,8 @@ export async function testdatenAnlegen(): Promise<
   const ohneKoordinaten: string[] = [];
   let angelegt = 0;
   let aufgefrischt = 0;
+  const ohneAbo: string[] = [];
+  let nachgeliefert = 0;
 
   // Die Zeiten der Testschüler richten sich nach deinen echten
   // Unterrichtstagen. Fest verdrahtete Wochentage wären beim ersten Anlauf
@@ -176,6 +236,21 @@ export async function testdatenAnlegen(): Promise<
           praeferenz: v.praeferenz,
         }))
       );
+      // Fehlt das Abo, wird es nachgeliefert. Beim ersten Anlauf sind alle
+      // fünf ohne Abo entstanden, weil der Insert an einer Regel scheiterte
+      // und der Fehler verschluckt wurde.
+      const { data: paket } = await admin
+        .from("packages")
+        .select("id")
+        .eq("student_id", id)
+        .eq("status", "active")
+        .maybeSingle();
+      if (!paket) {
+        const fehler = await legeTestAboAn(admin, id, t, unterrichtstage);
+        if (fehler) ohneAbo.push(`${t.vorname} ${t.nachname} (${fehler})`);
+        else nachgeliefert++;
+      }
+
       aufgefrischt++;
       continue;
     }
@@ -214,45 +289,8 @@ export async function testdatenAnlegen(): Promise<
       continue;
     }
 
-    // Aktives Abo – ohne Fixplatz, denn genau den soll die Zuteilung finden.
-    const periodeStart = naechsterPeriodenstart(todayInZurich());
-    const vorschau = await baueVorschau(admin, {
-      studentId: userId,
-      variante: t.variante,
-      rhythmus: t.rhythmus as Rhythmus,
-      bookingMode: "fix",
-      weekday:
-        testVerfuegbarkeit(t, unterrichtstage)[0]?.wochentag ??
-        unterrichtstage[0].wochentag,
-      periodeStart,
-    });
-
-    await admin.from("packages").insert({
-      student_id: userId,
-      type: t.variante === "halbjahr" ? "10er" : "20er",
-      name: `Testabo ${t.variante}`,
-      lessons_total: vorschau.lektionen,
-      price_per_lesson: vorschau.preisProLektion,
-      total_price: vorschau.gesamtpreis,
-      payment_method: "qr",
-      starts_at: new Date(`${periodeStart}T00:00:00.000Z`).toISOString(),
-      expires_at: new Date(`${vorschau.periodeEnde}T23:59:59.000Z`).toISOString(),
-      status: "active",
-      billing_mode: "raten",
-      term_months: vorschau.laufzeitMonate,
-      auto_renew: false,
-      deposit_amount: 0,
-      instalment_count: vorschau.laufzeitMonate,
-      instalment_amount: vorschau.monatsbetrag,
-      rhythmus: t.rhythmus,
-      booking_mode: "fix",
-      flex_surcharge_percent: 0,
-      abo_variante: t.variante,
-      abo_lektionen: vorschau.lektionen,
-      monatsbetrag: vorschau.monatsbetrag,
-      periode_start: periodeStart,
-      periode_ende: vorschau.periodeEnde,
-    });
+    const aboFehler = await legeTestAboAn(admin, userId, t, unterrichtstage);
+    if (aboFehler) ohneAbo.push(`${t.vorname} ${t.nachname} (${aboFehler})`);
 
     // Dauerangabe (runde_id null) – eine Probelauf-Runde greift darauf zurück.
     await admin.from("student_verfuegbarkeit").insert(
@@ -272,7 +310,14 @@ export async function testdatenAnlegen(): Promise<
   revalidatePath("/admin/testmodus");
   revalidatePath("/admin/planung");
   revalidatePath("/admin/schueler");
-  return { angelegt, aufgefrischt, ohneKoordinaten, error: undefined };
+  return {
+    angelegt,
+    aufgefrischt,
+    nachgeliefert,
+    ohneKoordinaten,
+    ohneAbo,
+    error: undefined,
+  };
 }
 
 /**
