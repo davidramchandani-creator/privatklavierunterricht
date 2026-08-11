@@ -6,7 +6,8 @@ import { geocode } from "@/lib/geocoding";
 import { baueVorschau, naechsterPeriodenstart } from "@/lib/abo-server";
 import { todayInZurich } from "@/lib/subscription";
 import { redirectAddress } from "@/lib/email-sender";
-import { TEST_SCHUELER, testEmail } from "@/lib/testdaten";
+import { TEST_SCHUELER, testEmail, testVerfuegbarkeit } from "@/lib/testdaten";
+import { ladeFenster } from "@/lib/routing-server";
 import type { Rhythmus } from "@/lib/rhythmus";
 
 async function assertAdmin(): Promise<{ error: string } | null> {
@@ -107,7 +108,13 @@ export async function testStand(): Promise<TestStand> {
  * Einzelanfrage.
  */
 export async function testdatenAnlegen(): Promise<
-  { angelegt: number; ohneKoordinaten: string[]; error: undefined } | { error: string }
+  | {
+      angelegt: number;
+      aufgefrischt: number;
+      ohneKoordinaten: string[];
+      error: undefined;
+    }
+  | { error: string }
 > {
   const verboten = await assertAdmin();
   if (verboten) return verboten;
@@ -125,18 +132,53 @@ export async function testdatenAnlegen(): Promise<
   const admin = await createAdminClient();
   const ohneKoordinaten: string[] = [];
   let angelegt = 0;
+  let aufgefrischt = 0;
+
+  // Die Zeiten der Testschüler richten sich nach deinen echten
+  // Unterrichtstagen. Fest verdrahtete Wochentage wären beim ersten Anlauf
+  // schon falsch gewesen – dann fällt ein Testschüler mit „an keinem
+  // Unterrichtstag verfügbar" heraus und man sucht den Fehler am falschen Ort.
+  const unterrichtstage = await ladeFenster(admin);
+  if (unterrichtstage.length === 0) {
+    return {
+      error:
+        "Es sind keine Unterrichtszeiten hinterlegt. Trage sie zuerst unter Kalender → Verfügbarkeit ein.",
+    };
+  }
 
   for (let i = 0; i < TEST_SCHUELER.length; i++) {
     const t = TEST_SCHUELER[i];
     const email = testEmail(i);
 
-    // Schon vorhanden? Dann überspringen statt doppelt anlegen.
+    // Schon vorhanden? Dann nicht doppelt anlegen, aber die Zeiten
+    // auffrischen. Ändern sich die Unterrichtstage, passen die alten Angaben
+    // nicht mehr — und ein Testschüler, der an keinem Unterrichtstag kann,
+    // sieht aus wie ein Fehler im Planer.
     const { data: da } = await admin
       .from("profiles")
       .select("id")
       .eq("email", email)
       .maybeSingle();
-    if (da) continue;
+    if (da) {
+      const id = da.id as string;
+      await admin
+        .from("student_verfuegbarkeit")
+        .delete()
+        .eq("student_id", id)
+        .is("runde_id", null);
+      await admin.from("student_verfuegbarkeit").insert(
+        testVerfuegbarkeit(t, unterrichtstage).map((v) => ({
+          student_id: id,
+          runde_id: null,
+          wochentag: v.wochentag,
+          fruehestens: v.fruehestens,
+          spaetestens: v.spaetestens,
+          praeferenz: v.praeferenz,
+        }))
+      );
+      aufgefrischt++;
+      continue;
+    }
 
     const { data: userData, error: createError } =
       await admin.auth.admin.createUser({
@@ -179,7 +221,9 @@ export async function testdatenAnlegen(): Promise<
       variante: t.variante,
       rhythmus: t.rhythmus as Rhythmus,
       bookingMode: "fix",
-      weekday: t.verfuegbarkeit[0]?.wochentag ?? 3,
+      weekday:
+        testVerfuegbarkeit(t, unterrichtstage)[0]?.wochentag ??
+        unterrichtstage[0].wochentag,
       periodeStart,
     });
 
@@ -212,7 +256,7 @@ export async function testdatenAnlegen(): Promise<
 
     // Dauerangabe (runde_id null) – eine Probelauf-Runde greift darauf zurück.
     await admin.from("student_verfuegbarkeit").insert(
-      t.verfuegbarkeit.map((v) => ({
+      testVerfuegbarkeit(t, unterrichtstage).map((v) => ({
         student_id: userId,
         runde_id: null,
         wochentag: v.wochentag,
@@ -228,7 +272,7 @@ export async function testdatenAnlegen(): Promise<
   revalidatePath("/admin/testmodus");
   revalidatePath("/admin/planung");
   revalidatePath("/admin/schueler");
-  return { angelegt, ohneKoordinaten, error: undefined };
+  return { angelegt, aufgefrischt, ohneKoordinaten, error: undefined };
 }
 
 /**

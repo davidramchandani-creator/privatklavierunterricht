@@ -534,6 +534,10 @@ function PackageFormNew({
   const [angebote, setAngebote] = useState<FixplatzAngebot[] | null>(null);
   const [platz, setPlatz] = useState<FixplatzAngebot | null>(null);
   const [vorschau, setVorschau] = useState<AboVorschau | null>(null);
+  // Vorgabe: die Planung entscheidet. Wer jeden Termin einzeln von Hand
+  // setzt, bekommt eine Route aus lauter einzeln vernünftigen Entscheidungen,
+  // die in der Summe trotzdem schlecht ist.
+  const [quelle, setQuelle] = useState<"planung" | "jetzt">("planung");
 
   function plaetzeSuchen() {
     setError(null);
@@ -555,7 +559,8 @@ function PackageFormNew({
     });
   }
 
-  function vorschauLaden(weekday: number) {
+  /** Ohne Wochentag: vorsichtige Rechnung über den ungünstigsten Tag. */
+  function vorschauLaden(weekday?: number) {
     setVorschau(null);
     startLaden(async () => {
       const res = await aboVorschauAdmin({
@@ -563,7 +568,7 @@ function PackageFormNew({
         variante,
         rhythmus,
         bookingMode,
-        weekday,
+        weekday: weekday ?? null,
       });
       if ("error" in res) {
         setError(res.error ?? null);
@@ -649,6 +654,7 @@ function PackageFormNew({
               setBookingMode(e.target.value as BookingMode);
               setPlatz(null);
               setVorschau(null);
+              setQuelle("planung");
             }}
             className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
@@ -660,8 +666,61 @@ function PackageFormNew({
 
       {bookingMode === "fix" && (
         <div className="rounded-lg border border-gray-200 p-3 space-y-2.5">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-600 text-gray-900">Fester Termin</p>
+          <input type="hidden" name="fixplatz_quelle" value={quelle} />
+
+          <p className="text-xs font-600 text-gray-900">Fester Termin</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setQuelle("planung");
+                setPlatz(null);
+                vorschauLaden();
+              }}
+              className={`text-left rounded-lg border px-3 py-2.5 transition-colors ${
+                quelle === "planung"
+                  ? "border-[#1C244B] bg-[#1C244B]/5"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <p className="text-xs font-600 text-gray-900">
+                Die Planung entscheidet
+              </p>
+              <p className="text-[11px] text-gray-500 leading-snug mt-0.5">
+                Abo läuft sofort, der Termin kommt aus der Zuteilung — zusammen
+                mit den anderen und mit der kürzesten Route.
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setQuelle("jetzt")}
+              className={`text-left rounded-lg border px-3 py-2.5 transition-colors ${
+                quelle === "jetzt"
+                  ? "border-[#1C244B] bg-[#1C244B]/5"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <p className="text-xs font-600 text-gray-900">
+                Termin jetzt festlegen
+              </p>
+              <p className="text-[11px] text-gray-500 leading-snug mt-0.5">
+                Wenn die Zeit schon abgemacht ist. Der Platz wird sofort
+                gebucht.
+              </p>
+            </button>
+          </div>
+
+          {quelle === "planung" && (
+            <p className="text-[11px] text-gray-500 bg-gray-50 rounded-lg px-3 py-2 leading-snug">
+              Der Schüler erscheint danach unter Terminplanung als wartend. Ist
+              gerade keine Runde offen, kannst du ihn dort einzeln einpassen
+              oder nach seinen Zeiten fragen.
+            </p>
+          )}
+
+          {quelle === "jetzt" && (
+          <>
+          <div className="flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={plaetzeSuchen}
@@ -715,6 +774,8 @@ function PackageFormNew({
                 <input type="hidden" name="fixplatz_week_parity" value={platz.parity} />
               )}
             </>
+          )}
+          </>
           )}
         </div>
       )}
@@ -772,7 +833,10 @@ function PackageFormNew({
         <Button
           type="submit"
           size="sm"
-          disabled={isPending || (bookingMode === "fix" && !platz)}
+          disabled={
+            isPending ||
+            (bookingMode === "fix" && quelle === "jetzt" && !platz)
+          }
         >
           {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Abo anlegen"}
         </Button>
@@ -780,7 +844,7 @@ function PackageFormNew({
           Abbrechen
         </Button>
       </div>
-      {bookingMode === "fix" && !platz && (
+      {bookingMode === "fix" && quelle === "jetzt" && !platz && (
         <p className="text-xs text-gray-400">
           Zuerst einen freien Termin auswählen.
         </p>

@@ -22,13 +22,23 @@ export type TestSchueler = {
   zweck: string;
   variante: "halbjahr" | "jahr";
   rhythmus: "woechentlich" | "zweiwoechentlich";
-  /** Zeiten, die dieser Schüler „angeben" würde. */
-  verfuegbarkeit: {
-    wochentag: number;
-    fruehestens: string;
-    spaetestens: string;
-    praeferenz: number;
-  }[];
+  /**
+   * Wie eng dieser Schüler kann – **nicht** als feste Wochentage.
+   *
+   * Feste Tage wären der naheliegende, aber falsche Weg: sie müssten mit
+   * deinen tatsächlichen Unterrichtstagen übereinstimmen. Tun sie es nicht,
+   * fällt der Testschüler mit „an keinem Unterrichtstag verfügbar" heraus —
+   * und man sucht den Fehler im Planer statt in den Testdaten. Genau das ist
+   * beim ersten Anlauf passiert.
+   *
+   * Darum die Angabe relativ: „kann an allen Tagen", „nur am ersten", „nur
+   * am letzten". Die echten Tage kommen beim Anlegen aus deiner
+   * Verfügbarkeit.
+   */
+  tage: "alle" | "erster" | "letzter" | "erste_zwei";
+  /** Zeitliche Einschränkung innerhalb des Unterrichtsfensters. */
+  zeit: "ganz" | "spaet" | "frueh";
+  praeferenz: number;
 };
 
 /** Kennzeichnet Testkonten eindeutig – danach wird auch aufgeräumt. */
@@ -50,10 +60,9 @@ export const TEST_SCHUELER: TestSchueler[] = [
       "Direkt nebenan. Muss praktisch gratis sein – wenn der Planer hier viel Fahrzeit ausweist, stimmt die Rechnung nicht.",
     variante: "halbjahr",
     rhythmus: "woechentlich",
-    verfuegbarkeit: [
-      { wochentag: 2, fruehestens: "16:30", spaetestens: "20:30", praeferenz: 3 },
-      { wochentag: 3, fruehestens: "16:30", spaetestens: "20:30", praeferenz: 2 },
-    ],
+    tage: "alle",
+    zeit: "ganz",
+    praeferenz: 2,
   },
   {
     vorname: "Bruno",
@@ -63,22 +72,21 @@ export const TEST_SCHUELER: TestSchueler[] = [
       "Südwestlich, auf dem Weg nach Winterthur. Sollte mit Winterthur auf denselben Abend fallen.",
     variante: "halbjahr",
     rhythmus: "woechentlich",
-    verfuegbarkeit: [
-      { wochentag: 2, fruehestens: "17:00", spaetestens: "20:30", praeferenz: 3 },
-      { wochentag: 4, fruehestens: "16:30", spaetestens: "20:30", praeferenz: 1 },
-    ],
+    tage: "erste_zwei",
+    zeit: "ganz",
+    praeferenz: 3,
   },
   {
     vorname: "Clara",
     nachname: "Testschülerin",
     adresse: "Technikumstrasse 9, 8400 Winterthur",
     zweck:
-      "Stadt, dieselbe Richtung wie Pfungen. Prüft, ob die Gruppierung nach Fahrtrichtung greift.",
+      "Stadt, dieselbe Richtung wie Pfungen. Prüft, ob die Gruppierung nach Fahrtrichtung greift – und kann nur spät, was den Abend nach hinten schiebt.",
     variante: "jahr",
     rhythmus: "zweiwoechentlich",
-    verfuegbarkeit: [
-      { wochentag: 2, fruehestens: "18:00", spaetestens: "20:30", praeferenz: 3 },
-    ],
+    tage: "erster",
+    zeit: "spaet",
+    praeferenz: 3,
   },
   {
     vorname: "David",
@@ -88,10 +96,9 @@ export const TEST_SCHUELER: TestSchueler[] = [
       "Östlich, andere Richtung. Darf nicht mit Pfungen zusammengelegt werden, obwohl die Luftlinie kurz ist.",
     variante: "jahr",
     rhythmus: "zweiwoechentlich",
-    verfuegbarkeit: [
-      { wochentag: 2, fruehestens: "18:00", spaetestens: "20:30", praeferenz: 3 },
-      { wochentag: 5, fruehestens: "16:30", spaetestens: "18:00", praeferenz: 2 },
-    ],
+    tage: "erste_zwei",
+    zeit: "spaet",
+    praeferenz: 3,
   },
   {
     vorname: "Elena",
@@ -101,16 +108,78 @@ export const TEST_SCHUELER: TestSchueler[] = [
       "Weit im Norden. Der teure Fall – zeigt, was ein einzelner Aussenposten an einem Abend kostet.",
     variante: "halbjahr",
     rhythmus: "woechentlich",
-    verfuegbarkeit: [
-      { wochentag: 3, fruehestens: "16:30", spaetestens: "19:00", praeferenz: 3 },
-    ],
+    tage: "letzter",
+    zeit: "frueh",
+    praeferenz: 3,
   },
 ];
 
 /**
- * Absichtlich enge Zeiten bei Clara und Elena: erst dann zeigt sich, ob die
- * Zuteilung knappe Verfügbarkeiten zuerst bedient. Wenn alle immer können,
- * ist jede Zuteilung richtig und der Test sagt nichts aus.
+ * Übersetzt die relative Angabe in die tatsächlichen Unterrichtstage.
+ *
+ * `unterrichtstage` kommt aus deiner Verfügbarkeit — dadurch passen die
+ * Testschüler immer zu deinem echten Stundenplan, auch wenn du ihn änderst.
+ */
+export function testVerfuegbarkeit(
+  t: TestSchueler,
+  unterrichtstage: { wochentag: number; beginn: string; ende: string }[]
+): { wochentag: number; fruehestens: string; spaetestens: string; praeferenz: number }[] {
+  if (unterrichtstage.length === 0) return [];
+  const sortiert = [...unterrichtstage].sort((a, b) => a.wochentag - b.wochentag);
+
+  const gewaehlt =
+    t.tage === "alle"
+      ? sortiert
+      : t.tage === "erster"
+        ? [sortiert[0]]
+        : t.tage === "letzter"
+          ? [sortiert[sortiert.length - 1]]
+          : sortiert.slice(0, 2);
+
+  return gewaehlt.map((tag) => {
+    // Die Einschränkung liegt *innerhalb* des Fensters, damit sie eng ist,
+    // ohne unmöglich zu sein. Eine Lektion dauert 45 Minuten, also bleibt in
+    // jeder Hälfte genug Platz.
+    const mitte = mittelpunkt(tag.beginn, tag.ende);
+    if (t.zeit === "spaet") {
+      return {
+        wochentag: tag.wochentag,
+        fruehestens: mitte,
+        spaetestens: tag.ende,
+        praeferenz: t.praeferenz,
+      };
+    }
+    if (t.zeit === "frueh") {
+      return {
+        wochentag: tag.wochentag,
+        fruehestens: tag.beginn,
+        spaetestens: mitte,
+        praeferenz: t.praeferenz,
+      };
+    }
+    return {
+      wochentag: tag.wochentag,
+      fruehestens: tag.beginn,
+      spaetestens: tag.ende,
+      praeferenz: t.praeferenz,
+    };
+  });
+}
+
+function mittelpunkt(von: string, bis: string): string {
+  const min = (z: string) => {
+    const [h, m] = z.split(":").map(Number);
+    return h * 60 + m;
+  };
+  // Auf eine Viertelstunde runden – der Planer rechnet im 15-Minuten-Raster.
+  const mitte = Math.round((min(von) + min(bis)) / 2 / 15) * 15;
+  return `${String(Math.floor(mitte / 60)).padStart(2, "0")}:${String(mitte % 60).padStart(2, "0")}`;
+}
+
+/**
+ * Absichtlich eng bei Clara und Elena: erst dann zeigt sich, ob die Zuteilung
+ * knappe Verfügbarkeiten zuerst bedient. Wenn alle immer können, ist jede
+ * Zuteilung richtig und der Test sagt nichts aus.
  */
 export const TEST_HINWEIS =
-  "Clara und Elena können nur an einem Tag – wenn die Zuteilung stimmt, bekommen sie ihren Platz zuerst.";
+  "Clara und Elena können nur an einem Tag, David nur abends – wenn die Zuteilung stimmt, bekommen die Knappen ihren Platz zuerst.";

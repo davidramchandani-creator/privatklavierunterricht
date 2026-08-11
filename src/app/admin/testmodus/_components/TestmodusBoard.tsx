@@ -39,7 +39,14 @@ export default function TestmodusBoard({ stand }: { stand: TestStand }) {
         return;
       }
       if (!("angelegt" in res)) return;
-      const teile = [`${res.angelegt} Testschüler angelegt.`];
+      const teile: string[] = [];
+      if (res.angelegt > 0) teile.push(`${res.angelegt} Testschüler angelegt.`);
+      if (res.aufgefrischt > 0) {
+        teile.push(
+          `${res.aufgefrischt} vorhandene aufgefrischt — ihre Zeiten passen jetzt zu deinen Unterrichtstagen.`
+        );
+      }
+      if (teile.length === 0) teile.push("Alles war bereits aktuell.");
       if (res.ohneKoordinaten.length > 0) {
         teile.push(
           `Ohne Koordinaten: ${res.ohneKoordinaten.join(", ")} — unter Routenplanung „Adressen auflösen“ drücken.`
@@ -272,7 +279,7 @@ export default function TestmodusBoard({ stand }: { stand: TestStand }) {
                 className="inline-flex items-center gap-2 text-sm font-600 border border-gray-200 rounded-xl px-4 min-h-[44px] active:bg-gray-50 disabled:opacity-40"
               >
                 <Check className="w-4 h-4" />
-                Fehlende ergänzen
+                Ergänzen und auffrischen
               </button>
               <button
                 onClick={entfernen}

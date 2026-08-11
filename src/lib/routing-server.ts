@@ -168,8 +168,8 @@ export type SchuelerRohdaten = {
   bookingMode: string;
   hatAktivesPaket: boolean;
   moeglicheTage: number[];
-  fruehestens: string | null;
-  spaetestens: string | null;
+  /** Zeiten je Wochentag – der genaue Fall. */
+  fenster: { wochentag: number; fruehestens: string; spaetestens: string }[];
 };
 
 /**
@@ -216,25 +216,25 @@ export async function ladeSchueler(
     });
   }
 
+  // Zeiten bleiben nach Wochentag getrennt.
+  //
+  // Vorher wurde daraus eine einzige engste Grenze gerechnet. Das ist falsch,
+  // sobald jemand an verschiedenen Tagen verschieden kann: „Di ab 18:00" und
+  // „Fr bis 18:00" ergaben zusammengezogen 18:00 bis 18:00 — ein Fenster von
+  // null Minuten. Der Schüler verschwand lautlos aus dem Plan mit der Meldung,
+  // er sei an keinem Tag verfügbar, obwohl er dienstags den ganzen Abend Zeit
+  // hat.
   const verfuegbarVon = new Map<
     string,
-    { tage: number[]; fruehestens: string | null; spaetestens: string | null }
+    { wochentag: number; fruehestens: string; spaetestens: string }[]
   >();
   for (const v of verfuegbar ?? []) {
-    const bisher = verfuegbarVon.get(v.student_id) ?? {
-      tage: [],
-      fruehestens: null,
-      spaetestens: null,
-    };
-    bisher.tage.push(Number(v.wochentag));
-    // Engste Grenze gewinnt – lieber zu vorsichtig planen als einen Termin
-    // ansetzen, an dem der Schüler gar nicht kann.
-    if (v.fruehestens && (!bisher.fruehestens || v.fruehestens > bisher.fruehestens)) {
-      bisher.fruehestens = String(v.fruehestens).slice(0, 5);
-    }
-    if (v.spaetestens && (!bisher.spaetestens || v.spaetestens < bisher.spaetestens)) {
-      bisher.spaetestens = String(v.spaetestens).slice(0, 5);
-    }
+    const bisher = verfuegbarVon.get(v.student_id) ?? [];
+    bisher.push({
+      wochentag: Number(v.wochentag),
+      fruehestens: String(v.fruehestens ?? "00:00").slice(0, 5),
+      spaetestens: String(v.spaetestens ?? "23:59").slice(0, 5),
+    });
     verfuegbarVon.set(v.student_id, bisher);
   }
 
@@ -253,9 +253,8 @@ export async function ladeSchueler(
         : "woechentlich") as Rhythmus,
       bookingMode: paket?.booking_mode ?? "flex",
       hatAktivesPaket: paket != null,
-      moeglicheTage: v?.tage ?? [],
-      fruehestens: v?.fruehestens ?? null,
-      spaetestens: v?.spaetestens ?? null,
+      moeglicheTage: [...new Set((v ?? []).map((f) => f.wochentag))],
+      fenster: v ?? [],
     };
   });
 }
@@ -351,8 +350,7 @@ export async function ladePlanEingabe(
     rhythmus: s.rhythmus,
     lektionMinuten: LESSON_DURATION_MIN,
     moeglicheTage: s.moeglicheTage,
-    fruehestens: s.fruehestens,
-    spaetestens: s.spaetestens,
+    fenster: s.fenster,
   }));
 
   return {
