@@ -2,13 +2,36 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { UserPlus, Loader2, Info, Check, Route, AlertTriangle } from "lucide-react";
+import {
+  UserPlus,
+  Loader2,
+  Info,
+  Check,
+  Route,
+  AlertTriangle,
+  Mail,
+} from "lucide-react";
 import { formatDauer } from "@/lib/geo";
 import { WEEKDAY_LABELS } from "@/lib/fixplatz";
 import type { Einpassung } from "@/lib/zuteilung";
-import { einpassungSuchen, einzelnEinpassen, wartendeSchueler } from "../actions";
+import {
+  einpassungSuchen,
+  einzelnEinpassen,
+  wartendeSchueler,
+  zeitenAnfragen,
+} from "../actions";
 
-type Wartend = { id: string; name: string; hatZeiten: boolean };
+type Wartend = {
+  id: string;
+  name: string;
+  hatZeiten: boolean;
+  angefragtBis: string | null;
+};
+
+function datum(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return `${d}.${m}.${y}`;
+}
 
 /**
  * Einen einzelnen Schüler in den laufenden Plan einpassen.
@@ -52,15 +75,33 @@ export default function EinpassenKarte({ puffer }: { puffer: number }) {
       }
       setName(res.schuelerName);
       if (!res.hatZeiten) {
-        setFehler(
-          `${res.schuelerName} hat noch keine Zeiten angegeben. Ohne die lässt sich kein Platz finden.`
-        );
         setVorschlaege([]);
         return;
       }
       setVorschlaege(res.vorschlaege);
     });
   }
+
+  function anfragen() {
+    if (!gewaehlt) return;
+    setFehler(null);
+    setMeldung(null);
+    startTransition(async () => {
+      const res = await zeitenAnfragen(gewaehlt);
+      if (res.error) {
+        setFehler(res.error);
+        return;
+      }
+      if (!("frist" in res)) return;
+      setMeldung(
+        `${name} wurde angeschrieben. Er kann seine Zeiten bis ${datum(res.frist)} im Portal eintragen — danach erscheint er hier mit Vorschlägen.`
+      );
+      wartendeSchueler().then((r) => setWartend(r.schueler));
+    });
+  }
+
+  const aktuell = wartend.find((w) => w.id === gewaehlt) ?? null;
+  const brauchtZeiten = aktuell != null && !aktuell.hatZeiten;
 
   function setzen(v: Einpassung) {
     if (
@@ -128,10 +169,51 @@ export default function EinpassenKarte({ puffer }: { puffer: number }) {
             {wartend.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.name}
-                {w.hatZeiten ? "" : " (keine Zeiten angegeben)"}
+                {w.hatZeiten
+                  ? ""
+                  : w.angefragtBis
+                    ? " (angefragt, noch keine Antwort)"
+                    : " (keine Zeiten angegeben)"}
               </option>
             ))}
           </select>
+        </div>
+      )}
+
+      {brauchtZeiten && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 space-y-2.5">
+          <div className="flex gap-2.5">
+            <Mail className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-900 leading-snug min-w-0">
+              <p className="font-600">
+                {aktuell.name} hat noch keine Zeiten angegeben.
+              </p>
+              <p className="mt-1">
+                {aktuell.angefragtBis ? (
+                  <>
+                    Angefragt, Frist {datum(aktuell.angefragtBis)} — es fehlt
+                    noch die Antwort. Nochmals anschreiben erinnert ihn, ohne
+                    eine zweite Anfrage anzulegen.
+                  </>
+                ) : (
+                  <>
+                    Ohne Zeiten lässt sich kein Platz finden. Die Anfrage geht
+                    nur an ihn — eine laufende Runde für alle bleibt davon
+                    unberührt.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={anfragen}
+            disabled={isPending}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-sm font-600 bg-white border border-amber-300 rounded-xl px-4 min-h-[40px] active:bg-amber-100 disabled:opacity-40"
+          >
+            {isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            <Mail className="w-3.5 h-3.5" />
+            {aktuell.angefragtBis ? "Nochmals anschreiben" : "Zeiten anfragen"}
+          </button>
         </div>
       )}
 
@@ -153,7 +235,7 @@ export default function EinpassenKarte({ puffer }: { puffer: number }) {
         </p>
       )}
 
-      {vorschlaege && vorschlaege.length === 0 && !fehler && (
+      {vorschlaege && vorschlaege.length === 0 && !fehler && !brauchtZeiten && (
         <p className="text-sm text-gray-600">
           Kein Platz gefunden, der zu den angegebenen Zeiten passt. Entweder ist
           alles belegt, oder es braucht ein zusätzliches Zeitfenster.

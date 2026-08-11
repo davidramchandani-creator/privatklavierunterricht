@@ -2178,6 +2178,42 @@ export function renderEmail(
       };
     }
 
+    case "verfuegbarkeit_einzelanfrage": {
+      return {
+        subject: "Wann kannst du? Dein fester Termin wartet",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+
+           <p>Dein Abo läuft, aber dein fester Termin steht noch aus. Damit ich
+              ihn setzen kann, brauche ich von dir, wann du kannst.</p>
+
+           <div style="background:#F3F5F8;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0 0 8px;color:#1C244B;font-size:14px;font-weight:600;">
+               Bitte bis ${payload.frist ? fmtDate(String(payload.frist)) : ""} eintragen
+             </p>
+             <p style="margin:0;color:#475569;font-size:14px;">
+               Es dauert eine Minute: Tage antippen, Zeitspanne wählen, fertig.
+             </p>
+           </div>
+
+           <p><strong>Warum ich frage:</strong> Ich fahre zu allen Schülern.
+              Wenn ich weiss, wann du kannst, finde ich einen Platz, der auf
+              einer Strecke liegt, die ich ohnehin fahre — das ist für dich die
+              beste Zeit und für mich die kürzeste Fahrt.</p>
+
+           <p style="color:#64748b;font-size:14px;">
+             Gib gern <strong>mehrere</strong> Zeitfenster an. Je mehr Auswahl,
+             desto eher bekommst du eine Zeit, die dir wirklich passt. Deine
+             Wunschzeit kannst du markieren.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zeiten eintragen</a>
+           </p>`
+        ),
+      };
+    }
+
     case "verfuegbarkeit_zuteilung": {
       return {
         subject: `Dein Termin steht: ${payload.fixplatz_text ?? ""}`,
