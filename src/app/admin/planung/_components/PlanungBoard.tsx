@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CalendarCheck,
@@ -52,6 +53,7 @@ export default function PlanungBoard({
   const [fehler, setFehler] = useState<string | null>(null);
   const [meldung, setMeldung] = useState<string | null>(null);
   const [puffer, setPuffer] = useState(15);
+  const [probelauf, setProbelauf] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function starten(e: React.FormEvent<HTMLFormElement>) {
@@ -199,6 +201,27 @@ export default function PlanungBoard({
             </div>
           </div>
 
+          <label className="flex items-start gap-2.5 cursor-pointer rounded-xl border border-amber-200 bg-amber-50 p-3.5">
+            <input
+              type="checkbox"
+              name="nur_test"
+              checked={probelauf}
+              onChange={(e) => setProbelauf(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-[#1C244B] flex-shrink-0"
+            />
+            <span className="text-sm text-amber-900 leading-snug min-w-0">
+              <strong>Probelauf</strong> — nur Testschüler anschreiben.
+              <span className="block text-amber-800 mt-0.5">
+                Deine echten Schüler bekommen nichts und werden auch bei
+                „Anwenden“ nicht angefasst. Testschüler legst du unter{" "}
+                <Link href="/admin/testmodus" className="underline font-600">
+                  Testmodus
+                </Link>{" "}
+                an.
+              </span>
+            </span>
+          </label>
+
           {fehler && (
             <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">
               {fehler}
@@ -211,7 +234,9 @@ export default function PlanungBoard({
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#1C244B] text-white font-600 text-sm rounded-xl px-5 min-h-[44px] hover:bg-[#151c3d] disabled:opacity-40"
           >
             {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-            Runde starten und alle anschreiben
+            {probelauf
+              ? "Probelauf starten (nur Testschüler)"
+              : "Runde starten und alle anschreiben"}
           </button>
         </form>
       </div>

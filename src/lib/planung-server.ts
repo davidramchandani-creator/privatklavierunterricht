@@ -78,11 +78,21 @@ export async function ladeAntwortStand(
   admin: SupabaseClient,
   rundeId: string
 ): Promise<AntwortStand[]> {
+  // Wie bei der Zuteilung: der Kreis richtet sich nach der Runde. Sonst
+  // stünden im Probelauf die echten Schüler als „hat nicht geantwortet" da
+  // und die Erinnerung ginge an sie.
+  const { data: rundeInfo } = await admin
+    .from("planungsrunden")
+    .select("nur_test")
+    .eq("id", rundeId)
+    .maybeSingle();
+
   const { data: schueler } = await admin
     .from("profiles")
     .select("id, vorname, nachname, email")
     .eq("role", "student")
     .eq("aktiv", true)
+    .eq("ist_test", rundeInfo?.nur_test === true)
     .order("nachname");
 
   const ids = (schueler ?? []).map((s) => s.id);
@@ -340,11 +350,23 @@ export async function rechneZuteilung(
   ]);
   const fahrzeit = fahrzeitMitCache(fahrzeitCache);
 
+  // Der Kreis richtet sich nach der Runde: ein Probelauf rechnet
+  // ausschliesslich mit Testschülern, eine echte Runde lässt sie aus. Ohne
+  // diese Grenze würde ein Probelauf beim Anwenden die echten Schüler
+  // umbuchen — der teuerste denkbare Fehler an dieser Stelle.
+  const { data: rundeInfo } = await admin
+    .from("planungsrunden")
+    .select("nur_test")
+    .eq("id", rundeId)
+    .maybeSingle();
+  const nurTest = rundeInfo?.nur_test === true;
+
   const { data: profile } = await admin
     .from("profiles")
     .select("id, vorname, nachname, lat, lng")
     .eq("role", "student")
-    .eq("aktiv", true);
+    .eq("aktiv", true)
+    .eq("ist_test", nurTest);
 
   const ids = (profile ?? []).map((p) => p.id);
   if (ids.length === 0) {

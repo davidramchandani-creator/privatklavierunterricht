@@ -20,6 +20,7 @@ import AdminBottomNav from "./_components/AdminBottomNav";
 import AdminPageTransition from "./_components/AdminPageTransition";
 import PullToRefresh from "@/components/PullToRefresh";
 import RealtimeRefresh from "@/components/RealtimeRefresh";
+import TestmodusBanner from "./_components/TestmodusBanner";
 
 export default async function AdminLayout({
   children,
@@ -45,7 +46,9 @@ export default async function AdminLayout({
     <>
     <PwaInit />
     <RealtimeRefresh />
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <TestmodusBanner />
+    <div className="flex-1 flex">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-60 bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-30">
         <div className="h-16 flex items-center gap-2.5 px-5 border-b border-gray-100 text-[#1C244B]">
@@ -96,6 +99,7 @@ export default async function AdminLayout({
       </div>
 
       <AdminBottomNav />
+    </div>
     </div>
     </>
   );

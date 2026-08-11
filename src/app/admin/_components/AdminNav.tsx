@@ -13,6 +13,7 @@ import {
   CreditCard,
   Inbox,
   Settings,
+  FlaskConical,
   Clock,
   ChevronDown,
   Bell,
@@ -59,6 +60,7 @@ export const navEntries: NavEntry[] = [
   { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
   { href: "/benachrichtigungen", label: "Benachrichtigungen", icon: Bell },
   { href: "/admin/einstellungen", label: "Einstellungen", icon: Settings },
+  { href: "/admin/testmodus", label: "Testmodus", icon: FlaskConical },
 ];
 
 function NavLink({

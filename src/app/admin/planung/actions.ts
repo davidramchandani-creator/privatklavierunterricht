@@ -52,6 +52,7 @@ export async function rundeStarten(
   const titel = String(formData.get("titel") ?? "").trim();
   const frist = String(formData.get("frist") ?? "");
   const periodeStart = String(formData.get("periode_start") ?? "") || null;
+  const nurTest = formData.get("nur_test") === "on";
 
   if (!titel) return { error: "Bitte einen Titel angeben." };
   if (!frist) return { error: "Bitte eine Frist angeben." };
@@ -70,17 +71,35 @@ export async function rundeStarten(
 
   const { data: runde, error } = await admin
     .from("planungsrunden")
-    .insert({ titel, frist, periode_start: periodeStart, status: "offen" })
+    .insert({
+      titel,
+      frist,
+      periode_start: periodeStart,
+      status: "offen",
+      nur_test: nurTest,
+    })
     .select("id")
     .single();
 
   if (error || !runde) return { error: "Die Runde konnte nicht angelegt werden." };
 
+  // Ein Probelauf schreibt ausschliesslich Testschüler an; eine echte Runde
+  // lässt sie umgekehrt aus, damit sie die Zuteilung nicht verfälschen.
   const { data: schueler } = await admin
     .from("profiles")
     .select("id, vorname, nachname")
     .eq("role", "student")
-    .eq("aktiv", true);
+    .eq("aktiv", true)
+    .eq("ist_test", nurTest);
+
+  if ((schueler ?? []).length === 0) {
+    await admin.from("planungsrunden").delete().eq("id", runde.id);
+    return {
+      error: nurTest
+        ? "Es gibt keine Testschüler. Lege sie zuerst unter Testmodus an."
+        : "Es gibt keine aktiven Schüler zum Anschreiben.",
+    };
+  }
 
   for (const s of schueler ?? []) {
     await admin
