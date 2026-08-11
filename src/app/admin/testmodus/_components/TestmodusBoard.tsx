@@ -48,7 +48,9 @@ export default function TestmodusBoard({ stand }: { stand: TestStand }) {
       }
       if (teile.length === 0) teile.push("Alles war bereits aktuell.");
       if (res.nachgeliefert > 0) {
-        teile.push(`${res.nachgeliefert} fehlende Abos nachgeliefert.`);
+        teile.push(
+          `${res.nachgeliefert} fehlende Abos/Ratenpläne nachgeliefert.`
+        );
       }
       if (res.ohneAbo.length > 0) {
         teile.push(`Ohne Abo: ${res.ohneAbo.join("; ")}`);

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { geocode } from "@/lib/geocoding";
-import { baueVorschau, naechsterPeriodenstart } from "@/lib/abo-server";
+import { baueVorschau, legeMonatsratenAn, naechsterPeriodenstart } from "@/lib/abo-server";
 import { todayInZurich } from "@/lib/subscription";
 import { redirectAddress } from "@/lib/email-sender";
 import { TEST_SCHUELER, testEmail, testVerfuegbarkeit } from "@/lib/testdaten";
@@ -124,34 +124,53 @@ async function legeTestAboAn(
     periodeStart,
   });
 
-  const { error } = await admin.from("packages").insert({
-    student_id: userId,
-    type: t.variante === "halbjahr" ? "10er" : "20er",
-    name: `Testabo ${t.variante}`,
-    lessons_total: vorschau.lektionen,
-    price_per_lesson: vorschau.preisProLektion,
-    total_price: vorschau.gesamtpreis,
-    payment_method: "qr",
-    starts_at: new Date(`${periodeStart}T00:00:00.000Z`).toISOString(),
-    expires_at: new Date(`${vorschau.periodeEnde}T23:59:59.000Z`).toISOString(),
-    status: "active",
-    billing_mode: "raten",
-    term_months: vorschau.laufzeitMonate,
-    auto_renew: false,
-    deposit_amount: 0,
-    instalment_count: vorschau.laufzeitMonate,
-    instalment_amount: vorschau.monatsbetrag,
-    rhythmus: t.rhythmus,
-    booking_mode: "fix",
-    flex_surcharge_percent: 0,
-    abo_variante: t.variante,
-    abo_lektionen: vorschau.lektionen,
-    monatsbetrag: vorschau.monatsbetrag,
-    periode_start: periodeStart,
-    periode_ende: vorschau.periodeEnde,
-  });
+  const { data: pkg, error } = await admin
+    .from("packages")
+    .insert({
+      student_id: userId,
+      type: t.variante === "halbjahr" ? "10er" : "20er",
+      name: `Testabo ${t.variante}`,
+      lessons_total: vorschau.lektionen,
+      price_per_lesson: vorschau.preisProLektion,
+      total_price: vorschau.gesamtpreis,
+      payment_method: "qr",
+      starts_at: new Date(`${periodeStart}T00:00:00.000Z`).toISOString(),
+      expires_at: new Date(`${vorschau.periodeEnde}T23:59:59.000Z`).toISOString(),
+      status: "active",
+      billing_mode: "raten",
+      term_months: vorschau.laufzeitMonate,
+      auto_renew: false,
+      deposit_amount: 0,
+      instalment_count: vorschau.laufzeitMonate,
+      instalment_amount: vorschau.monatsbetrag,
+      rhythmus: t.rhythmus,
+      booking_mode: "fix",
+      flex_surcharge_percent: 0,
+      abo_variante: t.variante,
+      abo_lektionen: vorschau.lektionen,
+      monatsbetrag: vorschau.monatsbetrag,
+      periode_start: periodeStart,
+      periode_ende: vorschau.periodeEnde,
+    })
+    .select("id")
+    .single();
 
-  return error ? error.message : null;
+  if (error || !pkg) return error?.message ?? "Paket konnte nicht angelegt werden.";
+
+  // Ohne diesen Schritt bleibt die Zahlungsseite leer: das Paket existiert,
+  // aber die Monatsraten – der Teil, den man eigentlich testen will – fehlen.
+  // Beim echten Admin-Abschluss (aboAnlegenAdmin) passiert das automatisch;
+  // hier war der Aufruf schlicht vergessen gegangen.
+  const raten = await legeMonatsratenAn(admin, {
+    packageId: pkg.id,
+    studentId: userId,
+    gesamtpreis: vorschau.gesamtpreis,
+    laufzeitMonate: vorschau.laufzeitMonate,
+    periodeStart,
+  });
+  if ("error" in raten) return `Paket angelegt, aber Raten fehlgeschlagen: ${raten.error}`;
+
+  return null;
 }
 
 /**
@@ -249,6 +268,40 @@ export async function testdatenAnlegen(): Promise<
         const fehler = await legeTestAboAn(admin, id, t, unterrichtstage);
         if (fehler) ohneAbo.push(`${t.vorname} ${t.nachname} (${fehler})`);
         else nachgeliefert++;
+      } else {
+        // Das Abo steht, aber möglicherweise ohne Monatsraten – der
+        // ursprüngliche Fehler, den dieser Durchgang beheben soll. Ohne
+        // Raten bleibt die Zahlungsseite eines Testschülers leer, obwohl das
+        // Abo aktiv ist.
+        const { count } = await admin
+          .from("package_instalments")
+          .select("id", { count: "exact", head: true })
+          .eq("package_id", paket.id);
+        if (!count) {
+          const periodeStart = naechsterPeriodenstart(todayInZurich());
+          const vorschau = await baueVorschau(admin, {
+            studentId: id,
+            variante: t.variante,
+            rhythmus: t.rhythmus as Rhythmus,
+            bookingMode: "fix",
+            weekday:
+              testVerfuegbarkeit(t, unterrichtstage)[0]?.wochentag ??
+              unterrichtstage[0].wochentag,
+            periodeStart,
+          });
+          const raten = await legeMonatsratenAn(admin, {
+            packageId: paket.id,
+            studentId: id,
+            gesamtpreis: vorschau.gesamtpreis,
+            laufzeitMonate: vorschau.laufzeitMonate,
+            periodeStart,
+          });
+          if ("error" in raten) {
+            ohneAbo.push(`${t.vorname} ${t.nachname} (Raten: ${raten.error})`);
+          } else {
+            nachgeliefert++;
+          }
+        }
       }
 
       aufgefrischt++;
