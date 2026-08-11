@@ -277,8 +277,17 @@ zusätzliches Zeitfenster zu bitten. Ist sie klein, ist alles in Ordnung.
 
 ### Einen Einzelnen anschreiben
 
-Wenn er noch keine Zeiten angegeben hat, steht er in der Liste mit dem Vermerk
-„keine Zeiten angegeben" — und darunter erscheint **„Zeiten anfragen"**.
+Die Karte steht auf der Planungsseite (Kalender → Terminplanung), **auch wenn
+gerade keine Runde läuft** — das ist ja der Normalfall, wenn jemand einzeln
+einen Platz braucht.
+
+In der Auswahl stehen alle aktiven Schüler, in zwei Gruppen: oben, wer noch
+auf einen Platz wartet, darunter, wer bereits einen hat. Auch die zweite
+Gruppe lässt sich anschreiben — bei Umzug, Rhythmuswechsel oder geänderten
+Zeiten.
+
+Wenn er noch keine Zeiten angegeben hat, steht er mit dem Vermerk „keine
+Zeiten angegeben" da — und darunter erscheint **„Zeiten anfragen"**.
 
 Eine Einzelanfrage ist technisch eine Planungsrunde mit genau einem
 Adressaten. Das ist bewusst so: dasselbe Formular im Portal, dieselbe

@@ -146,7 +146,18 @@ export default function PlanungBoard({
             den besten Slot und die Route ist, was übrig bleibt. Hier wird einmal
             über alle zusammen entschieden.
           </p>
+          <p className="text-gray-500">
+            Für einen Einzelnen brauchst du keine Runde — dafür ist die Karte
+            unten da.
+          </p>
         </Infobox>
+
+        {/*
+          Bewusst auch ohne laufende Runde sichtbar: der häufigste Fall ist
+          gerade, dass keine Runde läuft und trotzdem jemand einen Platz
+          braucht.
+        */}
+        <EinpassenKarte puffer={puffer} />
 
         <form
           onSubmit={starten}

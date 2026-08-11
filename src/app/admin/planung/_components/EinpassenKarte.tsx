@@ -25,8 +25,17 @@ type Wartend = {
   id: string;
   name: string;
   hatZeiten: boolean;
+  wartet: boolean;
+  platz: string | null;
   angefragtBis: string | null;
 };
+
+function beschriftung(w: Wartend): string {
+  if (w.hatZeiten) return "";
+  return w.angefragtBis
+    ? " · angefragt, noch keine Antwort"
+    : " · keine Zeiten angegeben";
+}
 
 function datum(iso: string): string {
   const [y, m, d] = iso.split("-");
@@ -102,6 +111,8 @@ export default function EinpassenKarte({ puffer }: { puffer: number }) {
 
   const aktuell = wartend.find((w) => w.id === gewaehlt) ?? null;
   const brauchtZeiten = aktuell != null && !aktuell.hatZeiten;
+  const wartende = wartend.filter((w) => w.wartet);
+  const uebrige = wartend.filter((w) => !w.wartet);
 
   function setzen(v: Einpassung) {
     if (
@@ -155,7 +166,7 @@ export default function EinpassenKarte({ puffer }: { puffer: number }) {
 
       {wartend.length === 0 ? (
         <p className="text-sm text-gray-500">
-          Im Moment wartet niemand auf einen Termin.
+          Es gibt noch keine aktiven Schüler.
         </p>
       ) : (
         <div className="space-y-1.5">
@@ -166,18 +177,36 @@ export default function EinpassenKarte({ puffer }: { puffer: number }) {
             className="w-full rounded-lg border border-gray-200 px-3.5 min-h-[44px] text-sm focus:outline-none focus:border-[#1C244B]"
           >
             <option value="">Bitte wählen…</option>
-            {wartend.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-                {w.hatZeiten
-                  ? ""
-                  : w.angefragtBis
-                    ? " (angefragt, noch keine Antwort)"
-                    : " (keine Zeiten angegeben)"}
-              </option>
-            ))}
+            {wartende.length > 0 && (
+              <optgroup label="Wartet auf einen Platz">
+                {wartende.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                    {beschriftung(w)}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {uebrige.length > 0 && (
+              <optgroup label="Hat bereits einen Platz">
+                {uebrige.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                    {w.platz ? ` · ${w.platz}` : ""}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </div>
+      )}
+
+      {aktuell?.platz && (
+        <p className="text-sm text-gray-600 bg-[#F3F5F8] rounded-xl px-4 py-3 leading-snug">
+          {aktuell.name} hat bereits einen Platz: <strong>{aktuell.platz}</strong>.
+          Ein neuer Vorschlag ersetzt ihn — die bisherigen, noch nicht
+          gehaltenen Termine werden abgesagt und neu gesetzt.
+        </p>
       )}
 
       {brauchtZeiten && (

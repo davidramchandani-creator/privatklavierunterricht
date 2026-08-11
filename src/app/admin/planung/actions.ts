@@ -311,11 +311,23 @@ export async function zuteilungAnwenden(
  * Schüler mit laufendem Abo und Fixplatz-Wunsch, aber ohne gesetzten Platz —
  * genau die, die mitten in der Periode eingepasst werden müssen.
  */
+/**
+ * Schüler für die Einpassen-Karte.
+ *
+ * Bewusst **alle** aktiven Schüler, nicht nur die ohne Platz. Wer schon einen
+ * Termin hat, kann trotzdem umziehen, den Rhythmus wechseln oder seine Zeiten
+ * ändern — dann muss er sich anschreiben lassen, ohne dass eine Runde läuft.
+ * Wartende stehen oben, weil sie der dringende Fall sind.
+ */
 export async function wartendeSchueler(): Promise<{
   schueler: {
     id: string;
     name: string;
     hatZeiten: boolean;
+    /** Aktives Abo, Fixplatz vereinbart, aber noch kein Termin gesetzt. */
+    wartet: boolean;
+    /** Bestehender Platz als Text, sonst null. */
+    platz: string | null;
     /** Frist einer bereits laufenden Einzelanfrage, sonst null. */
     angefragtBis: string | null;
   }[];
@@ -325,47 +337,70 @@ export async function wartendeSchueler(): Promise<{
 
   const admin = await createAdminClient();
 
-  const { data: pakete } = await admin
-    .from("packages")
-    .select("student_id, profiles(vorname, nachname)")
-    .eq("status", "active")
-    .eq("booking_mode", "fix")
-    .is("fixplatz_weekday", null);
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("id, vorname, nachname")
+    .eq("role", "student")
+    .eq("aktiv", true);
 
-  const ids = (pakete ?? []).map((p) => p.student_id as string);
+  const ids = (profile ?? []).map((p) => p.id as string);
   if (ids.length === 0) return { schueler: [] };
 
-  const { data: verf } = await admin
-    .from("student_verfuegbarkeit")
-    .select("student_id")
-    .in("student_id", ids);
+  const [{ data: pakete }, { data: verf }, { data: anfragen }] =
+    await Promise.all([
+      admin
+        .from("packages")
+        .select(
+          "student_id, booking_mode, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, rhythmus"
+        )
+        .eq("status", "active")
+        .in("student_id", ids),
+      admin.from("student_verfuegbarkeit").select("student_id").in("student_id", ids),
+      admin
+        .from("planungsrunden")
+        .select("nur_student_id, frist")
+        .eq("status", "offen")
+        .in("nur_student_id", ids),
+    ]);
 
+  const paket = new Map((pakete ?? []).map((p) => [p.student_id as string, p]));
   const mitZeiten = new Set((verf ?? []).map((v) => v.student_id as string));
-
-  const { data: anfragen } = await admin
-    .from("planungsrunden")
-    .select("nur_student_id, frist")
-    .eq("status", "offen")
-    .in("nur_student_id", ids);
-
   const angefragt = new Map(
     (anfragen ?? []).map((a) => [a.nur_student_id as string, String(a.frist)])
   );
 
-  return {
-    schueler: (pakete ?? []).map((p) => {
-      const prof = (
-        Array.isArray(p.profiles) ? p.profiles[0] : p.profiles
-      ) as { vorname: string; nachname: string } | null;
-      return {
-        id: p.student_id as string,
-        name:
-          `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || "Ohne Namen",
-        hatZeiten: mitZeiten.has(p.student_id as string),
-        angefragtBis: angefragt.get(p.student_id as string) ?? null,
-      };
-    }),
-  };
+  const liste = (profile ?? []).map((p) => {
+    const id = p.id as string;
+    const pk = paket.get(id);
+    const hatPlatz = pk?.fixplatz_weekday != null && pk?.fixplatz_time != null;
+
+    return {
+      id,
+      name: `${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() || "Ohne Namen",
+      hatZeiten: mitZeiten.has(id),
+      wartet: pk != null && pk.booking_mode === "fix" && !hatPlatz,
+      platz: hatPlatz
+        ? describeFixplatz(
+            Number(pk!.fixplatz_weekday),
+            String(pk!.fixplatz_time).slice(0, 5),
+            (pk!.rhythmus === "zweiwoechentlich"
+              ? "zweiwoechentlich"
+              : "woechentlich") as Rhythmus,
+            (pk!.fixplatz_week_parity as 0 | 1 | null) ?? null
+          )
+        : null,
+      angefragtBis: angefragt.get(id) ?? null,
+    };
+  });
+
+  // Wartende zuoberst, danach alphabetisch – die Liste wird sonst mit jedem
+  // Schüler unübersichtlicher.
+  liste.sort((a, b) => {
+    if (a.wartet !== b.wartet) return a.wartet ? -1 : 1;
+    return a.name.localeCompare(b.name, "de");
+  });
+
+  return { schueler: liste };
 }
 
 /** Beste Plätze für einen einzelnen Schüler im laufenden Plan. */
