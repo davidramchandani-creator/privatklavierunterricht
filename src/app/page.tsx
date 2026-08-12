@@ -7,6 +7,8 @@ import Bewertungen from "@/components/sections/Bewertungen";
 import UeberMichTeaser from "@/components/sections/UeberMichTeaser";
 import ProbelektionCTA from "@/components/sections/ProbelektionCTA";
 import Reveal from "@/components/Reveal";
+import BuchungsLeiste from "@/components/BuchungsLeiste";
+import { naechsterTerminText } from "@/lib/naechster-termin";
 import { HOERPROBEN } from "@/lib/hoerproben";
 
 // Nächster freier Termin im Hero soll aktuell bleiben → stündlich neu rendern.
@@ -15,7 +17,9 @@ import { HOERPROBEN } from "@/lib/hoerproben";
 // angezeigt werden.
 export const dynamic = "force-dynamic";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const naechsterTermin = await naechsterTerminText(true);
+
   return (
     <main>
       <Hero />
@@ -54,6 +58,8 @@ export default function HomePage() {
       {/* Der Schlussaufruf bleibt ohne Einblendung – er ist der Boden der
           Seite und soll da sein, sobald man ankommt. */}
       <ProbelektionCTA />
+
+      <BuchungsLeiste naechsterTermin={naechsterTermin} />
     </main>
   );
 }

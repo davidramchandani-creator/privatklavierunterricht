@@ -1,35 +1,11 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CalendarCheck, Star, Users, Clock, ArrowRight } from "lucide-react";
-import { getNextPublicSlot } from "@/app/probelektion/actions";
+import { naechsterTerminText } from "@/lib/naechster-termin";
 
-function formatSlot(iso: string): string {
-  const d = new Date(iso);
-  const tag = new Intl.DateTimeFormat("de-CH", {
-    timeZone: "Europe/Zurich",
-    weekday: "long",
-  }).format(d);
-  const datum = new Intl.DateTimeFormat("de-CH", {
-    timeZone: "Europe/Zurich",
-    day: "numeric",
-    month: "long",
-  }).format(d);
-  const zeit = new Intl.DateTimeFormat("de-CH", {
-    timeZone: "Europe/Zurich",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(d);
-  return `${tag}, ${datum} · ${zeit} Uhr`;
-}
 
 export default async function Hero() {
-  let nextSlotLabel = "Auf Anfrage";
-  try {
-    const slot = await getNextPublicSlot();
-    if (slot) nextSlotLabel = formatSlot(slot.beginn);
-  } catch {
-    // Falls Verfügbarkeit nicht geladen werden kann, bleibt der Fallback stehen.
-  }
+  const nextSlotLabel = (await naechsterTerminText()) ?? "Auf Anfrage";
 
   return (
     <section className="relative min-h-screen bg-white flex items-center overflow-hidden">

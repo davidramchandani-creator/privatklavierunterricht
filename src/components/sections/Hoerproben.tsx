@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Play, Pause, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { Play, Pause, Loader2, CalendarCheck } from "lucide-react";
 import { formatDauer, type Hoerprobe } from "@/lib/hoerproben";
 import Reveal from "@/components/Reveal";
 
@@ -50,6 +51,30 @@ export default function Hoerproben({ proben }: { proben: Hoerprobe[] }) {
               onStopp={() => setAktiv((v) => (v === p.id ? null : v))}
             />
           ))}
+        </Reveal>
+
+        {/*
+          Die stärkste Stelle der ganzen Seite: Wer gerade zugehört hat, ist
+          überzeugter als an jedem anderen Punkt. Ihn hier scrollen zu lassen,
+          um etwas zu tun, verschenkt genau diesen Moment.
+        */}
+        <Reveal delay={160}>
+          <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-navy-900 rounded-2xl px-5 sm:px-6 py-5">
+            <div>
+              <p className="text-white font-700">Klingt nach deinem Ding?</p>
+              <p className="text-white/60 text-sm mt-0.5">
+                In der Probelektion spielen wir zusammen — unverbindlich, kein
+                Abo nötig.
+              </p>
+            </div>
+            <Link
+              href="/probelektion"
+              className="flex-shrink-0 inline-flex items-center justify-center gap-2 bg-white text-navy-900 font-700 text-sm rounded-xl px-5 min-h-[44px] hover:bg-white/90 active:scale-[0.98] transition-all"
+            >
+              <CalendarCheck className="w-4 h-4" />
+              Probelektion buchen
+            </Link>
+          </div>
         </Reveal>
       </div>
     </section>
