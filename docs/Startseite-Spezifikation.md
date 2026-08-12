@@ -121,8 +121,29 @@ als Zahlenfeld hinterlegt (nicht zur Laufzeit analysiert — das kostet einen
 zweiten Download und flackert beim Laden).
 
 **Beim Abspielen:** Balken links vom Abspielkopf in `navy-900`, rechts davon
-`navy-100`. Der Abspielkopf wandert. Die 3–4 Balken direkt am Kopf pulsieren
-leicht (`scaleY` 1 → 1.15 → 1), damit es lebendig wirkt, ohne zu zappeln.
+`navy-100`. Der Abspielkopf wandert.
+
+### Klaviatur
+
+Unter der Wellenform erscheint während der Wiedergabe eine Klaviatur, deren
+Tasten sich zum Klang bewegen. Balken sind das, was jeder Musikspieler zeigt —
+hier geht es um Klavierunterricht, und dieselbe Bewegung auf Tasten übertragen
+sagt sofort, worum es geht. Sie greift zudem das Tastatur-Motiv aus dem Hero
+auf.
+
+- 14 weisse Tasten, schwarze an ihren richtigen Stellen (nach C, D, F, G, A).
+- Angetrieben von einem `AnalyserNode` am laufenden `<audio>`-Element, also
+  vom tatsächlichen Klang — nicht von einer vorberechneten Kurve.
+- Tasten liegen **logarithmisch** über 90–2600 Hz. Linear verteilt läge die
+  halbe Klaviatur im Bass und bewegte sich kaum.
+- Hohe Töne werden angehoben (Faktor 1 bis 2.6), sonst bewegte sich nur die
+  linke Hälfte.
+- Anschlagtiefe höchstens 3 px. Eine Taste, die einen Zentimeter einsinkt,
+  sieht nach Fehler aus statt nach Anschlag.
+- Nur sichtbar, während gespielt wird. Dauerhaft wären es vier stumme
+  Tastaturen untereinander.
+- Gezeichnet ausserhalb von React: 60 Neuaufbauten je Sekunde für eine
+  Verzierung wären verschwendet.
 
 **Klickbar:** Ein Klick in die Wellenform springt an diese Stelle. Trefffläche
 mindestens 48px hoch, auch wenn die Balken kürzer sind.
@@ -257,7 +278,8 @@ Zurückhaltend. Auf „Mut 3" heisst: spürbar, aber nie im Weg.
 | Karten in einer Reihe | 15% sichtbar | dito, je 80ms versetzt | 600ms | `--ease-out-soft` |
 | Zahlen (16+, 5.0) | sichtbar | von 0 hochzählen | 900ms | `ease-out` |
 | Wellenform-Fortschritt | Abspielen | Farbwechsel folgt der Zeit | fortlaufend | linear |
-| Balken am Abspielkopf | Abspielen | `scaleY` 1 → 1.15 → 1 | 600ms, endlos | `ease-in-out` |
+| Klaviatur | Abspielen | Tasten sinken bis 3 px, Füllung nach Lautstärke | fortlaufend | linear |
+| Klaviatur | Start / Ende | Höhe 0 → 56 px | 300ms | `--ease-out-soft` |
 | Knopf-Hover | Hover | `translateY(-1px)` | 150ms | `--ease-out-soft` |
 
 **Einblenden nur einmal.** Wer zurückscrollt, soll nicht dieselbe Animation

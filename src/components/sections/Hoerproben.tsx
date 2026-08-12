@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Play, Pause, Loader2, CalendarCheck } from "lucide-react";
 import { formatDauer, type Hoerprobe } from "@/lib/hoerproben";
 import Reveal from "@/components/Reveal";
+import Klaviatur from "@/components/Klaviatur";
+import { starteAnalyse, type Analyse } from "@/lib/audio-analyse";
 
 /**
  * Hörproben mit Wellenform-Anzeige.
@@ -99,6 +101,16 @@ function ProbenZeile({
   const [dauer, setDauer] = useState(probe.dauer);
   const [laedt, setLaedt] = useState(false);
   const [fehler, setFehler] = useState(false);
+  const [analyse, setAnalyse] = useState<Analyse | null>(null);
+  // createMediaElementSource darf je Element nur einmal laufen – ein zweiter
+  // Aufruf wirft, und ab dann ist der Ton weg.
+  const analyseGestartet = useRef(false);
+
+  // AudioContext schliessen, wenn die Zeile verschwindet – ein offener
+  // Kontext je Aufnahme summiert sich, und Browser begrenzen die Anzahl.
+  useEffect(() => {
+    return () => analyse?.schliessen();
+  }, [analyse]);
 
   // Sobald eine andere Aufnahme startet, hält diese an. Der Zustand liegt
   // eine Ebene höher, damit es genau eine Wahrheit gibt, was gerade läuft.
@@ -122,6 +134,15 @@ function ProbenZeile({
 
     onStart();
     setLaedt(true);
+
+    // Erst hier, nicht beim Aufbau der Seite: Ein AudioContext je Aufnahme
+    // im Voraus wäre vier schlafende Kontexte für nichts, und Browser
+    // erlauben ihn ohnehin erst nach einer Geste. Der Klick ist die Geste.
+    if (!analyseGestartet.current) {
+      analyseGestartet.current = true;
+      setAnalyse(starteAnalyse(el));
+    }
+
     try {
       await el.play();
     } catch {
@@ -146,7 +167,7 @@ function ProbenZeile({
 
   return (
     <div
-      className={`flex items-center gap-4 px-4 sm:px-5 py-4 transition-colors ${
+      className={`px-4 sm:px-5 py-4 transition-colors ${
         istLetzte ? "" : "border-b border-[#EAECEF]"
       } ${aktiv ? "bg-navy-50/40" : "hover:bg-navy-50/30"}`}
     >
@@ -166,41 +187,81 @@ function ProbenZeile({
         onError={() => setFehler(true)}
       />
 
-      <button
-        onClick={umschalten}
-        disabled={fehler}
-        aria-label={`${probe.titel} ${aktiv ? "pausieren" : "abspielen"}`}
-        className="w-12 h-12 rounded-full bg-navy-900 text-white flex items-center justify-center flex-shrink-0 hover:bg-navy-800 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-      >
-        {laedt ? (
-          <Loader2 className="w-5 h-5 animate-spin" />
-        ) : aktiv ? (
-          <Pause className="w-5 h-5" />
-        ) : (
-          <Play className="w-5 h-5 ml-0.5" />
-        )}
-      </button>
+      {/*
+        Auf dem Handy gestapelt statt nebeneinander.
 
-      <div className="min-w-0 w-36 sm:w-60 flex-shrink-0">
-        <p className="text-base font-600 text-navy-900 truncate">{probe.titel}</p>
-        <p className="text-sm text-gray-400 truncate">
-          {fehler ? "Aufnahme nicht verfügbar" : probe.herkunft}
-        </p>
+        Vorher lag alles in einer Zeile: Knopf, Titel, Wellenform, Dauer. Auf
+        einem 375-Pixel-Bildschirm blieben der Wellenform 75 Pixel — für
+        etwas, das 144 bräuchte. Sie war auf die Hälfte gequetscht und die
+        Bewegung darin praktisch unsichtbar. Ab sm liegt wieder alles in
+        einer Zeile, dort ist der Platz da.
+      */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={umschalten}
+          disabled={fehler}
+          aria-label={`${probe.titel} ${aktiv ? "pausieren" : "abspielen"}`}
+          className="w-12 h-12 rounded-full bg-navy-900 text-white flex items-center justify-center flex-shrink-0 hover:bg-navy-800 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          {laedt ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : aktiv ? (
+            <Pause className="w-5 h-5" />
+          ) : (
+            <Play className="w-5 h-5 ml-0.5" />
+          )}
+        </button>
+
+        <div className="min-w-0 flex-1 sm:flex-none sm:w-60">
+          <p className="text-base font-600 text-navy-900 truncate">{probe.titel}</p>
+          <p className="text-sm text-gray-400 truncate">
+            {fehler ? "Aufnahme nicht verfügbar" : probe.herkunft}
+          </p>
+        </div>
+
+        <div className="hidden sm:flex flex-1 min-w-0 items-center gap-4">
+          <Wellenform
+            werte={probe.wellenform}
+            fortschritt={fortschritt}
+            laeuft={aktiv}
+            dauer={dauer}
+            position={position}
+            titel={probe.titel}
+            onSpringen={springen}
+          />
+        </div>
+
+        <span className="text-sm tabular-nums text-gray-400 flex-shrink-0 w-11 text-right">
+          {formatDauer(aktiv ? position : dauer)}
+        </span>
       </div>
 
-      <Wellenform
-        werte={probe.wellenform}
-        fortschritt={fortschritt}
-        laeuft={aktiv}
-        dauer={dauer}
-        position={position}
-        titel={probe.titel}
-        onSpringen={springen}
-      />
+      {/* Handy: Wellenform über die volle Breite, darunter die Klaviatur. */}
+      <div className="sm:hidden mt-3">
+        <Wellenform
+          werte={probe.wellenform}
+          fortschritt={fortschritt}
+          laeuft={aktiv}
+          dauer={dauer}
+          position={position}
+          titel={probe.titel}
+          onSpringen={springen}
+        />
+      </div>
 
-      <span className="text-sm tabular-nums text-gray-400 flex-shrink-0 w-11 text-right">
-        {formatDauer(aktiv ? position : dauer)}
-      </span>
+      {/*
+        Die Klaviatur erscheint nur, während gespielt wird — sie ist kein
+        Bedienelement, sondern die Antwort auf „was passiert gerade".
+        Dauerhaft sichtbar wäre sie vier stumme Tastaturen untereinander.
+      */}
+      <div
+        className={`overflow-hidden transition-all duration-300 ${
+          aktiv ? "h-14 mt-3 opacity-100" : "h-0 mt-0 opacity-0"
+        }`}
+        style={{ transitionTimingFunction: "var(--ease-out-soft)" }}
+      >
+        <Klaviatur analyse={analyse} laeuft={aktiv} className="h-14" />
+      </div>
     </div>
   );
 }
