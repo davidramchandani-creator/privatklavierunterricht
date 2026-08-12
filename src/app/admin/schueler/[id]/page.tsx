@@ -31,7 +31,7 @@ export default async function SchuelerDetailPage({
   ] = await Promise.all([
     admin
       .from("profiles")
-      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, erstellt_am, price_single, price_halbjahr, price_jahr, travel_surcharge, buffer_time_minutes, buffer_mode, payment_method")
+      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, erstellt_am, price_single, price_halbjahr, price_jahr, price_10er, price_20er, travel_surcharge, buffer_time_minutes, buffer_mode, payment_method")
       .eq("id", id)
       .maybeSingle(),
     admin
@@ -103,6 +103,10 @@ export default async function SchuelerDetailPage({
     price_single: Number(profile.price_single ?? 85),
     price_halbjahr: Number(profile.price_halbjahr ?? 70),
     price_jahr: Number(profile.price_jahr ?? 65),
+    // Paketpreise: Vorgabe zwischen Einzellektion und Abo, weil ein Paket
+    // weniger bindet als ein Abo, aber mehr als eine Einzellektion.
+    price_10er: Number(profile.price_10er ?? 75),
+    price_20er: Number(profile.price_20er ?? 70),
     travel_surcharge: Number(profile.travel_surcharge ?? 0),
     buffer_time_minutes: Number(profile.buffer_time_minutes ?? 15),
     buffer_mode: (profile.buffer_mode as string) ?? "fixed",
@@ -203,6 +207,8 @@ export default async function SchuelerDetailPage({
             price_single: prices.price_single,
             price_halbjahr: prices.price_halbjahr,
             price_jahr: prices.price_jahr,
+            price_10er: prices.price_10er,
+            price_20er: prices.price_20er,
             travel_surcharge: prices.travel_surcharge,
             buffer_time_minutes: prices.buffer_time_minutes,
             buffer_mode: prices.buffer_mode,
@@ -235,12 +241,19 @@ export default async function SchuelerDetailPage({
                 // Halbjahr/Jahr, Rhythmus und Fix/Flex stehen sonst nirgends im
                 // Admin – ohne diese Zeile sieht ein Abo aus wie jedes andere
                 // Paket, und man weiss nicht, was man vor sich hat.
+                //
+                // Abo und Paket haben denselben Typ in der Datenbank (10er
+                // bzw. 20er) – erst abo_variante unterscheidet sie. Ohne
+                // diese Zeile sähe ein Jahresabo genau aus wie ein
+                // 20er-Paket, obwohl das eine über Monatsraten läuft und
+                // sich verlängert und das andere einmal bezahlt wird und
+                // endet.
                 const varianteText =
                   pkg.abo_variante === "halbjahr"
-                    ? "Halbjahr"
+                    ? "Abo Halbjahr"
                     : pkg.abo_variante === "jahr"
-                      ? "Jahr"
-                      : null;
+                      ? "Abo Jahr"
+                      : "Paket, einmalig bezahlt";
                 const rhythmusText =
                   pkg.rhythmus === "zweiwoechentlich"
                     ? "alle zwei Wochen"
@@ -331,14 +344,14 @@ export default async function SchuelerDetailPage({
         )}
 
         <PackageFormNew
-          schueler_id={id}
-          student_user_id={id}
           defaultPrices={{
             price_single: prices.price_single,
-            price_halbjahr: prices.price_halbjahr,
-            price_jahr: prices.price_jahr,
+            price_10er: prices.price_10er,
+            price_20er: prices.price_20er,
             travel_surcharge: prices.travel_surcharge,
           }}
+          schueler_id={id}
+          student_user_id={id}
         />
       </div>
 

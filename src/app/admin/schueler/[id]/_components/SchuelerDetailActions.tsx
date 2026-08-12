@@ -11,6 +11,7 @@ import {
   updateInvoiceStatus,
   updateStudentPrices,
   aboAnlegenAdmin,
+  createPackageAdmin,
   aboVorschauAdmin,
   createDirectBooking,
   createProposal,
@@ -283,6 +284,8 @@ function PreiseForm({
     price_single: number;
     price_halbjahr: number;
     price_jahr: number;
+    price_10er: number;
+    price_20er: number;
     travel_surcharge: number;
     buffer_time_minutes: number;
     buffer_mode: string;
@@ -297,6 +300,11 @@ function PreiseForm({
   const [priceSingle, setPriceSingle] = useState(String(initial.price_single));
   const [priceHalbjahr, setPriceHalbjahr] = useState(String(initial.price_halbjahr));
   const [priceJahr, setPriceJahr] = useState(String(initial.price_jahr));
+  // Paketpreise: gelten, wenn du diesem Schüler ein Lektionspaket statt eines
+  // Abos gibst. Ein Paket bindet weniger, darum liegt der Preis pro Lektion
+  // in der Regel zwischen Einzellektion und Abo.
+  const [price10er, setPrice10er] = useState(String(initial.price_10er));
+  const [price20er, setPrice20er] = useState(String(initial.price_20er));
   const [travel, setTravel] = useState(String(initial.travel_surcharge));
   const [buffer, setBuffer] = useState(String(initial.buffer_time_minutes));
   const [bufferMode, setBufferMode] = useState<"fixed" | "auto">(
@@ -312,6 +320,8 @@ function PreiseForm({
   const effSingle = (Number(priceSingle) || 0) + t;
   const effHalbjahr = (Number(priceHalbjahr) || 0) + t;
   const effJahr = (Number(priceJahr) || 0) + t;
+  const eff10er = (Number(price10er) || 0) + t;
+  const eff20er = (Number(price20er) || 0) + t;
 
   async function handleCalculateMaps() {
     if (!studentAddress) return;
@@ -360,6 +370,16 @@ function PreiseForm({
           <label className="text-xs font-500 text-gray-600">Jahr (CHF)</label>
           <Input name="price_jahr" type="number" step="0.01" min="0" value={priceJahr}
             onChange={(e) => setPriceJahr(e.target.value)} required />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-500 text-gray-600">10er-Paket (CHF)</label>
+          <Input name="price_10er" type="number" step="0.01" min="0" value={price10er}
+            onChange={(e) => setPrice10er(e.target.value)} required />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-500 text-gray-600">20er-Paket (CHF)</label>
+          <Input name="price_20er" type="number" step="0.01" min="0" value={price20er}
+            onChange={(e) => setPrice20er(e.target.value)} required />
         </div>
         <div className="space-y-1">
           <label className="text-xs font-500 text-gray-600">Wegaufschlag (CHF)</label>
@@ -495,6 +515,8 @@ function PreiseForm({
           <span>Einzellektion: {formatCHF(effSingle)}</span>
           <span>Halbjahr: {formatCHF(effHalbjahr)}</span>
           <span>Jahr: {formatCHF(effJahr)}</span>
+          <span>10er: {formatCHF(eff10er)}</span>
+          <span>20er: {formatCHF(eff20er)}</span>
         </div>
       </div>
 
@@ -513,16 +535,34 @@ function PreiseForm({
   );
 }
 
+export type PaketPreise = {
+  price_single: number;
+  price_10er: number;
+  price_20er: number;
+  travel_surcharge: number;
+};
+
+/**
+ * Abo oder Paket — die Entscheidung trifft der Admin, nicht der Schüler.
+ *
+ * Beides nebeneinander anzubieten wäre für den Schüler eine Zumutung: Er
+ * müsste Bindung, Laufzeit und Preis gegeneinander abwägen, ohne zu wissen,
+ * was für ihn sinnvoll ist. Im Portal gibt es darum weiterhin nur das Abo.
+ * Das Paket ist der Weg für Fälle, die nicht ins Abo passen — jemand, der
+ * nur ein paar Stunden will, oder eine Schnupperlektion.
+ */
 function PackageFormNew({
   schueler_id,
   student_user_id,
+  defaultPrices,
 }: {
   schueler_id: string;
   student_user_id: string;
-  defaultPrices?: unknown;
+  defaultPrices?: PaketPreise;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [art, setArt] = useState<"abo" | "paket" | null>(null);
   const [isPending, startTransition] = useTransition();
   const [ladend, startLaden] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -595,18 +635,83 @@ function PackageFormNew({
   if (!open) {
     return (
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setOpen(true);
+          setArt(null);
+        }}
         className="flex items-center gap-2 text-sm font-600 text-[#1C244B] px-4 py-2.5 rounded-xl border border-[#1C244B]/20 hover:bg-[#1C244B]/5 transition-colors"
       >
         <Plus className="w-4 h-4" />
-        Abo anlegen
+        Abo oder Paket anlegen
       </button>
+    );
+  }
+
+  // ── Erst die Art wählen ──────────────────────────────────
+  if (art === null) {
+    return (
+      <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+        <h3 className="text-sm font-600 text-gray-900">Was soll es sein?</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setArt("abo")}
+            className="text-left rounded-xl border border-gray-200 hover:border-[#1C244B] p-4 transition-colors"
+          >
+            <p className="font-600 text-gray-900 text-sm">Abo</p>
+            <p className="text-xs text-gray-500 leading-snug mt-1">
+              Halbjahr oder Jahr, fester Rhythmus, Zahlung in Monatsraten.
+              Verlängert sich, wenn nicht gekündigt. Der Regelfall.
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setArt("paket")}
+            className="text-left rounded-xl border border-gray-200 hover:border-[#1C244B] p-4 transition-colors"
+          >
+            <p className="font-600 text-gray-900 text-sm">Paket</p>
+            <p className="text-xs text-gray-500 leading-snug mt-1">
+              Einzellektion, 10er oder 20er. Wird beim Anlegen als Ganzes in
+              Rechnung gestellt und endet, wenn die Lektionen aufgebraucht
+              sind. Für alle, die sich nicht binden wollen.
+            </p>
+          </button>
+        </div>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
+          Abbrechen
+        </Button>
+      </div>
+    );
+  }
+
+  if (art === "paket") {
+    return (
+      <PaketForm
+        schueler_id={schueler_id}
+        student_user_id={student_user_id}
+        preise={defaultPrices}
+        onZurueck={() => setArt(null)}
+        onFertig={() => {
+          setOpen(false);
+          setArt(null);
+          router.refresh();
+        }}
+      />
     );
   }
 
   return (
     <form onSubmit={handleSubmit} className="border border-gray-200 rounded-xl p-4 space-y-3">
-      <h3 className="text-sm font-600 text-gray-900">Neues Abo</h3>
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-600 text-gray-900">Neues Abo</h3>
+        <button
+          type="button"
+          onClick={() => setArt(null)}
+          className="text-xs text-gray-500 hover:text-gray-900 underline"
+        >
+          Doch ein Paket
+        </button>
+      </div>
       <input type="hidden" name="student_user_id" value={student_user_id} />
       <input type="hidden" name="schueler_id" value={schueler_id} />
 
@@ -849,6 +954,185 @@ function PackageFormNew({
           Zuerst einen freien Termin auswählen.
         </p>
       )}
+    </form>
+  );
+}
+
+/**
+ * Lektionspaket anlegen.
+ *
+ * Anders als beim Abo wird der ganze Betrag beim Anlegen in Rechnung gestellt
+ * — das ist der Grund, warum man ein Paket überhaupt verkauft: das Geld ist
+ * da, bevor die Lektionen stattfinden. Es läuft aus, wenn die Lektionen
+ * aufgebraucht sind, und verlängert sich nicht von selbst.
+ */
+function PaketForm({
+  schueler_id,
+  student_user_id,
+  preise,
+  onZurueck,
+  onFertig,
+}: {
+  schueler_id: string;
+  student_user_id: string;
+  preise?: PaketPreise;
+  onZurueck: () => void;
+  onFertig: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [typ, setTyp] = useState<"single" | "10er" | "20er">("10er");
+  const [rhythmus, setRhythmus] = useState<Rhythmus>("woechentlich");
+  const [bookingMode, setBookingMode] = useState<BookingMode>("flex");
+
+  const lektionen = typ === "single" ? 1 : typ === "10er" ? 10 : 20;
+
+  // Der hinterlegte Preis je Pakettyp, plus Wegaufschlag – dieselbe Rechnung
+  // wie beim Abo, damit im Preisformular steht, was hier herauskommt.
+  const basis =
+    typ === "single"
+      ? (preise?.price_single ?? 85)
+      : typ === "10er"
+        ? (preise?.price_10er ?? 75)
+        : (preise?.price_20er ?? 70);
+  const proLektion = basis + (preise?.travel_surcharge ?? 0);
+
+  const [preisText, setPreisText] = useState(String(proLektion));
+
+  // Beim Wechsel des Typs den hinterlegten Preis übernehmen – sonst bliebe
+  // der Preis des vorher gewählten Pakets stehen und niemand merkt es.
+  function typWechseln(neu: "single" | "10er" | "20er") {
+    setTyp(neu);
+    const b =
+      neu === "single"
+        ? (preise?.price_single ?? 85)
+        : neu === "10er"
+          ? (preise?.price_10er ?? 75)
+          : (preise?.price_20er ?? 70);
+    setPreisText(String(b + (preise?.travel_surcharge ?? 0)));
+    if (neu === "single") setBookingMode("flex");
+  }
+
+  const gesamt = (Number(preisText) || 0) * lektionen;
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    const formData = new FormData(e.currentTarget);
+    startTransition(async () => {
+      const result = await createPackageAdmin(formData);
+      if (result?.error) setError(result.error);
+      else onFertig();
+    });
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="border border-gray-200 rounded-xl p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-600 text-gray-900">Neues Paket</h3>
+        <button
+          type="button"
+          onClick={onZurueck}
+          className="text-xs text-gray-500 hover:text-gray-900 underline"
+        >
+          Doch ein Abo
+        </button>
+      </div>
+
+      <input type="hidden" name="student_user_id" value={student_user_id} />
+      <input type="hidden" name="schueler_id" value={schueler_id} />
+      {/* Gesamtbetrag beim Anlegen, keine Raten. */}
+      <input type="hidden" name="billing_mode" value="einmal" />
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <label className="text-xs font-500 text-gray-600">Paket</label>
+          <select
+            name="type"
+            value={typ}
+            onChange={(e) => typWechseln(e.target.value as "single" | "10er" | "20er")}
+            className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="single">Einzellektion</option>
+            <option value="10er">10er-Paket</option>
+            <option value="20er">20er-Paket</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-500 text-gray-600">
+            Preis pro Lektion (CHF)
+          </label>
+          <Input
+            name="price_per_lesson"
+            type="number"
+            step="0.01"
+            min="0"
+            value={preisText}
+            onChange={(e) => setPreisText(e.target.value)}
+            required
+          />
+        </div>
+      </div>
+
+      {typ !== "single" && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="text-xs font-500 text-gray-600">Rhythmus</label>
+            <select
+              name="rhythmus"
+              value={rhythmus}
+              onChange={(e) => setRhythmus(e.target.value as Rhythmus)}
+              className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="woechentlich">Jede Woche</option>
+              <option value="zweiwoechentlich">Alle zwei Wochen</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-500 text-gray-600">Buchungsart</label>
+            <select
+              name="booking_mode"
+              value={bookingMode}
+              onChange={(e) => setBookingMode(e.target.value as BookingMode)}
+              className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="flex">Flexibel – bucht selbst</option>
+              <option value="fix">Fixplatz – Termin folgt aus der Planung</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-lg bg-gray-50 border border-gray-100 p-3 text-xs text-gray-600 space-y-1">
+        <p className="font-600 text-gray-900">
+          {lektionen} Lektion{lektionen === 1 ? "" : "en"} ·{" "}
+          {formatCHF(Number(preisText) || 0)} pro Lektion · total{" "}
+          {formatCHF(gesamt)}
+        </p>
+        <p>
+          Der Gesamtbetrag wird beim Anlegen in Rechnung gestellt, zahlbar
+          innert 15 Tagen. Das Paket endet, wenn die Lektionen aufgebraucht
+          sind — es verlängert sich nicht.
+        </p>
+        {typ === "single" && (
+          <p className="text-gray-500">
+            Bei einer Einzellektion gibt es weder Rhythmus noch Fixplatz.
+          </p>
+        )}
+      </div>
+
+      {error && (
+        <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+      )}
+
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={isPending}>
+          {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Paket anlegen"}
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={onFertig}>
+          Abbrechen
+        </Button>
+      </div>
     </form>
   );
 }

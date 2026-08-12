@@ -773,13 +773,15 @@ export async function updateStudentPrices(
   const admin = await createAdminClient();
 
   const update: Record<string, number | string> = {};
-  // price_10er/price_20er bleiben in der Datenbank, werden aber nicht mehr
-  // gepflegt: sie gehören zu den auslaufenden Lektionspaketen. Die Abo-Preise
-  // stehen in price_halbjahr/price_jahr.
+  // Abo-Preise stehen in price_halbjahr/price_jahr, Paketpreise in
+  // price_10er/price_20er. Beide werden gepflegt: der Admin entscheidet pro
+  // Schüler zwischen Abo und Paket, und beide Wege brauchen einen Preis.
   const fields = [
     "price_single",
     "price_halbjahr",
     "price_jahr",
+    "price_10er",
+    "price_20er",
     "travel_surcharge",
   ] as const;
   for (const f of fields) {

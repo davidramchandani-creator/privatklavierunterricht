@@ -372,9 +372,47 @@ betrifft dich erst ab zehn Lektionen an einem Abend.
 
 ---
 
+## 9d. Paket statt Abo
+
+Das Abo ist der Regelfall, aber nicht jeder passt hinein. Wer nur ein paar
+Stunden will, eine Schnupperlektion nimmt oder sich nicht auf ein halbes Jahr
+festlegen mag, bekommt ein **Paket**.
+
+Die Wahl trifft **nur du**. Im Schülerportal gibt es weiterhin ausschliesslich
+das Abo — beides nebeneinander anzubieten wäre für den Schüler eine Zumutung:
+Er müsste Bindung, Laufzeit und Preis gegeneinander abwägen, ohne zu wissen,
+was für ihn sinnvoll ist.
+
+**Schülerdetail → „Abo oder Paket anlegen"** fragt zuerst nach der Art.
+
+| | Abo | Paket |
+|---|---|---|
+| Umfang | Halbjahr oder Jahr | Einzellektion, 10er oder 20er |
+| Bezahlung | Monatsraten | Gesamtbetrag beim Anlegen, 15 Tage Frist |
+| Ende | verlängert sich, bis gekündigt | endet, wenn die Lektionen weg sind |
+| Termin | Fixplatz aus der Zuteilung | Fixplatz oder selbst buchen |
+
+Beim Paket ist **Flexibel** die Vorgabe: Wer sich nicht binden will, will in
+der Regel auch keinen festen Termin. Ein Fixplatz ist trotzdem möglich, dann
+läuft er über dieselbe Zuteilung wie beim Abo.
+
+Die Preise stehen pro Schüler unter *Preise & Einstellungen* — eigene Felder
+für 10er und 20er neben den Abo-Preisen. Ein Paket bindet weniger als ein Abo,
+darum liegt der Preis pro Lektion sinnvollerweise dazwischen: Vorgabe 75 für
+den 10er und 70 für den 20er, gegenüber 70/65 beim Abo und 85 für die
+Einzellektion. Der Wegaufschlag kommt wie überall dazu.
+
+Beim Anlegen wird der hinterlegte Preis vorgeschlagen, lässt sich aber für
+diesen einen Fall überschreiben.
+
+**Eines nach dem anderen:** Ein Schüler kann nicht gleichzeitig ein Abo und
+ein Paket haben. Das Anlegen weist ab, solange noch etwas läuft.
+
+---
+
 ## 10. Was du im Admin tust
 
-**Abo anlegen** (Schülerdetail → Abo anlegen): Variante, Rhythmus,
+**Abo oder Paket anlegen** (Schülerdetail): Variante, Rhythmus,
 Buchungsart, dann „Freie Termine suchen". Die Vorschau zeigt dieselbe
 Lektionszahl und denselben Monatsbetrag, die der Schüler beim Selbstabschluss
 sähe — bewusst über dieselbe Rechnung, damit es keine stillen Abweichungen
