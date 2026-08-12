@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Play, Pause, Loader2 } from "lucide-react";
 import { formatDauer, type Hoerprobe } from "@/lib/hoerproben";
+import Reveal from "@/components/Reveal";
 
 /**
  * Hörproben mit Wellenform-Anzeige.
@@ -23,9 +24,9 @@ export default function Hoerproben({ proben }: { proben: Hoerprobe[] }) {
   if (proben.length === 0) return null;
 
   return (
-    <section className="py-16 md:py-24 bg-surface">
+    <section id="hoerproben" className="py-16 md:py-24 bg-surface scroll-mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl">
+        <Reveal className="max-w-2xl">
           <p className="text-navy-600 font-600 text-xs uppercase tracking-widest mb-3">
             Hörproben
           </p>
@@ -36,9 +37,9 @@ export default function Hoerproben({ proben }: { proben: Hoerprobe[] }) {
             Ein paar Aufnahmen aus dem Unterricht und von mir selbst. Damit du
             weisst, worauf du dich einlässt.
           </p>
-        </div>
+        </Reveal>
 
-        <div className="mt-10 bg-white rounded-2xl ring-1 ring-[#EAECEF] overflow-hidden">
+        <Reveal delay={80} className="mt-10 bg-white rounded-2xl ring-1 ring-[#EAECEF] overflow-hidden">
           {proben.map((p, i) => (
             <ProbenZeile
               key={p.id}
@@ -49,7 +50,7 @@ export default function Hoerproben({ proben }: { proben: Hoerprobe[] }) {
               onStopp={() => setAktiv((v) => (v === p.id ? null : v))}
             />
           ))}
-        </div>
+        </Reveal>
       </div>
     </section>
   );

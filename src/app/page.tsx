@@ -6,6 +6,7 @@ import Vorteile from "@/components/sections/Vorteile";
 import Bewertungen from "@/components/sections/Bewertungen";
 import UeberMichTeaser from "@/components/sections/UeberMichTeaser";
 import ProbelektionCTA from "@/components/sections/ProbelektionCTA";
+import Reveal from "@/components/Reveal";
 import { HOERPROBEN } from "@/lib/hoerproben";
 
 // Nächster freier Termin im Hero soll aktuell bleiben → stündlich neu rendern.
@@ -26,11 +27,32 @@ export default function HomePage() {
         wirkt immer hoch. Jetzt hört er zuerst, wie es klingt.
       */}
       <Hoerproben proben={HOERPROBEN} />
-      <Vorteile />
-      <UeberMichTeaser />
-      <Bewertungen />
-      <Pakete />
-      <Preisrechner />
+
+      {/*
+        Ganze Abschnitte einblenden statt einzelne Elemente darin.
+
+        Innerhalb jeder Section zu staffeln sähe erst besser aus, wird beim
+        Scrollen aber zappelig: Überschrift, dann Karte eins, dann Karte
+        zwei — man liest gegen die Bewegung an. Ein Abschnitt, eine Bewegung.
+      */}
+      <Reveal>
+        <Vorteile />
+      </Reveal>
+      <Reveal>
+        <UeberMichTeaser />
+      </Reveal>
+      <Reveal>
+        <Bewertungen />
+      </Reveal>
+      <Reveal>
+        <Pakete />
+      </Reveal>
+      <Reveal>
+        <Preisrechner />
+      </Reveal>
+
+      {/* Der Schlussaufruf bleibt ohne Einblendung – er ist der Boden der
+          Seite und soll da sein, sobald man ankommt. */}
       <ProbelektionCTA />
     </main>
   );

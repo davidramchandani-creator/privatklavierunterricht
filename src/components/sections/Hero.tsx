@@ -70,9 +70,16 @@ export default async function Hero() {
                   Jetzt Probelektion buchen
                 </Button>
               </Link>
-              <Link href="/#angebote">
+              {/*
+                Führte vorher zu den Angeboten, also direkt zum Preis. Zwei
+                gleich starke Knöpfe nebeneinander, von denen einer zum Preis
+                führt, teilen die Aufmerksamkeit genau an der Stelle, wo sie
+                gebündelt gehört. Jetzt zu den Hörproben — dem Grund, warum
+                jemand die Probelektion überhaupt will.
+              */}
+              <Link href="/#hoerproben">
                 <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                  Zu den Angeboten
+                  Erst mal reinhören
                 </Button>
               </Link>
             </div>
@@ -99,13 +106,23 @@ export default async function Hero() {
                   <p className="text-white/60 text-sm">Bei dir zu Hause · 45 Min.</p>
                 </div>
 
+                {/*
+                  Hier stand bis vor Kurzem der Preis („Im 20er-Paket ab
+                  CHF 65"). Das war das Zweitprominenteste auf der ganzen
+                  Seite — ein Preis, bevor irgendetwas versprochen wurde,
+                  wirkt immer hoch. Jetzt steht hier der nächste Schritt.
+                  Der Preis kommt weiter unten, nach den Hörproben und den
+                  Bewertungen.
+                */}
                 <Link
                   href="/probelektion"
                   className="group mt-6 bg-white/[0.08] hover:bg-white/[0.14] border border-white/10 rounded-2xl px-4 py-3.5 flex items-center justify-between transition-colors"
                 >
                   <div>
-                    <p className="text-white/55 text-xs">Im 20er-Paket ab</p>
-                    <p className="text-white font-800 text-xl">CHF 65 <span className="text-sm font-500 text-white/55">/ Lektion</span></p>
+                    <p className="text-white font-700 text-base">Probelektion sichern</p>
+                    <p className="text-white/55 text-xs mt-0.5">
+                      Unverbindlich · kein Abo nötig
+                    </p>
                   </div>
                   <span className="w-9 h-9 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center transition-colors">
                     <ArrowRight className="w-4 h-4 text-white group-hover:translate-x-0.5 transition-transform" />
