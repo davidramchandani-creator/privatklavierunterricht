@@ -1,7 +1,6 @@
 import Hero from "@/components/sections/Hero";
 import Hoerproben from "@/components/sections/Hoerproben";
 import Pakete from "@/components/sections/Pakete";
-import Preisrechner from "@/components/sections/Preisrechner";
 import Vorteile from "@/components/sections/Vorteile";
 import Bewertungen from "@/components/sections/Bewertungen";
 import UeberMichTeaser from "@/components/sections/UeberMichTeaser";
@@ -48,13 +47,19 @@ export default async function HomePage() {
       <Reveal>
         <Bewertungen />
       </Reveal>
+      {/*
+        Der Preisrechner stand hier bis vor Kurzem und ist raus.
+
+        Er steht ohnehin schon auf /preise, wo jemand hingeht, der über Geld
+        nachdenken will. Auf der Startseite verlangte er als Einziges eine
+        Eingabe — die Wohnadresse, von einem Fremden, bevor irgendein
+        Verhältnis besteht. Das ist eine grosse Bitte an einer Stelle, an der
+        das Ziel „Probelektion buchen" heisst, und jedes Feld ist eine
+        Gelegenheit zu gehen. Die Paketkarten nennen die Preise ohnehin.
+      */}
       <Reveal>
         <Pakete />
       </Reveal>
-      <Reveal>
-        <Preisrechner />
-      </Reveal>
-
       {/* Der Schlussaufruf bleibt ohne Einblendung – er ist der Boden der
           Seite und soll da sein, sobald man ankommt. */}
       <ProbelektionCTA />

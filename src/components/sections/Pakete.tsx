@@ -190,6 +190,22 @@ export default function Pakete() {
             </div>
           ))}
         </div>
+
+        {/*
+          Der einzige Weg von der Startseite zur Preisseite. Dort steht die
+          ausführliche Übersicht samt Preisrechner — der hier auf der
+          Startseite nichts verloren hatte, weil er eine Adresseingabe
+          verlangt, bevor überhaupt ein Verhältnis besteht.
+        */}
+        <p className="text-center text-sm text-gray-500 mt-10">
+          Wegkosten ab 5 km ab Neftenbach.{" "}
+          <Link
+            href="/preise"
+            className="text-navy-900 font-600 underline decoration-navy-200 hover:decoration-navy-900 underline-offset-4 transition-colors"
+          >
+            Preise im Detail und Rechner
+          </Link>
+        </p>
       </div>
     </section>
   );
