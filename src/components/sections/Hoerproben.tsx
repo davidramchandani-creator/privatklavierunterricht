@@ -156,7 +156,7 @@ function ProbenZeile({
         )}
       </button>
 
-      <div className="min-w-0 w-40 sm:w-52 flex-shrink-0">
+      <div className="min-w-0 w-36 sm:w-60 flex-shrink-0">
         <p className="text-base font-600 text-navy-900 truncate">{probe.titel}</p>
         <p className="text-sm text-gray-400 truncate">
           {fehler ? "Aufnahme nicht verfügbar" : probe.herkunft}
