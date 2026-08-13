@@ -1057,7 +1057,28 @@ export async function offeneVerfuegbarkeitsabfrage(): Promise<{
     ladeOffeneRunde(admin),
     ladeOffeneEinzelanfrage(admin, user.id),
   ]);
-  const runde = einzeln ?? allgemein;
+
+  // Eine allgemeine Planungsrunde verteilt feste Plätze. Wer flexibel bucht,
+  // bekommt keinen zugeteilt und soll auch nicht nach Zeitfenstern gefragt
+  // werden: Im Portal stand sonst „Dein fester Termin" mit einem Formular
+  // zum Absenden von Wunschzeiten, während der eigentliche Weg — selbst
+  // buchen — als kleiner Knopf darunter lag.
+  //
+  // Eine Einzelanfrage bleibt davon unberührt. Die richtet sich an genau
+  // diesen Schüler, und wer sie stellt, weiss, was er tut, etwa beim Wechsel
+  // von flexibel auf Fixplatz.
+  let allgemeinPassend = allgemein;
+  if (allgemein) {
+    const { data: paket } = await admin
+      .from("packages")
+      .select("booking_mode")
+      .eq("student_id", user.id)
+      .eq("status", "active")
+      .maybeSingle();
+    if (paket?.booking_mode !== "fix") allgemeinPassend = null;
+  }
+
+  const runde = einzeln ?? allgemeinPassend;
   if (!runde) return leer;
 
   const [fenster, vorhanden, { data: antwort }] = await Promise.all([

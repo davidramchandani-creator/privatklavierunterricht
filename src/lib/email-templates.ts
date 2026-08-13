@@ -1297,6 +1297,10 @@ export function renderEmail(
 
     case "package_created": {
       const raten = payload.billing_mode === "raten";
+      // Bei „pro Lektion" darf hier keine Rechnung angekündigt werden: Es
+      // kommt keine. Der Schüler zahlt nach jeder Lektion einzeln, und die
+      // Aufforderung dazu erreicht ihn jeweils nach dem Unterricht.
+      const proLektion = payload.billing_mode === "pro_lektion";
       const lektionen = Number(payload.lessons_total ?? 0);
       const chf = (n: unknown) =>
         Number(n ?? 0).toLocaleString("de-CH", {
@@ -1331,10 +1335,14 @@ export function renderEmail(
                       Die Rechnung dazu bekommst du in einer separaten E-Mail.
                     </p>
                   </div>`
-               : `<p>Du kannst ab sofort Termine buchen, du musst nicht auf den
-                    Zahlungseingang warten. Die Rechnung über
-                    <strong>CHF ${chf(payload.total_price)}</strong> erhältst du in einer
-                    separaten E-Mail, zahlbar innert 15 Tagen.</p>`
+               : proLektion
+                 ? `<p>Du kannst ab sofort Termine buchen. Bezahlt wird nach
+                      jeder Lektion einzeln, du bekommst die Zahlungsaufforderung
+                      jeweils im Anschluss. Jetzt ist nichts offen.</p>`
+                 : `<p>Du kannst ab sofort Termine buchen, du musst nicht auf den
+                      Zahlungseingang warten. Die Rechnung über
+                      <strong>CHF ${chf(payload.total_price)}</strong> erhältst du in einer
+                      separaten E-Mail, zahlbar innert 15 Tagen.</p>`
            }
 
            ${

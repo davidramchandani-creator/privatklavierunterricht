@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 const TABS = [
+  { id: "lektionen", label: "Offene Lektionen" },
   { id: "rechnungen", label: "Rechnungen" },
   { id: "raten", label: "Raten & Abos" },
 ] as const;
@@ -10,16 +11,25 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 export default function ZahlungenTabs({
+  lektionen,
   rechnungen,
   raten,
   ratenBadge,
+  lektionenBadge,
 }: {
+  lektionen: React.ReactNode;
   rechnungen: React.ReactNode;
   raten: React.ReactNode;
   /** Anzahl offener/überfälliger Raten für den Hinweispunkt. */
   ratenBadge: number;
+  /** Anzahl gehaltener, aber noch nicht abgerechneter Lektionen. */
+  lektionenBadge: number;
 }) {
-  const [tab, setTab] = useState<TabId>("rechnungen");
+  // „Offene Lektionen" ist die Startansicht, wenn welche anstehen: Das ist
+  // die Arbeit, die noch zu tun ist. Die Rechnungsliste ist ein Archiv.
+  const [tab, setTab] = useState<TabId>(
+    lektionenBadge > 0 ? "lektionen" : "rechnungen",
+  );
 
   return (
     <div className="space-y-5">
@@ -46,11 +56,18 @@ export default function ZahlungenTabs({
                 {ratenBadge}
               </span>
             )}
+            {t.id === "lektionen" && lektionenBadge > 0 && (
+              <span className="text-[11px] font-700 bg-[#1C244B] text-white rounded-full px-1.5 min-w-[18px] text-center">
+                {lektionenBadge}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
-      <div role="tabpanel">{tab === "rechnungen" ? rechnungen : raten}</div>
+      <div role="tabpanel">
+        {tab === "lektionen" ? lektionen : tab === "rechnungen" ? rechnungen : raten}
+      </div>
     </div>
   );
 }

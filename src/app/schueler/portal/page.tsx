@@ -85,6 +85,12 @@ export default async function SchuelerPortalPage() {
   const kannNeuesAbo = canBuyNewPackage(aktivesPackage);
   const paketNutzbar = !!aktivesPackage && !canBuyNewPackage(aktivesPackage);
 
+  // Abo oder Paket? Ein Abo zahlt monatlich in Raten, ein Paket wird im
+  // Voraus gekauft. Für die Beschriftung im Portal ist das der Unterschied.
+  const istAbo =
+    (aktivesPackage as { billing_mode?: string | null } | null)?.billing_mode ===
+    "raten";
+
   const { data: naechsteAppointments } = await supabase
     .from("appointments")
     .select("id, start_at, end_at, status, group_session_id")
@@ -278,7 +284,14 @@ export default async function SchuelerPortalPage() {
       )}
 
       <div className="space-y-5">
-        <SectionHeader title="Mein Abo" />
+        {/*
+          Ein Abo und ein Paket sind zwei verschiedene Dinge: Das Abo läuft
+          eine feste Periode und wird monatlich bezahlt, das Paket ist eine
+          Anzahl Lektionen, die man im Voraus kauft. Hier stand für beide
+          „Mein Abo". Wer ein 10er-Paket hat, las also durchgehend ein Wort,
+          das auf seinen Vertrag nicht zutrifft.
+        */}
+        <SectionHeader title={istAbo ? "Mein Abo" : "Mein Paket"} />
         <PaketCard
           paket={aktivesPackage}
           lessonsUsed={lessonsUsed}
@@ -286,7 +299,11 @@ export default async function SchuelerPortalPage() {
         />
         <div className="pt-1">
           <p className="text-[13px] font-600 text-gray-400 mb-2.5">
-            {kannNeuesAbo ? "Abo abschliessen" : "Dein laufendes Abo"}
+            {kannNeuesAbo
+              ? "Abo abschliessen"
+              : istAbo
+                ? "Dein laufendes Abo"
+                : "Dein laufendes Paket"}
           </p>
           <NeuesAbo canBuy={kannNeuesAbo} />
         </div>

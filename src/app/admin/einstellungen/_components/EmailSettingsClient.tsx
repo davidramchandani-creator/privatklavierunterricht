@@ -66,6 +66,42 @@ const GROUPS: { label: string; types: EmailType[] }[] = [
       { id: "group_session_left", label: "Session verlassen" },
     ],
   },
+  {
+    label: "Pakete & Abos",
+    types: [
+      { id: "package_created", label: "Paket angelegt" },
+      { id: "abo_gestartet", label: "Abo gestartet" },
+      { id: "abo_beendet", label: "Abo beendet" },
+      { id: "subscription_cancelled", label: "Abo gekündigt" },
+      { id: "rhythmus_changed", label: "Rhythmus geändert" },
+      { id: "fixplatz_confirmed", label: "Fixplatz bestätigt" },
+    ],
+  },
+  {
+    label: "Verfügbarkeit & Planung",
+    types: [
+      { id: "verfuegbarkeit_anfrage", label: "Verfügbarkeit angefragt" },
+      { id: "verfuegbarkeit_einzelanfrage", label: "Verfügbarkeit einzeln angefragt" },
+      { id: "verfuegbarkeit_erinnerung", label: "Erinnerung an die Verfügbarkeit" },
+      { id: "verfuegbarkeit_zuteilung", label: "Termine zugeteilt" },
+    ],
+  },
+  {
+    label: "Ausfälle",
+    types: [
+      { id: "ausfall_gutschrift", label: "Gutschrift nach Ausfall" },
+      { id: "ausfall_admin", label: "Ausfall gemeldet (an mich)" },
+    ],
+  },
+  {
+    label: "Weitere Admin-Benachrichtigungen",
+    types: [
+      { id: "abo_gestartet_admin", label: "Abo gestartet (an mich)" },
+      { id: "subscription_cancelled_admin", label: "Abo gekündigt (an mich)" },
+      { id: "payment_reported_admin", label: "Zahlung gemeldet (an mich)" },
+      { id: "proposal_accepted_admin", label: "Vorschlag angenommen (an mich)" },
+    ],
+  },
 ];
 
 export default function EmailSettingsClient({

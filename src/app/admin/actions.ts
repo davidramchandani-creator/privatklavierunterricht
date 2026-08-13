@@ -924,10 +924,18 @@ export async function createPackageAdmin(formData: FormData) {
 
   // Zahlungsmodell, identisch zum Schülerportal. Ratenkauf gibt es nur
   // für 10er/20er, eine Einzellektion wird immer einmalig verrechnet.
+  //
+  // „pro_lektion" ist der Fall der bestehenden Schüler: Sie zahlen nach
+  // dem Unterricht, nicht davor. Beim Anlegen wird deshalb gar nichts
+  // fakturiert; abgerechnet wird jede Lektion einzeln, nachdem sie
+  // stattgefunden hat.
+  const billingModeRoh = formData.get("billing_mode") as string;
   const billingMode =
-    (formData.get("billing_mode") as string) === "raten" && istPaket
+    billingModeRoh === "raten" && istPaket
       ? "raten"
-      : "einmalig";
+      : billingModeRoh === "pro_lektion"
+        ? "pro_lektion"
+        : "einmalig";
   const autoRenew = formData.get("auto_renew") === "on" && istPaket;
   const ratenPlan =
     billingMode === "raten"
@@ -996,10 +1004,12 @@ export async function createPackageAdmin(formData: FormData) {
       startDate: startDay,
       rhythmus,
     });
-  } else {
+  } else if (billingMode === "einmalig") {
     // Einmalzahlung: Gesamtpreis sofort in Rechnung stellen (15 Tage Frist).
     await createPackageInvoice(admin, pkg, payer);
   }
+  // pro_lektion: hier bewusst nichts. Die Rechnung entsteht erst, wenn eine
+  // Lektion gehalten wurde, über „Zahlungen → Offene Lektionen".
 
   // Paketbestätigung an den Schüler, erklärt, was als Nächstes zu tun ist.
   await sendEmailNow(admin, "package_created", {
@@ -2285,6 +2295,32 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
       .contains("payload", { invoice_id: rate.invoice_id });
   }
 
+  // Alles, was an diesem Paket sonst noch offen hängt, ebenfalls stilllegen.
+  //
+  // Die beiden Schritte oben fassen nur Rechnungen an, die an einem Termin
+  // oder an einer Rate hängen. Eine Rechnung über das Paket selbst — beim
+  // Einmalkauf also der volle Betrag — hat weder das eine noch das andere
+  // und blieb deshalb offen stehen. Im Schülerportal las sich das als
+  // Forderung über ein Paket, das es nicht mehr gibt.
+  //
+  // Gefunden an einem echten Fall: CHF 700 für ein storniertes 10er-Paket.
+  //
+  // Muss vor dem Anlegen der Storno-Rechnung geschehen, sonst würde die
+  // gleich wieder mit archiviert.
+  const { data: restlicheRechnungen } = await admin
+    .from("invoices")
+    .update({ status: "archived" })
+    .eq("package_id", packageId)
+    .in("status", ["unpaid", "pending_confirmation", "rejected"])
+    .select("id");
+  for (const inv of restlicheRechnungen ?? []) {
+    await admin
+      .from("scheduled_emails")
+      .update({ status: "cancelled" })
+      .eq("status", "pending")
+      .contains("payload", { invoice_id: inv.id });
+  }
+
   const { error } = await admin
     .from("packages")
     .update({
@@ -2602,6 +2638,47 @@ export async function resendPaymentEmail(invoiceId: string) {
 
   revalidatePath("/admin/zahlungen");
   return { success: true, error: undefined };
+}
+
+/**
+ * Lektion abrechnen: Rechnung erstellen **und** die Zahlungsmail sofort
+ * verschicken.
+ *
+ * Beide Hälften gab es schon, nur nicht verbunden und nirgends anklickbar:
+ * `createInvoiceForAppointment` wurde im ganzen Projekt kein einziges Mal
+ * aufgerufen. Für den Alltag ist das aber der übliche Vorgang, gerade
+ * während der Umstellung: Lektion war, Rechnung raus.
+ *
+ * Ohne diese Aktion müsste man auf den Tageslauf warten. Der läuft auf dem
+ * Hobby-Tarif nur einmal täglich und trifft die Uhrzeit auf eine Stunde
+ * genau. Wer nach dem Unterricht im Auto sitzt und die Zahlung anstossen
+ * will, wartet damit bis zum nächsten Morgen.
+ *
+ * Ob TWINT oder QR-Rechnung entsteht, ergibt sich aus der Zahlungsart des
+ * Pakets. Das wird hier nicht noch einmal entschieden.
+ */
+export async function abrechnenUndSenden(appointmentId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const rechnung = await createInvoiceForAppointment(appointmentId);
+  if (rechnung.error || !("invoiceId" in rechnung) || !rechnung.invoiceId) {
+    return { error: rechnung.error ?? "Rechnung konnte nicht erstellt werden." };
+  }
+
+  // Der Versand darf die schon erstellte Rechnung nicht zunichtemachen.
+  // Scheitert er, bleibt sie bestehen und lässt sich über „Mail erneut
+  // senden" nachschicken — das ist besser, als beides zu verlieren.
+  const versand = await resendPaymentEmail(rechnung.invoiceId);
+  if (versand.error) {
+    return {
+      error: `Rechnung erstellt, aber die Mail ging nicht raus: ${versand.error}`,
+      invoiceId: rechnung.invoiceId,
+    };
+  }
+
+  revalidatePath("/admin/zahlungen");
+  return { success: true, error: undefined, invoiceId: rechnung.invoiceId };
 }
 
 // ── Aufräumen / Löschen ───────────────────────────────────────────────────────
