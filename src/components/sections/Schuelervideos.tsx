@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Schuelervideo from "@/components/Schuelervideo";
-import Fortschrittsweg from "@/components/Fortschrittsweg";
 import Reveal from "@/components/Reveal";
 import { SCHUELERVIDEOS } from "@/lib/schuelervideos";
 
@@ -39,11 +38,14 @@ export default function Schuelervideos() {
       </p>
 
       {/*
-        Erst die Aussage als Bild, dann die Belege. Der Weg behauptet etwas,
-        die Videos lösen es ein — in dieser Reihenfolge, weil man ein Video
-        eher anklickt, wenn man weiss, worauf man achten soll.
+        Hier stand eine animierte Zeitachse, die den Weg von „nie gespielt"
+        bis zum ersten Stück gezeichnet hat. Sie ist wieder verschwunden,
+        und der Grund ist lehrreich: Jede Karte trägt ihre Wochenzahl
+        bereits. Die Achse hat dieselbe Auskunft ein zweites Mal gegeben,
+        nur grösser und mit Bewegung. Genau das lässt einen Abschnitt
+        überladen wirken — nicht die Menge an Gestaltung, sondern die
+        Wiederholung derselben Aussage in zwei Formen.
       */}
-      <Fortschrittsweg />
 
       {/*
         Bei vier Videos zwei Spalten statt drei: Drei nebeneinander liessen

@@ -265,30 +265,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 .animate-wave-pulse { animation: wave-pulse 0.6s ease-in-out infinite; }
 
-/* ── Fortschrittsweg: die Zeitachse unter den Schülervideos ──────────────────
-   Bewusst als richtiges CSS und nicht als Tailwind-Variante. Der naheliegende
-   Weg wäre `group-data-[los=1]/weg:w-full` gewesen — der erzeugt unter
-   Tailwind 4 aber keine Regel, was man erst merkt, wenn die Animation still
-   ausbleibt. Hier steht, was gilt, und es steht an einer Stelle.
-
-   Die Verzögerung je Punkt setzt die Komponente als Inline-Stil, damit jeder
-   Schüler genau dann erscheint, wenn die Linie ihn erreicht. */
-.weg-fuellung {
-  width: 0;
-  transition: width var(--weg-dauer, 1900ms) var(--ease-out-soft);
-}
-[data-los="1"] .weg-fuellung { width: 100%; }
-
-.weg-punkt {
-  transform: scale(0);
-  opacity: 0;
-  transition: transform 0.32s var(--ease-out-soft), opacity 0.32s var(--ease-out-soft);
-}
-[data-los="1"] .weg-punkt {
-  transform: scale(1);
-  opacity: 1;
-}
-
 /* Respektiere System-Einstellung „Bewegung reduzieren" */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
