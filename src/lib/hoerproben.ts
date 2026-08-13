@@ -94,8 +94,6 @@ export const HOERPROBEN: Hoerprobe[] = [
 
 
 /** Sekunden als "2:14". */
-export function formatDauer(sekunden: number): string {
-  const min = Math.floor(sekunden / 60);
-  const sek = Math.floor(sekunden % 60);
-  return `${min}:${String(sek).padStart(2, "0")}`;
-}
+// Wohnt inzwischen in dauer.ts, weil die Videos dieselbe Anzeige brauchen.
+// Hier weitergereicht, damit bestehende Aufrufe unverändert bleiben.
+export { formatDauer } from "./dauer";

@@ -31,11 +31,15 @@ describe("Schülervideos", () => {
     }
   });
 
-  it("jedes Video hat Titel, Zuordnung und Dauer", () => {
+  it("jedes Video hat Titel, Name, Woche und Dauer", () => {
     for (const v of SCHUELERVIDEOS) {
       expect(v.titel.trim().length, `${v.id}: Titel fehlt`).toBeGreaterThan(0);
-      expect(v.wer.trim().length, `${v.id}: Angabe „wer" fehlt`).toBeGreaterThan(0);
+      expect(v.name.trim().length, `${v.id}: Name fehlt`).toBeGreaterThan(0);
       expect(v.dauer, `${v.id}: Dauer fehlt`).toBeGreaterThan(0);
+      // Woche 0 gäbe es nicht, und die Zeitachse teilt durch die grösste
+      // Woche — eine 0 als einziger Wert liesse sie durch null teilen.
+      expect(v.woche, `${v.id}: Woche fehlt oder ist 0`).toBeGreaterThan(0);
+      expect(Number.isInteger(v.woche), `${v.id}: Woche ist keine ganze Zahl`).toBe(true);
     }
   });
 

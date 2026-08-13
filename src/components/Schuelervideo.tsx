@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import type { Schuelervideo as VideoDaten } from "@/lib/schuelervideos";
+import { formatDauer } from "@/lib/dauer";
 
 /**
  * Ein Schülervideo.
@@ -78,6 +79,46 @@ export default function Schuelervideo({
           onError={() => setFehler(true)}
         />
 
+        {/*
+          Verlauf nach unten. Die Standbilder sind fast alle hell — weisse
+          Klaviere, helle Wände. Ohne Abdunklung wäre weisse Schrift darauf
+          unlesbar, und dunkle Schrift verschwände auf den beiden dunklen
+          Aufnahmen. Der Verlauf löst beides auf einmal.
+        */}
+        {!laeuft && (
+          <div
+            className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-navy-900/85 via-navy-900/30 to-transparent pointer-events-none"
+            aria-hidden
+          />
+        )}
+
+        {/*
+          Die Wochenzahl. Sie ist der Beweis, deshalb ist sie das Grösste auf
+          der Karte — grösser als der Stücktitel. „Für Elise" spielt jeder,
+          „Für Elise in Woche 6" nicht.
+        */}
+        {!laeuft && (
+          <div className="absolute left-5 bottom-4 text-white pointer-events-none">
+            <p className="text-[10px] font-600 uppercase tracking-[0.22em] text-white/75">
+              Woche
+            </p>
+            <p className="text-5xl font-800 leading-[0.9] tabular-nums drop-shadow-sm">
+              {video.woche}
+            </p>
+          </div>
+        )}
+
+        {/*
+          Länge. Ob jemand klickt, hängt daran, ob er weiss, worauf er sich
+          einlässt: 21 Sekunden klickt man beiläufig, eine unbekannte Dauer
+          eher nicht.
+        */}
+        {!laeuft && (
+          <span className="absolute right-4 bottom-4 text-xs font-600 text-white/90 tabular-nums pointer-events-none">
+            {formatDauer(video.dauer)}
+          </span>
+        )}
+
         {/* Abspielen: ganze Fläche, nicht nur ein kleiner Knopf. */}
         <button
           onClick={umschalten}
@@ -85,11 +126,15 @@ export default function Schuelervideo({
           aria-label={`${video.titel} ${laeuft ? "pausieren" : "abspielen"}`}
           className="absolute inset-0 flex items-center justify-center disabled:cursor-not-allowed"
         >
+          {/*
+            Dunkler, milchiger Kreis statt weisser Scheibe: Auf den hellen
+            Standbildern verschwände Weiss auf Weiss.
+          */}
           <span
-            className={`w-14 h-14 rounded-full bg-white/95 text-navy-900 flex items-center justify-center shadow-lg transition-all ${
+            className={`w-16 h-16 rounded-full bg-navy-900/55 backdrop-blur-md border border-white/30 text-white flex items-center justify-center transition-all duration-300 ${
               laeuft
                 ? "opacity-0 group-hover:opacity-100 scale-90"
-                : "opacity-100 group-hover:scale-105"
+                : "opacity-100 group-hover:scale-110 group-hover:bg-navy-900/70"
             }`}
           >
             {laeuft ? (
@@ -123,7 +168,7 @@ export default function Schuelervideo({
 
       <div className="p-5">
         <p className="font-700 text-navy-900">{video.titel}</p>
-        <p className="text-sm text-gray-400 mt-0.5">{video.wer}</p>
+        <p className="text-sm text-gray-400 mt-0.5">{video.name}</p>
       </div>
     </div>
   );

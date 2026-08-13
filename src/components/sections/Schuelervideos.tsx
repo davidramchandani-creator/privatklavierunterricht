@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Schuelervideo from "@/components/Schuelervideo";
+import Fortschrittsweg from "@/components/Fortschrittsweg";
+import Reveal from "@/components/Reveal";
 import { SCHUELERVIDEOS } from "@/lib/schuelervideos";
 
 /**
@@ -35,6 +37,14 @@ export default function Schuelervideos() {
         Keiner der vier hatte vorher je am Klavier gesessen. Eine Lektion pro
         Woche, mehr nicht.
       </p>
+
+      {/*
+        Erst die Aussage als Bild, dann die Belege. Der Weg behauptet etwas,
+        die Videos lösen es ein — in dieser Reihenfolge, weil man ein Video
+        eher anklickt, wenn man weiss, worauf man achten soll.
+      */}
+      <Fortschrittsweg />
+
       {/*
         Bei vier Videos zwei Spalten statt drei: Drei nebeneinander liessen
         das vierte allein in einer zweiten Zeile stehen.
@@ -48,14 +58,17 @@ export default function Schuelervideos() {
               : "sm:grid-cols-2 lg:grid-cols-3"
         }`}
       >
-        {SCHUELERVIDEOS.map((v) => (
-          <Schuelervideo
-            key={v.id}
-            video={v}
-            laeuft={aktiv === v.id}
-            onStart={() => setAktiv(v.id)}
-            onStopp={() => setAktiv((a) => (a === v.id ? null : a))}
-          />
+        {SCHUELERVIDEOS.map((v, i) => (
+          // Versetztes Einblenden. Nicht mehr als 90 ms je Karte: Darüber
+          // wartet man auf die letzte, statt die erste anzusehen.
+          <Reveal key={v.id} delay={i * 90}>
+            <Schuelervideo
+              video={v}
+              laeuft={aktiv === v.id}
+              onStart={() => setAktiv(v.id)}
+              onStopp={() => setAktiv((a) => (a === v.id ? null : a))}
+            />
+          </Reveal>
         ))}
       </div>
     </div>

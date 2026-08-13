@@ -21,17 +21,20 @@ export type Schuelervideo = {
   id: string;
   /** Was gespielt wird. */
   titel: string;
+  /** Wer spielt. */
+  name: string;
   /**
-   * Wer spielt und seit wann — „Diego, nach 5 Wochen".
+   * In welcher Unterrichtswoche die Aufnahme entstand.
    *
-   * Die Zeitangabe ist der eigentliche Punkt: Ein Stück zu hören sagt wenig,
-   * „nach 5 Wochen" sagt einem Elternteil genau, was es wissen will.
+   * Als Zahl, nicht als Satz („nach 5 Wochen"): Der Wert wird gezeichnet —
+   * gross auf dem Standbild und als Punkt auf der Zeitachse. Steckt er in
+   * einem Satz, kann man ihn nur vorlesen.
    *
-   * Dass alle vier bei Null angefangen haben, steht bewusst **nicht** hier,
-   * sondern einmal über dem Block. In jeder Zeile wiederholt, hörte man auf,
-   * es zu bemerken.
+   * Alle vier nehmen wöchentlich Unterricht, Woche 5 heisst also fünf
+   * Lektionen. Dass sie bei Null angefangen haben, steht einmal über dem
+   * Block — in jeder Zeile wiederholt, hörte man auf, es zu bemerken.
    */
-  wer: string;
+  woche: number;
   /** Video unter /public/schuelervideos/. */
   datei: string;
   /** Standbild, gleicher Ordner. Ohne bleibt ein schwarzer Kasten stehen. */
@@ -59,7 +62,8 @@ export const SCHUELERVIDEOS: Schuelervideo[] = [
   {
     id: "diego-happy-birthday",
     titel: "Happy Birthday",
-    wer: "Diego, nach 5 Wochen",
+    name: "Diego",
+    woche: 5,
     datei: "/schuelervideos/diego-happy-birthday.mp4",
     poster: "/schuelervideos/diego-happy-birthday.jpg",
     dauer: 21,
@@ -67,7 +71,8 @@ export const SCHUELERVIDEOS: Schuelervideo[] = [
   {
     id: "diego-fuer-elise",
     titel: "Für Elise",
-    wer: "Diego, eine Woche später",
+    name: "Diego",
+    woche: 6,
     datei: "/schuelervideos/diego-fuer-elise.mp4",
     poster: "/schuelervideos/diego-fuer-elise.jpg",
     dauer: 22,
@@ -75,7 +80,8 @@ export const SCHUELERVIDEOS: Schuelervideo[] = [
   {
     id: "phia-another-love",
     titel: "Another Love",
-    wer: "Phia, nach 5 Wochen",
+    name: "Phia",
+    woche: 5,
     datei: "/schuelervideos/phia-another-love.mp4",
     poster: "/schuelervideos/phia-another-love.jpg",
     dauer: 44,
@@ -83,7 +89,8 @@ export const SCHUELERVIDEOS: Schuelervideo[] = [
   {
     id: "regina-the-cat",
     titel: "The Cat",
-    wer: "Regina, nach 4 Wochen",
+    name: "Regina",
+    woche: 4,
     datei: "/schuelervideos/regina-the-cat.mp4",
     poster: "/schuelervideos/regina-the-cat.jpg",
     dauer: 74,
