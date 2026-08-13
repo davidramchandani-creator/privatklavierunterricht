@@ -144,7 +144,20 @@ export default async function SchuelerPortalPage() {
   );
   const lockReason = bookingLockReason(lock);
 
-  const canBook = paketNutzbar && !lock.locked;
+  // Selbst buchen gibt es nur bei Flex.
+  //
+  // Wer einen Fixplatz hat, bekommt seine Termine aus der Zuteilung – die
+  // ganze Serie steht bereits im Kalender. Ihm zusätzlich einen
+  // Buchungsknopf zu zeigen, hiesse: er bucht Lektionen neben seinem festen
+  // Termin, die niemand eingeplant hat und die die Route sprengen.
+  //
+  // Das galt auch für den Zustand „Fixplatz vereinbart, Termin noch offen":
+  // dort wäre der Knopf besonders verlockend, weil noch kein Termin
+  // dasteht – und besonders falsch.
+  const istFlex =
+    (aktivesPackage as { booking_mode?: string | null } | null)?.booking_mode ===
+    "flex";
+  const canBook = paketNutzbar && !lock.locked && istFlex;
 
   const vorname = profile?.vorname ?? user.email?.split("@")[0] ?? "Schüler";
 

@@ -4,6 +4,9 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
 import { computePackageState, canCancelPackage, PACKAGE_LABELS, type Package } from "@/lib/packages";
+import { describeFixplatz } from "@/lib/fixplatz";
+import type { Rhythmus } from "@/lib/rhythmus";
+import { parseSchweizerAdresse } from "@/lib/qr-pdf";
 import SchuelerDetailActions, { InvoiceAction, PreiseForm, PackageFormNew, DirektBuchung, ProposalForm, ProposalWithdraw, AppointmentActions, PackageTimerActions, AdjustLessonsButton } from "./_components/SchuelerDetailActions";
 import { StatusBadge } from "@/components/ui/status-badge";
 import RatenplanPanel from "./_components/RatenplanPanel";
@@ -28,7 +31,7 @@ export default async function SchuelerDetailPage({
   ] = await Promise.all([
     admin
       .from("profiles")
-      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, erstellt_am, price_single, price_halbjahr, price_jahr, travel_surcharge, buffer_time_minutes, buffer_mode, payment_method")
+      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, erstellt_am, price_single, price_halbjahr, price_jahr, price_10er, price_20er, travel_surcharge, buffer_time_minutes, buffer_mode, payment_method")
       .eq("id", id)
       .maybeSingle(),
     admin
@@ -100,6 +103,10 @@ export default async function SchuelerDetailPage({
     price_single: Number(profile.price_single ?? 85),
     price_halbjahr: Number(profile.price_halbjahr ?? 70),
     price_jahr: Number(profile.price_jahr ?? 65),
+    // Paketpreise: Vorgabe zwischen Einzellektion und Abo, weil ein Paket
+    // weniger bindet als ein Abo, aber mehr als eine Einzellektion.
+    price_10er: Number(profile.price_10er ?? 75),
+    price_20er: Number(profile.price_20er ?? 70),
     travel_surcharge: Number(profile.travel_surcharge ?? 0),
     buffer_time_minutes: Number(profile.buffer_time_minutes ?? 15),
     buffer_mode: (profile.buffer_mode as string) ?? "fixed",
@@ -158,6 +165,23 @@ export default async function SchuelerDetailPage({
             <div className="col-span-2 md:col-span-3">
               <p className="text-gray-400 text-xs font-600 uppercase tracking-wide mb-1">Adresse</p>
               <p className="text-gray-900">{profile.adresse}</p>
+              {/*
+                Für die QR-Rechnung muss die Adresse in Strasse, Nummer, PLZ
+                und Ort zerlegbar sein — der Schweizer Standard verlangt die
+                Felder einzeln. Ohne diesen Hinweis fiele erst beim Versand
+                auf, dass keine Rechnung erzeugt werden kann, und dann steht
+                es nur im Serverlog.
+              */}
+              {prices.payment_method !== "twint" &&
+                !parseSchweizerAdresse(profile.adresse) && (
+                  <p className="mt-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-snug">
+                    Für die QR-Rechnung fehlt hier etwas. Erwartet wird{" "}
+                    <strong>Strasse Nr., PLZ Ort</strong> — zum Beispiel
+                    „Sattleracherstrasse 59, 8413 Neftenbach“. Solange das
+                    nicht stimmt, lässt sich für {profile.vorname} keine
+                    Rechnung erzeugen.
+                  </p>
+                )}
             </div>
           )}
           {profile.notizen && (
@@ -183,6 +207,8 @@ export default async function SchuelerDetailPage({
             price_single: prices.price_single,
             price_halbjahr: prices.price_halbjahr,
             price_jahr: prices.price_jahr,
+            price_10er: prices.price_10er,
+            price_20er: prices.price_20er,
             travel_surcharge: prices.travel_surcharge,
             buffer_time_minutes: prices.buffer_time_minutes,
             buffer_mode: prices.buffer_mode,
@@ -200,6 +226,7 @@ export default async function SchuelerDetailPage({
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2">Typ</th>
+                <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2">Termin</th>
                 <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2">Lektionen</th>
                 <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2 hidden sm:table-cell">Preis/Lekt.</th>
                 <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2 hidden md:table-cell">Gültig bis</th>
@@ -211,10 +238,60 @@ export default async function SchuelerDetailPage({
               {(packages as Package[]).map((pkg) => {
                 const usedCount = lessonsUsedByPackage.get(pkg.id) ?? pkg.lessons_used ?? 0;
                 const state = computePackageState(pkg, usedCount);
+                // Halbjahr/Jahr, Rhythmus und Fix/Flex stehen sonst nirgends im
+                // Admin – ohne diese Zeile sieht ein Abo aus wie jedes andere
+                // Paket, und man weiss nicht, was man vor sich hat.
+                //
+                // Abo und Paket haben denselben Typ in der Datenbank (10er
+                // bzw. 20er) – erst abo_variante unterscheidet sie. Ohne
+                // diese Zeile sähe ein Jahresabo genau aus wie ein
+                // 20er-Paket, obwohl das eine über Monatsraten läuft und
+                // sich verlängert und das andere einmal bezahlt wird und
+                // endet.
+                const varianteText =
+                  pkg.abo_variante === "halbjahr"
+                    ? "Abo Halbjahr"
+                    : pkg.abo_variante === "jahr"
+                      ? "Abo Jahr"
+                      : "Paket, einmalig bezahlt";
+                const rhythmusText =
+                  pkg.rhythmus === "zweiwoechentlich"
+                    ? "alle zwei Wochen"
+                    : pkg.rhythmus
+                      ? "wöchentlich"
+                      : null;
+                const artText = [varianteText, rhythmusText]
+                  .filter(Boolean)
+                  .join(" · ");
+
+                const terminText =
+                  pkg.booking_mode === "flex"
+                    ? "Flexibel – selbst buchen"
+                    : pkg.fixplatz_weekday != null && pkg.fixplatz_time != null
+                      ? describeFixplatz(
+                          pkg.fixplatz_weekday,
+                          pkg.fixplatz_time,
+                          (pkg.rhythmus === "zweiwoechentlich"
+                            ? "zweiwoechentlich"
+                            : "woechentlich") as Rhythmus,
+                          (pkg.fixplatz_week_parity as 0 | 1 | null) ?? null
+                        )
+                      : pkg.booking_mode === "fix"
+                        ? "Fixplatz – Termin folgt aus der Planung"
+                        : "—";
+
                 return (
                   <tr key={pkg.id}>
                     <td className="py-3 text-sm font-500 text-gray-900">
                       {PACKAGE_LABELS[pkg.type] ?? pkg.name ?? pkg.type}
+                      {artText && (
+                        <span className="block text-xs font-400 text-gray-500 mt-0.5">
+                          {artText}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 text-sm text-gray-600">
+                      {terminText}
                     </td>
                     <td className="py-3 text-sm text-gray-600">
                       {state.lessonsUsed}/{state.lessonsTotal}
@@ -267,14 +344,14 @@ export default async function SchuelerDetailPage({
         )}
 
         <PackageFormNew
-          schueler_id={id}
-          student_user_id={id}
           defaultPrices={{
             price_single: prices.price_single,
-            price_halbjahr: prices.price_halbjahr,
-            price_jahr: prices.price_jahr,
+            price_10er: prices.price_10er,
+            price_20er: prices.price_20er,
             travel_surcharge: prices.travel_surcharge,
           }}
+          schueler_id={id}
+          student_user_id={id}
         />
       </div>
 

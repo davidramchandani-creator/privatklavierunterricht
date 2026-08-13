@@ -42,10 +42,12 @@ import {
 } from "@/lib/abo";
 import {
   baueVorschau,
+  baueVorschauOhneTermin,
   legeMonatsratenAn,
   naechsterPeriodenstart,
   type AboVorschau,
 } from "@/lib/abo-server";
+import { ladeFenster } from "@/lib/routing-server";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   type Package as Paket,
@@ -771,13 +773,15 @@ export async function updateStudentPrices(
   const admin = await createAdminClient();
 
   const update: Record<string, number | string> = {};
-  // price_10er/price_20er bleiben in der Datenbank, werden aber nicht mehr
-  // gepflegt: sie gehören zu den auslaufenden Lektionspaketen. Die Abo-Preise
-  // stehen in price_halbjahr/price_jahr.
+  // Abo-Preise stehen in price_halbjahr/price_jahr, Paketpreise in
+  // price_10er/price_20er. Beide werden gepflegt: der Admin entscheidet pro
+  // Schüler zwischen Abo und Paket, und beide Wege brauchen einen Preis.
   const fields = [
     "price_single",
     "price_halbjahr",
     "price_jahr",
+    "price_10er",
+    "price_20er",
     "travel_surcharge",
   ] as const;
   for (const f of fields) {
@@ -1102,8 +1106,18 @@ export async function aboAnlegenAdmin(
     return { error: "Ungültige Abo-Variante." };
   }
 
+  // Beim Fixplatz gibt es zwei Wege, und beide sind gleichwertig:
+  // den Termin jetzt festlegen, oder ihn der Planung überlassen.
+  //
+  // Der zweite ist der Regelfall, sobald mehrere Schüler zusammen verplant
+  // werden: Wer jeden Termin einzeln von Hand setzt, hat am Ende eine Route,
+  // die aus lauter einzeln vernünftigen Entscheidungen besteht und in der
+  // Summe trotzdem schlecht ist.
+  const terminSpaeter =
+    bookingMode === "fix" && String(formData.get("fixplatz_quelle")) === "planung";
+
   const fixplatz =
-    bookingMode === "fix" && fixWeekdayRaw && fixTime
+    bookingMode === "fix" && !terminSpaeter && fixWeekdayRaw && fixTime
       ? {
           weekday: Number(fixWeekdayRaw),
           time: fixTime,
@@ -1114,7 +1128,7 @@ export async function aboAnlegenAdmin(
         }
       : null;
 
-  if (bookingMode === "fix" && !fixplatz) {
+  if (bookingMode === "fix" && !terminSpaeter && !fixplatz) {
     return { error: "Für einen Fixplatz braucht es Wochentag und Uhrzeit." };
   }
 
@@ -1131,14 +1145,26 @@ export async function aboAnlegenAdmin(
   }
 
   const periodeStart = naechsterPeriodenstart(todayInZurich());
-  const vorschau = await baueVorschau(admin, {
-    studentId,
-    variante,
-    rhythmus,
-    bookingMode,
-    weekday: fixplatz?.weekday ?? 3,
-    periodeStart,
-  });
+
+  // Steht der Termin noch nicht fest, wird mit dem *ungünstigsten* möglichen
+  // Wochentag gerechnet. Sonst verspräche das Abo eine Lektion mehr, als es
+  // an manchen Tagen halten kann — und die fehlte dann am Ende der Periode.
+  const vorschau = terminSpaeter
+    ? await baueVorschauOhneTermin(admin, {
+        studentId,
+        variante,
+        rhythmus,
+        moeglicheTage: (await ladeFenster(admin)).map((f) => f.wochentag),
+        periodeStart,
+      })
+    : await baueVorschau(admin, {
+        studentId,
+        variante,
+        rhythmus,
+        bookingMode,
+        weekday: fixplatz?.weekday ?? 3,
+        periodeStart,
+      });
 
   if (vorschau.lektionen < 1) {
     return { error: "In diesem Zeitraum liegen keine Unterrichtstermine." };
@@ -1386,7 +1412,8 @@ export async function aboVorschauAdmin(params: {
   variante: "halbjahr" | "jahr";
   rhythmus: Rhythmus;
   bookingMode: BookingMode;
-  weekday: number;
+  /** null = Termin steht noch nicht fest. */
+  weekday: number | null;
 }): Promise<{ vorschau: AboVorschau } | { error: string }> {
   const verboten = await assertAdmin();
   if (verboten) return verboten;
@@ -1394,13 +1421,29 @@ export async function aboVorschauAdmin(params: {
   if (!params.studentUserId) return { error: "Kein Schüler angegeben." };
 
   const admin = await createAdminClient();
+  const periodeStart = naechsterPeriodenstart(todayInZurich());
+
+  // Ohne festen Wochentag über den ungünstigsten möglichen Tag rechnen. Sonst
+  // zeigt die Vorschau eine Lektion mehr, als das Abo an manchen Tagen halten
+  // kann — und die fehlte am Ende der Periode.
+  if (params.weekday == null) {
+    const vorschau = await baueVorschauOhneTermin(admin, {
+      studentId: params.studentUserId,
+      variante: params.variante,
+      rhythmus: params.rhythmus,
+      moeglicheTage: (await ladeFenster(admin)).map((f) => f.wochentag),
+      periodeStart,
+    });
+    return { vorschau };
+  }
+
   const vorschau = await baueVorschau(admin, {
     studentId: params.studentUserId,
     variante: params.variante,
     rhythmus: params.rhythmus,
     bookingMode: params.bookingMode,
     weekday: params.weekday,
-    periodeStart: naechsterPeriodenstart(todayInZurich()),
+    periodeStart,
   });
   return { vorschau };
 }

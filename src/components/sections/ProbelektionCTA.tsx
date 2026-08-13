@@ -4,7 +4,14 @@ import { CalendarCheck, ArrowRight } from "lucide-react";
 
 export default function ProbelektionCTA() {
   return (
-    <section id="probelektion" className="py-24 relative overflow-hidden">
+    <section
+      id="probelektion"
+      className="py-20 md:py-28 relative overflow-hidden"
+    >
+      {/* Ankerpunkt für die mitlaufende Leiste: sobald dieser Block im Bild
+          ist, zieht sie sich zurück – sonst stünden zwei
+          Probelektions-Knöpfe übereinander. */}
+      <div id="probelektion-cta" className="absolute inset-0 pointer-events-none" aria-hidden />
       {/* Gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-navy-900 to-navy-700" />
       <div

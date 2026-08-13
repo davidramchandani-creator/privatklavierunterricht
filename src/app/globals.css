@@ -254,6 +254,17 @@ h1, h2, h3, h4, h5, h6 {
   to { transform: rotate(360deg); }
 }
 
+/* ── Hörproben: Balken am Abspielkopf ────────────────────────────────────── */
+/* Nur die Balken direkt am Kopf pulsieren – alle zappeln zu lassen sähe nach
+   Equalizer aus statt nach Fortschritt. Die Regel unten für „Bewegung
+   reduzieren" schaltet das mit ab; der Farbverlauf der Wellenform bleibt,
+   denn er ist Information und keine Zierde. */
+@keyframes wave-pulse {
+  0%, 100% { transform: scaleY(1); }
+  50%      { transform: scaleY(1.15); }
+}
+.animate-wave-pulse { animation: wave-pulse 0.6s ease-in-out infinite; }
+
 /* Respektiere System-Einstellung „Bewegung reduzieren" */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

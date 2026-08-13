@@ -3,6 +3,8 @@
  * Serverseitiger Code: API-Key aus env, nie im Client verwenden.
  */
 
+import { erzeugeQrRechnungPdf, parseSchweizerAdresse } from "./qr-pdf";
+
 const LIVINGTECH_API_KEY = process.env.LIVINGTECH_API_KEY ?? "";
 const PIANO_IBAN = (process.env.PIANO_IBAN ?? "CH6808307000541179306").replace(/\s/g, "");
 const PIANO_CREDITOR_NAME = process.env.PIANO_CREDITOR_NAME ?? "David Ramchandani";
@@ -78,15 +80,53 @@ export function buildSpcData(params: QRInvoiceParams): string {
 }
 
 /**
- * Erzeugt eine QR-Rechnung als PDF über die LivingTech API.
- * Bei API-Fehler → SPC-Fallback.
+ * Erzeugt eine QR-Rechnung als PDF.
+ *
+ * Zuerst lokal (`qr-pdf.ts`), weil die Rechnung der Weg ist, auf dem das Geld
+ * hereinkommt — sie darf nicht von einem fremden Dienst abhängen. Der frühere
+ * Ausweg bei einem Ausfall war eine Textdatei mit dem rohen QR-Datenstring,
+ * die kein Mensch bezahlen kann; genau das ist im Bestand auch passiert.
+ *
+ * Die LivingTech-API bleibt als ausdrückliche Ausweichmöglichkeit bestehen,
+ * falls die Adresse sich nicht zerlegen lässt und ein Schlüssel hinterlegt
+ * ist. Der SPC-String ist nur noch die letzte Notlage — und wird vom
+ * Aufrufer bewusst **nicht** dauerhaft gespeichert.
  */
 export async function generateQRInvoicePdf(
   params: QRInvoiceParams
 ): Promise<QRInvoiceResult> {
   const { invoiceNumber, amount, debtorName, debtorAddress, message } = params;
 
-  // Adresse aufteilen
+  // ── Weg 1: lokal erzeugen ────────────────────────────────
+  const debtorAdresse = parseSchweizerAdresse(debtorAddress);
+  const creditorAdresse = parseSchweizerAdresse(PIANO_CREDITOR_ADDRESS);
+
+  if (debtorAdresse && creditorAdresse) {
+    try {
+      const pdfBuffer = await erzeugeQrRechnungPdf({
+        invoiceNumber,
+        amount,
+        debtorName,
+        debtorAdresse,
+        creditor: {
+          name: PIANO_CREDITOR_NAME,
+          iban: PIANO_IBAN,
+          adresse: creditorAdresse,
+        },
+        message,
+      });
+      return { type: "pdf", pdfBuffer };
+    } catch (err) {
+      console.error("[qr] Lokale PDF-Erzeugung fehlgeschlagen:", err);
+    }
+  } else if (!debtorAdresse) {
+    console.error(
+      `[qr] Adresse von ${debtorName} laesst sich nicht zerlegen: "${debtorAddress}". ` +
+        "Erwartet wird: Strasse Nr., PLZ Ort"
+    );
+  }
+
+  // ── Weg 2: LivingTech, nur mit hinterlegtem Schlüssel ────
   const debtorParts = debtorAddress.split(",").map((s) => s.trim());
   const debtorLine1 = debtorParts[0] ?? "";
   const debtorLine2 = debtorParts.slice(1).join(", ") ?? "";

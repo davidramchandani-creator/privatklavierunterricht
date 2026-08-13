@@ -1,4 +1,7 @@
+import Link from "next/link";
 import { Star, Quote } from "lucide-react";
+import AbschnittsKopf from "@/components/AbschnittsKopf";
+import Schuelervideos from "@/components/sections/Schuelervideos";
 
 interface Bewertung {
   id: string;
@@ -55,30 +58,26 @@ export default function Bewertungen() {
   const anzeigen = BEWERTUNGEN;
 
   return (
-    <section className="py-24 bg-surface">
+    <section className="py-16 md:py-24 bg-surface">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-16">
-          <p className="text-gray-400 font-600 text-xs uppercase tracking-widest mb-3">
-            Stimmen
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-800 text-navy-900 mb-4 tracking-tight">
-            Was Schüler sagen
-          </h2>
-          <div className="flex items-center justify-center gap-2">
-            <div className="flex gap-0.5">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Star
-                  key={i}
-                  className="w-5 h-5 fill-amber-400 text-amber-400"
-                />
-              ))}
-            </div>
-            <span className="font-700 text-navy-900">5.0</span>
-            <span className="text-gray-500 text-sm">
-              · {anzeigen.length} Bewertungen
-            </span>
+        <AbschnittsKopf kicker="Stimmen" titel="Was Schüler sagen" className="mb-6" />
+
+        {/*
+          Die Sterne sind dekorativ (aria-hidden); die Wertung steht als Text
+          daneben. Ein Screenreader liest sonst fünfmal „Stern" und nie die
+          Zahl, um die es geht.
+        */}
+        <div className="flex items-center gap-2 mb-12">
+          <div className="flex gap-0.5" aria-hidden>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Star key={i} className="w-5 h-5 fill-amber-400 text-amber-400" />
+            ))}
           </div>
+          <span className="font-700 text-navy-900">5.0</span>
+          <span className="text-gray-500 text-sm">
+            aus {anzeigen.length} Bewertungen
+          </span>
         </div>
 
         {/* Cards */}
@@ -97,6 +96,29 @@ export default function Bewertungen() {
             </div>
           ))}
         </div>
+
+        {/*
+          Videos nach den Zitaten: Wer liest, ist schneller fertig als wer
+          zusieht. Zuerst das schnell Erfassbare, dann das, wofür man sich
+          Zeit nimmt.
+        */}
+        <Schuelervideos />
+
+        {/*
+          Nach dem sozialen Beleg. Wer bis hierher gelesen hat, glaubt, dass
+          es funktioniert — und hätte bis zum Seitenende keinen Weg, etwas
+          daraus zu machen.
+        */}
+        <p className="text-center text-gray-500 mt-10">
+          Klingt gut?{" "}
+          <Link
+            href="/probelektion"
+            className="text-navy-900 font-700 underline decoration-navy-200 hover:decoration-navy-900 underline-offset-4 transition-colors"
+          >
+            Probelektion buchen
+          </Link>{" "}
+          — unverbindlich.
+        </p>
       </div>
     </section>
   );

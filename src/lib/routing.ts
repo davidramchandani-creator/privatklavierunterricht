@@ -47,9 +47,20 @@ export type PlanSchueler = {
   lektionMinuten: number;
   /** Wochentage, an denen der Schüler kann. Leer = keine Einschränkung. */
   moeglicheTage?: number[];
-  /** Frühester Beginn als "HH:MM", falls eingeschränkt. */
+  /**
+   * Zeiten **je Wochentag**. Das ist der genaue Fall, und er hat Vorrang.
+   *
+   * Ohne diese Aufschlüsselung müsste man die Angaben zu einem einzigen
+   * Fenster verrechnen — und das geht schief, sobald jemand an
+   * verschiedenen Tagen verschieden kann: „Di ab 18:00" und „Fr bis 18:00"
+   * ergäben zusammengezogen 18:00 bis 18:00, also gar nichts. Der Schüler
+   * fiele lautlos aus dem Plan, obwohl er am Dienstag den ganzen Abend Zeit
+   * hat.
+   */
+  fenster?: { wochentag: number; fruehestens: string; spaetestens: string }[];
+  /** Frühester Beginn als "HH:MM", falls für alle Tage gleich. */
   fruehestens?: string | null;
-  /** Spätestes Ende als "HH:MM", falls eingeschränkt. */
+  /** Spätestes Ende als "HH:MM", falls für alle Tage gleich. */
   spaetestens?: string | null;
 };
 
@@ -142,15 +153,65 @@ function alsZeit(minuten: number): string {
 
 /** Kann dieser Schüler an diesem Wochentag überhaupt? */
 function tagErlaubt(s: PlanSchueler, wochentag: number): boolean {
+  if (s.fenster && s.fenster.length > 0) {
+    return s.fenster.some((f) => f.wochentag === wochentag);
+  }
   if (!s.moeglicheTage || s.moeglicheTage.length === 0) return true;
   return s.moeglicheTage.includes(wochentag);
 }
 
-/** Passt die Lektion in das persönliche Zeitfenster des Schülers? */
-function zeitErlaubt(s: PlanSchueler, beginnMin: number, endeMin: number): boolean {
+/**
+ * Passt die Lektion in das persönliche Zeitfenster des Schülers?
+ *
+ * Tagesgenaue Angaben schlagen die pauschalen. Gibt es für den Tag mehrere
+ * Fenster, genügt eines — der Schüler kann ja in jedem davon.
+ */
+function zeitErlaubt(
+  s: PlanSchueler,
+  wochentag: number,
+  beginnMin: number,
+  endeMin: number
+): boolean {
+  const tagesFenster = s.fenster?.filter((f) => f.wochentag === wochentag);
+  if (tagesFenster && tagesFenster.length > 0) {
+    return tagesFenster.some(
+      (f) =>
+        beginnMin >= minutenVon(f.fruehestens) &&
+        endeMin <= minutenVon(f.spaetestens)
+    );
+  }
+
   if (s.fruehestens && beginnMin < minutenVon(s.fruehestens)) return false;
   if (s.spaetestens && endeMin > minutenVon(s.spaetestens)) return false;
   return true;
+}
+
+/**
+ * Frühestmöglicher Beginn, der die Zeiten aller Beteiligten achtet.
+ *
+ * Gibt es für den Tag mehrere Fenster, wird das erste genommen, das noch
+ * erreichbar ist — sonst schöbe ein Schüler mit einem späten Zweitfenster den
+ * ganzen Abend nach hinten.
+ */
+function spaetesterBeginn(
+  schueler: PlanSchueler[],
+  wochentag: number,
+  frueheste: number
+): number {
+  let start = frueheste;
+  for (const s of schueler) {
+    const tagesFenster = s.fenster?.filter((f) => f.wochentag === wochentag);
+    if (tagesFenster && tagesFenster.length > 0) {
+      const erreichbar = tagesFenster
+        .map((f) => minutenVon(f.fruehestens))
+        .filter((m) => m >= start);
+      const eigene = erreichbar.length > 0 ? Math.min(...erreichbar) : start;
+      start = Math.max(start, eigene);
+      continue;
+    }
+    if (s.fruehestens) start = Math.max(start, minutenVon(s.fruehestens));
+  }
+  return start;
 }
 
 // ── Schritt 1: geografische Gruppen ────────────────────────
@@ -408,6 +469,7 @@ function baueTag(
   let uhr = beginnMin;
   let vorherigerOrt = zuhause;
   let fahrzeitSumme = 0;
+  let leerlaufMin = 0;
 
   for (const idx of reihenfolge) {
     const pos = positionen[idx];
@@ -418,26 +480,38 @@ function baueTag(
     // Erster Termin: die Anfahrt von zuhause passiert vor Fensterbeginn,
     // der Unterricht startet also pünktlich zum Fensterbeginn. Danach zählt
     // Fahrzeit plus Puffer zwischen den Lektionen.
-    const start =
+    const frueheste =
       gebaut.length === 0 ? beginnMin : uhr + Math.ceil(anfahrtMin) + pufferMinuten;
 
     const dauer = Math.max(
       pos.gerade?.lektionMinuten ?? 45,
       pos.ungerade?.lektionMinuten ?? 45
     );
-    const schluss = start + dauer;
 
     const schuelerHier = [pos.gerade, pos.ungerade].filter(
       Boolean
     ) as PlanSchueler[];
+
+    // Wer erst später kann, wird nicht verworfen, sondern später angesetzt.
+    //
+    // Vorher wurde starr zum frühestmöglichen Zeitpunkt geprüft: Wer ab 18:00
+    // konnte, fiel an einem Abend ab 16:15 durch und landete unter „kein
+    // Platz mehr" — obwohl der ganze Abend frei war. Das Warten kostet
+    // Leerzeit, deshalb steht es als Warnung im Tagesplan; es ist aber
+    // allemal besser, als jemanden gar nicht einzuplanen.
+    const start = spaetesterBeginn(schuelerHier, wochentag, frueheste);
+    const schluss = start + dauer;
+
     const zeitPasstAllen = schuelerHier.every((s) =>
-      zeitErlaubt(s, start, schluss)
+      zeitErlaubt(s, wochentag, start, schluss)
     );
 
     if (schluss > endeMin || !zeitPasstAllen) {
       ueberzaehlig.push(pos);
       continue;
     }
+
+    if (start > frueheste) leerlaufMin += start - frueheste;
 
     gebaut.push({
       geradeWoche: pos.gerade,
@@ -466,6 +540,11 @@ function baueTag(
   if (gebaut.length > 0 && gesamtFahrzeit / 60 > unterrichtsMinuten) {
     warnungen.push(
       `Mehr Fahrzeit (${Math.round(gesamtFahrzeit / 60)} Min.) als Unterricht (${unterrichtsMinuten} Min.) – dieser Tag trägt sich nicht.`
+    );
+  }
+  if (leerlaufMin >= 30) {
+    warnungen.push(
+      `${leerlaufMin} Min. Wartezeit, weil einzelne Schüler erst später können. Der Abend liesse sich dichter legen, wenn jemand früher kann.`
     );
   }
   if (gebaut.length === 1 && gesamtFahrzeit / 60 > 45) {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { MapPin, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -255,6 +256,23 @@ export default function Preisrechner() {
           * Ab 5 km Entfernung von Neftenbach fallen Wegkosten an. Der Preis ist
           eine Schätzung und kann geringfügig abweichen.
         </p>
+
+        {/*
+          Wer den Preis ausgerechnet hat, hat sich mit der Sache befasst. Bis
+          vor Kurzem endete dieser Abschnitt mit einer Fussnote und sonst
+          nichts — der einzige Ausweg war weiterscrollen.
+        */}
+        <div className="mt-8 text-center">
+          <Link
+            href="/probelektion"
+            className="inline-flex items-center justify-center gap-2 bg-navy-900 text-white font-700 rounded-xl px-6 min-h-[48px] hover:bg-navy-800 active:scale-[0.98] transition-all shadow-lg shadow-navy-900/20"
+          >
+            Erst mal unverbindlich ausprobieren
+          </Link>
+          <p className="text-sm text-gray-400 mt-3">
+            Die Probelektion kostet nichts weiter als eine Stunde Zeit.
+          </p>
+        </div>
       </div>
     </section>
   );
