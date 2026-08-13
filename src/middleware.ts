@@ -10,7 +10,7 @@ export async function middleware(request: NextRequest) {
  *
  * Nicht nur der Ordnung halber: Die Middleware fragt bei jedem Durchlauf die
  * Supabase-Sitzung ab. Beim Vorspulen in einem Video schickt der Browser
- * Dutzende Teilanfragen — das wären Dutzende Auth-Abfragen für eine einzige
+ * Dutzende Teilanfragen, das wären Dutzende Auth-Abfragen für eine einzige
  * Aufnahme, die ohnehin öffentlich ist.
  *
  * Die Liste deckt ab, was tatsächlich unter public/ liegt. Kommt ein neues

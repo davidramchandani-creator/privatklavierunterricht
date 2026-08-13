@@ -291,8 +291,8 @@ export async function resendInvite(email: string) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
   const adminClient = await createAdminClient();
 
-  // admin.generateLink bypasses PKCE – works across any browser/device.
-  // Wichtig: generateLink versendet selbst KEINE E-Mail – der Link muss
+  // admin.generateLink bypasses PKCE, works across any browser/device.
+  // Wichtig: generateLink versendet selbst KEINE E-Mail, der Link muss
   // anschliessend explizit über unseren eigenen Versand (Resend) zugestellt werden.
   const { data, error } = await adminClient.auth.admin.generateLink({
     type: "recovery",
@@ -311,7 +311,7 @@ export async function resendInvite(email: string) {
   try {
     await sendEmail({
       to: email,
-      subject: "Dein Zugang zum Schülerportal – Klavierunterricht",
+      subject: "Dein Zugang zum Schülerportal: Klavierunterricht",
       html: `<div style="font-family:sans-serif;padding:24px;background:#f3f4f6;">
         <div style="background:#fff;border-radius:12px;padding:32px;max-width:480px;margin:0 auto;">
           <h2 style="color:#1C244B;margin-top:0;">Dein Zugang zum Schülerportal</h2>
@@ -429,7 +429,7 @@ export async function updateVerfuegbarkeit(slots: VerfuegbarkeitSlot[]) {
 
   const supabase = await createClient();
 
-  // Plausibilität serverseitig prüfen – nie dem Formular vertrauen.
+  // Plausibilität serverseitig prüfen, nie dem Formular vertrauen.
   for (const s of slots) {
     if (s.lesson_minutes < 15 || s.lesson_minutes > 180) {
       return { error: "Die Lektionsdauer muss zwischen 15 und 180 Minuten liegen." };
@@ -501,8 +501,8 @@ export async function updatePreise(formData: FormData) {
 // ── Terminanfragen (booking_requests) ───────────────────────────────────────
 
 /**
- * Admin nimmt eine offene Terminanfrage an (Spec §4.1). Erstellt – bei Serien
- * transaktional (alle oder keiner) – die Termine im neuen Schema. Validiert
+ * Admin nimmt eine offene Terminanfrage an (Spec §4.1). Erstellt, bei Serien
+ * transaktional (alle oder keiner), die Termine im neuen Schema. Validiert
  * vorher mit der Buchungs-Engine (Kollisionen/Abwesenheiten/Zeitblöcke), die
  * 24h-Vorlaufregel wird als Admin-Aktion übersprungen.
  */
@@ -832,10 +832,10 @@ export async function calculateTravelBuffer(
       console.error("[calculateTravelBuffer] Google Maps Fehlerantwort:", JSON.stringify(json, null, 2));
       if (json.status === "REQUEST_DENIED") {
         return {
-          error: `Google Maps: REQUEST_DENIED – wahrscheinlich ist der API-Key eingeschränkt oder die Distance Matrix API ist nicht aktiviert. Details: ${json.error_message ?? "keine weiteren Infos"}`,
+          error: `Google Maps: REQUEST_DENIED, wahrscheinlich ist der API-Key eingeschränkt oder die Distance Matrix API ist nicht aktiviert. Details: ${json.error_message ?? "keine weiteren Infos"}`,
         };
       }
-      return { error: `Google Maps Fehler: ${json.status}${json.error_message ? ` – ${json.error_message}` : ""}` };
+      return { error: `Google Maps Fehler: ${json.status}${json.error_message ? `, ${json.error_message}` : ""}` };
     }
     const element = json.rows?.[0]?.elements?.[0];
     if (!element || element.status !== "OK") return { error: "Adresse nicht gefunden." };
@@ -888,7 +888,7 @@ export async function createPackageAdmin(formData: FormData) {
   const startDay = todayInZurich(startsAt);
   const totalPrice = pricePerLesson * lessonsTotal;
 
-  // Rhythmus und Buchungsart – bei einer Einzellektion gibt es beides nicht.
+  // Rhythmus und Buchungsart, bei einer Einzellektion gibt es beides nicht.
   const istPaket = type !== "single";
   const rhythmus: Rhythmus =
     istPaket && (formData.get("rhythmus") as string) === "zweiwoechentlich"
@@ -922,7 +922,7 @@ export async function createPackageAdmin(formData: FormData) {
     ? new Date(`${expiryFor(lessonsTotal, rhythmus, startDay)}T23:59:59.000Z`)
     : null;
 
-  // Zahlungsmodell – identisch zum Schülerportal. Ratenkauf gibt es nur
+  // Zahlungsmodell, identisch zum Schülerportal. Ratenkauf gibt es nur
   // für 10er/20er, eine Einzellektion wird immer einmalig verrechnet.
   const billingMode =
     (formData.get("billing_mode") as string) === "raten" && istPaket
@@ -964,7 +964,7 @@ export async function createPackageAdmin(formData: FormData) {
       fixplatz_weekday: fixplatz?.weekday ?? null,
       fixplatz_time: fixplatz?.time ?? null,
       fixplatz_week_parity: fixplatz?.parity ?? null,
-      // Der Admin setzt den Preis von Hand – ein automatischer Flex-Aufschlag
+      // Der Admin setzt den Preis von Hand, ein automatischer Flex-Aufschlag
       // würde ihn überschreiben. Darum hier bewusst 0.
       flex_surcharge_percent: 0,
     })
@@ -1001,7 +1001,7 @@ export async function createPackageAdmin(formData: FormData) {
     await createPackageInvoice(admin, pkg, payer);
   }
 
-  // Paketbestätigung an den Schüler – erklärt, was als Nächstes zu tun ist.
+  // Paketbestätigung an den Schüler, erklärt, was als Nächstes zu tun ist.
   await sendEmailNow(admin, "package_created", {
     student_id: userId,
     student_name: `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined,
@@ -1060,7 +1060,7 @@ export async function createPackageAdmin(formData: FormData) {
         offen: serie.offen.map((d) => d.toISOString()),
       });
     }
-    // Bei einem Fehler bleibt das Paket bestehen – die Lektionen sind
+    // Bei einem Fehler bleibt das Paket bestehen, die Lektionen sind
     // gutgeschrieben, nur die Serie fehlt und lässt sich nachtragen.
   }
 
@@ -1071,7 +1071,7 @@ export async function createPackageAdmin(formData: FormData) {
 }
 
 /**
- * Abo für einen Schüler anlegen – dieselbe Rechnung wie im Portal.
+ * Abo für einen Schüler anlegen, dieselbe Rechnung wie im Portal.
  *
  * Bewusst über dieselbe `baueVorschau`, damit im Admin garantiert dieselbe
  * Lektionszahl und derselbe Monatsbetrag herauskommen wie beim
@@ -1148,7 +1148,7 @@ export async function aboAnlegenAdmin(
 
   // Steht der Termin noch nicht fest, wird mit dem *ungünstigsten* möglichen
   // Wochentag gerechnet. Sonst verspräche das Abo eine Lektion mehr, als es
-  // an manchen Tagen halten kann — und die fehlte dann am Ende der Periode.
+  // an manchen Tagen halten kann, und die fehlte dann am Ende der Periode.
   const vorschau = terminSpaeter
     ? await baueVorschauOhneTermin(admin, {
         studentId,
@@ -1276,15 +1276,15 @@ export async function aboAnlegenAdmin(
 }
 
 /**
- * Abo vorzeitig beenden – der Ausnahmefall.
+ * Abo vorzeitig beenden, der Ausnahmefall.
  *
  * Der Normalfall ist ein anderer: Wer aufhören will, schaltet die
  * Verlängerung ab und läuft die Periode zu Ende. Diese Aktion ist für den
- * echten Vertragsbruch — Wegzug, längere Krankheit, Kulanz.
+ * echten Vertragsbruch, Wegzug, längere Krankheit, Kulanz.
  *
  * Angefangene Monate bleiben geschuldet, die restlichen entfallen. Zukünftige
  * Termine werden storniert, noch nicht gestellte Raten der offenen Monate
- * ebenfalls. Was bereits fakturiert ist, bleibt stehen — eine Rechnung, die
+ * ebenfalls. Was bereits fakturiert ist, bleibt stehen. Eine Rechnung, die
  * draussen ist, schreibt man nicht um.
  */
 export async function aboVorzeitigBeenden(
@@ -1310,7 +1310,7 @@ export async function aboVorzeitigBeenden(
 
   if (!pkg) return { error: "Abo nicht gefunden." };
   if (!pkg.abo_variante) {
-    return { error: "Das ist kein Abo – bitte die Paket-Stornierung verwenden." };
+    return { error: "Das ist kein Abo, bitte die Paket-Stornierung verwenden." };
   }
   if (pkg.status !== "active") return { error: "Dieses Abo ist nicht aktiv." };
 
@@ -1404,7 +1404,7 @@ export async function aboVorzeitigBeenden(
 }
 
 /**
- * Abo-Vorschau für den Admin – zeigt vor dem Anlegen die exakte
+ * Abo-Vorschau für den Admin, zeigt vor dem Anlegen die exakte
  * Lektionszahl und den Monatsbetrag.
  */
 export async function aboVorschauAdmin(params: {
@@ -1425,7 +1425,7 @@ export async function aboVorschauAdmin(params: {
 
   // Ohne festen Wochentag über den ungünstigsten möglichen Tag rechnen. Sonst
   // zeigt die Vorschau eine Lektion mehr, als das Abo an manchen Tagen halten
-  // kann — und die fehlte am Ende der Periode.
+  // kann, und die fehlte am Ende der Periode.
   if (params.weekday == null) {
     const vorschau = await baueVorschauOhneTermin(admin, {
       studentId: params.studentUserId,
@@ -1449,7 +1449,7 @@ export async function aboVorschauAdmin(params: {
 }
 
 /**
- * Freie Fixplätze für einen Schüler – dieselbe Suche wie im Portal.
+ * Freie Fixplätze für einen Schüler, dieselbe Suche wie im Portal.
  * Geprüft wird die ganze Serie über die Laufzeit, nicht nur der nächste Termin.
  */
 export async function fixplaetzeFuerSchueler(
@@ -1473,7 +1473,7 @@ export async function fixplaetzeFuerSchueler(
 }
 
 /**
- * Rhythmus eines laufenden Pakets wechseln – in beide Richtungen.
+ * Rhythmus eines laufenden Pakets wechseln, in beide Richtungen.
  *
  * Die Restlaufzeit richtet sich nach den **verbleibenden** Lektionen, nicht
  * nach dem Wechselzeitpunkt. Damit ist der Wechsel fair und nicht ausnutzbar:
@@ -1481,7 +1481,7 @@ export async function fixplaetzeFuerSchueler(
  * seine Restlektionen wirklich brauchen. Auf den langsameren Rhythmus zu
  * wechseln nimmt nie Zeit weg.
  *
- * Der Preis bleibt unverändert – gleiche Lektionszahl, gleicher Lektionspreis.
+ * Der Preis bleibt unverändert, gleiche Lektionszahl, gleicher Lektionspreis.
  * Noch nicht fakturierte Raten werden über die neue Laufzeit neu verteilt;
  * bereits gestellte Rechnungen bleiben unangetastet.
  */
@@ -1538,7 +1538,7 @@ export async function rhythmusWechseln(
     .eq("id", pkg.id);
 
   // Offene Raten neu verteilen. Was schon fakturiert oder bezahlt ist, bleibt
-  // wie es ist – eine Rechnung, die draussen ist, schreibt man nicht um.
+  // wie es ist, eine Rechnung, die draussen ist, schreibt man nicht um.
   let ratenAngepasst = false;
   if (pkg.billing_mode === "raten") {
     const { data: raten } = await admin
@@ -1563,7 +1563,7 @@ export async function rhythmusWechseln(
 
       for (const r of neu) {
         if (r.neuerBetrag <= 0) {
-          // Zusammengelegt – der Betrag steckt jetzt in einer anderen Rate.
+          // Zusammengelegt, der Betrag steckt jetzt in einer anderen Rate.
           await admin
             .from("package_instalments")
             .update({ status: "cancelled", amount: 0 })
@@ -1604,7 +1604,7 @@ export async function rhythmusWechseln(
   return { success: true, error: undefined };
 }
 
-/** Admin bucht direkt (ohne Anfrage) – sofort bestätigt. Spec §4.3. */
+/** Admin bucht direkt (ohne Anfrage), sofort bestätigt. Spec §4.3. */
 export async function createDirectBooking(formData: FormData) {
   const verboten = await assertAdmin();
   if (verboten) return verboten;
@@ -1811,7 +1811,7 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
     // Ausfall-Kaskade: Ausweichtermine suchen, sonst Laufzeitgutschrift.
     //
     // Bei einer Absage durch die Lehrperson gibt es die 24-Stunden-Ausnahme
-    // nicht – die Lektion bleibt in jedem Fall erhalten. Das entscheidet
+    // nicht, die Lektion bleibt in jedem Fall erhalten. Das entscheidet
     // `meldeAusfall`, nicht diese Funktion.
     const ausfall = await meldeAusfall(admin, {
       appointmentId: id,
@@ -2209,7 +2209,7 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
   }
 
   // Tatsächlich geflossenes Geld: alle bezahlten Rechnungen dieses Pakets.
-  // Bei Ratenzahlung ist das oft nur die Anzahlung – der Paketpreis wäre
+  // Bei Ratenzahlung ist das oft nur die Anzahlung, der Paketpreis wäre
   // hier die falsche Bezugsgrösse und würde zu Rückerstattungen auf nie
   // eingegangenes Geld führen.
   const { data: bezahlteRechnungen } = await admin
@@ -2334,7 +2334,7 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
         status: "unpaid",
         method: paymentMethod,
         lesson_date: null,
-        description: "Stornierung – Restbetrag",
+        description: "Stornierung, Restbetrag",
       })
       .select("id, invoice_number")
       .maybeSingle();
@@ -2456,7 +2456,7 @@ export async function confirmInvoicePayment(invoiceId: string) {
   if (profile?.email) {
     // Eine Stornoabrechnung erkennt man daran, dass sie an nichts hängt:
     // keine Lektion, kein Paket, keine Rate. Früher wurde nur auf ein
-    // fehlendes Lektionsdatum geprüft – seit es Paket- und Ratenrechnungen
+    // fehlendes Lektionsdatum geprüft, seit es Paket- und Ratenrechnungen
     // gibt, landeten die fälschlich in der Stornierungsmail.
     const isSettlement =
       !inv.lesson_date && !inv.package_id && !inv.instalment_id;
@@ -2468,7 +2468,7 @@ export async function confirmInvoicePayment(invoiceId: string) {
       });
     } else {
       // Wurde die Anzahlung eines Ratenpakets bestätigt, ist damit auch die
-      // Terminbuchung freigegeben – das gehört in die Bestätigung.
+      // Terminbuchung freigegeben, das gehört in die Bestätigung.
       let unlocksBooking = false;
       if (inv.instalment_id) {
         const { data: rate } = await admin
@@ -2704,7 +2704,7 @@ export async function sendTestEmail() {
   try {
     await sendEmail({
       to,
-      subject: "✓ Test-E-Mail – Klavierunterricht System",
+      subject: "✓ Test-E-Mail: Klavierunterricht System",
       html: `<div style="font-family:sans-serif;padding:24px;background:#f3f4f6;">
         <div style="background:#fff;border-radius:8px;padding:24px;max-width:480px;">
           <h2 style="color:#1C244B;margin-top:0;">Test-E-Mail</h2>
@@ -3035,7 +3035,7 @@ export async function adjustPackageLessons(packageId: string, delta: number) {
     return { error: "Gesamtlektionen können nicht unter 1 fallen." };
   }
   if (newTotal < pkg.lessons_used) {
-    return { error: `Kann nicht auf ${newTotal} reduzieren – bereits ${pkg.lessons_used} Lektionen verbraucht.` };
+    return { error: `Kann nicht auf ${newTotal} reduzieren, bereits ${pkg.lessons_used} Lektionen verbraucht.` };
   }
 
   let newStatus = pkg.status;

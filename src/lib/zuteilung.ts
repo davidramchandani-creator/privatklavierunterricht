@@ -1,9 +1,9 @@
 // ============================================================
-// Zuteilung — Schüler auf Termine legen, die sie auch können
+// Zuteilung, Schüler auf Termine legen, die sie auch können
 //
 // Der Unterschied zum Routenplaner in routing.ts: Dort wurde eine Route
 // gebaut und die Uhrzeiten fielen dabei heraus. Hier ist die Verfügbarkeit
-// des Schülers eine **harte Nebenbedingung** — ein Termin, den er nicht
+// des Schülers eine **harte Nebenbedingung**, ein Termin, den er nicht
 // kann, ist keine Lösung, egal wie gut er in die Route passt.
 //
 // Warum das der bessere Ablauf ist: Wählt jeder Schüler selbst zuerst einen
@@ -13,11 +13,11 @@
 // die Route passt und kann.
 //
 // Verfahren: Greedy nach Knappheit, danach lokale Verbesserung durch
-// Tauschen. Kein exakter Optimierer — bei 15–25 Schülern und harten
+// Tauschen. Kein exakter Optimierer, bei 15–25 Schülern und harten
 // Zeitfenstern ist das Problem NP-schwer, und eine gute Lösung in einer
 // Sekunde ist mehr wert als die beste in zehn Minuten.
 //
-// Reine Funktionen — DB-Zugriff liegt in zuteilung-server.ts.
+// Reine Funktionen, DB-Zugriff liegt in zuteilung-server.ts.
 // ============================================================
 
 import { haversineMeter, schaetzeFahrzeit, type Fahrzeitfunktion, type Punkt } from "./geo";
@@ -29,9 +29,9 @@ import type { Tagesfenster } from "./routing";
 export type Verfuegbarkeit = {
   /** 0 = Sonntag … 6 = Samstag. */
   wochentag: number;
-  /** "HH:MM" – frühester Beginn. */
+  /** "HH:MM", frühester Beginn. */
   fruehestens: string;
-  /** "HH:MM" – spätestes Ende. */
+  /** "HH:MM", spätestes Ende. */
   spaetestens: string;
   /** 1 = geht zur Not, 2 = passt, 3 = am liebsten. */
   praeferenz: number;
@@ -45,7 +45,7 @@ export type ZuteilSchueler = {
   rhythmus: Rhythmus;
   lektionMinuten: number;
   verfuegbarkeiten: Verfuegbarkeit[];
-  /** Bisheriger Fixplatz, falls vorhanden – wird bevorzugt beibehalten. */
+  /** Bisheriger Fixplatz, falls vorhanden. Wird bevorzugt beibehalten. */
   bisher?: { wochentag: number; zeit: string } | null;
 };
 
@@ -150,7 +150,7 @@ type Belegung = {
  * Kollidiert ein Platz mit einer bestehenden Belegung?
  *
  * Zwei zweiwöchentliche Schüler mit **verschiedener** Wochenparität dürfen
- * sich überlappen — sie kommen in verschiedenen Wochen. Genau das ist der
+ * sich überlappen, sie kommen in verschiedenen Wochen. Genau das ist der
  * Kapazitätsgewinn, den das Modell hergibt.
  */
 function kollidiert(
@@ -212,7 +212,7 @@ const STANDARD_BONUS_PRAEFERENZ = 180; // 3 Minuten pro Stufe
  * Teilt alle Schüler zu.
  *
  * Reihenfolge: wer die wenigsten Möglichkeiten hat, kommt zuerst dran.
- * Ein Schüler, der nur dienstags um 17:00 kann, muss diesen Platz bekommen –
+ * Ein Schüler, der nur dienstags um 17:00 kann, muss diesen Platz bekommen.
  * wird er nach hinten geschoben, ist der Platz weg und er fällt heraus.
  * Wer flexibel ist, findet dagegen fast immer noch etwas.
  */
@@ -237,7 +237,7 @@ export function teileZu(eingabe: ZuteilEingabe): Zuteilungsergebnis {
     if (!Number.isFinite(e.s.lat) || !Number.isFinite(e.s.lng)) {
       nichtZugeteilt.push({
         schueler: e.s,
-        grund: "Keine Koordinaten – Adresse fehlt oder ist nicht auffindbar.",
+        grund: "Keine Koordinaten, Adresse fehlt oder ist nicht auffindbar.",
       });
     } else if (e.s.verfuegbarkeiten.length === 0) {
       nichtZugeteilt.push({
@@ -342,7 +342,7 @@ export function teileZu(eingabe: ZuteilEingabe): Zuteilungsergebnis {
   // seiner Zuteilung am günstigsten ist. Das ist nicht dasselbe wie global
   // günstig: Wer früh dran ist, besetzt einen Platz, der später jemandem
   // besser gepasst hätte. Ergebnis sind Routen, die der Uhr folgen statt der
-  // Geografie – am selben Abend erst nach Bülach, dann quer nach Elgg.
+  // Geografie, am selben Abend erst nach Bülach, dann quer nach Elgg.
   //
   // Hier wird das aufgeräumt: Paare tauschen ihre Zeiten, wenn beide den
   // Platz des anderen können und die Gesamtfahrzeit dadurch sinkt.
@@ -417,7 +417,7 @@ function praeferenzFuer(
  *
  * Getauscht wird nur, wenn **beide** Schüler den Platz des anderen können
  * und die Gesamtfahrzeit sinkt. Läuft, bis keine Verbesserung mehr gefunden
- * wird oder die Rundengrenze erreicht ist — ohne Grenze könnte das bei
+ * wird oder die Rundengrenze erreicht ist, ohne Grenze könnte das bei
  * ungünstigen Daten lange laufen, und ein guter Plan in einer Sekunde ist
  * mehr wert als der beste in zehn Minuten.
  */
@@ -533,7 +533,7 @@ export type Einpassung = {
   praeferenz: number;
   /** Zusätzliche Fahrzeit dieses Tages in Sekunden. */
   zusatzSekunden: number;
-  /** Zwischen wem der Termin liegt – für die Anzeige. */
+  /** Zwischen wem der Termin liegt, für die Anzeige. */
   davor: string | null;
   danach: string | null;
   /**
@@ -549,7 +549,7 @@ export type Einpassung = {
  * Anders als `teileZu` wird hier nichts umgestellt: Die bestehenden Termine
  * bleiben, wo sie sind. Gesucht wird nur, wo der Neue am wenigsten kostet.
  *
- * Das ist der Alltagsfall — mitten in der Periode meldet sich jemand an, und
+ * Das ist der Alltagsfall, mitten in der Periode meldet sich jemand an, und
  * die Frage ist nicht „wie sähe der perfekte Plan aus“, sondern „wo passt er
  * rein, ohne dass ich alle anderen umbuchen muss“.
  *

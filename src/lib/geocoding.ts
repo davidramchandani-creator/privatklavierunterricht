@@ -2,20 +2,20 @@
 // Adressen zu Koordinaten
 //
 // Zwei Quellen, in dieser Reihenfolge:
-//   1. api3.geo.admin.ch — der amtliche Schweizer Adressdienst. Kostenlos,
+//   1. api3.geo.admin.ch, der amtliche Schweizer Adressdienst. Kostenlos,
 //      kein Schlüssel nötig, kennt jede Schweizer Hausnummer.
-//   2. Nominatim (OpenStreetMap) — Rückfall für Adressen im grenznahen
+//   2. Nominatim (OpenStreetMap), Rückfall für Adressen im grenznahen
 //      Ausland oder wenn geo.admin gerade nicht antwortet.
 //
 // Läuft ausschliesslich serverseitig. Ergebnisse werden in `profiles`
-// gespeichert und nur neu geholt, wenn sich die Adresse geändert hat —
+// gespeichert und nur neu geholt, wenn sich die Adresse geändert hat.
 // Geokodierung ist teuer und Adressen ändern sich selten.
 // ============================================================
 
 export type GeocodeTreffer = {
   lat: number;
   lng: number;
-  /** Wie der Dienst die Adresse verstanden hat – zur Kontrolle. */
+  /** Wie der Dienst die Adresse verstanden hat, zur Kontrolle. */
   gefundeneAdresse: string;
   quelle: "geo.admin" | "nominatim";
 };
@@ -80,7 +80,7 @@ async function viaGeoAdmin(adresse: string): Promise<GeocodeTreffer | null> {
   const lng = Number(treffer.lon);
   if (!plausibel(lat, lng)) return null;
 
-  // `label` enthält HTML-Auszeichnung (<b>…</b>) – für die Anzeige entfernen.
+  // `label` enthält HTML-Auszeichnung (<b>…</b>), für die Anzeige entfernen.
   const label = (treffer.label ?? treffer.detail ?? adresse).replace(
     /<[^>]*>/g,
     ""
@@ -121,7 +121,7 @@ async function viaNominatim(adresse: string): Promise<GeocodeTreffer | null> {
  * Adresse zu Koordinaten auflösen.
  *
  * Gibt `null` zurück, wenn keine Quelle etwas Plausibles liefert. Der
- * Aufrufer muss diesen Fall sichtbar machen — ein Schüler ohne Koordinaten
+ * Aufrufer muss diesen Fall sichtbar machen, ein Schüler ohne Koordinaten
  * fehlt sonst wortlos im Routenplan.
  */
 export async function geocode(adresse: string): Promise<GeocodeTreffer | null> {
@@ -140,7 +140,7 @@ export async function geocode(adresse: string): Promise<GeocodeTreffer | null> {
  *
  * Verglichen wird die Adresse, die damals zu den Koordinaten geführt hat, mit
  * der heute im Profil stehenden. Weicht sie ab, ist der Schüler umgezogen und
- * die alten Koordinaten sind falsch — schlimmer als gar keine, weil sie
+ * die alten Koordinaten sind falsch, schlimmer als gar keine, weil sie
  * unbemerkt eine falsche Route erzeugen.
  */
 export function geokodierungAktuell(profil: {

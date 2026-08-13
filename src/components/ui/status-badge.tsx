@@ -58,7 +58,7 @@ const REQUEST: Record<string, Entry> = {
 
 /**
  * Berechneter UI-Zustand des aktiven Pakets (lib/packages EffectiveStatus),
- * deutschsprachig – im Gegensatz zum DB-Status `package`.
+ * deutschsprachig, im Gegensatz zum DB-Status `package`.
  */
 const PACKAGE_STATE: Record<string, Entry> = {
   kein_paket: { label: "Kein Paket", tone: "pending" },

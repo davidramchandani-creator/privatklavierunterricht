@@ -103,7 +103,7 @@ export default function EinpassenKarte({ puffer }: { puffer: number }) {
       }
       if (!("frist" in res)) return;
       setMeldung(
-        `${name} wurde angeschrieben. Er kann seine Zeiten bis ${datum(res.frist)} im Portal eintragen — danach erscheint er hier mit Vorschlägen.`
+        `${name} wurde angeschrieben. Er kann seine Zeiten bis ${datum(res.frist)} im Portal eintragen, danach erscheint er hier mit Vorschlägen.`
       );
       wartendeSchueler().then((r) => setWartend(r.schueler));
     });
@@ -134,7 +134,7 @@ export default function EinpassenKarte({ puffer }: { puffer: number }) {
         return;
       }
       if (!("termine" in res)) return;
-      setMeldung(`${name} eingeplant — ${res.termine} Termine gebucht.`);
+      setMeldung(`${name} eingeplant, ${res.termine} Termine gebucht.`);
       setVorschlaege(null);
       setGewaehlt("");
       wartendeSchueler().then((r) => setWartend(r.schueler));
@@ -158,7 +158,7 @@ export default function EinpassenKarte({ puffer }: { puffer: number }) {
             Fahrzeit kostet.
           </p>
           <p className="text-gray-500">
-            Der beste Fall ist ein Platz <strong>auf dem Weg</strong> — zwischen
+            Der beste Fall ist ein Platz <strong>auf dem Weg</strong>, zwischen
             zwei Terminen, an denen du ohnehin vorbeifährst.
           </p>
         </div>
@@ -204,7 +204,7 @@ export default function EinpassenKarte({ puffer }: { puffer: number }) {
       {aktuell?.platz && (
         <p className="text-sm text-gray-600 bg-[#F3F5F8] rounded-xl px-4 py-3 leading-snug">
           {aktuell.name} hat bereits einen Platz: <strong>{aktuell.platz}</strong>.
-          Ein neuer Vorschlag ersetzt ihn — die bisherigen, noch nicht
+          Ein neuer Vorschlag ersetzt ihn, die bisherigen, noch nicht
           gehaltenen Termine werden abgesagt und neu gesetzt.
         </p>
       )}
@@ -220,14 +220,14 @@ export default function EinpassenKarte({ puffer }: { puffer: number }) {
               <p className="mt-1">
                 {aktuell.angefragtBis ? (
                   <>
-                    Angefragt, Frist {datum(aktuell.angefragtBis)} — es fehlt
+                    Angefragt, Frist {datum(aktuell.angefragtBis)}. Es fehlt
                     noch die Antwort. Nochmals anschreiben erinnert ihn, ohne
                     eine zweite Anfrage anzulegen.
                   </>
                 ) : (
                   <>
                     Ohne Zeiten lässt sich kein Platz finden. Die Anfrage geht
-                    nur an ihn — eine laufende Runde für alle bleibt davon
+                    nur an ihn, eine laufende Runde für alle bleibt davon
                     unberührt.
                   </>
                 )}
@@ -326,7 +326,7 @@ export default function EinpassenKarte({ puffer }: { puffer: number }) {
           ))}
           <p className="text-xs text-gray-400 leading-snug pt-1">
             <Route className="w-3 h-3 inline mr-1" />
-            Die Zusatzzeit ist die Mehrfahrt an diesem Abend — inklusive Umweg
+            Die Zusatzzeit ist die Mehrfahrt an diesem Abend, inklusive Umweg
             und veränderter Reihenfolge.
           </p>
         </div>

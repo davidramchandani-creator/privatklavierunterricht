@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 /**
  * Echtzeit-Aktualisierung: lauscht auf Postgres-Änderungen der relevanten
  * Tabellen und ruft bei jeder Änderung (entprellt) router.refresh() auf, sodass
- * die Server-Komponenten frisch geladen werden – ohne manuelles Neuladen.
+ * die Server-Komponenten frisch geladen werden, ohne manuelles Neuladen.
  *
  * RLS greift automatisch: Schüler erhalten nur Events zu ihren eigenen Zeilen,
  * der Admin zu allen.

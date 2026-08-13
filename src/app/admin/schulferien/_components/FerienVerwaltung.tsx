@@ -69,7 +69,7 @@ export default function FerienVerwaltung({ zeilen }: { zeilen: Ferienzeile[] }) 
           </p>
           <p>
             Ein Schüler mit Halbjahresabo ab Oktober bekommt{" "}
-            <strong>20 Lektionen</strong> — nicht 26, weil sechs Termine auf
+            <strong>20 Lektionen</strong>, nicht 26, weil sechs Termine auf
             Herbst-, Weihnachts- und Sportferien fallen. Das wird ihm beim Kauf
             genau so angezeigt.
           </p>
@@ -213,7 +213,7 @@ function Liste({
                 {z.bezeichnung}
               </p>
               <p className="text-xs text-gray-500">
-                {tag(z.start)} – {tag(z.ende)} · {z.tage} Tage
+                {tag(z.start)}, {tag(z.ende)} · {z.tage} Tage
               </p>
             </div>
             <button

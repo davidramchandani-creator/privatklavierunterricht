@@ -10,7 +10,7 @@ const RESIST = 0.5; // Gummiband-Widerstand
 
 /**
  * Pull-to-Refresh für die installierte PWA. Im Standalone-Modus ist die native
- * Browser-Geste deaktiviert – diese Komponente bildet sie nach und löst
+ * Browser-Geste deaktiviert, diese Komponente bildet sie nach und löst
  * router.refresh() aus, wodurch die Server-Komponenten (Termine, Zahlungen,
  * Pakete …) frisch geladen werden. Nur auf Touch-Geräten aktiv.
  */
@@ -130,7 +130,7 @@ export default function PullToRefresh({ children }: { children: React.ReactNode 
       </div>
 
       {/* Inhalt federt mit dem Zug nach unten.
-          WICHTIG: Im Ruhezustand KEIN transform setzen – ein transformierter
+          WICHTIG: Im Ruhezustand KEIN transform setzen, ein transformierter
           Vorfahre würde sonst position:fixed-Elemente (Modals, Action-Sheets)
           an sich binden statt ans Viewport und damit zerschiessen. */}
       <div

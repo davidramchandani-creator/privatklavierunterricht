@@ -213,7 +213,7 @@ export default function NeuesAbo({
     zuruecksetzen();
   }
 
-  /** Tage, an denen der Schüler kann – Grundlage für Preis und Zuteilung. */
+  /** Tage, an denen der Schüler kann. Grundlage für Preis und Zuteilung. */
   const aktiveTage = TAGE.filter((t) => zeiten[t.nr].aktiv);
 
   function vorschauLaden() {
@@ -342,7 +342,7 @@ export default function NeuesAbo({
             <p className="mt-4 text-sm text-gray-500 leading-snug">
               {v === "halbjahr"
                 ? "Fester Platz, monatliche Zahlung. Guter Einstieg."
-                : "Fester Platz für ein ganzes Jahr — günstiger pro Lektion."}
+                : "Fester Platz für ein ganzes Jahr, günstiger pro Lektion."}
             </p>
             <p className="mt-2 text-xs text-gray-400">
               Deinen Monatsbetrag siehst du im nächsten Schritt
@@ -399,7 +399,7 @@ export default function NeuesAbo({
                 <>
                   <Infobox>
                     <p>
-                      Wie oft möchtest du Unterricht? Die Laufzeit bleibt gleich —
+                      Wie oft möchtest du Unterricht? Die Laufzeit bleibt gleich,
                       wer jede Woche kommt, bekommt in derselben Zeit doppelt so
                       viele Lektionen und zahlt entsprechend mehr.
                     </p>
@@ -429,7 +429,7 @@ export default function NeuesAbo({
                     <p>
                       Mit einem <strong>Fixplatz</strong> hast du einen festen
                       Wochentag zur festen Uhrzeit. Alle Termine werden im Voraus
-                      eingetragen — du musst nie einzeln buchen.
+                      eingetragen, du musst nie einzeln buchen.
                     </p>
                     <p>
                       <strong>Flexibel</strong> heisst: du suchst dir jede Lektion
@@ -462,7 +462,7 @@ export default function NeuesAbo({
                 <>
                   <Infobox>
                     <p>
-                      Deinen festen Termin bekommst du <strong>zugeteilt</strong> —
+                      Deinen festen Termin bekommst du <strong>zugeteilt</strong>,
                       du musst nicht selbst suchen. Sag mir einfach, wann du
                       grundsätzlich kannst.
                     </p>
@@ -579,7 +579,7 @@ export default function NeuesAbo({
                   {aktiveTage.length === 1 && (
                     <p className="text-xs text-gray-500 leading-snug">
                       Nur ein Tag ausgewählt. Mit mehreren Tagen findet sich eher
-                      eine Zeit, die dir wirklich passt — und du bekommst deinen
+                      eine Zeit, die dir wirklich passt. Und du bekommst deinen
                       Termin schneller.
                     </p>
                   )}
@@ -617,7 +617,7 @@ export default function NeuesAbo({
                         <div className="flex justify-between gap-4">
                           <span className="text-gray-500 flex-shrink-0">Laufzeit</span>
                           <span className="font-600 text-gray-900 text-right">
-                            {tag(vorschau.periodeStart)} – {tag(vorschau.periodeEnde)}
+                            {tag(vorschau.periodeStart)}, {tag(vorschau.periodeEnde)}
                           </span>
                         </div>
                         <div className="flex justify-between gap-4">
@@ -648,7 +648,7 @@ export default function NeuesAbo({
                           </div>
                           <p className="text-sm text-gray-500 leading-snug mb-2">
                             Diese {vorschau.ferientage.length} Termine fallen weg und
-                            sind <strong>bereits abgezogen</strong> — du zahlst nichts
+                            sind <strong>bereits abgezogen</strong>, du zahlst nichts
                             dafür.
                           </p>
                           <ul className="text-xs text-gray-500 space-y-0.5">
@@ -704,7 +704,7 @@ export default function NeuesAbo({
                         >
                           In den Schulferien findet kein Unterricht statt. Diese
                           Termine sind in den {vorschau.lektionen} Lektionen bereits
-                          abgezogen — es gibt dafür weder Ersatz noch Rückerstattung,
+                          abgezogen, es gibt dafür weder Ersatz noch Rückerstattung,
                           weil sie nie berechnet wurden.
                         </Regel>
 

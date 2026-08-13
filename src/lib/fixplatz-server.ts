@@ -1,5 +1,5 @@
 // ============================================================
-// Fixplatz — Serverseite: Serie buchen, Ausweichtermine finden
+// Fixplatz, Serverseite: Serie buchen, Ausweichtermine finden
 // ============================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -26,7 +26,7 @@ export type FixplatzBuchungErgebnis = {
   appointmentIds: string[];
   /** Termine, die auf einen Ausweichtermin verschoben wurden. */
   verschoben: { original: Date; ersatz: Date }[];
-  /** Lektionen, für die kein Platz gefunden wurde – der Admin plant sie. */
+  /** Lektionen, für die kein Platz gefunden wurde. Der Admin plant sie. */
   offen: Date[];
 };
 
@@ -91,7 +91,7 @@ export async function bookFixplatzSeries(
   const pruefung = pruefeFixplatzSerie(wunsch, ersterStart, ctx);
 
   // Für belegte Termine brauchen wir freie Slots im Umfeld. Einmal für den
-  // gesamten Zeitraum berechnen statt pro Termin – das ist der teure Teil.
+  // gesamten Zeitraum berechnen statt pro Termin, das ist der teure Teil.
   const vonCal = utcToZonedDate(ersterStart);
   const tage =
     Math.ceil(
@@ -163,7 +163,7 @@ export async function bookFixplatzSeries(
     return { error: "Die Terminserie konnte nicht angelegt werden." };
   }
 
-  // Erinnerungen und Kalendersync laufen fehlertolerant – ein Aussetzer hier
+  // Erinnerungen und Kalendersync laufen fehlertolerant, ein Aussetzer hier
   // darf die bereits gebuchte Serie nicht zurücknehmen.
   for (const c of created) {
     await scheduleLessonReminders(admin, {

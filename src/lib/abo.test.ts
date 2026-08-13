@@ -47,7 +47,7 @@ describe("Periodenende", () => {
   });
 
   it("rutscht am Monatsende nicht in den Folgemonat", () => {
-    // 31. August + 6 Monate gäbe den 31. Februar – den gibt es nicht.
+    // 31. August + 6 Monate gäbe den 31. Februar, den gibt es nicht.
     expect(periodenEnde("2026-08-31", 6)).toBe("2027-02-27");
   });
 });
@@ -149,7 +149,7 @@ describe("Abo-Angebot", () => {
   });
 
   it("macht das Jahresabo pro Monat günstiger als das Halbjahr", () => {
-    // Gegenwert für die längere Bindung – sonst gäbe es keinen Grund, es zu
+    // Gegenwert für die längere Bindung, sonst gäbe es keinen Grund, es zu
     // wählen, und die Planbarkeit wäre nichts wert.
     const halb = baueAboAngebot({
       variante: "halbjahr",
@@ -185,7 +185,7 @@ describe("Abo-Angebot", () => {
     for (const f of a.ferientage) expect(f.grund).toBeTruthy();
   });
 
-  it("hängt die Lektionszahl an der Jahreszeit – darum wird gerechnet", () => {
+  it("hängt die Lektionszahl an der Jahreszeit, darum wird gerechnet", () => {
     // Ein Halbjahr über den Sommer enthält weniger Lektionen als eines über
     // den Winter. Genau deshalb darf keine Pauschalzahl versprochen werden.
     const winter = baueAboAngebot({
@@ -268,7 +268,7 @@ describe("Vorzeitiger Ausstieg", () => {
   };
 
   it("rechnet angefangene Monate voll ab", () => {
-    // Wer am 15. Oktober aussteigt, zahlt den Oktober – in diesem Monat hat
+    // Wer am 15. Oktober aussteigt, zahlt den Oktober. In diesem Monat hat
     // Unterricht stattgefunden und der Platz war reserviert.
     const a = aboAusstiegAbrechnung({
       ...basis,
@@ -283,7 +283,7 @@ describe("Vorzeitiger Ausstieg", () => {
 
   it("zählt jeden angefangenen Monat, nicht die bezogenen Lektionen", () => {
     // Der Dezember hat wegen der Ferien wenige Lektionen. Trotzdem zählt er
-    // voll – sonst wäre der Ausstieg im Dezember günstiger als im März,
+    // voll, sonst wäre der Ausstieg im Dezember günstiger als im März,
     // obwohl der Platz gleich lang blockiert war.
     const a = aboAusstiegAbrechnung({
       ...basis,

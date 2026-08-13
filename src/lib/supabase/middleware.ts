@@ -40,7 +40,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
   const pathname = request.nextUrl.pathname;
 
-  // Rolle aus `profiles` – einzige Wahrheitsquelle. Nur laden, wenn relevant.
+  // Rolle aus `profiles`, einzige Wahrheitsquelle. Nur laden, wenn relevant.
   let role: string | null = null;
   if (
     user &&
@@ -64,7 +64,7 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // Schülerportal: nur eingeloggte Schüler – Admins gehören ins Admin-Panel
+  // Schülerportal: nur eingeloggte Schüler, Admins gehören ins Admin-Panel
   if (gehoertZu(pathname, "/schueler")) {
     if (!user)
       return NextResponse.redirect(new URL("/auth/login", request.url));

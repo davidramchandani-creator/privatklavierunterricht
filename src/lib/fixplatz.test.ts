@@ -31,7 +31,7 @@ function ctx(over: Partial<AvailabilityContext> = {}): AvailabilityContext {
   };
 }
 
-/** Zürcher Lokalzeit als "HH:MM" – für DST-Prüfungen. */
+/** Zürcher Lokalzeit als "HH:MM", für DST-Prüfungen. */
 function lokalzeit(d: Date): string {
   return d.toLocaleTimeString("de-CH", {
     timeZone: "Europe/Zurich",
@@ -56,12 +56,12 @@ describe("Serienstart", () => {
   });
 
   it("hält die 24-Stunden-Regel ein", () => {
-    // Montag 12:00 – der Dienstag ist dann nur noch ~29 h weg, das passt.
+    // Montag 12:00, der Dienstag ist dann nur noch ~29 h weg, das passt.
     const montag = new Date("2026-08-10T10:00:00Z");
     expect(firstSeriesStart(DI_1715, montag, null).toISOString().slice(0, 10)).toBe(
       "2026-08-11"
     );
-    // Dienstag früh – derselbe Dienstag ist zu knapp, es wird der nächste.
+    // Dienstag früh, derselbe Dienstag ist zu knapp, es wird der nächste.
     const dienstagFrueh = new Date("2026-08-11T05:00:00Z");
     expect(
       firstSeriesStart(DI_1715, dienstagFrueh, null).toISOString().slice(0, 10)
@@ -196,7 +196,7 @@ describe("Ausweichtermine", () => {
   });
 
   it("bevorzugt die gewohnte Uhrzeit an anderen Tagen", () => {
-    // Alle Vorschläge der ersten Stufe liegen um 17:15 – die Uhrzeit ist für
+    // Alle Vorschläge der ersten Stufe liegen um 17:15, die Uhrzeit ist für
     // Schüler das Verbindlichere, nicht der Wochentag.
     for (const v of vorschlaege.filter((x) => x.stufe === 1)) {
       expect(lokalzeit(v.slot.start)).toBe("17:15");
@@ -220,7 +220,7 @@ describe("Ausweichtermine", () => {
     }
   });
 
-  it("geht nie über zwei Wochen hinaus – danach ist es kein Ersatz mehr", () => {
+  it("geht nie über zwei Wochen hinaus, danach ist es kein Ersatz mehr", () => {
     const grenze = pruefung.belegte[0].start.getTime() + 15 * 86400000;
     for (const v of vorschlaege) {
       expect(v.slot.start.getTime()).toBeLessThan(grenze);

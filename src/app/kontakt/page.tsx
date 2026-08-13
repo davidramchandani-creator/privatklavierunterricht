@@ -51,7 +51,7 @@ export default function KontaktPage() {
           <h1 className="text-3xl sm:text-4xl font-800">Kontaktiere mich</h1>
           <p className="text-white/70 text-lg">
             Fragen zum Unterricht, zu den Paketen oder etwas ganz anderes?
-            Schreib mir – ich antworte persönlich.
+            Schreib mir, ich antworte persönlich.
           </p>
         </div>
       </section>

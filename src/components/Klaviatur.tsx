@@ -7,7 +7,7 @@ import type { Analyse } from "@/lib/audio-analyse";
  * Klaviatur, deren Tasten sich zum Klang bewegen.
  *
  * Warum eine Klaviatur und keine Balken: Balken sind das, was jeder
- * Musikspieler zeigt. Hier geht es um Klavierunterricht — dieselbe Bewegung
+ * Musikspieler zeigt. Hier geht es um Klavierunterricht, dieselbe Bewegung
  * auf Tasten übertragen sagt sofort, worum es geht, und greift das
  * Tastatur-Motiv aus dem Hero auf.
  *
@@ -18,7 +18,7 @@ import type { Analyse } from "@/lib/audio-analyse";
  * Verzierung. Die Tasten werden direkt am Element angefasst.
  *
  * **Schwarze Tasten sind Deko.** Sie liegen nicht auf eigenen Frequenzen,
- * sondern zwischen den weissen — sie mitzurechnen ergäbe eine Klaviatur, auf
+ * sondern zwischen den weissen, sie mitzurechnen ergäbe eine Klaviatur, auf
  * der die Halbtöne zufällig zucken. Sie bewegen sich mit ihren Nachbarn.
  */
 export default function Klaviatur({
@@ -56,7 +56,7 @@ export default function Klaviatur({
         const el = weisse.current[i];
         if (!el) continue;
         const w = werte[i];
-        // Höchstens 3 px – eine Taste, die einen Zentimeter einsinkt, sieht
+        // Höchstens 3 px, eine Taste, die einen Zentimeter einsinkt, sieht
         // nach Fehler aus, nicht nach Anschlag.
         el.style.transform = `translateY(${(w * 3).toFixed(2)}px)`;
         // Der Farbanteil macht die Bewegung auch dann sichtbar, wenn die
@@ -69,7 +69,7 @@ export default function Klaviatur({
       //
       // Der Nachbar wird über `nachbarn` nachgeschlagen, nicht aus dem
       // Zählindex gerechnet. Beim ersten Versuch stand hier eine Rechnung
-      // über SCHWARZ_NACH, die nur in der ersten Oktave stimmte — ab der
+      // über SCHWARZ_NACH, die nur in der ersten Oktave stimmte. Ab der
       // zweiten reagierten die Halbtöne auf die Frequenzen der ersten.
       for (let k = 0; k < schwarze.current.length; k++) {
         const el = schwarze.current[k];
@@ -128,7 +128,7 @@ export default function Klaviatur({
 }
 
 /**
- * Nach welchen weissen Tasten eine schwarze folgt — C, D, F, G, A.
+ * Nach welchen weissen Tasten eine schwarze folgt, C, D, F, G, A.
  * Nach E und H gibt es keine, das ist die Eigenart der Klaviatur.
  */
 const SCHWARZ_NACH = [0, 1, 3, 4, 5];

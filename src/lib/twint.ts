@@ -1,6 +1,6 @@
 /**
- * TWINT Deep-Link Hilfsfunktion (Spec §6 – TWINT).
- * Kein echtes Payment-API – nur Deep-Link-Generator.
+ * TWINT Deep-Link Hilfsfunktion (Spec §6, TWINT).
+ * Kein echtes Payment-API, nur Deep-Link-Generator.
  */
 
 /**
@@ -9,7 +9,7 @@
  * Umgebungsvariable TWINT_BASE_URL.
  *
  * Fehlt sie, liefern die Builder einen leeren String. Aufrufer behandeln
- * das als "TWINT nicht verfügbar" und zeigen nur die QR-Rechnung an –
+ * das als "TWINT nicht verfügbar" und zeigen nur die QR-Rechnung an,
  * es entstehen also keine kaputten Zahlungslinks.
  */
 const TWINT_BASE_URL = (process.env.TWINT_BASE_URL ?? "").trim();
@@ -19,7 +19,7 @@ function warnMissing(): void {
   if (warned) return;
   warned = true;
   console.error(
-    "[twint] TWINT_BASE_URL ist nicht gesetzt – TWINT-Zahlungen sind deaktiviert, " +
+    "[twint] TWINT_BASE_URL ist nicht gesetzt, TWINT-Zahlungen sind deaktiviert, " +
       "es wird nur die QR-Rechnung angeboten."
   );
 }

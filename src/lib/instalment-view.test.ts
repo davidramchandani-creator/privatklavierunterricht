@@ -38,7 +38,7 @@ describe("instalmentLabels", () => {
   });
 });
 
-describe("buildPlanSummary – laufender Plan", () => {
+describe("buildPlanSummary, laufender Plan", () => {
   const s = buildPlanSummary(plan, "2026-09-28");
 
   it("zählt bezahlte Raten und Beträge", () => {
@@ -72,7 +72,7 @@ describe("buildPlanSummary – laufender Plan", () => {
   });
 });
 
-describe("buildPlanSummary – überfällig", () => {
+describe("buildPlanSummary, überfällig", () => {
   const s = buildPlanSummary(plan, "2026-10-20");
 
   it("kippt eine fakturierte, abgelaufene Rate auf überfällig", () => {
@@ -88,7 +88,7 @@ describe("buildPlanSummary – überfällig", () => {
   });
 });
 
-describe("buildPlanSummary – Sonderfälle", () => {
+describe("buildPlanSummary, Sonderfälle", () => {
   it("stornierte Raten zählen nicht mit", () => {
     const s = buildPlanSummary(
       [
@@ -157,7 +157,7 @@ describe("formatDay", () => {
   });
 });
 
-describe("bookingLock – Buchungssperre", () => {
+describe("bookingLock, Buchungssperre", () => {
   const anzahlung = (status: string): InstalmentRow[] => [
     { id: "a", sequence: 0, kind: "anzahlung", amount: 250, due_date: "2026-08-01", status, invoice_id: null },
     { id: "b", sequence: 1, kind: "rate", amount: 187.5, due_date: "2026-09-01", status: "open", invoice_id: null },

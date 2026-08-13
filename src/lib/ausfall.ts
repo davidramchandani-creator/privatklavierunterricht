@@ -5,7 +5,7 @@
 //   1. Ausweichtermin in derselben Woche
 //   2. Ausweichtermin in der Folgewoche
 //   3. Laufzeitgutschrift (Paket läuft entsprechend länger)
-//   4. Rückerstattung — nur von Hand, nie automatisch
+//   4. Rückerstattung, nur von Hand, nie automatisch
 //
 // Warum diese Reihenfolge: Jede Stufe kostet David mehr als die vorige. Ein
 // Ausweichtermin kostet nichts (die Lücke war ohnehin da), eine Gutschrift
@@ -14,7 +14,7 @@
 //
 // Sonderfall: Sagt der Schüler weniger als 24 Stunden vorher ab, gilt die
 // Lektion als gehalten. Die Zeit war reserviert und liess sich nicht mehr
-// vergeben. Sagt David ab, gibt es diese Ausnahme nicht — er ist der
+// vergeben. Sagt David ab, gibt es diese Ausnahme nicht. Er ist der
 // Verursacher und schuldet immer einen Ausgleich.
 // ============================================================
 
@@ -64,7 +64,7 @@ export function bestimmeBehandlung(params: {
       ersatzSuchen: true,
       mailTyp: "ausfall_ersatz_vorschlag",
       begruendung:
-        "Absage durch die Lehrperson – die Lektion bleibt in jedem Fall erhalten.",
+        "Absage durch die Lehrperson, die Lektion bleibt in jedem Fall erhalten.",
     };
   }
 
@@ -75,7 +75,7 @@ export function bestimmeBehandlung(params: {
       ersatzSuchen: false,
       mailTyp: "ausfall_kurzfristig",
       begruendung:
-        "Weniger als 24 Stunden vorher abgesagt – die Zeit liess sich nicht mehr vergeben.",
+        "Weniger als 24 Stunden vorher abgesagt, die Zeit liess sich nicht mehr vergeben.",
     };
   }
 
@@ -83,7 +83,7 @@ export function bestimmeBehandlung(params: {
     lektionErhalten: true,
     ersatzSuchen: true,
     mailTyp: "ausfall_ersatz_vorschlag",
-    begruendung: "Rechtzeitig abgesagt – Ausweichtermine werden vorgeschlagen.",
+    begruendung: "Rechtzeitig abgesagt, Ausweichtermine werden vorgeschlagen.",
   };
 }
 
@@ -93,7 +93,7 @@ export function bestimmeBehandlung(params: {
  *
  * Ein Rhythmusintervall: wer wöchentlich Unterricht hat, bekommt eine Woche,
  * wer zweiwöchentlich hat, zwei. So verschiebt sich die ganze Serie um genau
- * einen Takt nach hinten — die Lektion wird am Ende angehängt.
+ * einen Takt nach hinten, die Lektion wird am Ende angehängt.
  */
 export function gutschriftTage(rhythmus: string | null): number {
   return rhythmus === "zweiwoechentlich" ? 14 : 7;
@@ -108,7 +108,7 @@ export type AusfallErgebnis = {
 /**
  * Meldet einen Ausfall an und stösst die Kaskade an.
  *
- * Der Termin selbst muss vom Aufrufer bereits storniert sein — diese Funktion
+ * Der Termin selbst muss vom Aufrufer bereits storniert sein, diese Funktion
  * kümmert sich nur um die Kompensation. So bleibt die Stornierung dort, wo sie
  * schon behandelt wird, und die Kompensation an einer einzigen Stelle.
  */
@@ -241,7 +241,7 @@ export async function gewaehreGutschrift(
 
       if (pkg.paused && pkg.pause_remaining_seconds != null) {
         // Während einer Pause wächst die eingefrorene Restzeit, nicht das
-        // Ablaufdatum – sonst ginge die Gutschrift beim Fortsetzen verloren.
+        // Ablaufdatum, sonst ginge die Gutschrift beim Fortsetzen verloren.
         await admin
           .from("packages")
           .update({
@@ -270,7 +270,7 @@ export async function gewaehreGutschrift(
           new Date(Date.now() + tage * 86400000).toISOString(),
         reason: `Ausgefallene Lektion vom ${params.originalStart
           .toISOString()
-          .slice(0, 10)} – kein Ausweichtermin möglich (+${tage} Tage)`,
+          .slice(0, 10)}. Kein Ausweichtermin möglich (+${tage} Tage)`,
       });
     }
   }

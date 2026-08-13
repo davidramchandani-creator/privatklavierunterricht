@@ -169,7 +169,7 @@ export default async function GruppenkurseDetailPage({
                       <p className="font-600 text-gray-900 text-sm">{fmtDate(s.start_at)}</p>
                       <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                         <Clock className="w-3 h-3" />
-                        {fmtTime(s.start_at)} – {fmtTime(s.end_at)} Uhr
+                        {fmtTime(s.start_at)}, {fmtTime(s.end_at)} Uhr
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
                         {count}/{c.max_participants} Teilnehmer · CHF {price}.–/Pers. ·{" "}
@@ -226,7 +226,7 @@ export default async function GruppenkurseDetailPage({
                 >
                   <div>
                     <p className="text-xs text-gray-600">
-                      {fmtDate(s.start_at)} {fmtTime(s.start_at)}–{fmtTime(s.end_at)} Uhr
+                      {fmtDate(s.start_at)} {fmtTime(s.start_at)}, {fmtTime(s.end_at)} Uhr
                     </p>
                     <p className="text-[11px] text-gray-400">
                       {participants.length} Teilnehmer ·{" "}

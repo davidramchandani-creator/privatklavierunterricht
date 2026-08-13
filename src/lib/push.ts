@@ -6,9 +6,9 @@
  * "Zum Home-Bildschirm" installiert wurde (ab iOS 16.4).
  *
  * Benötigt die Umgebungsvariablen:
- *   NEXT_PUBLIC_VAPID_PUBLIC_KEY  – öffentlicher Schlüssel (auch im Browser)
- *   VAPID_PRIVATE_KEY             – privater Schlüssel (nur serverseitig!)
- *   VAPID_SUBJECT                 – mailto:… Kontaktadresse
+ *   NEXT_PUBLIC_VAPID_PUBLIC_KEY, öffentlicher Schlüssel (auch im Browser)
+ *   VAPID_PRIVATE_KEY, privater Schlüssel (nur serverseitig!)
+ *   VAPID_SUBJECT, mailto:… Kontaktadresse
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -38,7 +38,7 @@ export function isPushConfigured(): boolean {
 
 /**
  * Sendet eine Push-Nachricht an alle Geräte eines Nutzers.
- * Fehler werden geloggt, aber nie geworfen – die fachliche Aktion (Buchung,
+ * Fehler werden geloggt, aber nie geworfen. Die fachliche Aktion (Buchung,
  * Zahlung …) darf nie an einer Benachrichtigung scheitern.
  *
  * Abos, die der Push-Dienst mit 404/410 ablehnt, werden sofort gelöscht

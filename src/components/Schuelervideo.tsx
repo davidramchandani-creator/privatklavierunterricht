@@ -11,7 +11,7 @@ import { formatDauer } from "@/lib/dauer";
  * Vier Entscheidungen, die zusammengehören:
  *
  * **`preload="none"`.** Ohne das lädt jedes Video beim Seitenaufbau seine
- * ersten Sekunden — bei vier Videos mehrere Megabyte, bevor jemand auch nur
+ * ersten Sekunden, bei vier Videos mehrere Megabyte, bevor jemand auch nur
  * eines angesehen hat. Das Standbild zeigt derweil, worum es geht.
  *
  * **Standbild statt schwarzem Kasten.** Ein `<video>` ohne `poster` ist eine
@@ -19,7 +19,7 @@ import { formatDauer } from "@/lib/dauer";
  *
  * **Stumm starten.** Browser blockieren Autoplay mit Ton ohnehin. Wichtiger:
  * Hört man ein Kind lachen oder sprechen, ist die Stimme wieder ein
- * personenbezogenes Merkmal — wer den Ton will, schaltet ihn selbst ein.
+ * personenbezogenes Merkmal, wer den Ton will, schaltet ihn selbst ein.
  *
  * **Kein Autoplay beim Scrollen.** Ein Video, das von selbst losläuft, weil
  * man daran vorbeikommt, ist auf einer ruhigen Seite ein Fremdkörper.
@@ -39,7 +39,7 @@ export default function Schuelervideo({
   const [ton, setTon] = useState(false);
   const [fehler, setFehler] = useState(false);
 
-  // Läuft ein anderes Video an, hält dieses an — zwei Klavierstücke
+  // Läuft ein anderes Video an, hält dieses an. Zwei Klavierstücke
   // gleichzeitig klingen nach Fehler, nicht nach Musik.
   useEffect(() => {
     const el = ref.current;
@@ -82,7 +82,7 @@ export default function Schuelervideo({
         {/*
           Auf dem Standbild liegt nichts ausser dem Abspielknopf.
           Vorher lagen hier ein dunkler Verlauf, die Wochenzahl und die
-          Länge — zusammen so viel, dass man das Bild kaum noch sah. Ein
+          Länge, zusammen so viel, dass man das Bild kaum noch sah. Ein
           Verlauf über einem Foto ist ausserdem der Griff, mit dem sich
           Bildunterschriften seit fünfzehn Jahren lesbar machen lassen; er
           sieht danach aus. Die Angaben stehen jetzt darunter, wo sie
@@ -98,7 +98,7 @@ export default function Schuelervideo({
         >
           {/*
             Dunkler, milchiger Kreis statt weisser Scheibe: Auf den hellen
-            Standbildern verschwände Weiss auf Weiss. Kleiner als zuvor —
+            Standbildern verschwände Weiss auf Weiss. Kleiner als zuvor,
             er muss auffindbar sein, nicht das Bild beherrschen.
           */}
           <span
@@ -139,9 +139,9 @@ export default function Schuelervideo({
 
       {/*
         Die Wochenzahl steht als Zeile über dem Titel, nicht auf dem Bild.
-        Sie bleibt damit das Erste, was man in diesem Block liest — sie ist
-        der Beweis, „Für Elise" allein ist keiner —, ohne das Standbild zu
-        verdecken.
+        Sie bleibt damit das Erste, was man in diesem Block liest, denn sie
+        ist der Beweis; „Für Elise" allein ist keiner. Das Standbild bleibt
+        dabei unverdeckt.
       */}
       <div className="p-5">
         <p className="text-[11px] font-700 uppercase tracking-[0.18em] text-navy-600">

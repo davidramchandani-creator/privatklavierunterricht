@@ -66,7 +66,7 @@ export async function requestPasswordReset(formData: FormData) {
   const origin = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.ch";
 
   // Admin-Client verwenden, damit wir den token_hash selbst erhalten und die
-  // E-Mail über Resend (branded Template) versenden können – statt via
+  // E-Mail über Resend (branded Template) versenden können, statt via
   // Supabases eigenem Mailer. Ausserdem verhindert die /auth/bestaetigen-URL,
   // dass iOS-Mail-Vorschauen den Einmal-Token schon beim Vorladen verbrennen.
   const adminClient = createAdminClient();

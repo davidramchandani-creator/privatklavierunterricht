@@ -1,11 +1,11 @@
 // ============================================================
-// Buchungs-Engine (Meilenstein 4) – reine Server-Logik
+// Buchungs-Engine (Meilenstein 4), reine Server-Logik
 //
 // Geschäftsregeln (Spec §4), systemweit gültig:
 //  - Lektionsdauer: 45 Min.
 //  - Raster: 15 Min.
 //  - Verfügbarkeit (Zürich-Lokalzeit):
-//      Mo–Do 16:30–20:30, Fr 16:30–18:00, Sa/So keine Termine.
+//      Mo, Do 16:30–20:30, Fr 16:30–18:00, Sa/So keine Termine.
 //  - Pufferzeit pro Schüler (15 oder 30 Min), vor UND nach jedem Termin.
 //  - 24-Stunden-Regel: Buchung min. 24h im Voraus.
 //  - Kollisionsprüfung gegen bestehende Termine (inkl. Puffer),
@@ -417,7 +417,7 @@ export type SeriesValidation = {
 
 /**
  * Prüft eine komplette Serie. Eine Serie ist nur buchbar, wenn JEDER Slot
- * buchbar ist (transaktional – alle oder keiner, Spec §4).
+ * buchbar ist (transaktional, alle oder keiner, Spec §4).
  */
 export function validateSeries(
   firstStart: Date,

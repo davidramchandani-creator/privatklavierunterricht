@@ -5,11 +5,11 @@ import Link from "next/link";
 import { CalendarCheck } from "lucide-react";
 
 /**
- * Mitlaufende Buchungsleiste am unteren Rand — nur auf dem Handy.
+ * Mitlaufende Buchungsleiste am unteren Rand, nur auf dem Handy.
  *
  * Zwischen Hero und Schlussaufruf liegen vier Abschnitte ohne einen einzigen
  * Weg zur Probelektion. Wer dort überzeugt wird, muss scrollen, um etwas zu
- * tun — und ein Teil tut es dann nicht.
+ * tun, und ein Teil tut es dann nicht.
  *
  * Drei Regeln, damit die Leiste hilft statt nervt:
  *
@@ -28,7 +28,7 @@ export default function BuchungsLeiste({
   naechsterTermin: string | null;
 }) {
   const [sichtbar, setSichtbar] = useState(false);
-  // Rastet ein, sobald der Schlussaufruf erreicht wurde – und bleibt so.
+  // Rastet ein, sobald der Schlussaufruf erreicht wurde. Und bleibt so.
   //
   // Beim ersten Versuch stand hier ein Wert, der wieder auf „nicht versteckt"
   // zurücksprang, sobald der Schlussaufruf nach oben aus dem Bild lief. Beim
@@ -79,7 +79,7 @@ export default function BuchungsLeiste({
         sichtbar ? "translate-y-0" : "translate-y-full"
       }`}
       style={{ transitionTimingFunction: "var(--ease-out-soft)" }}
-      // Ausserhalb des Bildes für Screenreader unsichtbar – sonst läge ein
+      // Ausserhalb des Bildes für Screenreader unsichtbar, sonst läge ein
       // Knopf im Fokusweg, den man gar nicht sieht.
       aria-hidden={!sichtbar}
     >

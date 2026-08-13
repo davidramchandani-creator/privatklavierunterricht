@@ -19,7 +19,7 @@ import { scheduleLessonReminders } from "@/lib/reminders";
  * Bucht (ggf. als Serie) Termine für einen Schüler im neuen Schema.
  * Validiert transaktional gegen die Buchungs-Engine; 24h-Vorlauf wird als
  * Admin-/System-Aktion übersprungen. Synchronisiert mit Google Calendar.
- * Es entstehen KEINE Rechnungen pro Lektion – die Abrechnung läuft im Voraus
+ * Es entstehen KEINE Rechnungen pro Lektion, die Abrechnung läuft im Voraus
  * über den Paketpreis (siehe createPackageInvoice).
  *
  * Wird genutzt von: Admin-Direktbuchung, Anfrage-Annahme (Admin) und

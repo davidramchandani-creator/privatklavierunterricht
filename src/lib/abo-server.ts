@@ -1,5 +1,5 @@
 // ============================================================
-// Abo-Modell — Serverseite
+// Abo-Modell, Serverseite
 //
 // Lädt Ferien und Preise, baut Angebote, legt Abos an.
 // Die Rechnung selbst steht in abo.ts und kommt ohne DB aus.
@@ -44,7 +44,7 @@ export type AboPreise = {
 };
 
 /**
- * Preise eines Schülers. Der Wegaufschlag kommt pro Lektion dazu — bei einem
+ * Preise eines Schülers. Der Wegaufschlag kommt pro Lektion dazu, bei einem
  * Jahresabo mit 39 Lektionen macht er den Unterschied zwischen kostendeckend
  * und draufzahlen.
  */
@@ -66,8 +66,8 @@ export async function ladeAboPreise(
 }
 
 /**
- * Lektionspreis für eine Abo-Variante, inklusive Wegaufschlag und – bei
- * flexibler Buchung – Aufschlag.
+ * Lektionspreis für eine Abo-Variante, inklusive Wegaufschlag und. Bei
+ * flexibler Buchung, Aufschlag.
  */
 export function aboLektionspreis(
   preise: AboPreise,
@@ -89,7 +89,7 @@ export type AboVorschau = AboAngebot & {
  * Vollständiges Angebot für einen konkreten Schüler und Fixplatz.
  *
  * Wird sowohl im Portal (Vorschau vor dem Kauf) als auch beim Anlegen
- * verwendet — damit steht in der Vorschau garantiert dieselbe Zahl wie
+ * verwendet, damit steht in der Vorschau garantiert dieselbe Zahl wie
  * nachher auf der Rechnung.
  */
 export async function baueVorschau(
@@ -131,7 +131,7 @@ export async function baueVorschau(
 /**
  * Angebot, wenn der Termin noch zugeteilt werden muss.
  *
- * Beim Fixplatz wählt der Schüler den Slot nicht selbst — er gibt an, wann er
+ * Beim Fixplatz wählt der Schüler den Slot nicht selbst, er gibt an, wann er
  * kann. Die Lektionszahl richtet sich nach dem ungünstigsten der möglichen
  * Tage, damit der beim Kauf genannte Preis in jedem Fall hält.
  */
@@ -159,7 +159,7 @@ export async function baueVorschauOhneTermin(
     ferien,
   });
 
-  // Der ungünstigste Tag bestimmt die zugesicherte Zahl – also mit genau dem
+  // Der ungünstigste Tag bestimmt die zugesicherte Zahl, also mit genau dem
   // rechnen, damit Termine, Ferienliste und Preis zusammenpassen.
   const schlechtesterTag =
     Object.entries(proTag).sort((a, b) => a[1] - b[1])[0]?.[0] ?? "3";
@@ -191,7 +191,7 @@ export async function baueVorschauOhneTermin(
 /**
  * Nächster sinnvoller Periodenstart.
  *
- * Der Erste des kommenden Monats — nicht der heutige Tag. Ein Abo, das am
+ * Der Erste des kommenden Monats, nicht der heutige Tag. Ein Abo, das am
  * 17. beginnt und am 16. endet, macht die Monatsabrechnung unnötig krumm
  * und ist auf jeder Rechnung schwerer zu lesen.
  */
@@ -231,7 +231,7 @@ export async function legeMonatsratenAn(
       package_id: params.packageId,
       student_id: params.studentId,
       sequence: r.sequenz,
-      // Es gibt keine Anzahlung mehr – jeder Monat ist eine gleichwertige
+      // Es gibt keine Anzahlung mehr, jeder Monat ist eine gleichwertige
       // Rate. `kind` bleibt trotzdem gesetzt, weil die Spalte es verlangt.
       kind: "rate",
       amount: r.betrag,

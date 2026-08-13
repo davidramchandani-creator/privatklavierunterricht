@@ -36,7 +36,7 @@ export default async function AbwesenheitenPage() {
       .from("profiles")
       .select("id, vorname, nachname")
       .eq("role", "student")
-      // Während eines Testlaufs die Testschüler, sonst die echten – beide
+      // Während eines Testlaufs die Testschüler, sonst die echten. Beide
       // gemischt anzubieten lädt zum Fehlklick ein.
       .eq("ist_test", istTest(kreis))
       .order("vorname"),
@@ -87,7 +87,7 @@ export default async function AbwesenheitenPage() {
                     )}
                   </div>
                   <p className="text-sm text-gray-600 mt-0.5">
-                    {formatDate(a.start_date)} – {formatDate(a.end_date)}
+                    {formatDate(a.start_date)}, {formatDate(a.end_date)}
                   </p>
                 </div>
                 <AbwesenheitDeleteButton id={a.id} />
@@ -110,7 +110,7 @@ export default async function AbwesenheitenPage() {
                 <div className="min-w-0">
                   <p className="text-sm font-500 text-gray-900">{b.title || "—"}</p>
                   <p className="text-sm text-gray-600 mt-0.5">
-                    {formatDate(b.date)} · {b.start_time?.slice(0, 5)}–{b.end_time?.slice(0, 5)}
+                    {formatDate(b.date)} · {b.start_time?.slice(0, 5)} bis {b.end_time?.slice(0, 5)}
                   </p>
                 </div>
                 <ZeitblockDeleteButton id={b.id} />
@@ -133,7 +133,7 @@ export default async function AbwesenheitenPage() {
                 <div className="min-w-0">
                   <p className="text-sm font-500 text-gray-900">{r.title || "—"}</p>
                   <p className="text-sm text-gray-600 mt-0.5">
-                    ab {formatDate(r.start_date)} · {r.start_time?.slice(0, 5)}–
+                    ab {formatDate(r.start_date)} · {r.start_time?.slice(0, 5)} bis{" "}
                     {r.end_time?.slice(0, 5)} · alle {r.interval_days} Tage
                   </p>
                 </div>

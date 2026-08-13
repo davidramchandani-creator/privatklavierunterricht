@@ -26,7 +26,7 @@ export async function enqueueEmail(
 /**
  * Sendet eine transaktionale E-Mail sofort (ohne Outbox-Verzögerung).
  * Löst Empfänger, rendert Template und sendet via Resend.
- * Fehler werden geloggt aber nicht geworfen – die fachliche Aktion soll
+ * Fehler werden geloggt aber nicht geworfen, die fachliche Aktion soll
  * trotzdem gelingen.
  */
 export async function sendEmailNow(

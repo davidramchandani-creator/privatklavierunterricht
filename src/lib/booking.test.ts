@@ -236,7 +236,7 @@ describe("computeAvailableSlots (Gesamtintegration)", () => {
     expect(slots).toHaveLength(14);
   });
 
-  it("Eine Woche (Mo–So) = 14+14+14+14+4 = 60 Slots", () => {
+  it("Eine Woche (Mo, So) = 14+14+14+14+4 = 60 Slots", () => {
     const slots = computeAvailableSlots(montag, 7, emptyCtx({ now }));
     expect(slots).toHaveLength(60);
   });

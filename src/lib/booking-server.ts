@@ -16,7 +16,7 @@ import {
  * Zeitblöcke, Regeln) und baut den AvailabilityContext der Buchungs-Engine.
  *
  * Muss mit einem Service-Role-Client aufgerufen werden: Für korrekte
- * Kollisionsprüfung werden ALLE belegten Zeiten benötigt – ein Schüler darf
+ * Kollisionsprüfung werden ALLE belegten Zeiten benötigt, ein Schüler darf
  * via RLS aber nur eigene Termine sehen. Nach aussen werden nur freie Slots
  * (Zeiten, keine Termindetails) zurückgegeben.
  */

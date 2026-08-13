@@ -208,7 +208,7 @@ export async function zuteilungRechnen(
 /**
  * Zuteilung anwenden: Fixplätze setzen und Terminserien buchen.
  *
- * Nur für Schüler mit aktivem Abo — ohne Abo gibt es nichts zu buchen. Wer
+ * Nur für Schüler mit aktivem Abo, ohne Abo gibt es nichts zu buchen. Wer
  * seinen Platz behält, wird übersprungen: seine Serie steht bereits, und
  * sie neu zu buchen würde nur doppelte Termine erzeugen.
  */
@@ -265,7 +265,7 @@ export async function zuteilungAnwenden(
     const rhythmus: Rhythmus =
       pkg.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich";
 
-    // Bisherige, noch nicht gehaltene Fixplatz-Termine räumen – sonst stünden
+    // Bisherige, noch nicht gehaltene Fixplatz-Termine räumen. Sonst stünden
     // alter und neuer Platz nebeneinander im Kalender.
     await admin
       .from("appointments")
@@ -328,7 +328,7 @@ export async function zuteilungAnwenden(
 /**
  * Wer wartet auf einen Termin?
  *
- * Schüler mit laufendem Abo und Fixplatz-Wunsch, aber ohne gesetzten Platz —
+ * Schüler mit laufendem Abo und Fixplatz-Wunsch, aber ohne gesetzten Platz.
  * genau die, die mitten in der Periode eingepasst werden müssen.
  */
 /**
@@ -336,7 +336,7 @@ export async function zuteilungAnwenden(
  *
  * Bewusst **alle** aktiven Schüler, nicht nur die ohne Platz. Wer schon einen
  * Termin hat, kann trotzdem umziehen, den Rhythmus wechseln oder seine Zeiten
- * ändern — dann muss er sich anschreiben lassen, ohne dass eine Runde läuft.
+ * ändern, dann muss er sich anschreiben lassen, ohne dass eine Runde läuft.
  * Wartende stehen oben, weil sie der dringende Fall sind.
  */
 export async function wartendeSchueler(): Promise<{
@@ -419,7 +419,7 @@ export async function wartendeSchueler(): Promise<{
     };
   });
 
-  // Wartende zuoberst, danach alphabetisch – die Liste wird sonst mit jedem
+  // Wartende zuoberst, danach alphabetisch. Die Liste wird sonst mit jedem
   // Schüler unübersichtlicher.
   liste.sort((a, b) => {
     if (a.wartet !== b.wartet) return a.wartet ? -1 : 1;
@@ -434,7 +434,7 @@ export async function wartendeSchueler(): Promise<{
  * Einen einzelnen Schüler nach seinen Zeiten fragen.
  *
  * Der Fall zwischen zwei Runden: Jemand schliesst im November ab, die nächste
- * Runde ist im Februar. Ihn bis dahin warten zu lassen wäre falsch — er zahlt
+ * Runde ist im Februar. Ihn bis dahin warten zu lassen wäre falsch, er zahlt
  * bereits ab Periodenbeginn.
  *
  * Umgesetzt als Runde mit genau einem Adressaten: dasselbe Formular im
@@ -517,7 +517,7 @@ export async function einpassungSuchen(
 /**
  * Einen einzelnen Schüler auf einen Platz setzen.
  *
- * Der laufende Plan bleibt unangetastet — es wird nur dieser eine Termin
+ * Der laufende Plan bleibt unangetastet, es wird nur dieser eine Termin
  * gesetzt und seine Serie gebucht.
  */
 export async function einzelnEinpassen(params: {
@@ -602,7 +602,7 @@ export async function einzelnEinpassen(params: {
     wunsch_erfuellt: true,
   });
 
-  // Die Einzelanfrage hat ihren Zweck erfüllt – sonst stünde sie dem Schüler
+  // Die Einzelanfrage hat ihren Zweck erfüllt, sonst stünde sie dem Schüler
   // weiter im Portal und würde ihn zum Nachtragen auffordern.
   await admin
     .from("planungsrunden")

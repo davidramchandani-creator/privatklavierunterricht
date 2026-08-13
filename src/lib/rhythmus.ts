@@ -1,5 +1,5 @@
 // ============================================================
-// Rhythmus & Fixplatz — Laufzeit, Wechsel, Serienabstand
+// Rhythmus & Fixplatz, Laufzeit, Wechsel, Serienabstand
 //
 // Der Rhythmus wird beim Kauf gewählt und bestimmt die Laufzeit:
 //   10er wöchentlich       →  4 Monate
@@ -9,7 +9,7 @@
 //
 // Diese vier Werte folgen einer einzigen Regel: pro Lektion 0.4 Monate
 // wöchentlich bzw. 0.6 Monate zweiwöchentlich. Das ist kein Zufall, sondern
-// bewusst so gewählt — dadurch lässt sich ein Rhythmuswechsel mitten im Paket
+// bewusst so gewählt, dadurch lässt sich ein Rhythmuswechsel mitten im Paket
 // in beide Richtungen fair und ohne Sonderfälle umrechnen: die Restlaufzeit
 // richtet sich immer nach den *verbleibenden* Lektionen.
 //
@@ -38,7 +38,7 @@ export const RHYTHMUS_LABELS: Record<Rhythmus, string> = {
 /**
  * Monate Laufzeit pro Lektion. Enthält bereits einen Puffer gegenüber der
  * reinen Unterrichtsdauer (wöchentlich braucht man rechnerisch ~0.23 Monate
- * pro Lektion) — für Ferien, Krankheit und Verschiebungen.
+ * pro Lektion), für Ferien, Krankheit und Verschiebungen.
  */
 export const MONTHS_PER_LESSON: Record<Rhythmus, number> = {
   woechentlich: 0.4,
@@ -51,7 +51,7 @@ export const INTERVAL_DAYS: Record<Rhythmus, number> = {
   zweiwoechentlich: 14,
 };
 
-/** Durchschnittliche Tage pro Monat – für Umrechnungen zwischen beiden. */
+/** Durchschnittliche Tage pro Monat, für Umrechnungen zwischen beiden. */
 const TAGE_PRO_MONAT = 30.44;
 
 /**
@@ -59,7 +59,7 @@ const TAGE_PRO_MONAT = 30.44;
  *
  * Nicht zu verwechseln mit der Laufzeit: 10 Lektionen wöchentlich sind nach
  * gut 2 Monaten durch, die Laufzeit beträgt aber 4. Die Differenz ist bewusst
- * eingebauter Puffer für Ferien und Krankheit — kein Zeitraum, in dem noch
+ * eingebauter Puffer für Ferien und Krankheit, kein Zeitraum, in dem noch
  * Unterricht stattfindet.
  *
  * Gerechnet wird über die Abstände zwischen den Lektionen: bei 10 Lektionen
@@ -77,7 +77,7 @@ export function lessonMonths(lessons: number, rhythmus: Rhythmus): number {
  *
  * Die Raten folgen der **Unterrichtsdauer**, nicht der Laufzeit. Der Grund
  * ist ein Fall, der sonst regelmässig auftritt und niemandem erklärbar ist:
- * Wer seine 10 Lektionen wöchentlich bezieht, ist nach gut 2 Monaten fertig —
+ * Wer seine 10 Lektionen wöchentlich bezieht, ist nach gut 2 Monaten fertig.
  * hätte aber bei laufzeitgekoppelten Raten noch 2 Raten à CHF 131.25 offen,
  * ohne dass noch Unterricht stattfindet. Startet dann ein neues Paket, laufen
  * zwei Zahlungspläne nebeneinander.
@@ -94,7 +94,7 @@ export function instalmentCountFor(lessons: number, rhythmus: Rhythmus): number 
  * Puffer zwischen der letzten Lektion und dem Schliessen des Pakets.
  *
  * Ein aufgebrauchtes Paket soll nicht bis zum nominellen Ablaufdatum
- * weiterlaufen — sonst kann der Schüler wochenlang weder buchen noch ein
+ * weiterlaufen, sonst kann der Schüler wochenlang weder buchen noch ein
  * neues Paket kaufen, während die Verlängerung erst am Ablaufdatum greift.
  * Die Woche Puffer lässt Raum für eine Nachholstunde oder eine Verschiebung,
  * die noch hereinkommt.
@@ -162,7 +162,7 @@ export type RhythmusChange = {
 };
 
 /**
- * Rechnet einen Rhythmuswechsel um — funktioniert in beide Richtungen.
+ * Rechnet einen Rhythmuswechsel um, funktioniert in beide Richtungen.
  *
  * Die Restlaufzeit richtet sich nach den *verbleibenden* Lektionen, nicht
  * nach der ursprünglichen Laufzeit. Damit ist der Wechsel in beide
@@ -196,7 +196,7 @@ export function computeRhythmusChange(params: {
 
   // Schutz: Der Wechsel auf den langsameren Rhythmus darf nie Zeit wegnehmen.
   // Sonst entstünde der absurde Fall, dass jemand mit einer Restlektion durch
-  // den Wechsel auf zweiwöchentlich 43 Tage *verliert* — er will ja gerade
+  // den Wechsel auf zweiwöchentlich 43 Tage *verliert*, er will ja gerade
   // mehr Zeit. Umgekehrt (auf wöchentlich) ist die Verkürzung gewollt: das ist
   // der Gegenwert dafür, dass man den schnelleren Rhythmus wählt.
   const wirdLangsamer =
@@ -256,13 +256,13 @@ export function flexMehrkosten(
  * Ratenplan für ein Paket mit gegebenem Rhythmus.
  *
  * Der Gesamtpreis ist rhythmusunabhängig. Was sich ändert, ist die Anzahl
- * Raten — und die richtet sich nach der **Unterrichtsdauer**, nicht nach der
+ * Raten, und die richtet sich nach der **Unterrichtsdauer**, nicht nach der
  * Laufzeit (siehe `instalmentCountFor`). Beispiel 10er zu CHF 700:
  *   wöchentlich      → Anzahlung 175 + 2 × 262.50  (Lektionen nach 2.1 Mt durch)
  *   zweiwöchentlich  → Anzahlung 175 + 4 × 131.25  (nach 4.2 Mt durch)
  *
  * Das Ablaufdatum des Pakets bleibt davon unberührt und folgt weiterhin der
- * Laufzeit — der Puffer für Ferien und Krankheit bleibt also erhalten, nur
+ * Laufzeit, der Puffer für Ferien und Krankheit bleibt also erhalten, nur
  * bezahlt wird nicht mehr in Zeiten, in denen kein Unterricht stattfindet.
  */
 export function buildPlanForRhythmus(
@@ -298,13 +298,13 @@ export type RescheduledInstalment = OpenInstalment & {
  * (Rhythmuswechsel).
  *
  * Grundsatz: **Der Gesamtpreis ändert sich nie.** Bereits bezahlte oder schon
- * gestellte Raten bleiben unangetastet — eine Rechnung, die draussen ist, wird
+ * gestellte Raten bleiben unangetastet, eine Rechnung, die draussen ist, wird
  * nicht nachträglich umgeschrieben. Nur der noch nicht fakturierte Rest wird
  * gleichmässig über die neue Restlaufzeit gestreckt bzw. gestaucht.
  *
  * Wird die Laufzeit kürzer als die Zahl der offenen Raten, werden Raten
  * zusammengelegt (weniger, dafür grössere). Wird sie länger, bleibt die Zahl
- * der Raten gleich, die Abstände werden grösser — bewusst so: mehr Raten
+ * der Raten gleich, die Abstände werden grösser. Bewusst so: mehr Raten
  * anzulegen als vereinbart wäre eine stille Vertragsänderung.
  */
 export function rescheduleOpenInstalments(
@@ -342,7 +342,7 @@ export function rescheduleOpenInstalments(
     });
   }
 
-  // Überzählige Raten (Laufzeit wurde kürzer) auf 0 setzen — der Aufrufer
+  // Überzählige Raten (Laufzeit wurde kürzer) auf 0 setzen, der Aufrufer
   // storniert sie. Ihr Betrag steckt bereits in den verbleibenden Raten.
   for (let i = anzahl; i < sortiert.length; i++) {
     ergebnis.push({
@@ -360,7 +360,7 @@ export function rescheduleOpenInstalments(
 /**
  * ISO-Kalenderwoche eines Datums. Wird gebraucht, um zwei zweiwöchentliche
  * Schüler abwechselnd auf denselben Slot zu legen: der eine in geraden, der
- * andere in ungeraden Wochen. Das ist der eigentliche Kapazitätsgewinn —
+ * andere in ungeraden Wochen. Das ist der eigentliche Kapazitätsgewinn,
  * ein Slot trägt zwei Schüler statt anderthalb.
  */
 export function isoWeek(date: Date): number {
@@ -382,8 +382,8 @@ export function weekParity(date: Date): 0 | 1 {
 }
 
 /**
- * Nächstes Datum ab `from`, das auf den gewünschten Wochentag fällt und –
- * bei zweiwöchentlichem Rhythmus – die gewünschte Wochenparität hat.
+ * Nächstes Datum ab `from`, das auf den gewünschten Wochentag fällt und.
+ * bei zweiwöchentlichem Rhythmus, die gewünschte Wochenparität hat.
  *
  * `weekday` nach JS-Konvention: 0 = Sonntag … 6 = Samstag.
  */
@@ -400,7 +400,7 @@ export function nextMatchingDate(
     if (cand.getUTCDay() !== weekday) continue;
     if (parity === null || weekParity(cand) === parity) return cand;
   }
-  // Kann bei gültigem Wochentag nicht eintreten – 21 Tage decken jeden
+  // Kann bei gültigem Wochentag nicht eintreten, 21 Tage decken jeden
   // Wochentag in beiden Paritäten ab.
   return d;
 }

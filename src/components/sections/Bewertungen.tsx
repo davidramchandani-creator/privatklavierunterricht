@@ -106,7 +106,7 @@ export default function Bewertungen() {
 
         {/*
           Nach dem sozialen Beleg. Wer bis hierher gelesen hat, glaubt, dass
-          es funktioniert — und hätte bis zum Seitenende keinen Weg, etwas
+          es funktioniert, und hätte bis zum Seitenende keinen Weg, etwas
           daraus zu machen.
         */}
         <p className="text-center text-gray-500 mt-10">
@@ -116,8 +116,7 @@ export default function Bewertungen() {
             className="text-navy-900 font-700 underline decoration-navy-200 hover:decoration-navy-900 underline-offset-4 transition-colors"
           >
             Probelektion buchen
-          </Link>{" "}
-          — unverbindlich.
+          </Link>, unverbindlich.
         </p>
       </div>
     </section>

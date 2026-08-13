@@ -146,14 +146,14 @@ export default async function SchuelerPortalPage() {
 
   // Selbst buchen gibt es nur bei Flex.
   //
-  // Wer einen Fixplatz hat, bekommt seine Termine aus der Zuteilung – die
+  // Wer einen Fixplatz hat, bekommt seine Termine aus der Zuteilung. Die
   // ganze Serie steht bereits im Kalender. Ihm zusätzlich einen
   // Buchungsknopf zu zeigen, hiesse: er bucht Lektionen neben seinem festen
   // Termin, die niemand eingeplant hat und die die Route sprengen.
   //
   // Das galt auch für den Zustand „Fixplatz vereinbart, Termin noch offen":
   // dort wäre der Knopf besonders verlockend, weil noch kein Termin
-  // dasteht – und besonders falsch.
+  // dasteht, und besonders falsch.
   const istFlex =
     (aktivesPackage as { booking_mode?: string | null } | null)?.booking_mode ===
     "flex";
@@ -168,7 +168,7 @@ export default async function SchuelerPortalPage() {
       ? Math.max(0, aktivesPackage.lessons_total - lessonsUsed)
       : null;
   // Nur tatsächlich fällige Zahlungen zählen: offen/abgelehnt UND Lektion ist
-  // bereits vorbei (Spec §6 – Zahlung erscheint erst nach der Lektion).
+  // bereits vorbei (Spec §6, Zahlung erscheint erst nach der Lektion).
   const nowMs = Date.now();
   const openPaymentsCount =
     invoices?.filter((i) => {
@@ -179,7 +179,7 @@ export default async function SchuelerPortalPage() {
     }).length ?? 0;
 
   // TWINT-Deep-Link je Rechnung mit Betrag + Zahlungszweck (gehaltene Lektion),
-  // serverseitig gebaut (Spec §6 – trxInfo = Lektionsinfo).
+  // serverseitig gebaut (Spec §6, trxInfo = Lektionsinfo).
   const invoicesForPortal = (invoices ?? []).map((inv) => ({
     ...inv,
     // Leerer String = TWINT_BASE_URL nicht konfiguriert -> null, damit die
@@ -210,7 +210,7 @@ export default async function SchuelerPortalPage() {
           <h1 className="text-xl font-800 text-gray-900">Willkommen!</h1>
           <p className="text-gray-500 text-sm leading-relaxed">
             Dein Schülerprofil wird noch von David eingerichtet. Das dauert
-            normalerweise nur kurz – schreib ihm eine kurze Nachricht wenn es
+            normalerweise nur kurz, schreib ihm eine kurze Nachricht wenn es
             dringend ist.
           </p>
           <a
@@ -254,7 +254,7 @@ export default async function SchuelerPortalPage() {
         />
       </div>
 
-      {/* Prominent booking CTA – shown first when the student can book */}
+      {/* Prominent booking CTA, shown first when the student can book */}
       {canBook && remainingLessons != null && remainingLessons > 0 && (
         <a
           href="#termine"
@@ -346,7 +346,7 @@ export default async function SchuelerPortalPage() {
   );
 
   // Der TWINT-Link zur nächsten Rate stammt aus der bereits gestellten
-  // Rechnung – ist sie noch nicht fakturiert, gibt es nichts zu zahlen.
+  // Rechnung, ist sie noch nicht fakturiert, gibt es nichts zu zahlen.
   const nextTwintLink =
     plan?.next?.invoiceId
       ? invoicesForPortal.find((i) => i.id === plan.next!.invoiceId)?.twint_link ??

@@ -1,7 +1,7 @@
 // ============================================================
 // Schülervideos
 //
-// Das stärkste Material, das ein Klavierlehrer haben kann — stärker als die
+// Das stärkste Material, das ein Klavierlehrer haben kann. Stärker als die
 // eigenen Aufnahmen. Eltern wollen nicht hören, wie gut du spielst; sie
 // wollen sehen, was aus ihrem Kind wird.
 //
@@ -9,7 +9,7 @@
 //
 // **Nur Hände auf den Tasten, keine Gesichter.** Damit ist niemand
 // erkennbar, und die Frage nach Bildrechten stellt sich in entschärfter
-// Form. Wer trotzdem sicher gehen will, fragt kurz nach — es kostet eine
+// Form. Wer trotzdem sicher gehen will, fragt kurz nach. Es kostet eine
 // Nachricht und erspart ein unangenehmes Gespräch.
 //
 // **Ton startet stumm.** Nicht nur, weil Browser Autoplay mit Ton ohnehin
@@ -26,13 +26,13 @@ export type Schuelervideo = {
   /**
    * In welcher Unterrichtswoche die Aufnahme entstand.
    *
-   * Als Zahl, nicht als Satz („nach 5 Wochen"): Der Wert wird gezeichnet —
+   * Als Zahl, nicht als Satz („nach 5 Wochen"): Der Wert wird gezeichnet,
    * gross auf dem Standbild und als Punkt auf der Zeitachse. Steckt er in
    * einem Satz, kann man ihn nur vorlesen.
    *
    * Alle vier nehmen wöchentlich Unterricht, Woche 5 heisst also fünf
    * Lektionen. Dass sie bei Null angefangen haben, steht einmal über dem
-   * Block — in jeder Zeile wiederholt, hörte man auf, es zu bemerken.
+   * Block, in jeder Zeile wiederholt, hörte man auf, es zu bemerken.
    */
   woche: number;
   /** Video unter /public/schuelervideos/. */
@@ -46,7 +46,7 @@ export type Schuelervideo = {
 /**
  * Reihenfolge ist Absicht: Diegos zwei Aufnahmen stehen nebeneinander, erst
  * „Happy Birthday" nach fünf Wochen, dann „Für Elise" nach sechs. Man sieht
- * denselben Menschen eine Woche später — das erzählt mehr als vier
+ * denselben Menschen eine Woche später, das erzählt mehr als vier
  * unverbundene Einzelstücke.
  *
  * Ist die Liste leer, zeigt der Bewertungsabschnitt nur die Zitate. Kein

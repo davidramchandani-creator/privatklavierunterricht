@@ -37,7 +37,7 @@ describe("redirectAddress", () => {
 
   it("wertet eine leere Variable als aus", () => {
     // Sonst würde `EMAIL_REDIRECT_TO=` als Adresse "" gelten und jede Mail
-    // ins Leere schicken – schlimmer als gar keine Umleitung, weil es
+    // ins Leere schicken, schlimmer als gar keine Umleitung, weil es
     // aussieht, als wäre der Versand kaputt.
     process.env.EMAIL_REDIRECT_TO = "";
     expect(redirectAddress()).toBeNull();
@@ -81,7 +81,7 @@ describe("sendEmail im Testmodus", () => {
     });
 
     // Ohne diesen Vermerk wüsste man beim Durchsehen nicht, welche Mail zu
-    // wem gehört – bei einer Runde mit fünf Schülern kämen fünf gleich
+    // wem gehört, bei einer Runde mit fünf Schülern kämen fünf gleich
     // aussehende Mails an.
     expect(gesendet[0].subject).toBe(
       "[TEST → schueler@example.com] Dein Termin steht"

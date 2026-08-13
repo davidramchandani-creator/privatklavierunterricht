@@ -27,7 +27,7 @@ const DEFAULT_SLOT: SlotState = {
   ende_zeit: "18:00",
 };
 
-/** Gilt für alle Blöcke gemeinsam – eine Lektionsdauer pro Betrieb. */
+/** Gilt für alle Blöcke gemeinsam, eine Lektionsdauer pro Betrieb. */
 type BlockConfigState = {
   lesson_minutes: number;
   min_buffer_minutes: number;
@@ -126,7 +126,7 @@ export default function VerfuegbarkeitPage() {
         <div>
           <h2 className="font-700 text-[#1C244B]">Lektion &amp; Puffer</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Gilt für alle Tage. Der Puffer ist die Untergrenze – wohnt ein
+            Gilt für alle Tage. Der Puffer ist die Untergrenze, wohnt ein
             Schüler weiter weg, wird automatisch dessen Fahrzeit verwendet
             (aufgerundet auf 15 Minuten).
           </p>
@@ -333,8 +333,8 @@ export default function VerfuegbarkeitPage() {
         </h2>
         <p className="text-sm text-gray-600 leading-relaxed">
           Diese Verfügbarkeit ist dein wöchentlicher Standard-Rhythmus.{" "}
-          <span className="font-600 text-[#1C244B]">Abwesenheiten überschreiben die Verfügbarkeit</span>{" "}
-          – an Tagen, die du unter{" "}
+          <span className="font-600 text-[#1C244B]">Abwesenheiten überschreiben die Verfügbarkeit</span>, an
+          Tagen, die du unter{" "}
           <a href="/admin/abwesenheiten" className="underline font-600 text-[#1C244B] hover:opacity-80">
             Abwesenheiten
           </a>{" "}

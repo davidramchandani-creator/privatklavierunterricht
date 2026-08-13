@@ -355,7 +355,7 @@ export async function cancelAppointment(appointmentId: string) {
   const jetzt = new Date();
   // Kurzfristige Absagen sind bewusst **erlaubt**, nicht blockiert.
   //
-  // Vorher wurde unter 24 Stunden abgewiesen – wer morgens krank wurde,
+  // Vorher wurde unter 24 Stunden abgewiesen, wer morgens krank wurde,
   // konnte es über das System gar nicht mitteilen und musste anrufen. Die
   // Lektion gilt in diesem Fall trotzdem als gehalten; das entscheidet die
   // Ausfall-Logik, nicht diese Funktion.
@@ -419,7 +419,7 @@ export async function cancelAppointment(appointmentId: string) {
   });
 
   if ("error" in ausfall) {
-    // Der Termin ist storniert – das ist der wichtigere Teil. Nur die
+    // Der Termin ist storniert, das ist der wichtigere Teil. Nur die
     // Kompensation fehlt; darüber wird der Admin ohnehin informiert.
     console.error("[ausfall] Kaskade fehlgeschlagen:", appointmentId, ausfall.error);
     await sendEmailNow(admin, "appointment_cancelled_by_student", {
@@ -491,7 +491,7 @@ export async function offeneAusfaelle(): Promise<{
 /**
  * Schüler wählt einen Ausweichtermin für eine ausgefallene Lektion.
  *
- * Der Slot wird serverseitig nochmals geprüft — zwischen dem Vorschlag in
+ * Der Slot wird serverseitig nochmals geprüft, zwischen dem Vorschlag in
  * der E-Mail und dem Klick können Tage liegen, in denen der Platz
  * anderweitig vergeben wurde.
  */
@@ -594,7 +594,7 @@ export async function ausweichterminWaehlen(
 
 /**
  * Schüler beantragt eine Verschiebung eines bestätigten Termins (Spec §6,
- * Meilenstein 6). Beide – der ursprüngliche wie der gewünschte neue Termin –
+ * Meilenstein 6). Beide, der ursprüngliche wie der gewünschte neue Termin,
  * müssen ≥24h in der Zukunft liegen. Der Wunschslot wird gegen die Engine
  * validiert (der zu verschiebende Termin selbst wird dabei ausgenommen). Es
  * entsteht ein `reschedule_requests`-Eintrag (status open); der Termin wird
@@ -943,7 +943,7 @@ export async function markInvoicePaid(invoiceId: string) {
 /**
  * Schüler trägt ein, wann er kann.
  *
- * Ersetzt jedes Mal alle Fenster dieser Runde, statt sie zu ergänzen — sonst
+ * Ersetzt jedes Mal alle Fenster dieser Runde, statt sie zu ergänzen. Sonst
  * bliebe ein gelöschter Tag stehen und der Planer würde einen Termin
  * ansetzen, an dem der Schüler längst nicht mehr kann.
  */
@@ -1146,7 +1146,7 @@ export async function aboVorschau(params: {
  * Abo abschliessen.
  *
  * Der Schüler kauft eine Laufzeit (Halbjahr oder Jahr), nicht eine
- * Lektionszahl — wie viele Lektionen darin liegen, wird für seinen konkreten
+ * Lektionszahl, wie viele Lektionen darin liegen, wird für seinen konkreten
  * Fixplatz ausgerechnet und vertraglich festgehalten.
  *
  * Alles Preisrelevante wird hier serverseitig neu berechnet und nichts aus dem
@@ -1158,7 +1158,7 @@ export async function aboAbschliessen(params: {
   bookingMode: BookingMode;
   /**
    * Nur bei Fixplatz: wann der Schüler kann. Den konkreten Termin teilt
-   * David zu — der Schüler wählt ihn bewusst nicht selbst.
+   * David zu, der Schüler wählt ihn bewusst nicht selbst.
    */
   verfuegbarkeiten?: {
     wochentag: number;
@@ -1304,13 +1304,13 @@ export async function aboAbschliessen(params: {
   }
 
   // Verfügbarkeit für die Zuteilung ablegen. Ohne offene Runde als
-  // Dauerangabe (runde_id null) – die nächste Runde greift darauf zurück,
+  // Dauerangabe (runde_id null), die nächste Runde greift darauf zurück,
   // sonst müsste der Schüler dasselbe zweimal eintragen.
   if (bookingMode === "fix") {
     const runde = await ladeOffeneRunde(admin);
 
     // Nur die Einträge desselben Geltungsbereichs ersetzen: läuft eine Runde,
-    // deren Einträge – sonst die Dauerangabe. Alles zu löschen würde die
+    // deren Einträge, sonst die Dauerangabe. Alles zu löschen würde die
     // Antwort auf eine laufende Runde mitreissen.
     const loeschen = admin
       .from("student_verfuegbarkeit")
@@ -1348,7 +1348,7 @@ export async function aboAbschliessen(params: {
     student_name: name || undefined,
     abo_label: ABO_LABELS[params.variante],
     rhythmus_text: rhythmus === "woechentlich" ? "jede Woche" : "alle zwei Wochen",
-    // Beim Fixplatz steht der Termin noch aus – das wird offen benannt,
+    // Beim Fixplatz steht der Termin noch aus, das wird offen benannt,
     // statt eine Zeit zu suggerieren, die es noch nicht gibt.
     fixplatz_text: null,
     termin_offen: bookingMode === "fix",
@@ -1384,7 +1384,7 @@ export async function aboAbschliessen(params: {
  *
  * Das ist gleichzeitig die Kündigung: wer abwählt, dessen Paket läuft am
  * Ende der Laufzeit ersatzlos aus. Nach Ablauf der Kündigungsfrist
- * (14 Tage vor Verfall) ist die laufende Periode nicht mehr kündbar –
+ * (14 Tage vor Verfall) ist die laufende Periode nicht mehr kündbar,
  * die Verlängerung ist dann bereits ausgelöst.
  */
 export async function setAutoRenew(packageId: string, enabled: boolean) {
@@ -1407,7 +1407,7 @@ export async function setAutoRenew(packageId: string, enabled: boolean) {
     return { error: "Dieses Paket ist nicht mehr aktiv." };
   }
 
-  // Kündigungsfrist prüfen – nur beim Abwählen relevant.
+  // Kündigungsfrist prüfen, nur beim Abwählen relevant.
   if (!enabled && pkg.expires_at) {
     const expiresOn = todayInZurich(new Date(pkg.expires_at));
     if (!isCancellable(expiresOn, todayInZurich())) {
@@ -1428,7 +1428,7 @@ export async function setAutoRenew(packageId: string, enabled: boolean) {
 
   if (error) return { error: "Änderung konnte nicht gespeichert werden." };
 
-  // Kündigung bestätigen – Schüler und Admin (Mail + Push).
+  // Kündigung bestätigen, Schüler und Admin (Mail + Push).
   if (!enabled) {
     const { data: prof } = await supabase
       .from("profiles")

@@ -144,7 +144,7 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
         <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
       )}
 
-      {/* Actions – only visible after lesson + not already confirmed/paid */}
+      {/* Actions, only visible after lesson + not already confirmed/paid */}
       {passed && (localStatus === "unpaid" || localStatus === "rejected") && (
         <div className="pt-2 border-t border-gray-100 flex flex-wrap gap-2">
           {invoice.method === "twint" && twintLink && (
@@ -222,7 +222,7 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
         <div className="pt-2 border-t border-gray-100">
           <p className="text-xs text-emerald-700 flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            Zahlung bestätigt – danke!
+            Zahlung bestätigt, danke!
           </p>
         </div>
       )}

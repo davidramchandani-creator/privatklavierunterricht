@@ -109,7 +109,7 @@ describe("Integration: gap-aware Slots am realen Tag", () => {
     );
     expect(montag).toEqual(["16:30", "17:30", "18:30"]);
 
-    // Der 3.8.2026 ist 60 Tage nach dem 4.6. – ebenfalls kein Treffer.
+    // Der 3.8.2026 ist 60 Tage nach dem 4.6., ebenfalls kein Treffer.
     // Passend ist der 10.8. nur, wenn die Regel am 6.7.2026 startet
     // (35 Tage, 35 % 7 === 0).
     const gesperrt = times(

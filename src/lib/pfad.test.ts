@@ -44,7 +44,7 @@ describe("Wächter: keine Pfadprüfung per startsWith", () => {
       const treffer = inhalt.match(/pathname\s*\.startsWith\(/g);
       expect(
         treffer,
-        `${datei}: pathname.startsWith() gefunden — bitte gehoertZu() benutzen, ` +
+        `${datei}: pathname.startsWith() gefunden, bitte gehoertZu() benutzen, ` +
           `sonst greift die Prüfung auch bei Pfaden, die nur zufällig gleich anfangen.`,
       ).toBeNull();
     });
@@ -76,7 +76,7 @@ describe("Middleware lässt statische Dateien durch", () => {
   }
 
   // Gegenprobe: Der Matcher darf nicht so weit gefasst sein, dass er nichts
-  // mehr trifft — sonst wäre die Anmeldung wirkungslos und der Test grün.
+  // mehr trifft, sonst wäre die Anmeldung wirkungslos und der Test grün.
   for (const pfad of ["/admin", "/schueler/portal", "/auth/login"]) {
     it(`${pfad} läuft weiterhin durch die Middleware`, () => {
       expect(new RegExp(`^${matcher}$`).test(pfad), pfad).toBe(true);

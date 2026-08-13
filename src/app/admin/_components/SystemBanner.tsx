@@ -10,7 +10,7 @@ import { redirectAddress } from "@/lib/email-sender";
  * etwas schief, ohne dass irgendwo etwas kaputt aussieht.
  *
  *   • Der Testmodus. Bleibt EMAIL_REDIRECT_TO nach dem Testen stehen, bekommt
- *     kein Schüler je wieder Post — und niemand merkt es.
+ *     kein Schüler je wieder Post, und niemand merkt es.
  *   • Endgültig gescheiterte Mails. Eine Terminbestätigung, die nie ankam,
  *     fällt niemandem auf: der Schüler wartet, der Admin denkt, sie sei
  *     draussen. Genau das ist im Bestand fünfmal passiert.
@@ -83,7 +83,7 @@ export default async function SystemBanner() {
             zugestellt
           </span>
           <span>
-            Nach drei Versuchen aufgegeben — die Empfänger haben nichts
+            Nach drei Versuchen aufgegeben, die Empfänger haben nichts
             bekommen.
           </span>
           <Link

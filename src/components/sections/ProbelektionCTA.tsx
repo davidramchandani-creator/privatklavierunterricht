@@ -9,7 +9,7 @@ export default function ProbelektionCTA() {
       className="py-20 md:py-28 relative overflow-hidden"
     >
       {/* Ankerpunkt für die mitlaufende Leiste: sobald dieser Block im Bild
-          ist, zieht sie sich zurück – sonst stünden zwei
+          ist, zieht sie sich zurück. Sonst stünden zwei
           Probelektions-Knöpfe übereinander. */}
       <div id="probelektion-cta" className="absolute inset-0 pointer-events-none" aria-hidden />
       {/* Gradient background */}
@@ -32,7 +32,7 @@ export default function ProbelektionCTA() {
         </h2>
         <p className="text-white/70 mb-10 max-w-xl mx-auto leading-relaxed">
           Schreib mir eine kurze Nachricht und wir finden gemeinsam einen
-          passenden Termin. Keine Verpflichtung, kein Abonnement – einfach
+          passenden Termin. Keine Verpflichtung, kein Abonnement. Einfach
           loslegen.
         </p>
 

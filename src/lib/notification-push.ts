@@ -60,7 +60,7 @@ const BUILDERS: Record<string, Builder> = {
   }),
   proposal_new: (p) => ({
     title: "Neuer Terminvorschlag",
-    body: `${fmt(p.proposed_start)} – im Portal bestätigen oder ablehnen.`,
+    body: `${fmt(p.proposed_start)}, im Portal bestätigen oder ablehnen.`,
     url: PORTAL,
     tag: "proposal",
   }),
@@ -100,13 +100,13 @@ const BUILDERS: Record<string, Builder> = {
   // ── Zahlungen: Schüler ────────────────────────────────────────────
   twint_payment_request: (p) => ({
     title: "Zahlung offen",
-    body: `${money(p.amount)} – jetzt per TWINT begleichen.`,
+    body: `${money(p.amount)}, jetzt per TWINT begleichen.`,
     url: PORTAL,
     tag: "payment",
   }),
   qr_invoice: (p) => ({
     title: "Neue Rechnung",
-    body: `${money(p.amount)} – QR-Rechnung im Portal.`,
+    body: `${money(p.amount)}, QR-Rechnung im Portal.`,
     url: PORTAL,
     tag: "payment",
   }),
@@ -149,7 +149,7 @@ const BUILDERS: Record<string, Builder> = {
     tag: "group",
   }),
   group_payment_request: (p) => ({
-    title: "Gruppenkurs – Zahlung offen",
+    title: "Gruppenkurs: Zahlung offen",
     body: `${money(p.amount)} für ${p.course_title ?? "den Kurs"}.`,
     url: PORTAL,
     tag: "payment",
@@ -158,7 +158,7 @@ const BUILDERS: Record<string, Builder> = {
   // ── Reminder (neu) ────────────────────────────────────────────────
   lesson_reminder_24h: (p) => ({
     title: "Morgen Klavierunterricht",
-    body: `${fmt(p.start_at)} – bis heute Abend kannst du noch verschieben.`,
+    body: `${fmt(p.start_at)}, bis heute Abend kannst du noch verschieben.`,
     url: PORTAL,
     tag: `reminder-${p.appointment_id ?? ""}`,
   }),
@@ -184,7 +184,7 @@ const BUILDERS: Record<string, Builder> = {
   }),
 
   package_created: (p) => ({
-    title: p.billing_mode === "raten" ? "Paket bereit – Anzahlung offen" : "Paket bereit",
+    title: p.billing_mode === "raten" ? "Paket bereit: Anzahlung offen" : "Paket bereit",
     body:
       p.billing_mode === "raten"
         ? "Nach der Anzahlung kannst du Termine buchen."
@@ -205,7 +205,7 @@ const BUILDERS: Record<string, Builder> = {
   subscription_renewed: (p) => ({
     title: "Abo verlängert",
     body: `${p.package_label ?? "Dein Paket"} ist wieder buchbar${
-      p.expires_at ? ` – gültig bis ${fmt(p.expires_at)}` : ""
+      p.expires_at ? `, gültig bis ${fmt(p.expires_at)}` : ""
     }.`,
     url: PORTAL,
     tag: "abo",
@@ -270,7 +270,7 @@ const BUILDERS: Record<string, Builder> = {
   }),
   payment_reported_admin: (p) => ({
     title: "Zahlung gemeldet",
-    body: `${p.student_name ?? "Ein Schüler"} hat ${money(p.amount)} als bezahlt markiert – bitte prüfen.`,
+    body: `${p.student_name ?? "Ein Schüler"} hat ${money(p.amount)} als bezahlt markiert, bitte prüfen.`,
     url: ADMIN_ZAHLUNGEN,
     tag: "admin-payment",
   }),
@@ -306,7 +306,7 @@ const BUILDERS: Record<string, Builder> = {
   }),
 };
 
-/** Push-Inhalt für einen Benachrichtigungstyp – oder null, wenn keiner gewünscht. */
+/** Push-Inhalt für einen Benachrichtigungstyp, oder null, wenn keiner gewünscht. */
 export function buildPush(
   type: string,
   payload: Record<string, unknown>

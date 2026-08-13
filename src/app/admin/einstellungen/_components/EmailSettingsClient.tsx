@@ -23,7 +23,7 @@ const GROUPS: { label: string; types: EmailType[] }[] = [
     ],
   },
   {
-    label: "Schüler – Buchung",
+    label: "Schüler, Buchung",
     types: [
       { id: "booking_request_received", label: "Terminanfrage erhalten" },
       { id: "booking_confirmed", label: "Termine bestätigt" },
@@ -32,7 +32,7 @@ const GROUPS: { label: string; types: EmailType[] }[] = [
     ],
   },
   {
-    label: "Schüler – Verschiebung",
+    label: "Schüler, Verschiebung",
     types: [
       { id: "reschedule_request_received", label: "Verschiebungsanfrage eingegangen" },
       { id: "reschedule_confirmed", label: "Verschiebung bestätigt" },
@@ -40,7 +40,7 @@ const GROUPS: { label: string; types: EmailType[] }[] = [
     ],
   },
   {
-    label: "Schüler – Stornierung",
+    label: "Schüler, Stornierung",
     types: [
       { id: "appointment_cancelled_student", label: "Termin storniert (durch Schüler)" },
       { id: "appointment_cancelled_by_admin", label: "Termin storniert (durch Admin)" },

@@ -23,7 +23,7 @@ export default function EmailTest({ adminEmail }: { adminEmail: string | null })
           <p className="text-sm font-600 text-gray-700">Empfänger (ADMIN_EMAIL)</p>
           <p className="text-xs text-gray-500 font-mono">
             {adminEmail ?? (
-              <span className="text-red-500">nicht gesetzt – bitte in Vercel-Env-Variablen hinterlegen</span>
+              <span className="text-red-500">nicht gesetzt, bitte in Vercel-Env-Variablen hinterlegen</span>
             )}
           </p>
         </div>

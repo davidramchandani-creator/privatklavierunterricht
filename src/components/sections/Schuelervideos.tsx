@@ -9,7 +9,7 @@ import { SCHUELERVIDEOS } from "@/lib/schuelervideos";
  * Die Videos innerhalb des Bewertungsabschnitts.
  *
  * Bewusst kein eigener Abschnitt mit eigener Überschrift: Zitate und Videos
- * beantworten dieselbe Frage — „funktioniert das bei anderen?". Zwei
+ * beantworten dieselbe Frage, „funktioniert das bei anderen?". Zwei
  * getrennte Abschnitte hintereinander würden sie doppelt stellen.
  *
  * Ist die Liste leer, verschwindet der Block vollständig. Ein „Videos folgen
@@ -27,7 +27,7 @@ export default function Schuelervideos() {
       </p>
       {/*
         Der eigentliche Satz. Ohne ihn sind es vier Leute, die Klavier
-        spielen — mit ihm ist es der Beweis, dass fünf Wochen reichen.
+        spielen, mit ihm ist es der Beweis, dass fünf Wochen reichen.
         Der Zusatz „eine Lektion pro Woche" ist nicht schmückend: Ohne ihn
         könnte „nach 5 Wochen" auch einen Intensivkurs meinen, und genau die
         Vermutung entwertet die Aufnahmen.
@@ -43,7 +43,7 @@ export default function Schuelervideos() {
         und der Grund ist lehrreich: Jede Karte trägt ihre Wochenzahl
         bereits. Die Achse hat dieselbe Auskunft ein zweites Mal gegeben,
         nur grösser und mit Bewegung. Genau das lässt einen Abschnitt
-        überladen wirken — nicht die Menge an Gestaltung, sondern die
+        überladen wirken, nicht die Menge an Gestaltung, sondern die
         Wiederholung derselben Aussage in zwei Formen.
       */}
 

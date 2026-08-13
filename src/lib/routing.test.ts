@@ -14,7 +14,7 @@ import {
 } from "./routing";
 import { haversineMeter, schaetzeFahrzeit } from "./geo";
 
-// Neftenbach – Daves Ausgangspunkt.
+// Neftenbach, Daves Ausgangspunkt.
 const ZUHAUSE = { lat: 47.5266, lng: 8.6706 };
 
 const ORTE: Array<[string, number, number]> = [
@@ -74,7 +74,7 @@ function eingabe(over: Partial<PlanEingabe> = {}): PlanEingabe {
 describe("Gruppierung nach Fahrtrichtung", () => {
   it("legt Ziele in derselben Himmelsrichtung zusammen", () => {
     // Elgg, Wiesendangen und Rickenbach liegen alle östlich von Neftenbach.
-    // Man fährt ohnehin aneinander vorbei – sie gehören auf denselben Abend.
+    // Man fährt ohnehin aneinander vorbei, sie gehören auf denselben Abend.
     const gruppen = gruppiereNachRichtung(ZUHAUSE, schueler(), 4);
     const gruppeMitElgg = gruppen.find((g) =>
       g.some((s) => s.name === "Elgg")
@@ -100,7 +100,7 @@ describe("Gruppierung nach Fahrtrichtung", () => {
     expect(gruppen).toHaveLength(3);
   });
 
-  it("ist deterministisch – zweimal gerechnet, zweimal dasselbe", () => {
+  it("ist deterministisch, zweimal gerechnet, zweimal dasselbe", () => {
     const a = gruppiereNachRichtung(ZUHAUSE, schueler(), 4);
     const b = gruppiereNachRichtung(ZUHAUSE, schueler(), 4);
     expect(a.map((g) => g.map((s) => s.id))).toEqual(
@@ -169,7 +169,7 @@ describe("Paarung zweiwöchentlicher Schüler", () => {
 
 describe("Routenreihenfolge", () => {
   it("findet bei einer Kette die durchgehende Reihenfolge", () => {
-    // Vier Punkte in einer Linie nach Osten – die günstigste Route ist,
+    // Vier Punkte in einer Linie nach Osten, die günstigste Route ist,
     // sie der Reihe nach abzufahren, nicht hin und her zu springen.
     const orte = [
       { lat: 47.5266, lng: 8.72 },
@@ -228,7 +228,7 @@ describe("Wochenplan", () => {
         for (const s of [p.geradeWoche, p.ungeradeWoche]) {
           if (!s) continue;
           if (p.geradeWoche?.id === p.ungeradeWoche?.id && gesehen.has(s.id)) {
-            continue; // wöchentlich steht in beiden Wochen – zählt einmal
+            continue; // wöchentlich steht in beiden Wochen, zählt einmal
           }
           expect(gesehen.has(s.id)).toBe(false);
           gesehen.add(s.id);
@@ -342,7 +342,7 @@ describe("Wie viele Unterrichtstage lohnen sich", () => {
   it("zeigt, dass mehr Tage mehr Fahrzeit kosten", () => {
     // Der Kern der unternehmerischen Frage: jeder zusätzliche Unterrichtstag
     // bringt einen eigenen Hin- und Rückweg mit. Vier volle Abende sind
-    // günstiger als fünf halbleere – bei identischer Lektionszahl.
+    // günstiger als fünf halbleere, bei identischer Lektionszahl.
     const vier = varianten.find((v) => v.tage === 4);
     const fuenf = varianten.find((v) => v.tage === 5);
     expect(vier).toBeDefined();

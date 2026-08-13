@@ -1,5 +1,5 @@
 /**
- * QR-Rechnung via LivingTech API (Spec §6 – QR-Rechnung).
+ * QR-Rechnung via LivingTech API (Spec §6, QR-Rechnung).
  * Serverseitiger Code: API-Key aus env, nie im Client verwenden.
  */
 
@@ -39,7 +39,7 @@ export function buildSpcData(params: QRInvoiceParams): string {
   const debtorLine1 = debtorParts[0] ?? "";
   const debtorLine2 = debtorParts.slice(1).join(", ") ?? "";
 
-  const msg = message ?? `Klavierunterricht – Rechnung ${invoiceNumber}`;
+  const msg = message ?? `Klavierunterricht, Rechnung ${invoiceNumber}`;
   const amountStr = amount.toFixed(2);
 
   const lines = [
@@ -83,13 +83,13 @@ export function buildSpcData(params: QRInvoiceParams): string {
  * Erzeugt eine QR-Rechnung als PDF.
  *
  * Zuerst lokal (`qr-pdf.ts`), weil die Rechnung der Weg ist, auf dem das Geld
- * hereinkommt — sie darf nicht von einem fremden Dienst abhängen. Der frühere
+ * hereinkommt, sie darf nicht von einem fremden Dienst abhängen. Der frühere
  * Ausweg bei einem Ausfall war eine Textdatei mit dem rohen QR-Datenstring,
  * die kein Mensch bezahlen kann; genau das ist im Bestand auch passiert.
  *
  * Die LivingTech-API bleibt als ausdrückliche Ausweichmöglichkeit bestehen,
  * falls die Adresse sich nicht zerlegen lässt und ein Schlüssel hinterlegt
- * ist. Der SPC-String ist nur noch die letzte Notlage — und wird vom
+ * ist. Der SPC-String ist nur noch die letzte Notlage, und wird vom
  * Aufrufer bewusst **nicht** dauerhaft gespeichert.
  */
 export async function generateQRInvoicePdf(
@@ -154,7 +154,7 @@ export async function generateQRInvoicePdf(
     Amount: amount,
     Currency: "CHF",
     UnstructuredMessage:
-      message ?? `Klavierunterricht – Rechnung ${invoiceNumber}`,
+      message ?? `Klavierunterricht, Rechnung ${invoiceNumber}`,
   };
 
   try {

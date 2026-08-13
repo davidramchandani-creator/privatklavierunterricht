@@ -23,7 +23,7 @@ type EnqueueArgs = {
 
 /**
  * Legt einen Outbox-Eintrag an, sofern es ihn noch nicht gibt.
- * Verstösse gegen den UNIQUE-Index (23505) werden bewusst verschluckt –
+ * Verstösse gegen den UNIQUE-Index (23505) werden bewusst verschluckt,
  * genau das ist der Idempotenz-Mechanismus.
  */
 async function enqueueOnce(
@@ -145,7 +145,7 @@ export async function scanForDueReminders(
     // Die Nachricht „Dein Paket läuft ab, X Lektionen verfallen“ stammt aus
     // dem Lektionspaket-Modell und wäre beim Abo doppelt falsch: Es verfällt
     // nichts, und bei aktiver Verlängerung geht es ohnehin weiter. Abos
-    // werden über `sendRenewalNotices` informiert – mit dem passenden Text.
+    // werden über `sendRenewalNotices` informiert, mit dem passenden Text.
     .is("abo_variante", null)
     .not("expires_at", "is", null)
     .gt("expires_at", now.toISOString())

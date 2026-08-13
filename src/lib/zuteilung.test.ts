@@ -87,7 +87,7 @@ describe("Mögliche Plätze", () => {
   });
 });
 
-describe("Zuteilung – harte Nebenbedingung", () => {
+describe("Zuteilung, harte Nebenbedingung", () => {
   it("gibt niemandem einen Termin, den er nicht kann", () => {
     // Das ist die wichtigste Eigenschaft überhaupt: lieber jemanden nicht
     // zuteilen als ihm einen Termin geben, an dem er nicht kann.
@@ -165,7 +165,7 @@ describe("Zuteilung – harte Nebenbedingung", () => {
   });
 });
 
-describe("Zuteilung – Kollisionen", () => {
+describe("Zuteilung, Kollisionen", () => {
   it("legt keine zwei wöchentlichen Schüler auf dieselbe Zeit", () => {
     const s = Array.from({ length: 4 }, (_, i) =>
       schueler({
@@ -239,7 +239,7 @@ describe("Zuteilung – Kollisionen", () => {
   });
 });
 
-describe("Zuteilung – Reihenfolge nach Knappheit", () => {
+describe("Zuteilung, Reihenfolge nach Knappheit", () => {
   it("bedient zuerst, wer die wenigsten Möglichkeiten hat", () => {
     // Der eingeschränkte Schüler muss seinen einzigen Platz bekommen. Käme
     // der flexible zuerst dran und besetzte ihn, fiele der andere heraus.
@@ -277,7 +277,7 @@ describe("Zuteilung – Reihenfolge nach Knappheit", () => {
   });
 });
 
-describe("Zuteilung – bestehende Plätze und Wünsche", () => {
+describe("Zuteilung, bestehende Plätze und Wünsche", () => {
   it("behält einen bestehenden Platz bei, wenn möglich", () => {
     // Umzüge im Stundenplan sind für Schüler lästig. Ohne diesen Bonus
     // würde der Planer alles umwerfen, um zwei Minuten zu sparen.
@@ -308,7 +308,7 @@ describe("Zuteilung – bestehende Plätze und Wünsche", () => {
   });
 });
 
-describe("Zuteilung – Gesamtergebnis", () => {
+describe("Zuteilung, Gesamtergebnis", () => {
   it("teilt jeden Schüler höchstens einmal zu", () => {
     const s = Array.from({ length: 8 }, (_, i) =>
       schueler({

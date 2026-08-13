@@ -11,7 +11,7 @@ import { naechsterTerminText } from "@/lib/naechster-termin";
 import { HOERPROBEN } from "@/lib/hoerproben";
 
 // Nächster freier Termin im Hero soll aktuell bleiben → stündlich neu rendern.
-// Immer frisch rendern: Der Hero zeigt den nächsten freien Termin – mit ISR
+// Immer frisch rendern: Der Hero zeigt den nächsten freien Termin, mit ISR
 // (stale-while-revalidate) konnte bei wenig Traffic ein vergangener Termin
 // angezeigt werden.
 export const dynamic = "force-dynamic";
@@ -25,7 +25,7 @@ export default async function HomePage() {
       {/*
         Reihenfolge: erst können, dann Person, dann Beleg, dann Preis.
 
-        Vorher standen die Pakete direkt nach dem Hero — der Preis war damit
+        Vorher standen die Pakete direkt nach dem Hero, der Preis war damit
         das Zweite, was ein Besucher sah. Ein Preis ohne aufgebauten Wert
         wirkt immer hoch. Jetzt hört er zuerst, wie es klingt.
       */}
@@ -36,7 +36,7 @@ export default async function HomePage() {
 
         Innerhalb jeder Section zu staffeln sähe erst besser aus, wird beim
         Scrollen aber zappelig: Überschrift, dann Karte eins, dann Karte
-        zwei — man liest gegen die Bewegung an. Ein Abschnitt, eine Bewegung.
+        zwei, man liest gegen die Bewegung an. Ein Abschnitt, eine Bewegung.
       */}
       <Reveal>
         <Vorteile />
@@ -52,7 +52,7 @@ export default async function HomePage() {
 
         Er steht ohnehin schon auf /preise, wo jemand hingeht, der über Geld
         nachdenken will. Auf der Startseite verlangte er als Einziges eine
-        Eingabe — die Wohnadresse, von einem Fremden, bevor irgendein
+        Eingabe, die Wohnadresse, von einem Fremden, bevor irgendein
         Verhältnis besteht. Das ist eine grosse Bitte an einer Stelle, an der
         das Ziel „Probelektion buchen" heisst, und jedes Feld ist eine
         Gelegenheit zu gehen. Die Paketkarten nennen die Preise ohnehin.
@@ -60,7 +60,7 @@ export default async function HomePage() {
       <Reveal>
         <Pakete />
       </Reveal>
-      {/* Der Schlussaufruf bleibt ohne Einblendung – er ist der Boden der
+      {/* Der Schlussaufruf bleibt ohne Einblendung, er ist der Boden der
           Seite und soll da sein, sobald man ankommt. */}
       <ProbelektionCTA />
 

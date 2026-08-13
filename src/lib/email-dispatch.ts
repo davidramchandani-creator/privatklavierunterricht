@@ -212,7 +212,7 @@ export async function dispatchEmail(
 
 /**
  * Sendet die Push-Variante einer Benachrichtigung.
- * Wirft nie – eine fehlgeschlagene Push-Nachricht darf weder die E-Mail noch
+ * Wirft nie, eine fehlgeschlagene Push-Nachricht darf weder die E-Mail noch
  * die ausloesende Aktion beeintraechtigen.
  */
 export async function dispatchPush(
@@ -293,7 +293,7 @@ async function ensureInvoicePdfLink(
 
     // Nur ein echtes PDF wird festgeschrieben.
     //
-    // Vorher landete auch der SPC-Notbehelf dauerhaft in `pdf_url` — mit der
+    // Vorher landete auch der SPC-Notbehelf dauerhaft in `pdf_url`, mit der
     // Folge, dass eine einmal fehlgeschlagene Erzeugung die Rechnung für
     // immer kaputt liess: beim nächsten Aufruf war `pdf_url` ja gesetzt, also
     // wurde nichts mehr versucht, und der Schüler bekam bis ans Ende eine
@@ -372,11 +372,11 @@ async function prepareGroupPayment(
   );
 
   // Ohne hinterlegte Preisstaffel liefert pricePerPersonFor 0. Dann lieber
-  // gar keine Rechnung stellen als eine über CHF 0 – die würde als bezahlt
+  // gar keine Rechnung stellen als eine über CHF 0, die würde als bezahlt
   // durchlaufen und der Betrag wäre für immer verloren.
   if (!(amount > 0)) {
     throw new Error(
-      `Gruppenkurs "${course.title}" hat keine gültige Preisstaffel – ` +
+      `Gruppenkurs "${course.title}" hat keine gültige Preisstaffel: ` +
         `Rechnung für Termin ${appointmentId} wurde nicht erstellt.`
     );
   }

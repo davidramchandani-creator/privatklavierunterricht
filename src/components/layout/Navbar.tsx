@@ -20,7 +20,7 @@ export default function Navbar() {
   useEffect(() => {
     const supabase = createClient();
     // getSession() liest die Session aus dem Cookie (schnell, kein Roundtrip)
-    // – verhindert das Flackern von „Anmelden", obwohl man eingeloggt ist.
+    //, verhindert das Flackern von „Anmelden", obwohl man eingeloggt ist.
     supabase.auth.getSession().then(({ data }) => {
       setUser(data.session?.user ?? null);
       setLoaded(true);

@@ -1,7 +1,7 @@
 /**
  * Google Calendar One-Way-Sync (System → Google), Spec §8.
  *
- * Authentifizierung über Service-Account (JWT RS256) – kein OAuth-User-Flow.
+ * Authentifizierung über Service-Account (JWT RS256), kein OAuth-User-Flow.
  * Reine Server-Logik: Service-Account-JSON aus env, niemals im Client.
  */
 
@@ -139,7 +139,7 @@ function buildEventBody(appt: AppointmentForSync) {
     : "Schüler";
   const location = appt.student?.adresse
     ? appt.student.adresse
-    : `Hausbesuch – ${name}`;
+    : `Hausbesuch, ${name}`;
 
   const descriptionParts = [
     `Schüler/in: ${name}`,
@@ -149,7 +149,7 @@ function buildEventBody(appt: AppointmentForSync) {
   ].filter(Boolean);
 
   return {
-    summary: `Klavierunterricht – ${name}`,
+    summary: `Klavierunterricht, ${name}`,
     location,
     description: descriptionParts.join("\n"),
     start: { dateTime: appt.start_at, timeZone: "Europe/Zurich" },
@@ -174,7 +174,7 @@ async function fetchAppointment(
     .eq("id", appointmentId)
     .maybeSingle();
   if (!data) return null;
-  // student kann als Array oder Objekt kommen – normalisieren
+  // student kann als Array oder Objekt kommen, normalisieren
   const student = Array.isArray(data.student) ? data.student[0] : data.student;
   return { ...data, student: student ?? null } as AppointmentForSync;
 }

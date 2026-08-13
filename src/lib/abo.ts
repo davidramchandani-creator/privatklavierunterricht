@@ -1,21 +1,21 @@
 // ============================================================
-// Abo-Modell — Laufzeit statt Lektionspaket
+// Abo-Modell, Laufzeit statt Lektionspaket
 //
 // Der Schüler kauft eine Periode (Halbjahr oder Jahr) und zahlt monatlich.
 // Wie viele Lektionen darin liegen, ergibt sich aus seinem Rhythmus und der
-// Ferienlage — und wird beim Kauf **für seinen konkreten Fixplatz exakt
+// Ferienlage, und wird beim Kauf **für seinen konkreten Fixplatz exakt
 // ausgerechnet**, nicht pauschal versprochen.
 //
 // Warum exakt und nicht pauschal: In einem Quartal liegen je nach Jahreszeit
 // 8 bis 11 wöchentliche Lektionen. Eine runde Zahl auf die Website zu
-// schreiben wäre in der Hälfte der Fälle falsch — mal zu Lasten des Schülers,
+// schreiben wäre in der Hälfte der Fälle falsch, mal zu Lasten des Schülers,
 // mal zu deinen.
 //
 // Was das nebenbei vereinfacht: Schulferien sind in der Lektionszahl bereits
 // berücksichtigt. Sie lösen deshalb **keine** Laufzeitverlängerung mehr aus.
 // Die Ausfall-Kaskade greift nur noch bei einzelnen Absagen.
 //
-// Reine Funktionen — DB-Zugriff liegt in abo-server.ts.
+// Reine Funktionen, DB-Zugriff liegt in abo-server.ts.
 // ============================================================
 
 import { INTERVAL_DAYS, type Rhythmus } from "./rhythmus";
@@ -71,7 +71,7 @@ export function periodenEnde(start: string, monate: number): string {
 export type AboTermine = {
   /** Alle Unterrichtstage der Periode (ISO), Ferien bereits ausgenommen. */
   termine: string[];
-  /** Tage, die wegen Ferien ausfallen – für die Anzeige „fällt aus wegen …“. */
+  /** Tage, die wegen Ferien ausfallen. Für die Anzeige „fällt aus wegen …“. */
   ferientage: { tag: string; grund: string }[];
   anzahl: number;
 };
@@ -81,7 +81,7 @@ export type AboTermine = {
  *
  * Gerechnet wird über den konkreten Wochentag des Fixplatzes, nicht über
  * „Wochen im Zeitraum“. Ein Schüler mit Dienstagstermin verliert die
- * Sportferien anders als einer mit Freitagstermin — der Unterschied ist
+ * Sportferien anders als einer mit Freitagstermin, der Unterschied ist
  * klein, aber er soll bei jedem stimmen.
  */
 export function berechneAboTermine(params: {
@@ -132,7 +132,7 @@ export type AboAngebot = {
   monatsbetrag: number;
   /** Die konkreten Unterrichtstage. */
   termine: string[];
-  /** Was wegen Ferien ausfällt – bereits eingerechnet. */
+  /** Was wegen Ferien ausfällt, bereits eingerechnet. */
   ferientage: { tag: string; grund: string }[];
 };
 
@@ -141,7 +141,7 @@ export type AboAngebot = {
  *
  * Der Monatsbetrag ist über die ganze Laufzeit gleich, unabhängig davon, wie
  * viele Lektionen in einen einzelnen Monat fallen. Im Dezember sind es wegen
- * der Weihnachtsferien vielleicht zwei, im März fünf — der Betrag bleibt
+ * der Weihnachtsferien vielleicht zwei, im März fünf. Der Betrag bleibt
  * derselbe. Das ist der Sinn eines Abos: eine verlässliche Zahl auf beiden
  * Seiten, statt einer Abrechnung, die jeden Monat anders aussieht.
  */
@@ -185,7 +185,7 @@ export function baueAboAngebot(params: {
 /**
  * Lektionszahl, wenn der Wochentag beim Kauf noch nicht feststeht.
  *
- * Beim Fixplatz sucht der Schüler sich den Termin nicht selbst aus — er gibt
+ * Beim Fixplatz sucht der Schüler sich den Termin nicht selbst aus, er gibt
  * an, wann er kann, und bekommt den Termin zugeteilt. Beim Kauf ist der
  * Wochentag also offen, die Lektionszahl hängt aber davon ab (je nachdem,
  * welche Ferien auf welchen Tag fallen).
@@ -193,7 +193,7 @@ export function baueAboAngebot(params: {
  * Gelöst über das **Minimum** aller Tage, die in Frage kommen: Es wird nie
  * mehr versprochen, als sich auf jedem möglichen Tag auch halten lässt.
  * Fällt die Zuteilung später auf einen Tag mit einer Lektion mehr, wird
- * trotzdem nur die zugesicherte Zahl gebucht — der Preis steht schon fest,
+ * trotzdem nur die zugesicherte Zahl gebucht, der Preis steht schon fest,
  * und eine Gratislektion wäre bei 15 Schülern kein kleiner Betrag.
  *
  * Die Spanne ist ohnehin schmal: über ein Halbjahr unterscheiden sich die
@@ -278,7 +278,7 @@ export function baueMonatsraten(
 // ── Vorzeitiger Ausstieg ───────────────────────────────────
 
 export type AusstiegAbrechnung = {
-  /** Angefangene Monate der Periode – diese sind geschuldet. */
+  /** Angefangene Monate der Periode, diese sind geschuldet. */
   monateBegonnen: number;
   /** Monate, die nicht mehr anfallen. */
   monateOffen: number;
@@ -287,7 +287,7 @@ export type AusstiegAbrechnung = {
   bereitsBezahlt: number;
   /** Was der Schüler noch zahlen muss. */
   nachzahlung: number;
-  /** Was zurückgeht (selten – meist wurde monatlich gezahlt). */
+  /** Was zurückgeht (selten, meist wurde monatlich gezahlt). */
   rueckerstattung: number;
 };
 
@@ -295,7 +295,7 @@ export type AusstiegAbrechnung = {
  * Abrechnung bei vorzeitigem Ausstieg aus einem Abo.
  *
  * Regel: **Angefangene Monate sind geschuldet.** Wer am 10. März aussteigt,
- * zahlt den März – in diesem Monat hat Unterricht stattgefunden und der Platz
+ * zahlt den März, in diesem Monat hat Unterricht stattgefunden und der Platz
  * war für ihn reserviert. Die Monate danach entfallen.
  *
  * Bewusst nicht nach bezogenen Lektionen gerechnet: Beim Abo ist der
@@ -305,7 +305,7 @@ export type AusstiegAbrechnung = {
  *
  * Der Normalfall ist ohnehin ein anderer: Wer aufhören will, schaltet die
  * Verlängerung ab und läuft die Periode zu Ende. Diese Rechnung greift nur
- * beim echten Vertragsbruch – Wegzug, längere Krankheit, Kulanzfälle.
+ * beim echten Vertragsbruch, Wegzug, längere Krankheit, Kulanzfälle.
  */
 export function aboAusstiegAbrechnung(params: {
   periodeStart: string;

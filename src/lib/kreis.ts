@@ -6,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * Test- und echte Schüler dürfen nie in derselben Rechnung landen. Nicht aus
  * Ordnungsliebe: eine Route über fünf erfundene und sieben echte Adressen
  * ergibt Fahrzeiten, Gruppen und Empfehlungen, die für keinen der beiden
- * Fälle stimmen. Das Ergebnis sähe plausibel aus und wäre trotzdem falsch —
+ * Fälle stimmen. Das Ergebnis sähe plausibel aus und wäre trotzdem falsch,
  * die unangenehmste Sorte Fehler.
  *
  * Darum ein Begriff statt eines Filters an jeder einzelnen Abfragestelle:
@@ -21,7 +21,7 @@ export function istTest(kreis: Kreis): boolean {
 /**
  * Womit gerechnet wird, wenn niemand etwas anderes sagt.
  *
- * Solange Testschüler existieren, ist ein Testlauf im Gange — dann ist die
+ * Solange Testschüler existieren, ist ein Testlauf im Gange. Dann ist die
  * Testsicht die richtige Vorgabe. Sind keine da, gibt es nichts zu
  * verwechseln.
  */

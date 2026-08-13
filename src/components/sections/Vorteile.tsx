@@ -5,7 +5,7 @@ const vorteile = [
   {
     icon: BookOpen,
     titel: "Unterricht ohne Noten",
-    text: "Du lernst intuitiv mit Akkorden und Melodien – ohne Theorieballast.",
+    text: "Du lernst intuitiv mit Akkorden und Melodien, ohne Theorieballast.",
   },
   {
     icon: User,
@@ -14,18 +14,18 @@ const vorteile = [
   },
   {
     // Stand hier vorher als „Einzellektion oder Unterrichtspaket? Du buchst,
-    // wie es für dich passt." — das stimmt seit dem Abo-Modell nicht mehr:
+    // wie es für dich passt.", das stimmt seit dem Abo-Modell nicht mehr:
     // Der Schüler wählt kein Paket, er bekommt einen festen Platz aus der
     // Zuteilung. Ein Versprechen, das die Seite nicht hält, fällt spätestens
     // beim Abschluss auf.
     icon: CalendarCheck,
     titel: "Ein fester Platz",
-    text: "Dein Termin steht für die ganze Periode – kein wöchentliches Suchen nach einem Slot.",
+    text: "Dein Termin steht für die ganze Periode, kein wöchentliches Suchen nach einem Slot.",
   },
   {
     icon: Music,
     titel: "Moderne Songs & Praxisbezug",
-    text: "Lerne, was du wirklich brauchst – mit Songs, die du auch spielen willst.",
+    text: "Lerne, was du wirklich brauchst. Mit Songs, die du auch spielen willst.",
   },
 ];
 
@@ -36,7 +36,7 @@ export default function Vorteile() {
         <AbschnittsKopf
           kicker="Warum David"
           titel="Darum bist du bei mir richtig"
-          text="Mein Unterricht ist kein Einheitsbrei – er ist so individuell wie du."
+          text="Mein Unterricht ist kein Einheitsbrei, er ist so individuell wie du."
           className="mb-12"
         />
 

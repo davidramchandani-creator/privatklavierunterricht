@@ -23,11 +23,11 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "Klavierunterricht mit David – Neftenbach & Umgebung",
-    template: "%s | David – Klavierunterricht",
+    default: "Klavierunterricht mit David, Neftenbach & Umgebung",
+    template: "%s | David, Klavierunterricht",
   },
   description:
-    "Individueller Klavierunterricht mit David in Neftenbach. Ohne Noten, ohne Schema F – mit Gefühl und Verstand. Probelektion buchen.",
+    "Individueller Klavierunterricht mit David in Neftenbach. Ohne Noten, ohne Schema F. Mit Gefühl und Verstand. Probelektion buchen.",
   keywords: ["Klavierunterricht", "Neftenbach", "Winterthur", "Klavier", "Privatunterricht"],
   manifest: "/manifest.json",
   appleWebApp: {
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: "Spiel, was du fühlst – ich zeig dir wie.",
+    title: "Spiel, was du fühlst. Ich zeig dir wie.",
     description: "Individueller Klavierunterricht mit David, ganz ohne Schema F.",
     locale: "de_CH",
     type: "website",

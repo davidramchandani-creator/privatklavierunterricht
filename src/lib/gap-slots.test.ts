@@ -20,27 +20,27 @@ const hhmm = (mins: number[]) => mins.map(minutesToHhmm);
 const frei = (c: BlockConfig, occ: { start: number; end: number }[] = []) =>
   hhmm(validStartTimes(c, occ));
 
-describe("Modus lueckenlos – leerer Block 16:30–20:00", () => {
+describe("Modus lueckenlos, leerer Block 16:30–20:00", () => {
   it("bietet nur bündig anschliessende Startzeiten", () => {
     // 210 Min Block, Einheit 60 Min (45 + 15 Puffer) → 3 Lektionen,
     // die letzten 45 Minuten bleiben zwangsläufig ungenutzt.
     expect(frei(cfg)).toEqual(["16:30", "17:30", "18:30"]);
   });
 
-  it("lehnt 16:45 ab – es bliebe ein 15-Minuten-Loch am Blockanfang", () => {
+  it("lehnt 16:45 ab, es bliebe ein 15-Minuten-Loch am Blockanfang", () => {
     expect(isValidStart(t("16:45"), cfg)).toBe(false);
   });
 
-  it("lehnt 17:15 ab – davor bliebe eine unbrauchbare 45-Minuten-Lücke", () => {
+  it("lehnt 17:15 ab, davor bliebe eine unbrauchbare 45-Minuten-Lücke", () => {
     expect(isValidStart(t("17:15"), cfg)).toBe(false);
   });
 
-  it("lehnt 19:30 ab – die Lektion ragt über das Blockende hinaus", () => {
+  it("lehnt 19:30 ab, die Lektion ragt über das Blockende hinaus", () => {
     expect(isValidStart(t("19:30"), cfg)).toBe(false);
   });
 });
 
-describe("Modus lueckenlos – Live-Neuberechnung", () => {
+describe("Modus lueckenlos, Live-Neuberechnung", () => {
   const eine = [{ start: t("16:30"), end: t("17:15") }];
   const zwei = [...eine, { start: t("17:30"), end: t("18:15") }];
 
@@ -81,7 +81,7 @@ describe("Modus maximal", () => {
   });
 
   it("verhindert trotzdem kapazitätsvernichtende Zeiten", () => {
-    // Nach 16:30 und 17:30 passt noch genau eine Lektion – 19:15 wäre
+    // Nach 16:30 und 17:30 passt noch genau eine Lektion, 19:15 wäre
     // zulässig, eine Zeit die zwei Plätze kostet dagegen nicht.
     const zwei = [
       { start: t("16:30"), end: t("17:15") },
