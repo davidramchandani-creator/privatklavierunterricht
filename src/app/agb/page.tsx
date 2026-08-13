@@ -99,7 +99,7 @@ const abschnitte: Abschnitt[] = [
   {
     titel: "11. Vertragsdauer",
     absaetze: [
-      "Der Vertrag gilt für die Dauer des gebuchten Pakets und darüber hinaus, bis alle Lektionen eingelöst und alle offenen Beträge. Einschliesslich noch ausstehender Raten. Bezahlt wurden.",
+      "Der Vertrag gilt für die Dauer des gebuchten Pakets und darüber hinaus, bis alle Lektionen eingelöst und alle offenen Beträge bezahlt wurden, einschliesslich noch ausstehender Raten.",
     ],
   },
   {

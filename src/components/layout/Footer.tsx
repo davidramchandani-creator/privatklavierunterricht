@@ -75,7 +75,10 @@ export default function Footer() {
                 { href: "/auth/login", label: "Anmelden" },
                 { href: "/schueler/portal", label: "Schülerportal" },
                 { href: "/benachrichtigungen", label: "Benachrichtigungen" },
-                { href: "/auth/register", label: "Registrieren" },
+                // „Registrieren" stand hier und zeigte auf /auth/register.
+                // Diese Seite gibt es nicht, der Link endete auf einer
+                // Fehlerseite. Und es soll sie auch nicht geben: Konten legt
+                // der Admin an, niemand meldet sich selbst an.
               ].map((l) => (
                 <li key={l.href}>
                   <Link

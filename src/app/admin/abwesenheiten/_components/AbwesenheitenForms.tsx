@@ -137,7 +137,7 @@ export function AbwesenheitForm({ students }: { students: Student[] }) {
           <div className="space-y-1">
             <label className="text-xs font-500 text-gray-600">Schüler</label>
             <select name="student_user_id" className={selectClass} required>
-              <option value="">, wählen, </option>
+              <option value="">Bitte wählen…</option>
               {students.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.vorname} {s.nachname}
