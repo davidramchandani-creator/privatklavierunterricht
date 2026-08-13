@@ -22,10 +22,14 @@ export type Schuelervideo = {
   /** Was gespielt wird. */
   titel: string;
   /**
-   * Wer spielt und seit wann — „Diego, seit einem Jahr".
+   * Wer spielt und seit wann — „Diego, nach 5 Wochen".
    *
    * Die Zeitangabe ist der eigentliche Punkt: Ein Stück zu hören sagt wenig,
-   * „nach einem Jahr" sagt einem Elternteil genau, was es wissen will.
+   * „nach 5 Wochen" sagt einem Elternteil genau, was es wissen will.
+   *
+   * Dass alle vier bei Null angefangen haben, steht bewusst **nicht** hier,
+   * sondern einmal über dem Block. In jeder Zeile wiederholt, hörte man auf,
+   * es zu bemerken.
    */
   wer: string;
   /** Video unter /public/schuelervideos/. */
@@ -37,13 +41,51 @@ export type Schuelervideo = {
 };
 
 /**
- * Solange die Liste leer ist, zeigt der Bewertungsabschnitt nur die Zitate —
- * wie bisher. Kein Platzhalter, kein „Videos folgen".
+ * Reihenfolge ist Absicht: Diegos zwei Aufnahmen stehen nebeneinander, erst
+ * „Happy Birthday" nach fünf Wochen, dann „Für Elise" nach sechs. Man sieht
+ * denselben Menschen eine Woche später — das erzählt mehr als vier
+ * unverbundene Einzelstücke.
+ *
+ * Ist die Liste leer, zeigt der Bewertungsabschnitt nur die Zitate. Kein
+ * Platzhalter, kein „Videos folgen".
  *
  * Videos hinzufügen:
  *   1. Rohdatei nach public/schuelervideos/ legen
- *   2. node scripts/video-aufbereiten.mjs public/schuelervideos/datei.mp4
- *      → verkleinert auf Webgrösse und erzeugt das Standbild
- *   3. Hier eintragen
+ *   2. node scripts/video-aufbereiten.mjs public/schuelervideos/datei.mov
+ *      → verkleinert, gleicht die Lautstärke an, erzeugt das Standbild
+ *   3. Den ausgegebenen Block hier eintragen
  */
-export const SCHUELERVIDEOS: Schuelervideo[] = [];
+export const SCHUELERVIDEOS: Schuelervideo[] = [
+  {
+    id: "diego-happy-birthday",
+    titel: "Happy Birthday",
+    wer: "Diego, nach 5 Wochen",
+    datei: "/schuelervideos/diego-happy-birthday.mp4",
+    poster: "/schuelervideos/diego-happy-birthday.jpg",
+    dauer: 21,
+  },
+  {
+    id: "diego-fuer-elise",
+    titel: "Für Elise",
+    wer: "Diego, eine Woche später",
+    datei: "/schuelervideos/diego-fuer-elise.mp4",
+    poster: "/schuelervideos/diego-fuer-elise.jpg",
+    dauer: 22,
+  },
+  {
+    id: "phia-another-love",
+    titel: "Another Love",
+    wer: "Phia, nach 5 Wochen",
+    datei: "/schuelervideos/phia-another-love.mp4",
+    poster: "/schuelervideos/phia-another-love.jpg",
+    dauer: 44,
+  },
+  {
+    id: "regina-the-cat",
+    titel: "The Cat",
+    wer: "Regina, nach 4 Wochen",
+    datei: "/schuelervideos/regina-the-cat.mp4",
+    poster: "/schuelervideos/regina-the-cat.jpg",
+    dauer: 74,
+  },
+];
