@@ -78,7 +78,8 @@ export default function TerminBuchen({ maxSlots }: { maxSlots: number }) {
   if (success) {
     return (
       <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center text-sm text-emerald-700 font-500">
-        Anfrage gesendet! David bestätigt jeden Termin einzeln, du siehst den Status unter „Termine".
+        Anfrage gesendet! David bestätigt jeden Termin einzeln, du siehst den
+        Status unter „Termine“.
       </div>
     );
   }
@@ -86,12 +87,36 @@ export default function TerminBuchen({ maxSlots }: { maxSlots: number }) {
   return (
     <div>
       {!open ? (
+        /*
+          Für einen Schüler, der flexibel bucht, ist das die Hauptsache auf
+          dieser Seite: Ohne diesen Knopf bekommt er keine Lektion. Er stand
+          hier als kleiner Umriss-Knopf unter allem anderen, während
+          darüber Formulare für Dinge lagen, die ihn nicht betreffen.
+          Deshalb jetzt in voller Breite und gefüllt.
+        */
         <button
           onClick={() => setOpen(true)}
-          className="flex items-center gap-2 text-sm font-600 text-[#1C244B] px-4 py-2.5 rounded-xl border border-[#1C244B]/20 hover:bg-[#1C244B]/5 transition-colors"
+          className="press w-full flex items-center justify-between gap-4 bg-[#1C244B] text-white rounded-2xl px-5 py-4 hover:bg-[#2a3169] transition-colors group"
         >
-          <CalendarPlus className="w-4 h-4" />
-          Lektionen anfragen
+          <span className="flex items-center gap-3">
+            <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+              <CalendarPlus className="w-5 h-5" />
+            </span>
+            <span className="text-left">
+              <span className="block font-700 text-sm">Lektionen anfragen</span>
+              <span className="block text-white/60 text-xs mt-0.5">
+                Such dir aus, wann es dir passt
+              </span>
+            </span>
+          </span>
+          <svg
+            className="w-5 h-5 text-white/60 group-hover:text-white group-hover:translate-x-0.5 transition-all flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
         </button>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
