@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Star, Quote } from "lucide-react";
 import AbschnittsKopf from "@/components/AbschnittsKopf";
+import Schuelervideos from "@/components/sections/Schuelervideos";
 
 interface Bewertung {
   id: string;
@@ -95,6 +96,13 @@ export default function Bewertungen() {
             </div>
           ))}
         </div>
+
+        {/*
+          Videos nach den Zitaten: Wer liest, ist schneller fertig als wer
+          zusieht. Zuerst das schnell Erfassbare, dann das, wofür man sich
+          Zeit nimmt.
+        */}
+        <Schuelervideos />
 
         {/*
           Nach dem sozialen Beleg. Wer bis hierher gelesen hat, glaubt, dass
