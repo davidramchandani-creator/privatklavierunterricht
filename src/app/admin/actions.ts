@@ -2423,7 +2423,7 @@ export async function createInvoiceForAppointment(appointmentId: string) {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("vorname, nachname, email, adresse")
+    .select("vorname, nachname, email, adresse, payment_method")
     .eq("id", appt.student_id)
     .maybeSingle();
 
@@ -2434,7 +2434,10 @@ export async function createInvoiceForAppointment(appointmentId: string) {
     .maybeSingle();
 
   const amount = Number(pkg?.price_per_lesson ?? 85);
-  const paymentMethod = pkg?.payment_method ?? "twint";
+  // Das Profil entscheidet, nicht das Paket. Der Paketwert ist eine
+  // Momentaufnahme vom Anlegen; ändert der Admin die Zahlungsart beim
+  // Schüler, muss die nächste Rechnung ihr folgen.
+  const paymentMethod = zahlungsartFuer(profile, pkg);
 
   // invoice_number kommt aus dem DB-Default (fortlaufende Sequenz PIANO-{Jahr}-{NNNN}).
   const { data: inv, error } = await admin
@@ -2442,6 +2445,9 @@ export async function createInvoiceForAppointment(appointmentId: string) {
     .insert({
       student_id: appt.student_id,
       appointment_id: appointmentId,
+      // Ohne package_id findet die Paketstornierung diese Rechnung nicht und
+      // lässt sie offen stehen.
+      package_id: appt.package_id ?? null,
       amount,
       payer_name: profile ? `${profile.vorname} ${profile.nachname}` : null,
       payer_address: profile?.adresse ?? null,
@@ -2845,6 +2851,7 @@ import {
 } from "@/lib/group-booking";
 import { normalizePriceTiers } from "@/lib/group-courses";
 import { BASIS_URL } from "@/lib/seo";
+import { zahlungsartFuer } from "@/lib/zahlungsart";
 
 export async function createGroupCourse(formData: FormData) {
   const verboten = await assertAdmin();
