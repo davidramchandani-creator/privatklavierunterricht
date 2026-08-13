@@ -6,7 +6,7 @@ export default function ProbelektionCTA() {
   return (
     <section
       id="probelektion"
-      className="py-24 relative overflow-hidden"
+      className="py-20 md:py-28 relative overflow-hidden"
     >
       {/* Ankerpunkt für die mitlaufende Leiste: sobald dieser Block im Bild
           ist, zieht sie sich zurück – sonst stünden zwei

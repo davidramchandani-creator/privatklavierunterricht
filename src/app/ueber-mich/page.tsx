@@ -207,8 +207,8 @@ export default function UeberMichPage() {
               "Spielen nach Akkorden, Gehör und Gefühl – ohne Notenlesen",
               "Moderne Songs, die du wirklich spielen willst",
               "Unterricht bei dir zuhause in Neftenbach und Umgebung",
-              "Lektionen à 45 Minuten, flexibel planbar",
-              "Einzellektion oder 10er- bzw. 20er-Paket",
+              "Lektionen à 45 Minuten, wöchentlich oder alle zwei Wochen",
+              "Halbjahres- oder Jahresabo mit festem Platz",
               "Individuell auf dein Tempo und deine Ziele abgestimmt",
               "Kostenlose, unverbindliche Probelektion",
             ].map((item) => (

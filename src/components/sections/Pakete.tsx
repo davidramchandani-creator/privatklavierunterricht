@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Check, Lock, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import AbschnittsKopf from "@/components/AbschnittsKopf";
 
 const pakete = [
   {
@@ -77,21 +78,15 @@ const pakete = [
 
 export default function Pakete() {
   return (
-    <section id="angebote" className="py-24 bg-white">
+    <section id="angebote" className="py-16 md:py-24 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-16">
-          <p className="text-gray-400 font-600 text-xs uppercase tracking-widest mb-3">
-            Angebote
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-800 text-navy-900 mb-4 tracking-tight">
-            Wähle dein Abo
-          </h2>
-          <p className="text-gray-500 max-w-xl mx-auto">
-            Ob einmalig zum Reinschnuppern oder mit festem Platz für langfristigen
-            Fortschritt – hier findest du das passende Angebot.
-          </p>
-        </div>
+        <AbschnittsKopf
+          kicker="Angebote"
+          titel="Wähle dein Abo"
+          text="Ob einmalig zum Reinschnuppern oder mit festem Platz für langfristigen Fortschritt – hier findest du das passende Angebot."
+          className="mb-12"
+        />
 
         {/* Cards */}
         <div className="grid md:grid-cols-3 gap-6 items-start">
