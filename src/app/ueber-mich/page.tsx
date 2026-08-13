@@ -37,7 +37,7 @@ const stationen = [
     desc: "Start eigener Klavierunterrichtsstunden – individuell, praxisnah und mit Begeisterung.",
   },
   {
-    year: "Geplant 2027",
+    year: "Herbst 2026",
     title: "PH Studium",
     desc: "Start des Pädagogikstudiums an der PH Zürich – um Musik auch beruflich weiterzugeben.",
   },
