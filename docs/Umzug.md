@@ -121,25 +121,45 @@ Erst wenn alle drei stimmen, ist Schritt 3 abgeschlossen.
 Voraussetzung: Die Daten sind im neuen System.
 
 1. Vercel → Projekt → Settings → Domains → `privatklavierunterricht.ch` und
-   `www.privatklavierunterricht.ch` hinzufügen.
+   `www.privatklavierunterricht.ch` hinzufügen. Die Domain ohne `www` ist die
+   Hauptadresse; alle `canonical`-Angaben und `metadataBase` im Code zeigen
+   dorthin. `www` soll auf sie umleiten, nicht umgekehrt.
 2. Vercel zeigt die konkreten Zielwerte an. **Die aus dem eigenen Dashboard
    nehmen** — sie sind teils projektspezifisch, und die Zahlen aus älteren
    Anleitungen im Netz stimmen nicht mehr durchgehend.
-3. Bei Cloudflare **vier** Einträge ändern: `A` und `AAAA`, jeweils für `@` und
-   `www`. Alle anderen bleiben. Proxy weiterhin aus.
+3. Bei Cloudflare die Web-Einträge ändern. Proxy bleibt aus.
+
+   **Zu den beiden AAAA-Einträgen:** Nennt Vercel nur eine IPv4-Adresse, dann
+   werden `AAAA` für `@` und `www` **gelöscht**, nicht umgebogen. Ein
+   AAAA-Eintrag, der noch auf Infomaniak zeigt, schickt jeden Besucher mit
+   IPv6 weiterhin auf die alte Seite — und Mobilfunknetze in der Schweiz sind
+   überwiegend IPv6. Ohne AAAA fallen diese Besucher sauber auf IPv4 zurück.
+   Nennt Vercel eine IPv6-Adresse, werden sie stattdessen darauf gesetzt.
+
 4. Fünf Minuten warten, dann prüfen: neue Seite da, Schloss im Browser zu.
+5. **`NEXT_PUBLIC_APP_URL` auf `https://privatklavierunterricht.ch` ändern und
+   neu bereitstellen.** Bis dahin steht dort `https://privatklavierunterricht.vercel.app`,
+   und dieser Wert steckt in jedem Link in jeder E-Mail, in der Sitemap und in
+   der robots.txt. Ohne diesen Schritt läuft die Seite unter der Domain,
+   verweist aber überall auf sich selbst unter der alten Adresse.
 
 Vorher auf Vercel kontrollieren (Production):
 
 | Variable | Wert |
 |---|---|
 | `NEXT_PUBLIC_APP_URL` | `https://privatklavierunterricht.ch` |
-| `EMAIL_FROM` | `david@privatklavierunterricht.ch` |
-| `EMAIL_REDIRECT_TO` | **leer oder gelöscht** |
+| `EMAIL_REDIRECT_TO` | **gelöscht** (am 13.08. entfernt) |
 
-Der letzte ist der gefährlichste: Solange er gesetzt ist, bekommt **kein
-Schüler Post**, alles landet bei dir. Im Adminbereich erscheint dazu ein
-Warnbanner; das ist die einzige Erinnerung, die du bekommst.
+`EMAIL_FROM` ist nicht gesetzt und muss es auch nicht sein: Ohne die Variable
+greift der Vorgabewert `david@privatklavierunterricht.ch`.
+
+`EMAIL_REDIRECT_TO` ist der gefährlichste Schalter. Solange er gesetzt ist,
+bekommt **kein Schüler Post**, alles landet bei dir. Im Adminbereich erscheint
+dazu ein Warnbanner; das ist die einzige Erinnerung, die du bekommst.
+
+> **Achtung, häufige Falle:** Eine geänderte oder gelöschte Variable wirkt
+> **erst mit dem nächsten Deployment**. Vercel sagt das beim Speichern in
+> einem Hinweis, den man leicht wegklickt.
 
 ### Alte Adressen
 
