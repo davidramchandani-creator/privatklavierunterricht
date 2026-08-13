@@ -94,11 +94,19 @@ export async function submitAnfrage(formData: FormData) {
   const nachname = (formData.get("nachname") as string)?.trim();
   const email = (formData.get("email") as string)?.trim();
   const telefon = (formData.get("telefon") as string)?.trim() || null;
-  const nachricht = (formData.get("nachricht") as string)?.trim() || null;
+  const nachricht = (formData.get("nachricht") as string)?.trim();
   const wunschtermin = (formData.get("wunschtermin") as string) || null;
 
   if (!vorname || !nachname || !email) {
     return { error: "Bitte Vor- und Nachname sowie E-Mail angeben." };
+  }
+  // Die Nachricht ist Pflicht: Ohne sie steht David vor einer Anfrage, bei
+  // der er nicht weiss, ob es um ein sechsjähriges Kind oder einen
+  // Wiedereinsteiger geht — und muss erst zurückfragen, bevor er antworten
+  // kann. Das Pflichtfeld im Formular allein genügt nicht, es lässt sich
+  // abschalten.
+  if (!nachricht) {
+    return { error: "Bitte schreib kurz, worum es geht." };
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { error: "Ungültige E-Mail-Adresse." };

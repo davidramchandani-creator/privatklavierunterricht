@@ -11,6 +11,7 @@ import {
   Clock,
   Home,
   MessageCircle,
+  Piano,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -155,6 +156,44 @@ export default function ProbelektionPage() {
                   ob du weitermachen willst.
                 </Schritt>
               </ol>
+            </div>
+
+            {/*
+              Die häufigste ungestellte Frage — und ein echter Abbruchgrund.
+              Wer kein Instrument hat, hält sich für nicht gemeint und schliesst
+              die Seite, ohne je zu fragen. Die Miete verwandelt das Hindernis
+              in eine Zahl, über die man nachdenken kann.
+            */}
+            <div className="bg-white rounded-2xl border border-[#EAECEF] shadow-sm p-6">
+              <div className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-9 h-9 rounded-lg bg-navy-50 text-navy-900 flex items-center justify-center">
+                  <Piano className="w-5 h-5" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="font-700 text-navy-900">
+                    Brauchst du ein eigenes Instrument?
+                  </h2>
+                  <p className="text-sm text-gray-500 leading-relaxed mt-1.5">
+                    Zum Üben zwischen den Lektionen ja — mindestens ein
+                    Keyboard. Am besten ein E-Piano oder Klavier mit{" "}
+                    <strong className="text-navy-900 font-600">88 Tasten</strong>{" "}
+                    und Anschlagdynamik, damit du von Anfang an richtig lernst.
+                  </p>
+                  <div className="mt-3 rounded-xl bg-navy-50 px-4 py-3">
+                    <p className="text-sm text-navy-900">
+                      <strong className="font-700">Noch keins?</strong> Ich
+                      vermittle ein Mietklavier für{" "}
+                      <strong className="font-700">CHF 65 im Monat</strong> —
+                      so musst du nichts kaufen, bevor du weisst, ob es dir
+                      liegt.
+                    </p>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2.5">
+                    Für die Probelektion selbst brauchst du nichts: Schreib es
+                    einfach in die Nachricht, dann klären wir es zusammen.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Slot picker */}
@@ -371,15 +410,13 @@ export default function ProbelektionPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-500 text-gray-700">
-                    Nachricht{" "}
-                    <span className="text-gray-400 font-400">— freiwillig</span>
-                  </label>
+                  <label className="text-sm font-500 text-gray-700">Worum geht es? *</label>
                   <textarea
                     name="nachricht"
+                    required
                     rows={3}
                     className="w-full border border-[#EAECEF] rounded-xl px-3 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-navy-900/20 focus:border-navy-900 resize-none"
-                    placeholder="Erfahrung, Ziele, besondere Wünsche…"
+                    placeholder="Für wen ist der Unterricht, wie viel Erfahrung ist da, was möchtest du erreichen?"
                   />
                 </div>
 

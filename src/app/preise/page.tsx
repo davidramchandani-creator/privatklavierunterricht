@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { Check, Car, ShieldCheck } from "lucide-react";
+import { Check, Car, ShieldCheck, Piano } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Preisrechner from "@/components/sections/Preisrechner";
 
@@ -213,6 +213,34 @@ export default function PreisePage() {
               keine Wegkosten an. Ab 5 km berechne ich pro angefangene 5 Kilometer
               zusätzlich CHF 5.–. So vermeide ich es, mehr Zeit mit Anfahrten zu
               verbringen als mit dem Unterrichten.
+            </p>
+          </div>
+
+          {/*
+            Das Instrument gehört zu den Kosten, auch wenn es keine Lektion
+            ist. Wer hier rechnet, rechnet mit allem — und stolpert sonst
+            später über einen Posten, den er nicht eingeplant hat.
+          */}
+          <div className="bg-surface rounded-2xl p-6 border border-[#EAECEF] space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-navy-50 text-navy-900 flex items-center justify-center">
+                <Piano className="w-5 h-5" />
+              </div>
+              <h2 className="text-xl font-800 text-navy-900">Das Instrument</h2>
+            </div>
+            <p className="text-gray-600 leading-relaxed text-sm">
+              Zum Üben zwischen den Lektionen brauchst du ein Instrument zuhause
+              — mindestens ein Keyboard, am besten ein E-Piano oder Klavier mit
+              88 Tasten und Anschlagdynamik. Damit lernst du von Anfang an die
+              richtige Technik statt sie später umzulernen.
+            </p>
+            <p className="text-gray-600 leading-relaxed text-sm">
+              Wenn du noch keins hast: Ich vermittle ein{" "}
+              <strong className="text-navy-900 font-600">
+                Mietklavier für CHF 65 im Monat
+              </strong>
+              . So musst du nichts kaufen, bevor du weisst, ob dir das Spielen
+              liegt.
             </p>
           </div>
 
