@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
+import { gehoertZu } from "@/lib/pfad";
 
 /**
  * Entscheidet kontextabhängig, welche Navigation gerendert wird:
@@ -16,10 +17,10 @@ import Footer from "./Footer";
 export default function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
   const isApp =
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/schueler") ||
-    pathname.startsWith("/auth") ||
-    pathname.startsWith("/probelektion");
+    gehoertZu(pathname, "/admin") ||
+    gehoertZu(pathname, "/schueler") ||
+    gehoertZu(pathname, "/auth") ||
+    gehoertZu(pathname, "/probelektion");
 
   if (isApp) {
     return <div className="flex-1">{children}</div>;
