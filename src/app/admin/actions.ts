@@ -2285,6 +2285,32 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
       .contains("payload", { invoice_id: rate.invoice_id });
   }
 
+  // Alles, was an diesem Paket sonst noch offen hängt, ebenfalls stilllegen.
+  //
+  // Die beiden Schritte oben fassen nur Rechnungen an, die an einem Termin
+  // oder an einer Rate hängen. Eine Rechnung über das Paket selbst — beim
+  // Einmalkauf also der volle Betrag — hat weder das eine noch das andere
+  // und blieb deshalb offen stehen. Im Schülerportal las sich das als
+  // Forderung über ein Paket, das es nicht mehr gibt.
+  //
+  // Gefunden an einem echten Fall: CHF 700 für ein storniertes 10er-Paket.
+  //
+  // Muss vor dem Anlegen der Storno-Rechnung geschehen, sonst würde die
+  // gleich wieder mit archiviert.
+  const { data: restlicheRechnungen } = await admin
+    .from("invoices")
+    .update({ status: "archived" })
+    .eq("package_id", packageId)
+    .in("status", ["unpaid", "pending_confirmation", "rejected"])
+    .select("id");
+  for (const inv of restlicheRechnungen ?? []) {
+    await admin
+      .from("scheduled_emails")
+      .update({ status: "cancelled" })
+      .eq("status", "pending")
+      .contains("payload", { invoice_id: inv.id });
+  }
+
   const { error } = await admin
     .from("packages")
     .update({
