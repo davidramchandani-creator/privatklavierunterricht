@@ -2604,6 +2604,47 @@ export async function resendPaymentEmail(invoiceId: string) {
   return { success: true, error: undefined };
 }
 
+/**
+ * Lektion abrechnen: Rechnung erstellen **und** die Zahlungsmail sofort
+ * verschicken.
+ *
+ * Beide Hälften gab es schon, nur nicht verbunden und nirgends anklickbar:
+ * `createInvoiceForAppointment` wurde im ganzen Projekt kein einziges Mal
+ * aufgerufen. Für den Alltag ist das aber der übliche Vorgang, gerade
+ * während der Umstellung: Lektion war, Rechnung raus.
+ *
+ * Ohne diese Aktion müsste man auf den Tageslauf warten. Der läuft auf dem
+ * Hobby-Tarif nur einmal täglich und trifft die Uhrzeit auf eine Stunde
+ * genau. Wer nach dem Unterricht im Auto sitzt und die Zahlung anstossen
+ * will, wartet damit bis zum nächsten Morgen.
+ *
+ * Ob TWINT oder QR-Rechnung entsteht, ergibt sich aus der Zahlungsart des
+ * Pakets. Das wird hier nicht noch einmal entschieden.
+ */
+export async function abrechnenUndSenden(appointmentId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const rechnung = await createInvoiceForAppointment(appointmentId);
+  if (rechnung.error || !("invoiceId" in rechnung) || !rechnung.invoiceId) {
+    return { error: rechnung.error ?? "Rechnung konnte nicht erstellt werden." };
+  }
+
+  // Der Versand darf die schon erstellte Rechnung nicht zunichtemachen.
+  // Scheitert er, bleibt sie bestehen und lässt sich über „Mail erneut
+  // senden" nachschicken — das ist besser, als beides zu verlieren.
+  const versand = await resendPaymentEmail(rechnung.invoiceId);
+  if (versand.error) {
+    return {
+      error: `Rechnung erstellt, aber die Mail ging nicht raus: ${versand.error}`,
+      invoiceId: rechnung.invoiceId,
+    };
+  }
+
+  revalidatePath("/admin/zahlungen");
+  return { success: true, error: undefined, invoiceId: rechnung.invoiceId };
+}
+
 // ── Aufräumen / Löschen ───────────────────────────────────────────────────────
 
 /** Erledigte Buchungsanfrage (nicht open) endgültig löschen. */

@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import PaymentsBoard from "./_components/PaymentsBoard";
 import RatenBoard, { type RatenZeile } from "./_components/RatenBoard";
 import ZahlungenTabs from "./_components/ZahlungenTabs";
+import LektionenBoard, { type OffeneLektion } from "./_components/LektionenBoard";
 import type { Invoice } from "./_components/PaymentCard";
 import { buildPlanSummary, type InstalmentRow } from "@/lib/instalment-view";
 import { PACKAGE_LABELS } from "@/lib/packages";
@@ -96,9 +97,61 @@ export default async function ZahlungenPage() {
     (z) => z.state === "ueberfaellig" || z.state === "offen" || z.state === "in_pruefung"
   ).length;
 
+  // ── Gehaltene, aber noch nicht abgerechnete Lektionen ──────────────
+  //
+  // „Abgerechnet" heisst: Es gibt eine Rechnung, die nicht archiviert ist.
+  // Genau so ist auch der Unique-Index in der Datenbank definiert
+  // (invoices_one_active_per_appointment), damit Liste und Datenbank
+  // dieselbe Vorstellung davon haben, was offen ist.
+  //
+  // Abos zahlen in Monatsraten und werden nicht je Lektion berechnet. Sie
+  // hier aufzuführen hiesse, zur doppelten Rechnung einzuladen.
+  const jetzt = new Date().toISOString();
+  const { data: gehalten } = await admin
+    .from("appointments")
+    .select(
+      "id, start_at, end_at, status, student_id, profiles(vorname, nachname, ist_test), packages(price_per_lesson, payment_method, billing_mode)"
+    )
+    .lt("end_at", jetzt)
+    .in("status", ["booked", "completed"])
+    .order("start_at", { ascending: false })
+    .limit(200);
+
+  const { data: bestehende } = await admin
+    .from("invoices")
+    .select("appointment_id")
+    .neq("status", "archived")
+    .not("appointment_id", "is", null);
+  const abgerechnet = new Set((bestehende ?? []).map((r) => r.appointment_id));
+
+  const offeneLektionen: OffeneLektion[] = [];
+  for (const a of gehalten ?? []) {
+    if (abgerechnet.has(a.id)) continue;
+
+    const pkg = nameOf(a.packages) as unknown as
+      | { price_per_lesson: number | null; payment_method: string | null; billing_mode: string | null }
+      | null;
+    if (pkg?.billing_mode === "raten") continue;
+
+    const p = nameOf(a.profiles) as unknown as
+      | { vorname: string; nachname: string; ist_test: boolean | null }
+      | null;
+
+    offeneLektionen.push({
+      id: a.id,
+      studentName: p ? `${p.vorname} ${p.nachname}`.trim() : "Unbekannt",
+      beginn: a.start_at,
+      betrag: Number(pkg?.price_per_lesson ?? 85),
+      methode: pkg?.payment_method === "qr" ? "qr" : "twint",
+      istTest: p?.ist_test === true,
+    });
+  }
+
   return (
     <ZahlungenTabs
       ratenBadge={zuErledigen}
+      lektionenBadge={offeneLektionen.length}
+      lektionen={<LektionenBoard lektionen={offeneLektionen} />}
       rechnungen={<PaymentsBoard invoices={invoices} />}
       raten={<RatenBoard zeilen={zeilen} />}
     />
