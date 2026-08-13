@@ -1629,13 +1629,17 @@ export async function createDirectBooking(formData: FormData) {
 
   if (!userId || !startIso) return { error: "Schüler und Startzeit erforderlich." };
 
+  // Direktbuchung ist der Ausnahme-Weg des Admins: Sie greift an allen
+  // Schüler-Regeln vorbei (Zeitfenster, Abwesenheiten, Zeitblöcke). Geprüft
+  // wird nur, dass sich nichts mit einem bestehenden Termin überschneidet.
   const result = await bookSeriesForStudent(
     admin,
     userId,
     new Date(startIso).toISOString(),
     lessonsCount,
     intervalDays,
-    "direct"
+    "direct",
+    { adminOverride: true }
   );
   if ("error" in result) return result;
 
