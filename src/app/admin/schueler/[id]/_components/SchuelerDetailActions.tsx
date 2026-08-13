@@ -984,6 +984,11 @@ function PaketForm({
   const [typ, setTyp] = useState<"single" | "10er" | "20er">("10er");
   const [rhythmus, setRhythmus] = useState<Rhythmus>("woechentlich");
   const [bookingMode, setBookingMode] = useState<BookingMode>("flex");
+  // Vorbelegt auf „pro Lektion": Das ist der Fall der bestehenden Schüler,
+  // und die falsche Voreinstellung verschickt sofort eine Rechnung.
+  const [abrechnung, setAbrechnung] = useState<"pro_lektion" | "einmalig">(
+    "pro_lektion",
+  );
 
   const lektionen = typ === "single" ? 1 : typ === "10er" ? 10 : 20;
 
@@ -1041,8 +1046,55 @@ function PaketForm({
 
       <input type="hidden" name="student_user_id" value={student_user_id} />
       <input type="hidden" name="schueler_id" value={schueler_id} />
-      {/* Gesamtbetrag beim Anlegen, keine Raten. */}
-      <input type="hidden" name="billing_mode" value="einmal" />
+      <input type="hidden" name="billing_mode" value={abrechnung} />
+
+      {/*
+        Wann bezahlt wird. Vorher stand hier ein verstecktes Feld auf
+        „Gesamtbetrag beim Anlegen" — wer ein Paket anlegte, verschickte
+        damit ungewollt eine Rechnung über den vollen Betrag. Für alle
+        bestehenden Schüler ist das falsch: Sie zahlen nach der Lektion.
+      */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-500 text-gray-600">Bezahlung</label>
+        <div className="grid grid-cols-2 gap-2">
+          {(
+            [
+              {
+                wert: "pro_lektion" as const,
+                titel: "Pro Lektion",
+                text: "Nach jeder Lektion einzeln abrechnen. Jetzt keine Rechnung.",
+              },
+              {
+                wert: "einmalig" as const,
+                titel: "Im Voraus",
+                text: "Gesamtbetrag sofort in Rechnung stellen, 15 Tage Frist.",
+              },
+            ]
+          ).map((o) => (
+            <button
+              key={o.wert}
+              type="button"
+              onClick={() => setAbrechnung(o.wert)}
+              className={`text-left rounded-lg border px-3 py-2.5 transition-colors ${
+                abrechnung === o.wert
+                  ? "border-[#1C244B] bg-[#1C244B]/5"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <p className="text-xs font-700 text-gray-900">{o.titel}</p>
+              <p className="text-[11px] text-gray-500 leading-snug mt-0.5">
+                {o.text}
+              </p>
+            </button>
+          ))}
+        </div>
+        {abrechnung === "pro_lektion" && (
+          <p className="text-[11px] text-gray-500 leading-snug">
+            Abgerechnet wird unter <strong>Zahlungen → Offene Lektionen</strong>,
+            sobald die Lektion stattgefunden hat.
+          </p>
+        )}
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">

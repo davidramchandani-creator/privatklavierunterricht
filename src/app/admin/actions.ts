@@ -924,10 +924,18 @@ export async function createPackageAdmin(formData: FormData) {
 
   // Zahlungsmodell, identisch zum Schülerportal. Ratenkauf gibt es nur
   // für 10er/20er, eine Einzellektion wird immer einmalig verrechnet.
+  //
+  // „pro_lektion" ist der Fall der bestehenden Schüler: Sie zahlen nach
+  // dem Unterricht, nicht davor. Beim Anlegen wird deshalb gar nichts
+  // fakturiert; abgerechnet wird jede Lektion einzeln, nachdem sie
+  // stattgefunden hat.
+  const billingModeRoh = formData.get("billing_mode") as string;
   const billingMode =
-    (formData.get("billing_mode") as string) === "raten" && istPaket
+    billingModeRoh === "raten" && istPaket
       ? "raten"
-      : "einmalig";
+      : billingModeRoh === "pro_lektion"
+        ? "pro_lektion"
+        : "einmalig";
   const autoRenew = formData.get("auto_renew") === "on" && istPaket;
   const ratenPlan =
     billingMode === "raten"
@@ -996,10 +1004,12 @@ export async function createPackageAdmin(formData: FormData) {
       startDate: startDay,
       rhythmus,
     });
-  } else {
+  } else if (billingMode === "einmalig") {
     // Einmalzahlung: Gesamtpreis sofort in Rechnung stellen (15 Tage Frist).
     await createPackageInvoice(admin, pkg, payer);
   }
+  // pro_lektion: hier bewusst nichts. Die Rechnung entsteht erst, wenn eine
+  // Lektion gehalten wurde, über „Zahlungen → Offene Lektionen".
 
   // Paketbestätigung an den Schüler, erklärt, was als Nächstes zu tun ist.
   await sendEmailNow(admin, "package_created", {

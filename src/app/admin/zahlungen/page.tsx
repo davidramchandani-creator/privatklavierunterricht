@@ -104,8 +104,12 @@ export default async function ZahlungenPage() {
   // (invoices_one_active_per_appointment), damit Liste und Datenbank
   // dieselbe Vorstellung davon haben, was offen ist.
   //
-  // Abos zahlen in Monatsraten und werden nicht je Lektion berechnet. Sie
-  // hier aufzuführen hiesse, zur doppelten Rechnung einzuladen.
+  // Nur Pakete, die auch pro Lektion abgerechnet werden.
+  //
+  // Das war zuerst falsch herum gebaut: Die Liste zeigte alles ausser
+  // Ratenkäufen. Damit standen auch Pakete darin, deren Gesamtbetrag beim
+  // Anlegen bereits fakturiert wurde — ein Klick auf „Abrechnen" hätte dem
+  // Schüler dieselbe Lektion ein zweites Mal in Rechnung gestellt.
   const jetzt = new Date().toISOString();
   const { data: gehalten } = await admin
     .from("appointments")
@@ -131,7 +135,7 @@ export default async function ZahlungenPage() {
     const pkg = nameOf(a.packages) as unknown as
       | { price_per_lesson: number | null; payment_method: string | null; billing_mode: string | null }
       | null;
-    if (pkg?.billing_mode === "raten") continue;
+    if (pkg?.billing_mode !== "pro_lektion") continue;
 
     const p = nameOf(a.profiles) as unknown as
       | { vorname: string; nachname: string; ist_test: boolean | null }
