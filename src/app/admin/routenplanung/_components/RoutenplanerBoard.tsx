@@ -628,13 +628,13 @@ function Ergebnisansicht({
                               <span className="text-xs text-gray-400 mr-1.5">
                                 gerade KW
                               </span>
-                              {p.geradeWoche?.name ?? ", frei, "}
+                              {p.geradeWoche?.name ?? "frei"}
                             </p>
                             <p className="text-gray-900">
                               <span className="text-xs text-gray-400 mr-1.5">
                                 ungerade KW
                               </span>
-                              {p.ungeradeWoche?.name ?? ", frei, "}
+                              {p.ungeradeWoche?.name ?? "frei"}
                             </p>
                           </div>
                         )}
