@@ -72,26 +72,54 @@ Abschreibfehler. Kopieren, nicht tippen, und danach kontrollieren.
 
 ## 2. Wo soll DNS künftig liegen?
 
-**Empfehlung: GoDaddy**, also beim Registrar.
+**Empfehlung: GoDaddy**, also beim Registrar. Die Website bleibt bei Vercel,
+nur DNS nicht.
 
-Der Grund ist nicht Bequemlichkeit, sondern Trennung: Wenn DNS beim Registrar
-liegt, braucht Vercel nur einen einzigen Eintrag. Wechselst du später einmal
-den Hoster, ist dein Mailverkehr davon überhaupt nicht betroffen. Legst du DNS
-dagegen zu Vercel, hängt deine Mail-Konfiguration am Hosting-Anbieter — und du
-machst diesen ganzen Abend hier ein zweites Mal.
+### Warum nicht einfach alles zu Vercel?
 
-Zwei Alternativen, der Vollständigkeit halber:
+Das ist die naheliegende Frage, wenn man ohnehin täglich dort deployt. Der
+erwartete Vorteil tritt aber nicht ein. Vercels eigene Dokumentation:
 
-- **Vercel-Nameserver:** Die Website richtet sich dann selbst ein. Alle
-  Mail-Einträge musst du trotzdem von Hand nachbauen, und sie liegen dann eben
-  bei Vercel.
-- **Cloudflare** (kostenlos): das mit Abstand beste Werkzeug, liest die
-  bestehende Zone beim Einrichten automatisch ein und findet dabei auch
-  Einträge, die weder du noch ich auf dem Zettel haben. Dafür ein dritter
-  Anbieter.
+> If you are verifying your domain by changing nameservers, you will need to
+> add any DNS records to Vercel that you wish to keep from your previous DNS
+> provider.
 
-Wenn du dir den Abtippteil sparen willst, ist Cloudflare objektiv der sicherste
-Weg. Wenn du möglichst wenige Konten willst, GoDaddy. Beides vertretbar.
+Also: **Alle acht Mail-Einträge müsstest du auch dort von Hand anlegen**, DKIM
+inklusive. Vercel-Nameserver ersparen dir genau die zwei Einträge für die
+Website — und die fasst du einmal an und danach nie wieder.
+
+Was du dir dafür einhandelst, ist dauerhaft:
+
+- Dein Mailverkehr hängt am Hosting-Konto. Wechselst du je den Hoster, baust du
+  die ganze Zone erneut auf. Also genau das, was du gerade machst.
+- Ein Problem mit dem Vercel-Konto (Zahlung, Sperre, Ausfall) nähme dir nicht
+  nur die Website, sondern über DNS auch die Mail. Unwahrscheinlich, aber der
+  Schaden wäre gross und die Ursache schwer zu finden.
+
+Für eine Website ist der zweite Punkt Theorie. Für den Kanal, über den
+Terminbestätigungen und Rechnungen laufen, ist er es nicht.
+
+### Ein Punkt spricht doch für Vercel
+
+Der Vollständigkeit halber, damit du selbst abwägen kannst: GoDaddy bietet am
+Hauptnamen (ohne `www`) nur einen `A`-Eintrag, also eine feste IP-Adresse.
+Ändert Vercel diese Adresse irgendwann, musst du sie von Hand nachziehen.
+Vercel kündigt so etwas an, und es kommt selten vor — aber es ist Handarbeit,
+die bei Vercel-Nameservern entfiele.
+
+### Und wenn du dir das Abtippen sparen willst
+
+**Cloudflare** (kostenlos) liest die bestehende Zone beim Einrichten selbst ein.
+Damit entfällt genau das Risiko, das bei diesem Umzug am grössten ist: einen
+Eintrag zu übersehen, den weder du noch ich auf dem Zettel haben. Ausserdem
+löst es den Punkt oben, weil dort auch am Hauptnamen ein `CNAME` möglich ist.
+
+Der Preis ist ein dritter Anbieter im Spiel.
+
+**Kurz:** GoDaddy, wenn du wenige Konten willst. Cloudflare, wenn du den Umzug
+selbst so sicher wie möglich machen willst. Vercel-Nameserver würde ich nicht
+nehmen — nicht weil es schlecht wäre, sondern weil es die Arbeit nicht spart,
+für die man es nimmt.
 
 ---
 
