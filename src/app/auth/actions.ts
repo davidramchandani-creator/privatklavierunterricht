@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email-sender";
 import { renderEmail } from "@/lib/email-templates";
+import { BASIS_URL } from "@/lib/seo";
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
@@ -63,7 +64,7 @@ export async function setPassword(formData: FormData) {
 
 export async function requestPasswordReset(formData: FormData) {
   const email = formData.get("email") as string;
-  const origin = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.ch";
+  const origin = BASIS_URL;
 
   // Admin-Client verwenden, damit wir den token_hash selbst erhalten und die
   // E-Mail über Resend (branded Template) versenden können, statt via

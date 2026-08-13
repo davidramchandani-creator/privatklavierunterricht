@@ -1,5 +1,6 @@
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.ch";
+import { BASIS_URL } from "@/lib/seo";
+
+const APP_URL = BASIS_URL;
 
 function fmtDateTime(iso: string): string {
   try {

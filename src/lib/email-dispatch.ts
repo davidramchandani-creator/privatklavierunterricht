@@ -6,6 +6,7 @@ import { buildLessonTwintLink, buildTwintLink } from "@/lib/twint";
 import { pricePerPersonFor } from "@/lib/group-courses";
 import { sendPushToUser, sendPushToAdmin } from "@/lib/push";
 import { buildPush } from "@/lib/notification-push";
+import { BASIS_URL } from "@/lib/seo";
 
 export const ADMIN_RECIPIENT_TYPES = [
   "booking_request_admin",
@@ -281,7 +282,7 @@ async function ensureInvoicePdfLink(
     .maybeSingle();
   if (!inv) return null;
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.ch";
+  const appUrl = BASIS_URL;
 
   if (!inv.pdf_url) {
     const result = await generateQRInvoicePdf({

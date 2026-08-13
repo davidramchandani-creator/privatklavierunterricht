@@ -109,7 +109,7 @@ export async function inviteSchueler(formData: FormData) {
   }
 
   const adminClient = await createAdminClient();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
+  const appUrl = BASIS_URL;
 
   const { data: inviteData, error: inviteError } =
     await adminClient.auth.admin.inviteUserByEmail(email, {
@@ -288,7 +288,7 @@ export async function resendInvite(email: string) {
   const verboten = await assertAdmin();
   if (verboten) return verboten;
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.vercel.app";
+  const appUrl = BASIS_URL;
   const adminClient = await createAdminClient();
 
   // admin.generateLink bypasses PKCE, works across any browser/device.
@@ -2763,6 +2763,7 @@ import {
   adminCreateGroupSessions,
 } from "@/lib/group-booking";
 import { normalizePriceTiers } from "@/lib/group-courses";
+import { BASIS_URL } from "@/lib/seo";
 
 export async function createGroupCourse(formData: FormData) {
   const verboten = await assertAdmin();
