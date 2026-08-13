@@ -1,193 +1,149 @@
 # Umzug: weg von Infomaniak, neue Seite auf Vercel
 
-Stand: 13. August 2026. Alle DNS-Werte hier sind ausgelesen, nicht aus dem
-Gedächtnis. Bevor du etwas änderst: bitte einmal ganz lesen, besonders
-Abschnitt 1.
+Stand: 13. August 2026, nachmittags. Alle Werte hier sind ausgelesen, nicht aus
+dem Gedächtnis.
 
 ---
 
-## Wie es heute aussieht
+## Wo wir gerade stehen
 
-Drei Dinge, die oft verwechselt werden, liegen bei dir an drei Stellen:
+| Schritt | Status |
+|---|---|
+| 1. Zone bei Infomaniak auslesen | **erledigt**, gesichert in `dns-zone-infomaniak-2026-08-13.txt` |
+| 2. Zone bei Cloudflare aufbauen | **erledigt**, alle 10 Einträge übernommen und geprüft |
+| 3. Nameserver bei GoDaddy umstellen | **offen** — der nächste Schritt |
+| 4. Prüfen, dass Website und Mail unverändert laufen | offen |
+| 5. Website auf Vercel umbiegen | **wartet auf die Datenübernahme** |
 
-| | wo | ändert sich |
-|---|---|---|
-| **Registrar** — wem die Domain gehört | GoDaddy | nein |
-| **DNS** — wer die Fragen zur Domain beantwortet | Infomaniak (`ns11`/`ns12.infomaniak.ch`) | **ja** |
-| **Hosting** — wo die Website liegt | Infomaniak (`185.125.27.109`) | **ja** |
-
-DNSSEC ist nicht aktiv. Das ist eine gute Nachricht: Ein Nameserver-Wechsel
-mit aktivem DNSSEC kann die Domain für Stunden unerreichbar machen, wenn man
-die Reihenfolge falsch macht. Diese Falle entfällt.
+Die Zone liegt fertig bei Cloudflare und tut bis Schritt 3 gar nichts.
 
 ---
 
-## 1. Der Teil, an dem der Umzug scheitern kann
+## Warum die Schritte 3 und 5 getrennt sind
 
-Bei einem reinen Hosting-Wechsel ändert man einen Eintrag. Du wechselst aber
-den **DNS-Anbieter**, und das heisst: Die komplette Zone wird woanders neu
-aufgebaut. Alles, was Infomaniak heute beantwortet und du nicht abschreibst,
-ist danach weg.
+Das ist der Kern des Ganzen, deshalb hier ausdrücklich:
 
-Und das Meiste davon hat mit der Website nichts zu tun. **An dieser Domain
-hängt dein gesamter Mailverkehr.**
+**Schritt 3 ändert die Website nicht.** Der `A`-Eintrag bei Cloudflare zeigt
+weiterhin auf `185.125.27.109`, also auf Infomaniak. Es ändert sich nur, *wer*
+die Frage „wo liegt diese Domain?" beantwortet. Für Besucher und für E-Mail
+bleibt alles, wie es ist.
 
-Was ich von aussen sehen kann:
-
-| Name | Typ | Wert | wofür |
-|---|---|---|---|
-| `@` | A | `185.125.27.109` | alte Website → **wird ersetzt** |
-| `www` | A | `185.125.27.109` | dieselbe → **wird ersetzt** |
-| `@` | MX | `10 inbound-smtp.eu-west-1.amazonaws.com` | **eingehende Mail** |
-| `@` | TXT | `v=spf1 -all` | Absenderprüfung |
-| `_dmarc` | TXT | `v=DMARC1; p=reject;` | Umgang mit gefälschter Post |
-| `resend._domainkey` | TXT | `p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDR3ue4iTgC91fYs6CKpFHJ0yfnbbDkjIKSdq3PNOWM895ynkmwvYYYtYCM1A+zysnFyyG5C3DOwWsSJDROdJER0/11J455OoSXNWG1UrajrCjIDTPWfyvH+NFOYSill7jnq9CmyXGq7/iqNqDM9R5iJi1WHz5gJ9BwYp6uQLxNlQIDAQAB` | **DKIM-Signatur von Resend** |
-| `send` | MX | `10 feedback-smtp.eu-west-1.amazonses.com` | Rückläufer an Resend |
-| `send` | TXT | `v=spf1 include:amazonses.com ~all` | Absenderprüfung für Resend |
-
-> **Exportier trotzdem die Zone bei Infomaniak.** Diese Tabelle ist das, was
-> ich von aussen abfragen konnte. Einträge, deren Namen ich nicht erraten
-> habe, sehe ich nicht — DNS lässt sich nicht durchblättern. Infomaniak bietet
-> im DNS-Bereich einen Export der Zonendatei. Der ist vollständig, meine
-> Tabelle ist es vielleicht nicht.
-
-### Warum deine Mails ankommen, und wie leicht das kaputtgeht
-
-Das musst du verstanden haben, bevor du Einträge abtippst.
-
-Dein SPF am Hauptnamen lautet `v=spf1 -all`. Wörtlich: *kein* Server darf für
-diese Domain senden. Trotzdem kommen deine Mails an, weil DMARC zwei Wege
-kennt und einer reicht: Resend signiert jede Mail mit dem Schlüssel, der unter
-`resend._domainkey` steht, und diese Signatur passt zur Absenderadresse.
-
-Fehlt dieser eine TXT-Eintrag nachher, bleibt nur SPF, und SPF sagt Nein. Bei
-`p=reject` heisst das nicht Spam-Ordner, sondern **abgewiesen**. Deine
-Terminbestätigungen und Rechnungen kämen nicht mehr an, und du bekämst davon
-keine Meldung.
-
-Der DKIM-Wert ist lang und besteht aus zufälligen Zeichen. Genau dort passieren
-Abschreibfehler. Kopieren, nicht tippen, und danach kontrollieren.
+**Schritt 5 ist der eigentliche Wechsel** — und der wartet, bis die Daten im
+neuen System sind. Am 13.08. enthielt die neue Datenbank **null Termine**, und
+von sieben echten Schülern hatte einer ein Paket (das eigene Testkonto). Die
+Domain jetzt umzubiegen hiesse, Schülern ein Portal ohne Termine, ohne Paket
+und ohne Zahlungen vorzusetzen.
 
 ---
 
-## 2. Wo soll DNS künftig liegen?
+## Die Zone: was drinsteht und was es tut
 
-**Empfehlung: GoDaddy**, also beim Registrar. Die Website bleibt bei Vercel,
-nur DNS nicht.
+Zehn Einträge, bei Cloudflare bereits angelegt und gegen Infomaniak geprüft.
 
-### Warum nicht einfach alles zu Vercel?
+| Name | Typ | Wert | Proxy | wofür |
+|---|---|---|---|---|
+| `@` | A | `185.125.27.109` | DNS only | Website → **später auf Vercel** |
+| `www` | A | `185.125.27.109` | DNS only | dieselbe → **später auf Vercel** |
+| `@` | AAAA | `2001:1600:0:aaaa::80:3c` | DNS only | Website über IPv6 → **später auf Vercel** |
+| `www` | AAAA | `2001:1600:0:aaaa::80:3c` | DNS only | dieselbe → **später auf Vercel** |
+| `@` | MX 10 | `inbound-smtp.eu-west-1.amazonaws.com` | — | eingehende Mail |
+| `send` | MX 10 | `feedback-smtp.eu-west-1.amazonses.com` | — | Rückläufer an Resend |
+| `@` | TXT | `v=spf1 -all` | — | Absenderprüfung |
+| `send` | TXT | `v=spf1 include:amazonses.com ~all` | — | Absenderprüfung Resend |
+| `_dmarc` | TXT | `v=DMARC1; p=reject;` | — | Umgang mit gefälschter Post |
+| `resend._domainkey` | TXT | `p=MIGf…AQAB` | — | **DKIM: daran hängt der Mailversand** |
 
-Das ist die naheliegende Frage, wenn man ohnehin täglich dort deployt. Der
-erwartete Vorteil tritt aber nicht ein. Vercels eigene Dokumentation:
+Zwei Dinge, die dabei wichtig waren:
 
-> If you are verifying your domain by changing nameservers, you will need to
-> add any DNS records to Vercel that you wish to keep from your previous DNS
-> provider.
+**Die AAAA-Einträge.** Von aussen sind sie mir entgangen, in der Zone standen
+sie. Beim Wechsel auf Vercel müssen sie mitgezogen werden. Wer nur `A` umbiegt,
+schickt alle Besucher mit IPv6 weiterhin auf die alte Seite — und merkt es
+nicht, weil man selbst die neue sieht.
 
-Also: **Alle acht Mail-Einträge müsstest du auch dort von Hand anlegen**, DKIM
-inklusive. Vercel-Nameserver ersparen dir genau die zwei Einträge für die
-Website — und die fasst du einmal an und danach nie wieder.
+**Proxy aus.** Cloudflare hatte die vier Web-Einträge auf „Proxied" gesetzt.
+Alle stehen jetzt auf **DNS only**. Bliebe der Proxy an, schöbe sich Cloudflare
+zwischen Besucher und Vercel, mit Zertifikatsproblemen als wahrscheinlichster
+Folge.
 
-Was du dir dafür einhandelst, ist dauerhaft:
+### Warum deine Mails ankommen
 
-- Dein Mailverkehr hängt am Hosting-Konto. Wechselst du je den Hoster, baust du
-  die ganze Zone erneut auf. Also genau das, was du gerade machst.
-- Ein Problem mit dem Vercel-Konto (Zahlung, Sperre, Ausfall) nähme dir nicht
-  nur die Website, sondern über DNS auch die Mail. Unwahrscheinlich, aber der
-  Schaden wäre gross und die Ursache schwer zu finden.
+`v=spf1 -all` heisst wörtlich: kein Server darf für diese Domain senden.
+Trotzdem kommt deine Post durch, weil DMARC zwei Wege kennt und einer reicht:
+Resend signiert jede Mail mit dem Schlüssel unter `resend._domainkey`, und die
+Signatur passt zur Absenderadresse.
 
-Für eine Website ist der zweite Punkt Theorie. Für den Kanal, über den
-Terminbestätigungen und Rechnungen laufen, ist er es nicht.
-
-### Ein Punkt spricht doch für Vercel
-
-Der Vollständigkeit halber, damit du selbst abwägen kannst: GoDaddy bietet am
-Hauptnamen (ohne `www`) nur einen `A`-Eintrag, also eine feste IP-Adresse.
-Ändert Vercel diese Adresse irgendwann, musst du sie von Hand nachziehen.
-Vercel kündigt so etwas an, und es kommt selten vor — aber es ist Handarbeit,
-die bei Vercel-Nameservern entfiele.
-
-### Und wenn du dir das Abtippen sparen willst
-
-**Cloudflare** (kostenlos) liest die bestehende Zone beim Einrichten selbst ein.
-Damit entfällt genau das Risiko, das bei diesem Umzug am grössten ist: einen
-Eintrag zu übersehen, den weder du noch ich auf dem Zettel haben. Ausserdem
-löst es den Punkt oben, weil dort auch am Hauptnamen ein `CNAME` möglich ist.
-
-Der Preis ist ein dritter Anbieter im Spiel.
-
-**Kurz:** GoDaddy, wenn du wenige Konten willst. Cloudflare, wenn du den Umzug
-selbst so sicher wie möglich machen willst. Vercel-Nameserver würde ich nicht
-nehmen — nicht weil es schlecht wäre, sondern weil es die Arbeit nicht spart,
-für die man es nimmt.
+Fehlt dieser eine Eintrag, bleibt nur SPF, und SPF sagt Nein. Bei `p=reject`
+heisst das nicht Spam-Ordner, sondern **abgewiesen** — ohne Meldung bei dir.
+Deshalb wurde er Zeichen für Zeichen gegen das geprüft, was heute im DNS steht.
 
 ---
 
-## 3. Der Ablauf
+## Schritt 3: Nameserver umstellen
 
-Der entscheidende Kniff: **Nicht beides gleichzeitig ändern.** Erst zieht die
-Zone um, ohne dass sich inhaltlich etwas ändert. Erst wenn das nachweislich
-läuft, zeigt die Website woanders hin. Geht etwas schief, weisst du dann auch,
-woran es lag.
+**Bei GoDaddy** → Domain → DNS → Nameservers → *Change Nameservers*.
 
-### Schritt 1 — Zone bei Infomaniak exportieren
+Von:
 
-DNS-Bereich öffnen, Zonendatei exportieren oder alle Einträge abfotografieren.
-**Das ist deine Sicherung.** Ohne sie gibt es keinen Weg zurück, wenn du später
-merkst, dass ein Eintrag fehlt.
+```
+ns11.infomaniak.ch
+ns12.infomaniak.ch
+```
 
-### Schritt 2 — Zone bei GoDaddy aufbauen, unverändert
+auf:
 
-Bei GoDaddy unter *DNS verwalten* alle Einträge aus der Tabelle oben anlegen.
-Die `A`-Einträge zeigen dabei **noch auf `185.125.27.109`**, also weiter auf
-Infomaniak.
+```
+giancarlo.ns.cloudflare.com
+mary.ns.cloudflare.com
+```
 
-Klingt unnötig. Ist es nicht: Damit ist die neue Zone eine exakte Kopie, und der
-Nameserver-Wechsel im nächsten Schritt ändert für Besucher und Mail gar nichts.
-Fällt dabei etwas aus, liegt es sicher an der Zone und nicht an Vercel.
+**Bei Infomaniak nichts löschen.** Bis alle Auflöser weltweit umgestellt haben,
+können ein bis zwei Tage vergehen, und in dieser Zeit beantwortet teils noch
+Infomaniak. Die Zone dort muss also stehen bleiben und identisch sein. Sie ist
+ausserdem der Rückweg: Nameserver zurücksetzen, und nach kurzer Zeit ist der
+alte Zustand da.
 
-TTL überall auf **300 Sekunden** (5 Minuten) stellen, solange der Umzug läuft.
-Später kannst du das wieder hochsetzen.
+### Schritt 4: prüfen, dass sich nichts geändert hat
 
-### Schritt 3 — Nameserver bei GoDaddy umstellen
+Nach ein paar Stunden, spätestens am Folgetag:
 
-Von `ns11.infomaniak.ch` / `ns12.infomaniak.ch` auf GoDaddys eigene Nameserver.
+1. `https://privatklavierunterricht.ch` zeigt die **alte** Seite. Richtig so.
+2. Eine Mail an `david@privatklavierunterricht.ch` schicken. Kommt sie an,
+   steht der MX.
+3. Im Adminbereich eine Mail an einen Testschüler auslösen. Kommt sie an,
+   stehen DKIM und die `send`-Einträge.
 
-Das ist der einzige Schritt, der länger dauert: Bis alle Auflöser weltweit die
-neuen Nameserver benutzen, können ein bis zwei Tage vergehen. In dieser Zeit
-beantworten teils noch Infomaniaks Server die Fragen — deshalb muss die Zone
-dort **unverändert stehen bleiben** und identisch sein. Lösch bei Infomaniak
-jetzt noch nichts.
+Erst wenn alle drei stimmen, ist Schritt 3 abgeschlossen.
 
-### Schritt 4 — Prüfen, dass sich nichts geändert hat
+---
 
-Warte einen Tag. Dann:
+## Schritt 5: Website auf Vercel (später)
 
-- `https://privatklavierunterricht.ch` zeigt die **alte** Seite. Richtig so.
-- Schick dir eine Mail an `david@privatklavierunterricht.ch`. Kommt sie an,
-  steht der MX.
-- Lös im Adminbereich eine Mail an einen Testschüler aus. Kommt sie an, stehen
-  DKIM und die `send`-Einträge.
+Voraussetzung: Die Daten sind im neuen System.
 
-Erst wenn diese drei Punkte stimmen, geht es weiter. Wenn nicht: Nameserver
-zurück auf Infomaniak, dann ist der alte Zustand wieder da.
-
-### Schritt 5 — Website auf Vercel umstellen
-
-1. In Vercel: Projekt → Settings → Domains → `privatklavierunterricht.ch` und
+1. Vercel → Projekt → Settings → Domains → `privatklavierunterricht.ch` und
    `www.privatklavierunterricht.ch` hinzufügen.
-2. Vercel zeigt dir dann die konkreten Werte an: eine IP für den `A`-Eintrag am
-   Hauptnamen und ein Ziel für `www`. **Nimm die Werte aus deinem Dashboard.**
-   Sie sind teils projektspezifisch, und die Zahlen, die in älteren Anleitungen
-   im Netz stehen, stimmen nicht mehr durchgehend.
-3. Bei GoDaddy nur diese beiden Zeilen ändern. Alles andere bleibt.
-4. Nach fünf Minuten prüfen: neue Seite da, Schloss im Browser zu. Das
-   Zertifikat stellt Vercel selbst aus, das kann eine halbe Stunde länger
-   dauern als die Umstellung.
+2. Vercel zeigt die konkreten Zielwerte an. **Die aus dem eigenen Dashboard
+   nehmen** — sie sind teils projektspezifisch, und die Zahlen aus älteren
+   Anleitungen im Netz stimmen nicht mehr durchgehend.
+3. Bei Cloudflare **vier** Einträge ändern: `A` und `AAAA`, jeweils für `@` und
+   `www`. Alle anderen bleiben. Proxy weiterhin aus.
+4. Fünf Minuten warten, dann prüfen: neue Seite da, Schloss im Browser zu.
 
-### Schritt 6 — Alte Adressen stichprobenweise aufrufen
+Vorher auf Vercel kontrollieren (Production):
 
-Sie sind in `next.config.ts` umgeleitet und am laufenden Server geprüft:
+| Variable | Wert |
+|---|---|
+| `NEXT_PUBLIC_APP_URL` | `https://privatklavierunterricht.ch` |
+| `EMAIL_FROM` | `david@privatklavierunterricht.ch` |
+| `EMAIL_REDIRECT_TO` | **leer oder gelöscht** |
+
+Der letzte ist der gefährlichste: Solange er gesetzt ist, bekommt **kein
+Schüler Post**, alles landet bei dir. Im Adminbereich erscheint dazu ein
+Warnbanner; das ist die einzige Erinnerung, die du bekommst.
+
+### Alte Adressen
+
+Sind in `next.config.ts` umgeleitet und am laufenden Server geprüft:
 
 | alt | neu |
 |---|---|
@@ -202,55 +158,18 @@ Sie sind in `next.config.ts` umgeleitet und am laufenden Server geprüft:
 
 ---
 
-## 4. Vor dem Umschalten auf Vercel kontrollieren
+## Danach
 
-Diese Variablen müssen für *Production* gesetzt sein:
-
-| Variable | Wert |
-|---|---|
-| `NEXT_PUBLIC_APP_URL` | `https://privatklavierunterricht.ch` |
-| `EMAIL_FROM` | `david@privatklavierunterricht.ch` |
-| `EMAIL_REDIRECT_TO` | **leer oder gelöscht** |
-
-Der letzte ist der gefährlichste. Solange `EMAIL_REDIRECT_TO` gesetzt ist,
-bekommt **kein Schüler Post** — alles landet bei dir. Beim Testen richtig, im
-Betrieb eine Panne, die tagelang unbemerkt bleibt. Im Adminbereich erscheint
-dazu ein Warnbanner; das ist die einzige Erinnerung, die du bekommst.
-
----
-
-## 5. Danach
-
-**Infomaniak noch nicht kündigen.** Zwei bis vier Wochen laufen lassen. Solange
-die alte Seite unter `185.125.27.109` erreichbar ist, bist du mit einer
-Änderung des `A`-Eintrags in fünf Minuten wieder im alten Zustand. Das ist dein
-Rückweg, und er kostet einen Monat Hosting.
+**Infomaniak nicht sofort kündigen.** Zwei bis vier Wochen laufen lassen.
+Solange die alte Seite unter `185.125.27.109` erreichbar ist, bist du mit einer
+Änderung der A-Einträge in Minuten wieder im alten Zustand.
 
 **Google Search Console:** neue Sitemap einreichen,
 `https://privatklavierunterricht.ch/sitemap.xml`.
 
 **Partner informieren.** Das Partnerprogramm fällt weg. Wer einen Zugangscode
 hat, findet danach keine Seite mehr dafür. Offene Provisionen von Hand
-abrechnen. Schreib den Leuten **vorher**.
-
-**TTL wieder hochsetzen**, wenn alles läuft — 3600 statt 300.
-
----
-
-## 6. Weiter testen, wenn echte Schüler drauf sind
-
-Getestet wird mit dem, was dafür gebaut ist; Einzelheiten in `docs/Testen.md`.
-
-**Testschüler** sind im ganzen System von echten getrennt. Sie tauchen in der
-Routenplanung nicht auf, Planungsrunden lassen sich auf sie beschränken, und
-ein Test sorgt dafür, dass diese Trennung nicht unbemerkt verloren geht.
-
-**Der Mail-Umleiter** ist der Teil, bei dem du aufpassen musst: `EMAIL_REDIRECT_TO`
-auf deine Adresse setzen, ausprobieren, **wieder entfernen**.
-
-**Vorschau-Deployments** bekommen auf Vercel eine eigene URL, hängen aber an
-derselben Datenbank wie die Live-Seite. Für Gestaltungsänderungen ideal, für
-Datenbank-Migrationen nicht.
+abrechnen, und zwar **vorher** schreiben.
 
 ---
 
@@ -258,7 +177,8 @@ Datenbank-Migrationen nicht.
 
 | Symptom | erste Vermutung |
 |---|---|
-| Seite lädt nicht, Zertifikatsfehler | Geduld. Vercel stellt das Zertifikat erst aus, wenn der Eintrag weltweit sichtbar ist. |
-| Mails kommen nicht mehr **an** | `MX` am Hauptnamen fehlt oder ist falsch. |
-| Mails gehen nicht mehr **raus** bzw. werden abgewiesen | `resend._domainkey` fehlt oder wurde falsch kopiert. Häufigster Fehler. |
-| Alles kaputt, Ursache unklar | Nameserver bei GoDaddy zurück auf `ns11.infomaniak.ch` / `ns12.infomaniak.ch`. Deshalb wird dort nichts gelöscht. |
+| Mails kommen nicht mehr **an** | `MX` am Hauptnamen fehlt |
+| Mails gehen nicht mehr **raus** bzw. werden abgewiesen | `resend._domainkey` fehlt oder ist verfälscht |
+| Ein Teil der Besucher sieht die alte Seite | `AAAA` nicht mitgezogen |
+| Zertifikatsfehler nach dem Vercel-Wechsel | Geduld, oder Proxy versehentlich an |
+| Alles kaputt, Ursache unklar | Nameserver bei GoDaddy zurück auf `ns11`/`ns12.infomaniak.ch` |
