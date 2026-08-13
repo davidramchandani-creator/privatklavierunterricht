@@ -83,6 +83,28 @@ export default function Hoerproben({ proben }: { proben: Hoerprobe[] }) {
   );
 }
 
+/**
+ * Eine einzelne Hörprobe, die sich selbst verwaltet.
+ *
+ * Für Stellen ausserhalb der Startseite — etwa auf der Probelektionsseite,
+ * wo eine Aufnahme daran erinnert, warum man überhaupt hier ist. Dort gibt
+ * es keine Geschwister, mit denen sie sich abstimmen müsste.
+ */
+export function HoerprobeEinzeln({ probe }: { probe: Hoerprobe }) {
+  const [laeuft, setLaeuft] = useState(false);
+  return (
+    <div className="bg-white rounded-2xl ring-1 ring-[#EAECEF] overflow-hidden">
+      <ProbenZeile
+        probe={probe}
+        istLetzte
+        aktiv={laeuft}
+        onStart={() => setLaeuft(true)}
+        onStopp={() => setLaeuft(false)}
+      />
+    </div>
+  );
+}
+
 function ProbenZeile({
   probe,
   istLetzte,

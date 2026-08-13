@@ -7,11 +7,17 @@ import {
   Calendar,
   CheckCircle2,
   Loader2,
+  Gift,
+  Clock,
+  Home,
+  MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Logo from "@/components/layout/Logo";
 import { getPublicSlots, submitAnfrage, type PublicSlot } from "./actions";
+import { HoerprobeEinzeln } from "@/components/sections/Hoerproben";
+import { HOERPROBEN } from "@/lib/hoerproben";
 
 export default function ProbelektionPage() {
   const [step, setStep] = useState<"slots" | "form" | "done">("slots");
@@ -114,6 +120,41 @@ export default function ProbelektionPage() {
                 Wähle einen Wunschtermin und hinterlasse deine Kontaktdaten.
                 Ich bestätige die Anfrage persönlich.
               </p>
+            </div>
+
+            {/*
+              Die Fragen, die jemand genau hier hat — und die die Seite bisher
+              nirgends beantwortete. Wer sie sich selbst zusammensuchen muss,
+              füllt das Formular oft gar nicht erst aus.
+            */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Fakt icon={<Gift className="w-4 h-4" />} titel="Kostenlos" text="Keine Verpflichtung" />
+              <Fakt icon={<Clock className="w-4 h-4" />} titel="45 Minuten" text="Eine ganze Lektion" />
+              <Fakt icon={<Home className="w-4 h-4" />} titel="Bei dir zuhause" text="Ich komme vorbei" />
+              <Fakt icon={<MessageCircle className="w-4 h-4" />} titel="Antwort in 24 h" text="Persönlich von mir" />
+            </div>
+
+            {/*
+              Der Ablauf. „Anfrage senden" heisst nicht „Termin gebucht" — ohne
+              diesen Zwischenschritt wartet jemand auf eine Bestätigung, die er
+              für schon erfolgt hält.
+            */}
+            <div className="bg-white rounded-2xl border border-[#EAECEF] shadow-sm p-6">
+              <h2 className="font-700 text-navy-900 mb-4">So läuft es ab</h2>
+              <ol className="space-y-3">
+                <Schritt nr={1} titel="Du schickst die Anfrage">
+                  Wunschtermin ist freiwillig — wenn dir keiner passt, finden
+                  wir zusammen einen.
+                </Schritt>
+                <Schritt nr={2} titel="Ich melde mich">
+                  Meist noch am selben Tag, spätestens innert 24 Stunden. Erst
+                  dann steht der Termin.
+                </Schritt>
+                <Schritt nr={3} titel="Wir spielen zusammen">
+                  45 Minuten bei dir zuhause. Danach entscheidest du in Ruhe,
+                  ob du weitermachen willst.
+                </Schritt>
+              </ol>
             </div>
 
             {/* Slot picker */}
@@ -263,6 +304,23 @@ export default function ProbelektionPage() {
               )}
             </div>
 
+            {/*
+              Eine Aufnahme kurz vor dem Formular.
+
+              Wer hierher gefolgt ist, hat vermutlich auf der Startseite
+              zugehört — bis hier unten liegen aber Terminraster und Ablauf
+              dazwischen. Die kürzeste Aufnahme holt den Grund zurück, warum
+              jemand überhaupt bucht, direkt bevor er tippt.
+            */}
+            {HOERPROBEN[0] && (
+              <div className="space-y-2">
+                <p className="text-sm text-gray-500">
+                  Nochmal reinhören, während du überlegst:
+                </p>
+                <HoerprobeEinzeln probe={HOERPROBEN[0]} />
+              </div>
+            )}
+
             {/* Contact form */}
             <div className="bg-white rounded-2xl border border-[#EAECEF] shadow-sm p-6">
               <h2 className="font-700 text-navy-900 mb-5">Deine Kontaktdaten</h2>
@@ -300,7 +358,10 @@ export default function ProbelektionPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-500 text-gray-700">Telefon</label>
+                  <label className="text-sm font-500 text-gray-700">
+                    Telefon{" "}
+                    <span className="text-gray-400 font-400">— freiwillig</span>
+                  </label>
                   <input
                     name="telefon"
                     type="tel"
@@ -310,7 +371,10 @@ export default function ProbelektionPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-500 text-gray-700">Nachricht</label>
+                  <label className="text-sm font-500 text-gray-700">
+                    Nachricht{" "}
+                    <span className="text-gray-400 font-400">— freiwillig</span>
+                  </label>
                   <textarea
                     name="nachricht"
                     rows={3}
@@ -335,7 +399,8 @@ export default function ProbelektionPage() {
                 </Button>
 
                 <p className="text-xs text-gray-400 text-center">
-                  Keine Verpflichtung. Ich melde mich innerhalb von 24 Stunden.
+                  Deine Angaben gehen nur an mich und werden nicht
+                  weitergegeben.
                 </p>
               </form>
             </div>
@@ -343,6 +408,48 @@ export default function ProbelektionPage() {
         )}
       </main>
     </div>
+  );
+}
+
+function Fakt({
+  icon,
+  titel,
+  text,
+}: {
+  icon: React.ReactNode;
+  titel: string;
+  text: string;
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-[#EAECEF] px-3 py-3 text-center">
+      <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-navy-50 text-navy-900 mb-1.5">
+        {icon}
+      </span>
+      <p className="text-sm font-700 text-navy-900 leading-tight">{titel}</p>
+      <p className="text-xs text-gray-400 leading-tight mt-0.5">{text}</p>
+    </div>
+  );
+}
+
+function Schritt({
+  nr,
+  titel,
+  children,
+}: {
+  nr: number;
+  titel: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <li className="flex gap-3">
+      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-navy-900 text-white text-xs font-700 flex items-center justify-center tabular-nums">
+        {nr}
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-600 text-navy-900">{titel}</p>
+        <p className="text-sm text-gray-500 leading-snug mt-0.5">{children}</p>
+      </div>
+    </li>
   );
 }
 
