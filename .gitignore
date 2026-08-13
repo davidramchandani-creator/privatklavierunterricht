@@ -39,6 +39,13 @@ yarn-error.log*
 # Keep the example file
 !.env.local.example
 
+# Rohvideos vom Handy. Sie liegen dort nur als Sicherheitskopie, falls eine
+# Aufnahme neu aufbereitet werden muss. Eingecheckt gehören sie nicht: 268 MB
+# blieben für immer in der Git-Historie, auch wenn man sie später löscht.
+/public/schuelervideos/_originale/
+*.original.mov
+*.original.mp4
+
 # vercel
 .vercel
 

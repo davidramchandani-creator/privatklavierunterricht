@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 /**
  * So oft wird eine Mail höchstens versucht.
  *
- * Der Lauf ist täglich, also erstreckt sich das über drei Tage — genug, um
+ * Der Lauf ist täglich, also erstreckt sich das über drei Tage. Genug, um
  * einen Ausfall beim Anbieter zu überstehen. Mehr wäre schädlich: eine Mail,
  * die aus einem dauerhaften Grund scheitert (kein auflösbarer Empfänger etwa),
  * würde sonst jeden Tag aufs Neue einen Fehler schreiben und den Blick auf
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     console.error("[cron] Abo-Jobs fehlgeschlagen:", err);
   }
 
-  // Fällige Mails holen – offene **und** zuvor gescheiterte.
+  // Fällige Mails holen, offene **und** zuvor gescheiterte.
   //
   // Ein Fehlschlag ist meistens vorübergehend: der Mailanbieter war kurz
   // nicht erreichbar. Vorher blieb so eine Mail für immer liegen, ohne dass
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
       const endgueltig = versuche >= MAX_SENDEVERSUCHE;
       console.error(
         `[cron] Mail ${email.id} (${email.type}) fehlgeschlagen, Versuch ${versuche}/${MAX_SENDEVERSUCHE}${
-          endgueltig ? " – wird nicht mehr wiederholt" : ""
+          endgueltig ? ", wird nicht mehr wiederholt" : ""
         }:`,
         errMsg
       );

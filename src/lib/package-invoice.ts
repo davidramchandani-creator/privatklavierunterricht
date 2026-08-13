@@ -140,8 +140,8 @@ export function instalmentLabel(
 ): string {
   const base = PACKAGE_LABELS[packageType] ?? packageType;
   return kind === "anzahlung"
-    ? `${base} – Anzahlung`
-    : `${base} – Rate ${sequence}/${instalmentCount}`;
+    ? `${base}, Anzahlung`
+    : `${base}, Rate ${sequence}/${instalmentCount}`;
 }
 
 /** Fälligkeitsdatum einer Rate: Stichtag + Zahlungsfrist, in Zürich mittags. */
@@ -167,7 +167,7 @@ export async function createInstalmentSchedule(
     startDate: string;
     /**
      * Muss übergeben werden, sobald das Paket einen Rhythmus hat. Der Plan
-     * hängt davon ab (Raten folgen der Unterrichtsdauer) — ohne den Rhythmus
+     * hängt davon ab (Raten folgen der Unterrichtsdauer), ohne den Rhythmus
      * entstünden hier andere Raten als in den Paketspalten stehen.
      */
     rhythmus?: Rhythmus;

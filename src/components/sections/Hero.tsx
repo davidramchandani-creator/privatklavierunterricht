@@ -28,8 +28,8 @@ export default async function Hero() {
 
             {/* Headline */}
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-800 text-navy-900 leading-[1.1] tracking-tight">
-              Spiel, was du fühlst –{" "}
-              <span className="italic font-700 text-navy-600">ich zeig dir wie.</span>
+              Spiel, was du fühlst.{" "}
+              <span className="italic font-700 text-navy-600">Ich zeig dir wie.</span>
             </h1>
 
             {/* Subtext */}
@@ -50,7 +50,7 @@ export default async function Hero() {
                 Führte vorher zu den Angeboten, also direkt zum Preis. Zwei
                 gleich starke Knöpfe nebeneinander, von denen einer zum Preis
                 führt, teilen die Aufmerksamkeit genau an der Stelle, wo sie
-                gebündelt gehört. Jetzt zu den Hörproben — dem Grund, warum
+                gebündelt gehört. Jetzt zu den Hörproben, dem Grund, warum
                 jemand die Probelektion überhaupt will.
               */}
               <Link href="/#hoerproben">
@@ -73,7 +73,7 @@ export default async function Hero() {
             <div className="relative w-full max-w-sm">
               {/* Main card */}
               <div className="rounded-3xl bg-navy-900 p-8 shadow-2xl shadow-navy-900/20 overflow-hidden">
-                {/* Keyboard accent — clean SVG, top of card */}
+                {/* Keyboard accent, clean SVG, top of card */}
                 <Keyboard className="mb-8 opacity-90" />
 
                 <div className="text-white space-y-2">
@@ -85,7 +85,7 @@ export default async function Hero() {
                 {/*
                   Hier stand bis vor Kurzem der Preis („Im 20er-Paket ab
                   CHF 65"). Das war das Zweitprominenteste auf der ganzen
-                  Seite — ein Preis, bevor irgendetwas versprochen wurde,
+                  Seite, ein Preis, bevor irgendetwas versprochen wurde,
                   wirkt immer hoch. Jetzt steht hier der nächste Schritt.
                   Der Preis kommt weiter unten, nach den Hörproben und den
                   Bewertungen.

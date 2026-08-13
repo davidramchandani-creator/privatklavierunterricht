@@ -43,7 +43,7 @@ export default function TestmodusBoard({ stand }: { stand: TestStand }) {
       if (res.angelegt > 0) teile.push(`${res.angelegt} Testschüler angelegt.`);
       if (res.aufgefrischt > 0) {
         teile.push(
-          `${res.aufgefrischt} vorhandene aufgefrischt — ihre Zeiten passen jetzt zu deinen Unterrichtstagen.`
+          `${res.aufgefrischt} vorhandene aufgefrischt, ihre Zeiten passen jetzt zu deinen Unterrichtstagen.`
         );
       }
       if (teile.length === 0) teile.push("Alles war bereits aktuell.");
@@ -57,7 +57,7 @@ export default function TestmodusBoard({ stand }: { stand: TestStand }) {
       }
       if (res.ohneKoordinaten.length > 0) {
         teile.push(
-          `Ohne Koordinaten: ${res.ohneKoordinaten.join(", ")} — unter Routenplanung „Adressen auflösen“ drücken.`
+          `Ohne Koordinaten: ${res.ohneKoordinaten.join(", ")}, unter Routenplanung „Adressen auflösen“ drücken.`
         );
       }
       setMeldung(teile.join(" "));
@@ -88,7 +88,7 @@ export default function TestmodusBoard({ stand }: { stand: TestStand }) {
 
   return (
     <div className="space-y-5">
-      {/* Sicherungsstatus – das Wichtigste zuoberst */}
+      {/* Sicherungsstatus, das Wichtigste zuoberst */}
       <div
         className={`rounded-2xl border p-4 sm:p-5 flex gap-3 ${
           geschuetzt
@@ -108,8 +108,8 @@ export default function TestmodusBoard({ stand }: { stand: TestStand }) {
             }`}
           >
             {geschuetzt
-              ? "Mail-Umleitung aktiv — kein Schüler bekommt Post"
-              : "Mail-Umleitung aus — Mails gehen an echte Schüler"}
+              ? "Mail-Umleitung aktiv, kein Schüler bekommt Post"
+              : "Mail-Umleitung aus, Mails gehen an echte Schüler"}
           </p>
           <div
             className={`text-sm leading-snug mt-1 space-y-1.5 ${
@@ -125,7 +125,7 @@ export default function TestmodusBoard({ stand }: { stand: TestStand }) {
                 </p>
                 <p className="font-600">
                   Wenn du fertig bist, muss EMAIL_REDIRECT_TO in Vercel wieder
-                  weg — sonst bekommt nie wieder ein Schüler eine Mail.
+                  weg, sonst bekommt nie wieder ein Schüler eine Mail.
                 </p>
               </>
             ) : (
@@ -153,7 +153,7 @@ export default function TestmodusBoard({ stand }: { stand: TestStand }) {
         <div className="text-sm text-gray-600 leading-snug space-y-1.5">
           <p>
             Testschüler sind <strong>ganz normale Schüler</strong> mit einem
-            Merker — kein Sondermodus. Nur so testest du den Ablauf, den du
+            Merker, kein Sondermodus. Nur so testest du den Ablauf, den du
             später wirklich fährst.
           </p>
           <p>
@@ -256,7 +256,7 @@ export default function TestmodusBoard({ stand }: { stand: TestStand }) {
                   bekommen die Anfrage.
                 </li>
                 <li>
-                  Ihre Zeiten sind schon hinterlegt — du kannst direkt
+                  Ihre Zeiten sind schon hinterlegt, du kannst direkt
                   „Zuteilung rechnen“ drücken und siehst das Ergebnis.
                 </li>
                 <li>

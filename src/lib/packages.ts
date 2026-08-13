@@ -187,7 +187,7 @@ export const MAX_USED_LESSONS_FOR_CANCELLATION = 3;
 export const CANCELLATION_SINGLE_BASE = 70;
 /** Schwelle beim 10er-Paket und bei Einzellektionen. */
 export const CANCELLATION_SINGLE_THRESHOLD = 60;
-/** Schwelle beim 20er-Paket – dort ist der Lektionspreis von Haus aus tiefer. */
+/** Schwelle beim 20er-Paket, dort ist der Lektionspreis von Haus aus tiefer. */
 export const CANCELLATION_SINGLE_THRESHOLD_20ER = 55;
 
 /**
@@ -197,7 +197,7 @@ export const CANCELLATION_SINGLE_THRESHOLD_20ER = 55;
  * nachberechnet (Spec §5).
  *
  * Die Schwelle hängt vom Pakettyp ab: 55 beim 20er, 60 sonst. Ohne den Typ
- * wird 60 angenommen – das war bis hierher der einzige Wert und ergab beim
+ * wird 60 angenommen, das war bis hierher der einzige Wert und ergab beim
  * 20er einen um CHF 5 pro Lektion zu tiefen Einzelpreis.
  */
 export function cancellationSingleLessonPrice(
@@ -237,7 +237,7 @@ export function computeCancellationSettlement(
    * das falsch. Wer erst die Anzahlung beglichen hat, bekäme sonst eine
    * Rückerstattung auf Geld, das nie geflossen ist.
    *
-   * Ohne Angabe gilt die alte Annahme (voller Paketpreis bezahlt) – nur für
+   * Ohne Angabe gilt die alte Annahme (voller Paketpreis bezahlt), nur für
    * Vorschauen gedacht, nie für die echte Abrechnung.
    */
   paidAmount?: number

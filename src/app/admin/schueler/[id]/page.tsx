@@ -167,7 +167,7 @@ export default async function SchuelerDetailPage({
               <p className="text-gray-900">{profile.adresse}</p>
               {/*
                 Für die QR-Rechnung muss die Adresse in Strasse, Nummer, PLZ
-                und Ort zerlegbar sein — der Schweizer Standard verlangt die
+                und Ort zerlegbar sein, der Schweizer Standard verlangt die
                 Felder einzeln. Ohne diesen Hinweis fiele erst beim Versand
                 auf, dass keine Rechnung erzeugt werden kann, und dann steht
                 es nur im Serverlog.
@@ -176,7 +176,7 @@ export default async function SchuelerDetailPage({
                 !parseSchweizerAdresse(profile.adresse) && (
                   <p className="mt-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-snug">
                     Für die QR-Rechnung fehlt hier etwas. Erwartet wird{" "}
-                    <strong>Strasse Nr., PLZ Ort</strong> — zum Beispiel
+                    <strong>Strasse Nr., PLZ Ort</strong>. Zum Beispiel
                     „Sattleracherstrasse 59, 8413 Neftenbach“. Solange das
                     nicht stimmt, lässt sich für {profile.vorname} keine
                     Rechnung erzeugen.
@@ -239,11 +239,11 @@ export default async function SchuelerDetailPage({
                 const usedCount = lessonsUsedByPackage.get(pkg.id) ?? pkg.lessons_used ?? 0;
                 const state = computePackageState(pkg, usedCount);
                 // Halbjahr/Jahr, Rhythmus und Fix/Flex stehen sonst nirgends im
-                // Admin – ohne diese Zeile sieht ein Abo aus wie jedes andere
+                // Admin, ohne diese Zeile sieht ein Abo aus wie jedes andere
                 // Paket, und man weiss nicht, was man vor sich hat.
                 //
                 // Abo und Paket haben denselben Typ in der Datenbank (10er
-                // bzw. 20er) – erst abo_variante unterscheidet sie. Ohne
+                // bzw. 20er), erst abo_variante unterscheidet sie. Ohne
                 // diese Zeile sähe ein Jahresabo genau aus wie ein
                 // 20er-Paket, obwohl das eine über Monatsraten läuft und
                 // sich verlängert und das andere einmal bezahlt wird und
@@ -266,7 +266,7 @@ export default async function SchuelerDetailPage({
 
                 const terminText =
                   pkg.booking_mode === "flex"
-                    ? "Flexibel – selbst buchen"
+                    ? "Flexibel, selbst buchen"
                     : pkg.fixplatz_weekday != null && pkg.fixplatz_time != null
                       ? describeFixplatz(
                           pkg.fixplatz_weekday,
@@ -277,7 +277,7 @@ export default async function SchuelerDetailPage({
                           (pkg.fixplatz_week_parity as 0 | 1 | null) ?? null
                         )
                       : pkg.booking_mode === "fix"
-                        ? "Fixplatz – Termin folgt aus der Planung"
+                        ? "Fixplatz, Termin folgt aus der Planung"
                         : "—";
 
                 return (

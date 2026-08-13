@@ -36,7 +36,7 @@ function kurzesDatum(iso: string): string {
 /**
  * Offene Ausfälle mit ihren Ausweichterminen.
  *
- * Wird nur angezeigt, wenn tatsächlich etwas offen ist – sonst wäre es ein
+ * Wird nur angezeigt, wenn tatsächlich etwas offen ist. Sonst wäre es ein
  * leerer Kasten, der jeden Tag daran erinnert, dass nichts zu tun ist.
  */
 export default function AusweichTermine({
@@ -93,7 +93,7 @@ export default function AusweichTermine({
               <Info className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-gray-600 leading-snug">
                 Im Moment ist kein passender Ausweichtermin frei. Ich melde mich
-                bei dir — deine Laufzeit verlängert sich stattdessen, du
+                bei dir, deine Laufzeit verlängert sich stattdessen, du
                 verlierst nichts.
               </p>
             </div>
@@ -152,7 +152,7 @@ export default function AusweichTermine({
               </button>
 
               <p className="text-xs text-gray-400 text-center leading-snug pt-1">
-                Passt keiner davon? Dann melde dich bei mir — deine Laufzeit
+                Passt keiner davon? Dann melde dich bei mir, deine Laufzeit
                 verlängert sich stattdessen.
               </p>
             </div>

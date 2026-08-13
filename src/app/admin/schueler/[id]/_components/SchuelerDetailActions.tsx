@@ -543,12 +543,12 @@ export type PaketPreise = {
 };
 
 /**
- * Abo oder Paket — die Entscheidung trifft der Admin, nicht der Schüler.
+ * Abo oder Paket, die Entscheidung trifft der Admin, nicht der Schüler.
  *
  * Beides nebeneinander anzubieten wäre für den Schüler eine Zumutung: Er
  * müsste Bindung, Laufzeit und Preis gegeneinander abwägen, ohne zu wissen,
  * was für ihn sinnvoll ist. Im Portal gibt es darum weiterhin nur das Abo.
- * Das Paket ist der Weg für Fälle, die nicht ins Abo passen — jemand, der
+ * Das Paket ist der Weg für Fälle, die nicht ins Abo passen. Jemand, der
  * nur ein paar Stunden will, oder eine Schnupperlektion.
  */
 function PackageFormNew({
@@ -792,7 +792,7 @@ function PackageFormNew({
                 Die Planung entscheidet
               </p>
               <p className="text-[11px] text-gray-500 leading-snug mt-0.5">
-                Abo läuft sofort, der Termin kommt aus der Zuteilung — zusammen
+                Abo läuft sofort, der Termin kommt aus der Zuteilung. Zusammen
                 mit den anderen und mit der kürzesten Route.
               </p>
             </button>
@@ -904,7 +904,7 @@ function PackageFormNew({
             Monat · total {formatCHF(vorschau.gesamtpreis)}
           </p>
           <p>
-            {formatDay(vorschau.periodeStart)} – {formatDay(vorschau.periodeEnde)} ·{" "}
+            {formatDay(vorschau.periodeStart)}, {formatDay(vorschau.periodeEnde)} ·{" "}
             {formatCHF(vorschau.preisProLektion)} pro Lektion
           </p>
           {vorschau.ferientage.length > 0 && (
@@ -925,7 +925,7 @@ function PackageFormNew({
           className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#1C244B] focus:ring-[#1C244B]"
         />
         <span className="text-xs text-gray-600 leading-snug">
-          Automatisch verlängern — das Abo geht am Ende der Periode mit demselben
+          Automatisch verlängern, das Abo geht am Ende der Periode mit demselben
           Platz weiter. Der Schüler kann das im Portal abschalten.
         </span>
       </label>
@@ -962,7 +962,7 @@ function PackageFormNew({
  * Lektionspaket anlegen.
  *
  * Anders als beim Abo wird der ganze Betrag beim Anlegen in Rechnung gestellt
- * — das ist der Grund, warum man ein Paket überhaupt verkauft: das Geld ist
+ *, das ist der Grund, warum man ein Paket überhaupt verkauft: das Geld ist
  * da, bevor die Lektionen stattfinden. Es läuft aus, wenn die Lektionen
  * aufgebraucht sind, und verlängert sich nicht von selbst.
  */
@@ -987,7 +987,7 @@ function PaketForm({
 
   const lektionen = typ === "single" ? 1 : typ === "10er" ? 10 : 20;
 
-  // Der hinterlegte Preis je Pakettyp, plus Wegaufschlag – dieselbe Rechnung
+  // Der hinterlegte Preis je Pakettyp, plus Wegaufschlag. Dieselbe Rechnung
   // wie beim Abo, damit im Preisformular steht, was hier herauskommt.
   const basis =
     typ === "single"
@@ -999,7 +999,7 @@ function PaketForm({
 
   const [preisText, setPreisText] = useState(String(proLektion));
 
-  // Beim Wechsel des Typs den hinterlegten Preis übernehmen – sonst bliebe
+  // Beim Wechsel des Typs den hinterlegten Preis übernehmen, sonst bliebe
   // der Preis des vorher gewählten Pakets stehen und niemand merkt es.
   function typWechseln(neu: "single" | "10er" | "20er") {
     setTyp(neu);
@@ -1096,8 +1096,8 @@ function PaketForm({
               onChange={(e) => setBookingMode(e.target.value as BookingMode)}
               className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <option value="flex">Flexibel – bucht selbst</option>
-              <option value="fix">Fixplatz – Termin folgt aus der Planung</option>
+              <option value="flex">Flexibel, bucht selbst</option>
+              <option value="fix">Fixplatz, Termin folgt aus der Planung</option>
             </select>
           </div>
         </div>
@@ -1112,7 +1112,7 @@ function PaketForm({
         <p>
           Der Gesamtbetrag wird beim Anlegen in Rechnung gestellt, zahlbar
           innert 15 Tagen. Das Paket endet, wenn die Lektionen aufgebraucht
-          sind — es verlängert sich nicht.
+          sind, es verlängert sich nicht.
         </p>
         {typ === "single" && (
           <p className="text-gray-500">
@@ -1704,7 +1704,7 @@ function AdjustLessonsButton({
                   : "bg-indigo-50 text-indigo-700"
               }`}>
                 {preview < 1 || preview < currentUsed
-                  ? "Ungültig – Mindestanzahl unterschritten."
+                  ? "Ungültig, Mindestanzahl unterschritten."
                   : `Neu: ${currentTotal} → ${preview} Lektionen`}
               </div>
             )}

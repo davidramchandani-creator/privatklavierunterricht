@@ -14,7 +14,7 @@ interface PaketConfig {
 
 /**
  * Lektionspreise wie auf der Preisseite. Der Wegaufschlag kommt darauf,
- * nicht statt dessen — die Zahlen hier waren früher um CHF 20 höher als die
+ * nicht statt dessen, die Zahlen hier waren früher um CHF 20 höher als die
  * ausgewiesenen Preise und passten damit zu keiner anderen Stelle.
  */
 const PAKETE: Record<PaketOption, PaketConfig> = {
@@ -189,7 +189,7 @@ export default function Preisrechner() {
           Geschätzten Preis berechnen
         </h2>
         <p className="text-gray-500 mb-10">
-          Gib deine Adresse ein und wähle ein Paket – ich zeige dir den
+          Gib deine Adresse ein und wähle ein Paket, ich zeige dir den
           Gesamtpreis inklusive allfälliger Wegkosten.
         </p>
 
@@ -260,7 +260,7 @@ export default function Preisrechner() {
         {/*
           Wer den Preis ausgerechnet hat, hat sich mit der Sache befasst. Bis
           vor Kurzem endete dieser Abschnitt mit einer Fussnote und sonst
-          nichts — der einzige Ausweg war weiterscrollen.
+          nichts, der einzige Ausweg war weiterscrollen.
         */}
         <div className="mt-8 text-center">
           <Link

@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 /**
  * Verlängert die Lebensdauer von Session-Cookies auf mind. 30 Tage, damit
  * Nutzer dauerhaft eingeloggt bleiben. WICHTIG: Nur auf gesetzte Cookies
- * anwenden – bei leerem `value` will Supabase das Cookie löschen
+ * anwenden, bei leerem `value` will Supabase das Cookie löschen
  * (maxAge 0/negativ); diese Löschung darf NICHT verlängert werden, sonst
  * bleiben veraltete Auth-Cookie-Chunks liegen und zerstören u. a. den
  * Passwort-Reset-Flow.
@@ -36,7 +36,7 @@ export async function createClient() {
               cookieStore.set(name, value, withPersistence(value, options))
             );
           } catch {
-            // Called from Server Component – middleware handles session refresh
+            // Called from Server Component, middleware handles session refresh
           }
         },
       },
@@ -46,12 +46,12 @@ export async function createClient() {
 
 /**
  * Echter Service-Role-Client (umgeht RLS). WICHTIG: Hier darf KEIN
- * Cookie-/Session-Client (`createServerClient`) verwendet werden – dieser würde
+ * Cookie-/Session-Client (`createServerClient`) verwendet werden, dieser würde
  * die User-Session aus dem Cookie übernehmen und damit als der eingeloggte
  * Nutzer statt als service_role agieren. Stattdessen ein sessionsloser
  * supabase-js-Client mit dem Service-Role-Key.
  *
- * Nur serverseitig verwenden – der Key darf NIEMALS in den Browser gelangen.
+ * Nur serverseitig verwenden, der Key darf NIEMALS in den Browser gelangen.
  */
 export function createAdminClient() {
   return createSupabaseClient(

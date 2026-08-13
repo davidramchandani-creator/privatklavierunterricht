@@ -77,7 +77,7 @@ export default function PaymentsBoard({ invoices }: { invoices: Invoice[] }) {
         <h1 className="text-2xl font-800 text-[#1C244B]">Zahlungen</h1>
       </div>
 
-      {/* Summary – kompakte Glas-Statistik */}
+      {/* Summary, kompakte Glas-Statistik */}
       <div className="grid grid-cols-3 gap-2.5 mb-4">
         <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-3 min-w-0">
           <p className="text-[10px] font-700 uppercase tracking-wide text-amber-600/70 mb-0.5 truncate">Offen</p>
@@ -93,7 +93,7 @@ export default function PaymentsBoard({ invoices }: { invoices: Invoice[] }) {
         </div>
       </div>
 
-      {/* Filter-Chips – horizontal scrollbar, native */}
+      {/* Filter-Chips, horizontal scrollbar, native */}
       <div className="-mx-4 px-4 sm:mx-0 sm:px-0 mb-4 overflow-x-auto no-scrollbar">
         <div className="flex gap-2 w-max">
           {FILTERS.map((f) => {

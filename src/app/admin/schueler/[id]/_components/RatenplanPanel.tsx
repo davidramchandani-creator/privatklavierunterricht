@@ -163,7 +163,7 @@ export default function RatenplanPanel({
       {plan.next && (
         <p className="mt-4 text-sm text-gray-500 flex items-center gap-1.5">
           <CalendarClock className="w-3.5 h-3.5 text-gray-400" />
-          Als Nächstes: {plan.next.label} über {formatCHF(plan.next.amount)} —{" "}
+          Als Nächstes: {plan.next.label} über {formatCHF(plan.next.amount)}, {" "}
           {dueLabel(plan.next.daysUntilDue, plan.next.state === "ueberfaellig")}
         </p>
       )}

@@ -5,16 +5,16 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
-  title: "Über mich – David Ramchandani | Privatklavierunterricht",
+  title: "Über mich: David Ramchandani | Privatklavierunterricht",
   description:
-    "Erfahre mehr über David Ramchandani – Klavierunterricht in Neftenbach und Umgebung. Ohne Noten, individuell und praxisnah.",
+    "Erfahre mehr über David Ramchandani, Klavierunterricht in Neftenbach und Umgebung. Ohne Noten, individuell und praxisnah.",
 };
 
 const stationen = [
   {
     year: "Start",
     title: "Musikschule",
-    desc: "Beginn des eigenen Klavierunterrichts – der erste Schritt in die Welt der Musik.",
+    desc: "Beginn des eigenen Klavierunterrichts, der erste Schritt in die Welt der Musik.",
   },
   {
     year: "2016–2020",
@@ -29,17 +29,17 @@ const stationen = [
   {
     year: "2020",
     title: "Resonanzband",
-    desc: "Mitglied der Resonanzband – inklusive Auftritt an den Musikfestwochen Winterthur.",
+    desc: "Mitglied der Resonanzband, inklusive Auftritt an den Musikfestwochen Winterthur.",
   },
   {
     year: "Anfang 2024",
     title: "Beginn zu unterrichten",
-    desc: "Start eigener Klavierunterrichtsstunden – individuell, praxisnah und mit Begeisterung.",
+    desc: "Start eigener Klavierunterrichtsstunden, individuell, praxisnah und mit Begeisterung.",
   },
   {
-    year: "Geplant 2027",
+    year: "Herbst 2026",
     title: "PH Studium",
-    desc: "Start des Pädagogikstudiums an der PH Zürich – um Musik auch beruflich weiterzugeben.",
+    desc: "Start des Pädagogikstudiums an der PH Zürich, um Musik auch beruflich weiterzugeben.",
   },
 ];
 
@@ -47,7 +47,7 @@ const werte = [
   {
     icon: <Music className="w-5 h-5" />,
     title: "Ohne Noten",
-    desc: "Wir spielen nach Akkorden, Gehör und Gefühl – keine trockene Theorie.",
+    desc: "Wir spielen nach Akkorden, Gehör und Gefühl. Keine trockene Theorie.",
   },
   {
     icon: <Users className="w-5 h-5" />,
@@ -57,7 +57,7 @@ const werte = [
   {
     icon: <Heart className="w-5 h-5" />,
     title: "Direkt ans Instrument",
-    desc: "Lernen durch Spielen – vom ersten Ton an.",
+    desc: "Lernen durch Spielen, vom ersten Ton an.",
   },
 ];
 
@@ -100,7 +100,7 @@ export default function UeberMichPage() {
               Hallo, ich bin <span className="italic">David</span>.
             </h1>
             <p className="text-white/70 text-lg leading-relaxed">
-              Ich unterrichte Klavier mit Leidenschaft – nicht nach Noten, sondern nach Gefühl. Ob du Anfänger bist oder wieder einsteigen möchtest, bei mir zählt nicht die Perfektion, sondern der Spass am Spielen.
+              Ich unterrichte Klavier mit Leidenschaft, nicht nach Noten, sondern nach Gefühl. Ob du Anfänger bist oder wieder einsteigen möchtest, bei mir zählt nicht die Perfektion, sondern der Spass am Spielen.
             </p>
             <div className="flex flex-wrap gap-4 pt-2">
               <Link href="/probelektion">
@@ -120,7 +120,7 @@ export default function UeberMichPage() {
               <div className="absolute inset-0 rounded-3xl overflow-hidden bg-surface border border-white/10 shadow-2xl shadow-black/30">
                 <Image
                   src="/david-ramchandani-portrait-720-762.jpg"
-                  alt="David Ramchandani – Klavierlehrer"
+                  alt="David Ramchandani, Klavierlehrer"
                   fill
                   sizes="(max-width: 768px) 18rem, 20rem"
                   className="object-cover object-top"
@@ -162,22 +162,22 @@ export default function UeberMichPage() {
             <div className="prose prose-gray max-w-none space-y-4 text-gray-600 leading-relaxed">
               <p>
                 Ich liebe es, zu unterrichten. Jede*r Schüler*in bringt eine eigene
-                Geschichte mit – und genau das macht den Unterricht so spannend.
+                Geschichte mit, und genau das macht den Unterricht so spannend.
                 Mein Ziel ist es, dir zu zeigen, wie du dich am Klavier ausdrücken
-                kannst. Ohne Druck, ohne Theorie-Marathon – sondern mit Freude.
+                kannst. Ohne Druck, ohne Theorie-Marathon, dafür mit Freude.
               </p>
               <p>
                 Seit meinem sechsten Lebensjahr begleitet mich das Klavier. Ich habe
                 eine klassische Ausbildung genossen, aber früh gemerkt: Wirklich
-                berühren kann Musik nur, wenn man sie lebt – nicht nur liest. Deshalb
+                berühren kann Musik nur, wenn man sie lebt und nicht nur liest. Deshalb
                 unterrichte ich heute nach einem spielerischen und praxisnahen
-                Konzept – ganz ohne Notenlesen.
+                Konzept, ganz ohne Notenlesen.
               </p>
               <p>
                 Mein Ansatz kombiniert Spass am Musizieren mit echtem Lernerfolg. Du
                 spielst schon nach wenigen Minuten erste Melodien und Begleitungen.
                 Jede Lektion ist individuell auf deine Ziele und dein Tempo
-                zugeschnitten – ob Anfängerin oder Fortgeschrittener.
+                zugeschnitten, ob Anfängerin oder Fortgeschrittener.
               </p>
             </div>
           </div>
@@ -204,7 +204,7 @@ export default function UeberMichPage() {
           <div className="grid sm:grid-cols-2 gap-3">
             {[
               "Klavierunterricht für Anfängerinnen und Fortgeschrittene",
-              "Spielen nach Akkorden, Gehör und Gefühl – ohne Notenlesen",
+              "Spielen nach Akkorden, Gehör und Gefühl. Ohne Notenlesen",
               "Moderne Songs, die du wirklich spielen willst",
               "Unterricht bei dir zuhause in Neftenbach und Umgebung",
               "Lektionen à 45 Minuten, wöchentlich oder alle zwei Wochen",

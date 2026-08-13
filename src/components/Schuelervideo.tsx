@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import type { Schuelervideo as VideoDaten } from "@/lib/schuelervideos";
+import { formatDauer } from "@/lib/dauer";
 
 /**
  * Ein Schülervideo.
@@ -10,7 +11,7 @@ import type { Schuelervideo as VideoDaten } from "@/lib/schuelervideos";
  * Vier Entscheidungen, die zusammengehören:
  *
  * **`preload="none"`.** Ohne das lädt jedes Video beim Seitenaufbau seine
- * ersten Sekunden — bei vier Videos mehrere Megabyte, bevor jemand auch nur
+ * ersten Sekunden, bei vier Videos mehrere Megabyte, bevor jemand auch nur
  * eines angesehen hat. Das Standbild zeigt derweil, worum es geht.
  *
  * **Standbild statt schwarzem Kasten.** Ein `<video>` ohne `poster` ist eine
@@ -18,7 +19,7 @@ import type { Schuelervideo as VideoDaten } from "@/lib/schuelervideos";
  *
  * **Stumm starten.** Browser blockieren Autoplay mit Ton ohnehin. Wichtiger:
  * Hört man ein Kind lachen oder sprechen, ist die Stimme wieder ein
- * personenbezogenes Merkmal — wer den Ton will, schaltet ihn selbst ein.
+ * personenbezogenes Merkmal, wer den Ton will, schaltet ihn selbst ein.
  *
  * **Kein Autoplay beim Scrollen.** Ein Video, das von selbst losläuft, weil
  * man daran vorbeikommt, ist auf einer ruhigen Seite ein Fremdkörper.
@@ -38,7 +39,7 @@ export default function Schuelervideo({
   const [ton, setTon] = useState(false);
   const [fehler, setFehler] = useState(false);
 
-  // Läuft ein anderes Video an, hält dieses an — zwei Klavierstücke
+  // Läuft ein anderes Video an, hält dieses an. Zwei Klavierstücke
   // gleichzeitig klingen nach Fehler, nicht nach Musik.
   useEffect(() => {
     const el = ref.current;
@@ -78,6 +79,16 @@ export default function Schuelervideo({
           onError={() => setFehler(true)}
         />
 
+        {/*
+          Auf dem Standbild liegt nichts ausser dem Abspielknopf.
+          Vorher lagen hier ein dunkler Verlauf, die Wochenzahl und die
+          Länge, zusammen so viel, dass man das Bild kaum noch sah. Ein
+          Verlauf über einem Foto ist ausserdem der Griff, mit dem sich
+          Bildunterschriften seit fünfzehn Jahren lesbar machen lassen; er
+          sieht danach aus. Die Angaben stehen jetzt darunter, wo sie
+          niemanden stören und trotzdem gelesen werden.
+        */}
+
         {/* Abspielen: ganze Fläche, nicht nur ein kleiner Knopf. */}
         <button
           onClick={umschalten}
@@ -85,17 +96,22 @@ export default function Schuelervideo({
           aria-label={`${video.titel} ${laeuft ? "pausieren" : "abspielen"}`}
           className="absolute inset-0 flex items-center justify-center disabled:cursor-not-allowed"
         >
+          {/*
+            Dunkler, milchiger Kreis statt weisser Scheibe: Auf den hellen
+            Standbildern verschwände Weiss auf Weiss. Kleiner als zuvor,
+            er muss auffindbar sein, nicht das Bild beherrschen.
+          */}
           <span
-            className={`w-14 h-14 rounded-full bg-white/95 text-navy-900 flex items-center justify-center shadow-lg transition-all ${
+            className={`w-12 h-12 rounded-full bg-navy-900/50 backdrop-blur-md text-white flex items-center justify-center transition-all duration-300 ${
               laeuft
                 ? "opacity-0 group-hover:opacity-100 scale-90"
-                : "opacity-100 group-hover:scale-105"
+                : "opacity-100 group-hover:scale-110 group-hover:bg-navy-900/70"
             }`}
           >
             {laeuft ? (
-              <Pause className="w-6 h-6" />
+              <Pause className="w-5 h-5" />
             ) : (
-              <Play className="w-6 h-6 ml-0.5" />
+              <Play className="w-5 h-5 ml-0.5" />
             )}
           </span>
         </button>
@@ -121,9 +137,22 @@ export default function Schuelervideo({
         )}
       </div>
 
+      {/*
+        Die Wochenzahl steht als Zeile über dem Titel, nicht auf dem Bild.
+        Sie bleibt damit das Erste, was man in diesem Block liest, denn sie
+        ist der Beweis; „Für Elise" allein ist keiner. Das Standbild bleibt
+        dabei unverdeckt.
+      */}
       <div className="p-5">
-        <p className="font-700 text-navy-900">{video.titel}</p>
-        <p className="text-sm text-gray-400 mt-0.5">{video.wer}</p>
+        <p className="text-[11px] font-700 uppercase tracking-[0.18em] text-navy-600">
+          Woche {video.woche}
+        </p>
+        <p className="font-700 text-navy-900 mt-1.5">{video.titel}</p>
+        <p className="text-sm text-gray-400 mt-0.5">
+          {video.name}
+          <span className="mx-1.5 text-gray-300">·</span>
+          <span className="tabular-nums">{formatDauer(video.dauer)}</span>
+        </p>
       </div>
     </div>
   );

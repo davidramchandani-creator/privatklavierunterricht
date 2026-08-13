@@ -70,7 +70,7 @@ function alsZeit(minuten: number): string {
 }
 
 /**
- * Alle Startzeiten, die grundsätzlich in Frage kommen — Raster aus den
+ * Alle Startzeiten, die grundsätzlich in Frage kommen. Raster aus den
  * Verfügbarkeitsfenstern des Wochentags.
  */
 function kandidatenZeiten(
@@ -93,7 +93,7 @@ function kandidatenZeiten(
  *
  * `mindestQuote` steuert, wie viel Kollision noch toleriert wird. Ein Platz,
  * bei dem über die Laufzeit ein, zwei Ferienwochen im Weg liegen, ist völlig
- * in Ordnung — dafür gibt es Ausweichtermine. Ein Platz, der zu einem Drittel
+ * in Ordnung, dafür gibt es Ausweichtermine. Ein Platz, der zu einem Drittel
  * belegt ist, ist der falsche.
  */
 export async function findeFixplaetze(
@@ -142,7 +142,7 @@ export async function findeFixplaetze(
 
   if (tage.length === 0) return [];
 
-  // Kontext einmal für den gesamten Zeitraum laden statt pro Kandidat —
+  // Kontext einmal für den gesamten Zeitraum laden statt pro Kandidat,
   // sonst wären es hunderte Datenbankabfragen.
   const abstandTage = params.rhythmus === "zweiwoechentlich" ? 14 : 7;
   const bis = new Date(

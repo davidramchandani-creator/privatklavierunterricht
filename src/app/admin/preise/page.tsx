@@ -73,7 +73,7 @@ export default function PreisePage() {
           </p>
           <p className="text-xs text-gray-400 leading-snug">
             Verbindlich ist der Preis, der beim einzelnen Schüler hinterlegt
-            ist — dort wird auch der Wegaufschlag gesetzt. Diese Werte werden
+            ist, dort wird auch der Wegaufschlag gesetzt. Diese Werte werden
             nicht automatisch übernommen.
           </p>
 

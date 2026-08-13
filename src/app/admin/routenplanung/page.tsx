@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function RoutenplanungPage() {
   const admin = await createAdminClient();
 
-  // Läuft ein Testlauf, ist die Testsicht die Vorgabe – sonst mischte sich
+  // Läuft ein Testlauf, ist die Testsicht die Vorgabe. Sonst mischte sich
   // beides und die Fahrzeiten stimmten für keinen der beiden Fälle.
   const kreis = await standardKreis(admin);
 

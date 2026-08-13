@@ -99,7 +99,7 @@ export async function testStand(): Promise<TestStand> {
 }
 
 /**
- * Legt das Abo eines Testschülers an – bewusst **ohne** Fixplatz.
+ * Legt das Abo eines Testschülers an, bewusst **ohne** Fixplatz.
  *
  * Genau das soll die Zuteilung ja finden. Bis vor Kurzem verbot eine Regel in
  * der Datenbank diesen Zustand („Fixplatz heisst, der Platz steht"), weshalb
@@ -158,7 +158,7 @@ async function legeTestAboAn(
   if (error || !pkg) return error?.message ?? "Paket konnte nicht angelegt werden.";
 
   // Ohne diesen Schritt bleibt die Zahlungsseite leer: das Paket existiert,
-  // aber die Monatsraten – der Teil, den man eigentlich testen will – fehlen.
+  // aber die Monatsraten, der Teil, den man eigentlich testen will. Fehlen.
   // Beim echten Admin-Abschluss (aboAnlegenAdmin) passiert das automatisch;
   // hier war der Aufruf schlicht vergessen gegangen.
   const raten = await legeMonatsratenAn(admin, {
@@ -197,12 +197,12 @@ export async function testdatenAnlegen(): Promise<
   if (verboten) return verboten;
 
   // Der Umleiter ist die einzige Sicherung zwischen einem Probelauf und den
-  // echten Postfächern. Ohne ihn wird hier nichts angelegt – sonst startet
+  // echten Postfächern. Ohne ihn wird hier nichts angelegt, sonst startet
   // jemand später eine Runde und merkt es erst, wenn die Mails draussen sind.
   if (!redirectAddress()) {
     return {
       error:
-        "EMAIL_REDIRECT_TO ist nicht gesetzt. Ohne Mail-Umleitung lege ich keine Testdaten an — ein Probelauf würde sonst echte Mails verschicken.",
+        "EMAIL_REDIRECT_TO ist nicht gesetzt. Ohne Mail-Umleitung lege ich keine Testdaten an, ein Probelauf würde sonst echte Mails verschicken.",
     };
   }
 
@@ -215,7 +215,7 @@ export async function testdatenAnlegen(): Promise<
 
   // Die Zeiten der Testschüler richten sich nach deinen echten
   // Unterrichtstagen. Fest verdrahtete Wochentage wären beim ersten Anlauf
-  // schon falsch gewesen – dann fällt ein Testschüler mit „an keinem
+  // schon falsch gewesen, dann fällt ein Testschüler mit „an keinem
   // Unterrichtstag verfügbar" heraus und man sucht den Fehler am falschen Ort.
   const unterrichtstage = await ladeFenster(admin);
   if (unterrichtstage.length === 0) {
@@ -231,7 +231,7 @@ export async function testdatenAnlegen(): Promise<
 
     // Schon vorhanden? Dann nicht doppelt anlegen, aber die Zeiten
     // auffrischen. Ändern sich die Unterrichtstage, passen die alten Angaben
-    // nicht mehr — und ein Testschüler, der an keinem Unterrichtstag kann,
+    // nicht mehr, und ein Testschüler, der an keinem Unterrichtstag kann,
     // sieht aus wie ein Fehler im Planer.
     const { data: da } = await admin
       .from("profiles")
@@ -269,7 +269,7 @@ export async function testdatenAnlegen(): Promise<
         if (fehler) ohneAbo.push(`${t.vorname} ${t.nachname} (${fehler})`);
         else nachgeliefert++;
       } else {
-        // Das Abo steht, aber möglicherweise ohne Monatsraten – der
+        // Das Abo steht, aber möglicherweise ohne Monatsraten. Der
         // ursprüngliche Fehler, den dieser Durchgang beheben soll. Ohne
         // Raten bleibt die Zahlungsseite eines Testschülers leer, obwohl das
         // Abo aktiv ist.
@@ -345,7 +345,7 @@ export async function testdatenAnlegen(): Promise<
     const aboFehler = await legeTestAboAn(admin, userId, t, unterrichtstage);
     if (aboFehler) ohneAbo.push(`${t.vorname} ${t.nachname} (${aboFehler})`);
 
-    // Dauerangabe (runde_id null) – eine Probelauf-Runde greift darauf zurück.
+    // Dauerangabe (runde_id null), eine Probelauf-Runde greift darauf zurück.
     await admin.from("student_verfuegbarkeit").insert(
       testVerfuegbarkeit(t, unterrichtstage).map((v) => ({
         student_id: userId,
@@ -374,7 +374,7 @@ export async function testdatenAnlegen(): Promise<
 }
 
 /**
- * Entfernt alle Testschüler restlos – samt Terminen, Abos, Rechnungen und
+ * Entfernt alle Testschüler restlos, samt Terminen, Abos, Rechnungen und
  * Anmeldekonto.
  *
  * Reihenfolge von innen nach aussen, damit keine Fremdschlüssel im Weg

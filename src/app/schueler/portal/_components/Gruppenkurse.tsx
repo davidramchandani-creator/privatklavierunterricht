@@ -63,7 +63,7 @@ function KursCard({ course }: { course: GroupCourseVM }) {
       <div className="px-5 py-4 space-y-2.5">
         {course.open_sessions.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-3">
-            Aktuell keine Termine geplant – schau bald wieder vorbei.
+            Aktuell keine Termine geplant, schau bald wieder vorbei.
           </p>
         ) : (
           course.open_sessions.map((session) => (

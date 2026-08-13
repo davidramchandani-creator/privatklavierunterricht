@@ -38,7 +38,7 @@ describe("cancellationSingleLessonPrice", () => {
 
   it("20er: Schwelle 55 statt 60", () => {
     // Der 20er-Lektionspreis ist von Haus aus tiefer, deshalb greift laut
-    // Spezifikation eine tiefere Schwelle. Vorher wurde immer 60 gerechnet –
+    // Spezifikation eine tiefere Schwelle. Vorher wurde immer 60 gerechnet,
     // das ergab pro genutzter Lektion CHF 5 zu wenig.
     expect(cancellationSingleLessonPrice(65, "20er")).toBe(80); // 70 + 10
     expect(cancellationSingleLessonPrice(55, "20er")).toBe(70); // 70 + 0
@@ -101,7 +101,7 @@ describe("canCancelPackage", () => {
   });
 });
 
-describe("computeCancellationSettlement – 20er-Paket", () => {
+describe("computeCancellationSettlement, 20er-Paket", () => {
   it("nutzt die 20er-Schwelle", () => {
     const pkg = makePackage({
       type: "20er",
@@ -118,7 +118,7 @@ describe("computeCancellationSettlement – 20er-Paket", () => {
   });
 });
 
-describe("computeCancellationSettlement – Ratenzahlung", () => {
+describe("computeCancellationSettlement, Ratenzahlung", () => {
   const ratenPaket = () =>
     makePackage({ price_per_lesson: 70, total_price: 700, lessons_total: 10 });
 
@@ -133,7 +133,7 @@ describe("computeCancellationSettlement – Ratenzahlung", () => {
 
   it("ohne den Parameter käme die alte, falsche Annahme heraus", () => {
     // Absicherung gegen einen Rückfall: ohne bezahlten Betrag wird weiterhin
-    // der volle Paketpreis unterstellt – das darf die Abrechnung nie tun.
+    // der volle Paketpreis unterstellt, das darf die Abrechnung nie tun.
     const ohne = computeCancellationSettlement(ratenPaket(), 2);
     expect(ohne.refund).toBe(540);
     const mit = computeCancellationSettlement(ratenPaket(), 2, 175);

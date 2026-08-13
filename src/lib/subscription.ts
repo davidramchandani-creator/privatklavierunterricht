@@ -9,7 +9,7 @@ export type SubscriptionType = "10er" | "20er";
  * Laufzeit = Gültigkeit des Pakets UND Ratenlaufzeit (Entscheid Dave).
  *
  * Diese Werte gelten für den **wöchentlichen** Rhythmus. Bei zweiwöchentlichem
- * Unterricht ist die Laufzeit länger — die Berechnung dazu steht in
+ * Unterricht ist die Laufzeit länger, die Berechnung dazu steht in
  * `rhythmus.ts` (`termMonthsForType`) und wird hier über die Optionen von
  * `buildInstalmentPlan` hereingereicht. Hier bleiben sie als Default stehen,
  * damit Altcode und Vorschauen ohne Rhythmus weiter funktionieren.
@@ -76,7 +76,7 @@ function daysInMonth(y: number, m: number): number {
 /**
  * Datum um n Monate verschieben. Läuft der Kalendertag über das Monatsende
  * hinaus (31. Januar + 1 Monat), wird auf den letzten Tag des Zielmonats
- * geklemmt — nie in den Folgemonat gerutscht.
+ * geklemmt, nie in den Folgemonat gerutscht.
  */
 export function addMonths(isoDate: string, months: number): string {
   const [y, m, d] = isoDate.split("-").map(Number);
@@ -87,7 +87,7 @@ export function addMonths(isoDate: string, months: number): string {
   return toIso(ty, tm, td);
 }
 
-/** Durchschnittliche Tage pro Monat — für gebrochene Laufzeiten. */
+/** Durchschnittliche Tage pro Monat, für gebrochene Laufzeiten. */
 const DAYS_PER_MONTH = 30.44;
 
 /**
@@ -95,7 +95,7 @@ const DAYS_PER_MONTH = 30.44;
  *
  * Ganze Monate laufen über `addMonths` (monatsende-sicher), der Rest wird in
  * Tagen ergänzt. Gebrochene Laufzeiten entstehen beim Rhythmuswechsel: mit
- * 7 Restlektionen zweiwöchentlich sind es 4.2 Monate — das gibt es als
+ * 7 Restlektionen zweiwöchentlich sind es 4.2 Monate, das gibt es als
  * Kalendermonat nicht.
  */
 export function addTermMonths(isoDate: string, months: number): string {
@@ -130,7 +130,7 @@ export type InstalmentPlanOptions = {
  * damit die Summe exakt dem Gesamtpreis entspricht.
  *
  * Bei zweiwöchentlichem Rhythmus ist die Laufzeit länger, also gibt es mehr
- * und dafür kleinere Raten. Der Gesamtpreis bleibt identisch — der Rhythmus
+ * und dafür kleinere Raten. Der Gesamtpreis bleibt identisch, der Rhythmus
  * ändert nur, über welchen Zeitraum bezahlt wird, nie wie viel.
  */
 export function buildInstalmentPlan(
@@ -178,7 +178,7 @@ export function buildInstalmentPlan(
   };
 }
 
-/** Summe aller geplanten Beträge — muss exakt dem Gesamtpreis entsprechen. */
+/** Summe aller geplanten Beträge, muss exakt dem Gesamtpreis entsprechen. */
 export function planTotal(plan: InstalmentPlan): number {
   return roundRappen(plan.entries.reduce((sum, e) => sum + e.amount, 0));
 }

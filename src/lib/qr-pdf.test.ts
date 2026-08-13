@@ -4,7 +4,7 @@ import { parseSchweizerAdresse } from "./qr-pdf";
 /**
  * Die Adressen stammen aus dem echten Bestand. Wenn der Parser hier
  * durchfällt, bekommt ein Schüler eine Rechnung mit falscher oder fehlender
- * Adresse — und die kommt entweder nicht an oder lässt sich nicht zuordnen.
+ * Adresse, und die kommt entweder nicht an oder lässt sich nicht zuordnen.
  */
 describe("parseSchweizerAdresse", () => {
   it("zerlegt die üblichen Adressen aus dem Bestand", () => {
@@ -24,7 +24,7 @@ describe("parseSchweizerAdresse", () => {
   });
 
   it("kommt mit Umlauten zurecht", () => {
-    // „Chämiweg" und „Mühleweg" gibt es wirklich – ein Parser, der an
+    // „Chämiweg" und „Mühleweg" gibt es wirklich, ein Parser, der an
     // Umlauten scheitert, fällt erst beim echten Schüler auf.
     expect(parseSchweizerAdresse("Chämiweg 21, 8413 Neftenbach")).toEqual({
       strasse: "Chämiweg",
@@ -42,7 +42,7 @@ describe("parseSchweizerAdresse", () => {
   });
 
   it("behält Klammerzusätze im Ortsnamen", () => {
-    // „Aesch (Neftenbach)" ist der amtliche Name – abschneiden wäre falsch.
+    // „Aesch (Neftenbach)" ist der amtliche Name, abschneiden wäre falsch.
     expect(parseSchweizerAdresse("Rebweg 4, 8412 Aesch (Neftenbach)")).toEqual({
       strasse: "Rebweg",
       nummer: "4",
@@ -97,7 +97,7 @@ describe("parseSchweizerAdresse", () => {
     expect(parseSchweizerAdresse("")).toBeNull();
     expect(parseSchweizerAdresse(null)).toBeNull();
     expect(parseSchweizerAdresse("   ")).toBeNull();
-    // Keine vierstellige PLZ – vermutlich Ausland oder Tippfehler.
+    // Keine vierstellige PLZ, vermutlich Ausland oder Tippfehler.
     expect(parseSchweizerAdresse("Hauptstrasse 1, Winterthur")).toBeNull();
     expect(parseSchweizerAdresse("Hauptstrasse 1, 80331 München")).toBeNull();
   });

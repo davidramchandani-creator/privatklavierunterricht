@@ -12,7 +12,7 @@
  * gemessen, wie viele Lektionen nach der Buchung noch in den Block passen.
  * Gültig ist eine Startzeit genau dann, wenn danach exakt eine Lektion
  * weniger möglich ist als vorher. Wer eine Zeit wählt, die eine unbrauchbare
- * Restlücke erzeugt, verliert zwei Plätze statt einen – und die Zeit wird
+ * Restlücke erzeugt, verliert zwei Plätze statt einen. Und die Zeit wird
  * gar nicht erst angeboten.
  *
  * Dieses Kriterium ist zugleich strenger (verhindert tote Lücken zuverlässig)
@@ -25,7 +25,7 @@
  *
  * Diese Datei ist bewusst frei von Datenbank- und UI-Abhängigkeiten, damit
  * sie isoliert testbar bleibt. Alle Zeiten sind Minuten seit Mitternacht
- * (Zürcher Wandzeit) – die Umrechnung passiert an den Rändern.
+ * (Zürcher Wandzeit), die Umrechnung passiert an den Rändern.
  */
 
 /** Minuten seit Mitternacht, z. B. 16:30 → 990. */
@@ -79,7 +79,7 @@ export function minutesToHhmm(min: Minutes): string {
 /**
  * Rechnet eine Fahrzeit in einen Puffer um: aufgerundet auf das Raster,
  * mindestens `minimum`. 20 Minuten Fahrt ergeben bei 15-Minuten-Raster also
- * 30 Minuten Puffer – so bleibt der Puffer mit dem Slot-Raster kompatibel.
+ * 30 Minuten Puffer, so bleibt der Puffer mit dem Slot-Raster kompatibel.
  */
 export function travelToBuffer(
   travelMinutes: number,
@@ -92,7 +92,7 @@ export function travelToBuffer(
 
 /**
  * Nötiger Abstand zwischen zwei aufeinanderfolgenden Lektionen. Massgeblich
- * ist der grössere der beiden Puffer – wer weiter weg wohnt, bestimmt die
+ * ist der grössere der beiden Puffer, wer weiter weg wohnt, bestimmt die
  * Fahrzeit für diesen Übergang.
  */
 function gapBetween(a: number | undefined, b: number | undefined, fallback: number): number {
@@ -167,7 +167,7 @@ export function isValidStart(
 }
 
 /**
- * Liefert alle gültigen Startzeiten eines Blocks – unter Berücksichtigung
+ * Liefert alle gültigen Startzeiten eines Blocks, unter Berücksichtigung
  * der bereits belegten Zeiten. Nach jeder Buchung erneut aufrufen, dann
  * schrumpft die Liste automatisch (Live-Berechnung, nicht statisch).
  */

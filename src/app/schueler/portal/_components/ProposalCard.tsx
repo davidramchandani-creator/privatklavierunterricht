@@ -52,7 +52,7 @@ function ProposalRow({ proposal }: { proposal: Proposal }) {
   if (done) {
     return (
       <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 text-center text-sm text-gray-400">
-        {done === "accepted" ? "Vorschlag angenommen – Termin gebucht." : "Vorschlag abgelehnt."}
+        {done === "accepted" ? "Vorschlag angenommen, Termin gebucht." : "Vorschlag abgelehnt."}
       </div>
     );
   }

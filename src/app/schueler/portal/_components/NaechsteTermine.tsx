@@ -592,7 +592,7 @@ function TerminRow({
               )}
             </div>
             <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-              <Clock className="w-3 h-3" /> {timeFrom} – {timeTo} Uhr
+              <Clock className="w-3 h-3" /> {timeFrom}, {timeTo} Uhr
             </p>
           </div>
         </div>
@@ -981,7 +981,7 @@ function ReschedulePicker({
             Wird gesendet…
           </>
         ) : selectedSlot ? (
-          `Verschiebung anfragen – ${new Date(selectedSlot.beginn).toLocaleDateString(
+          `Verschiebung anfragen, ${new Date(selectedSlot.beginn).toLocaleDateString(
             "de-CH",
             { timeZone: "Europe/Zurich", weekday: "short", day: "numeric", month: "short" }
           )} ${new Date(selectedSlot.beginn).toLocaleTimeString("de-CH", {
@@ -1007,7 +1007,7 @@ function getMonday(weekOffset: number): Date {
   return monday;
 }
 
-/** Zürcher Kalenderdatum (YYYY-MM-DD) eines Instants – DST-sicher. */
+/** Zürcher Kalenderdatum (YYYY-MM-DD) eines Instants, DST-sicher. */
 function zurichDateKey(d: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Zurich",

@@ -35,7 +35,7 @@ describe("addMonths", () => {
   });
 });
 
-describe("buildInstalmentPlan – 10er (CHF 700)", () => {
+describe("buildInstalmentPlan, 10er (CHF 700)", () => {
   const plan = buildInstalmentPlan("10er", 700, "2026-08-07");
 
   it("hat 4 Monate Laufzeit und 4 Raten", () => {
@@ -80,7 +80,7 @@ describe("buildInstalmentPlan – 10er (CHF 700)", () => {
   });
 });
 
-describe("buildInstalmentPlan – 20er (CHF 1300)", () => {
+describe("buildInstalmentPlan, 20er (CHF 1300)", () => {
   const plan = buildInstalmentPlan("20er", 1300, "2026-08-07");
 
   it("hat 8 Monate Laufzeit und 8 Raten", () => {
@@ -109,7 +109,7 @@ describe("buildInstalmentPlan – 20er (CHF 1300)", () => {
   });
 });
 
-describe("buildInstalmentPlan – Rundungsrobustheit", () => {
+describe("buildInstalmentPlan, Rundungsrobustheit", () => {
   it("trifft die Summe auch bei krummen Preisen", () => {
     for (const preis of [733.33, 999.99, 1234.56, 87.4, 1]) {
       for (const typ of ["10er", "20er"] as const) {

@@ -22,7 +22,7 @@ import {
 
 /**
  * Alle Aktionen hier verändern oder lesen Daten aller Schüler. Server Actions
- * sind unabhängig von der Seitennavigation aufrufbar — die Rollenprüfung muss
+ * sind unabhängig von der Seitennavigation aufrufbar, die Rollenprüfung muss
  * also in jeder einzelnen stehen, nicht nur in der Middleware.
  */
 async function assertAdmin(): Promise<{ error: string } | null> {

@@ -251,7 +251,7 @@ export default function ZahlungsplanCard({
             {autoRenew
               ? canCancel && cancellationDeadline
                 ? `Kündbar bis ${formatDay(cancellationDeadline)}`
-                : "Kündigungsfrist abgelaufen – melde dich bei mir"
+                : "Kündigungsfrist abgelaufen, melde dich bei mir"
               : "Dein Paket läuft am Ende der Laufzeit aus"}
           </p>
         </div>

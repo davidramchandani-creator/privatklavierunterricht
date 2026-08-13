@@ -19,7 +19,7 @@ describe("Kreis", () => {
  * Wächter gegen die Wiederkehr des Fehlers.
  *
  * Der Schaden entsteht nicht dort, wo jemand falsch filtert, sondern dort, wo
- * jemand das Filtern **vergisst** — dann mischen sich fünf erfundene und
+ * jemand das Filtern **vergisst**, dann mischen sich fünf erfundene und
  * sieben echte Adressen in einer Rechnung, das Ergebnis sieht plausibel aus
  * und ist trotzdem für keinen der beiden Fälle richtig.
  *
@@ -50,7 +50,7 @@ describe("Trennung von Test und Ernst", () => {
     // darum beide sehen.
     //
     // Einzelne Abfragen können sich stattdessen mit dem Kommentar
-    // „kreis-uebergreifend" ausnehmen – das steht dann direkt daneben und
+    // „kreis-uebergreifend" ausnehmen, das steht dann direkt daneben und
     // muss begründet werden, statt in einer Liste am anderen Ende zu
     // verschwinden.
     const erlaubt = [

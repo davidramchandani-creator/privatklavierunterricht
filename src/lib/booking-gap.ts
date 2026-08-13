@@ -60,7 +60,7 @@ function hhmmToMin(s: string): number {
 }
 
 /**
- * Gültige Startzeiten für einen einzelnen Tag – über alle Blöcke dieses
+ * Gültige Startzeiten für einen einzelnen Tag, über alle Blöcke dieses
  * Wochentags hinweg.
  */
 export function gapAwareDaySlots(
@@ -182,7 +182,7 @@ export function gapAwareSlots(
 
 /**
  * Serverseitige Einzelprüfung: Ist genau dieser Startzeitpunkt buchbar?
- * Wird vor jeder Buchung aufgerufen – dem Client wird nie vertraut.
+ * Wird vor jeder Buchung aufgerufen, dem Client wird nie vertraut.
  */
 export function isGapAwareStartBookable(
   start: Date,

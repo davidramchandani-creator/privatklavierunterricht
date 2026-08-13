@@ -6,7 +6,7 @@
 //
 // Testschüler sind bewusst **normale** Schüler mit einem Merker (`ist_test`),
 // keine Sonderform. Nur so testet man den Ablauf, den man später wirklich
-// fährt — eine Attrappe würde genau die Fehler verstecken, die man sucht.
+// fährt, eine Attrappe würde genau die Fehler verstecken, die man sucht.
 //
 // Die Adressen sind echte Ortschaften rund um Neftenbach, in verschiedene
 // Richtungen verteilt. Das ist keine Kosmetik: die Routenrechnung gruppiert
@@ -18,16 +18,16 @@ export type TestSchueler = {
   vorname: string;
   nachname: string;
   adresse: string;
-  /** Richtung von Neftenbach aus – erklärt, was der Fall prüfen soll. */
+  /** Richtung von Neftenbach aus, erklärt, was der Fall prüfen soll. */
   zweck: string;
   variante: "halbjahr" | "jahr";
   rhythmus: "woechentlich" | "zweiwoechentlich";
   /**
-   * Wie eng dieser Schüler kann – **nicht** als feste Wochentage.
+   * Wie eng dieser Schüler kann, **nicht** als feste Wochentage.
    *
    * Feste Tage wären der naheliegende, aber falsche Weg: sie müssten mit
    * deinen tatsächlichen Unterrichtstagen übereinstimmen. Tun sie es nicht,
-   * fällt der Testschüler mit „an keinem Unterrichtstag verfügbar" heraus —
+   * fällt der Testschüler mit „an keinem Unterrichtstag verfügbar" heraus,
    * und man sucht den Fehler im Planer statt in den Testdaten. Genau das ist
    * beim ersten Anlauf passiert.
    *
@@ -41,7 +41,7 @@ export type TestSchueler = {
   praeferenz: number;
 };
 
-/** Kennzeichnet Testkonten eindeutig – danach wird auch aufgeräumt. */
+/** Kennzeichnet Testkonten eindeutig, danach wird auch aufgeräumt. */
 export const TEST_EMAIL_DOMAIN = "test.privatklavierunterricht.ch";
 
 export function testEmail(index: number): string {
@@ -57,7 +57,7 @@ export const TEST_SCHUELER: TestSchueler[] = [
     nachname: "Testschülerin",
     adresse: "Bahnhofstrasse 10, 8412 Aesch bei Neftenbach",
     zweck:
-      "Direkt nebenan. Muss praktisch gratis sein – wenn der Planer hier viel Fahrzeit ausweist, stimmt die Rechnung nicht.",
+      "Direkt nebenan. Muss praktisch gratis sein, wenn der Planer hier viel Fahrzeit ausweist, stimmt die Rechnung nicht.",
     variante: "halbjahr",
     rhythmus: "woechentlich",
     tage: "alle",
@@ -81,7 +81,7 @@ export const TEST_SCHUELER: TestSchueler[] = [
     nachname: "Testschülerin",
     adresse: "Technikumstrasse 9, 8400 Winterthur",
     zweck:
-      "Stadt, dieselbe Richtung wie Pfungen. Prüft, ob die Gruppierung nach Fahrtrichtung greift – und kann nur spät, was den Abend nach hinten schiebt.",
+      "Stadt, dieselbe Richtung wie Pfungen. Prüft, ob die Gruppierung nach Fahrtrichtung greift. Und kann nur spät, was den Abend nach hinten schiebt.",
     variante: "jahr",
     rhythmus: "zweiwoechentlich",
     tage: "erster",
@@ -105,7 +105,7 @@ export const TEST_SCHUELER: TestSchueler[] = [
     nachname: "Testschülerin",
     adresse: "Schulhausstrasse 3, 8451 Kleinandelfingen",
     zweck:
-      "Weit im Norden. Der teure Fall – zeigt, was ein einzelner Aussenposten an einem Abend kostet.",
+      "Weit im Norden. Der teure Fall, zeigt, was ein einzelner Aussenposten an einem Abend kostet.",
     variante: "halbjahr",
     rhythmus: "woechentlich",
     tage: "letzter",
@@ -117,7 +117,7 @@ export const TEST_SCHUELER: TestSchueler[] = [
 /**
  * Übersetzt die relative Angabe in die tatsächlichen Unterrichtstage.
  *
- * `unterrichtstage` kommt aus deiner Verfügbarkeit — dadurch passen die
+ * `unterrichtstage` kommt aus deiner Verfügbarkeit, dadurch passen die
  * Testschüler immer zu deinem echten Stundenplan, auch wenn du ihn änderst.
  */
 export function testVerfuegbarkeit(
@@ -171,7 +171,7 @@ function mittelpunkt(von: string, bis: string): string {
     const [h, m] = z.split(":").map(Number);
     return h * 60 + m;
   };
-  // Auf eine Viertelstunde runden – der Planer rechnet im 15-Minuten-Raster.
+  // Auf eine Viertelstunde runden, der Planer rechnet im 15-Minuten-Raster.
   const mitte = Math.round((min(von) + min(bis)) / 2 / 15) * 15;
   return `${String(Math.floor(mitte / 60)).padStart(2, "0")}:${String(mitte % 60).padStart(2, "0")}`;
 }
@@ -182,4 +182,4 @@ function mittelpunkt(von: string, bis: string): string {
  * Zuteilung richtig und der Test sagt nichts aus.
  */
 export const TEST_HINWEIS =
-  "Clara und Elena können nur an einem Tag, David nur abends – wenn die Zuteilung stimmt, bekommen die Knappen ihren Platz zuerst.";
+  "Clara und Elena können nur an einem Tag, David nur abends. Wenn die Zuteilung stimmt, bekommen die Knappen ihren Platz zuerst.";

@@ -140,7 +140,7 @@ export default function PlanungBoard({
           <p>
             <strong>Der Ablauf:</strong> Du startest eine Runde, alle Schüler
             bekommen eine Anfrage und tragen im Portal ein, wann sie können.
-            Danach rechnest du die Zuteilung — jeder bekommt einen Termin, den er
+            Danach rechnest du die Zuteilung, jeder bekommt einen Termin, den er
             auch kann, bei möglichst wenig Fahrzeit.
           </p>
           <p>
@@ -149,7 +149,7 @@ export default function PlanungBoard({
             über alle zusammen entschieden.
           </p>
           <p className="text-gray-500">
-            Für einen Einzelnen brauchst du keine Runde — dafür ist die Karte
+            Für einen Einzelnen brauchst du keine Runde, dafür ist die Karte
             unten da.
           </p>
         </Infobox>
@@ -210,7 +210,7 @@ export default function PlanungBoard({
               className="mt-0.5 w-4 h-4 accent-[#1C244B] flex-shrink-0"
             />
             <span className="text-sm text-amber-900 leading-snug min-w-0">
-              <strong>Probelauf</strong> — nur Testschüler anschreiben.
+              <strong>Probelauf</strong>, nur Testschüler anschreiben.
               <span className="block text-amber-800 mt-0.5">
                 Deine echten Schüler bekommen nichts und werden auch bei
                 „Anwenden“ nicht angefasst. Testschüler legst du unter{" "}
@@ -283,7 +283,7 @@ export default function PlanungBoard({
             Puffer zwischen zwei Lektionen: {puffer} Min.
           </label>
           <p className="text-xs text-gray-500 leading-snug mt-0.5 mb-2">
-            Zusätzlich zur Fahrzeit — Verabschieden, Instrument einpacken,
+            Zusätzlich zur Fahrzeit, Verabschieden, Instrument einpacken,
             parkieren.
           </p>
           <input
@@ -380,7 +380,7 @@ export default function PlanungBoard({
                 {ansicht.kontext.wartend.length} Schüler warten auf einen Termin
               </p>
               <p className="text-sm text-gray-500 leading-snug mb-2.5">
-                Sie haben ein laufendes Abo, aber noch keinen festen Platz — sie
+                Sie haben ein laufendes Abo, aber noch keinen festen Platz. Sie
                 zahlen also bereits. Diese Runde sollte sie unterbringen.
               </p>
               <ul className="space-y-1">
@@ -416,8 +416,7 @@ export default function PlanungBoard({
                   <li key={i} className="text-sm text-gray-600">
                     <span className="font-600 text-gray-900">
                       {n.schueler.name}
-                    </span>{" "}
-                    — {n.grund}
+                    </span>, {n.grund}
                   </li>
                 ))}
               </ul>

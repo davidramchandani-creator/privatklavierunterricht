@@ -78,7 +78,7 @@ export default function TerminBuchen({ maxSlots }: { maxSlots: number }) {
   if (success) {
     return (
       <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center text-sm text-emerald-700 font-500">
-        Anfrage gesendet! David bestätigt jeden Termin einzeln – du siehst den Status unter „Termine".
+        Anfrage gesendet! David bestätigt jeden Termin einzeln, du siehst den Status unter „Termine".
       </div>
     );
   }
@@ -311,7 +311,7 @@ function getMonday(weekOffset: number): Date {
 
 type DayInfo = { dateStr: string; label: string };
 
-/** Zürcher Kalenderdatum (YYYY-MM-DD) eines Instants – DST-sicher. */
+/** Zürcher Kalenderdatum (YYYY-MM-DD) eines Instants, DST-sicher. */
 function zurichDateKey(d: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Zurich",

@@ -2,7 +2,7 @@
 // Hörproben
 //
 // Der überzeugendste Beweis für einen Klavierlehrer ist, ihn spielen zu
-// hören. Drei Sekunden Klang sagen mehr als vier Bewertungen — darum steht
+// hören. Drei Sekunden Klang sagen mehr als vier Bewertungen, darum steht
 // dieser Abschnitt weit oben, direkt nach dem Hero.
 // ============================================================
 
@@ -13,7 +13,7 @@ export type Hoerprobe = {
   herkunft: string;
   /** Datei unter /public/hoerproben/. */
   datei: string;
-  /** Länge in Sekunden – für die Anzeige, bevor die Datei geladen ist. */
+  /** Länge in Sekunden, für die Anzeige, bevor die Datei geladen ist. */
   dauer: number;
   /**
    * Wellenform als Höhen zwischen 0 und 1.
@@ -35,7 +35,7 @@ export type Hoerprobe = {
  *
  * Sortiert nicht nach Länge, sondern nach Wiedererkennung: „Another Love"
  * und die Amélie-Melodie kennen die meisten, und wer beim ersten Klick etwas
- * Vertrautes hört, hört auch das zweite an. „Divenire" steht zuletzt — es
+ * Vertrautes hört, hört auch das zweite an. „Divenire" steht zuletzt, es
  * zeigt am meisten Handwerk, verlangt aber auch am meisten Geduld.
  *
  * Die kürzeste steht zugleich oben: 16 Sekunden sind eine kleine
@@ -79,7 +79,7 @@ export const HOERPROBEN: Hoerprobe[] = [
 // Fünfte Aufnahme (0:34), liegt unter public/hoerproben/unbenannt.mp3.
 //
 // Bewusst nicht in der Liste: David wusste nicht mehr, wie das Stück heisst.
-// Eine namenlose Aufnahme zwischen vier benannten sieht nach Versehen aus —
+// Eine namenlose Aufnahme zwischen vier benannten sieht nach Versehen aus,
 // vier vollständige Einträge wirken fertiger als fünf mit einer Lücke.
 // Sobald der Titel bekannt ist, hier eintragen und in HOERPROBEN aufnehmen:
 //
@@ -94,8 +94,6 @@ export const HOERPROBEN: Hoerprobe[] = [
 
 
 /** Sekunden als "2:14". */
-export function formatDauer(sekunden: number): string {
-  const min = Math.floor(sekunden / 60);
-  const sek = Math.floor(sekunden % 60);
-  return `${min}:${String(sek).padStart(2, "0")}`;
-}
+// Wohnt inzwischen in dauer.ts, weil die Videos dieselbe Anzeige brauchen.
+// Hier weitergereicht, damit bestehende Aufrufe unverändert bleiben.
+export { formatDauer } from "./dauer";

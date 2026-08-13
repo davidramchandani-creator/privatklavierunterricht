@@ -23,7 +23,7 @@ function ConfirmCard() {
     setError(null);
     startTransition(async () => {
       const result = await confirmEmailToken(tokenHash, type, next);
-      // Bei Erfolg leitet die Server-Action per redirect weiter – wir landen
+      // Bei Erfolg leitet die Server-Action per redirect weiter, wir landen
       // hier nur im Fehlerfall.
       if (result?.error) setError(result.error);
     });

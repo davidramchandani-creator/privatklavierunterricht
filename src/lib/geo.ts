@@ -5,7 +5,7 @@
 // externen Routing-Dienst funktioniert: die Schätzung aus Luftlinie und
 // Umwegfaktor ist für Distanzen im Winterthurer Umland gut genug, um Routen
 // sinnvoll zu ordnen. Wer es exakt will, hinterlegt einen OSRM-Server
-// (Umgebungsvariable OSRM_BASE_URL) — dann werden echte Fahrzeiten geholt und
+// (Umgebungsvariable OSRM_BASE_URL), dann werden echte Fahrzeiten geholt und
 // dauerhaft zwischengespeichert.
 // ============================================================
 
@@ -37,7 +37,7 @@ export function haversineMeter(a: Punkt, b: Punkt): number {
 
 /**
  * Umwegfaktor: Strassen sind länger als die Luftlinie. 1.35 ist ein
- * gängiger Wert für gewachsene Siedlungsgebiete — im Flachland mit
+ * gängiger Wert für gewachsene Siedlungsgebiete, im Flachland mit
  * Dorfstrassen eher zu tief als zu hoch angesetzt.
  */
 export const UMWEGFAKTOR = 1.35;
@@ -93,7 +93,7 @@ export function fahrzeitMitCache(
     const key = `${punktSchluessel(a)}|${punktSchluessel(b)}`;
     const treffer = cache.get(key);
     if (treffer != null) return treffer;
-    // Auch die Gegenrichtung akzeptieren – Fahrzeiten sind fast symmetrisch,
+    // Auch die Gegenrichtung akzeptieren, Fahrzeiten sind fast symmetrisch,
     // und ein zweiter API-Aufruf für dieselbe Strecke wäre Verschwendung.
     const rueck = cache.get(`${punktSchluessel(b)}|${punktSchluessel(a)}`);
     if (rueck != null) return rueck;
@@ -116,7 +116,7 @@ export function formatDauer(sekunden: number): string {
  * Navigationslink für eine ganze Tagesroute.
  *
  * Google Maps übernimmt Start, Zwischenstopps und Ziel in genau der
- * übergebenen Reihenfolge — die vom Planer berechnete wird also nicht
+ * übergebenen Reihenfolge, die vom Planer berechnete wird also nicht
  * nachträglich umsortiert. Der Rückweg nach Hause ist mit drin, weil er zur
  * Route gehört und mitgefahren werden muss.
  *
@@ -146,7 +146,7 @@ export function navigationsLink(zuhause: Punkt, stationen: Punkt[]): string | nu
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
-/** Mittelpunkt mehrerer Punkte – für Cluster-Zentren. */
+/** Mittelpunkt mehrerer Punkte, für Cluster-Zentren. */
 export function schwerpunkt(punkte: Punkt[]): Punkt {
   if (punkte.length === 0) return { lat: 0, lng: 0 };
   const lat = punkte.reduce((s, p) => s + p.lat, 0) / punkte.length;

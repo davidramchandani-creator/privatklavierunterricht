@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Admin – Klavierunterricht",
+    title: "Admin: Klavierunterricht",
   },
 };
 import { logout } from "@/app/auth/actions";

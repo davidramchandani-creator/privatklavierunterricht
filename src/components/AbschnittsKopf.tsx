@@ -1,5 +1,5 @@
 /**
- * Kopfbereich eines Abschnitts — Kicker, Überschrift, Einleitung.
+ * Kopfbereich eines Abschnitts, Kicker, Überschrift, Einleitung.
  *
  * Vorher stand dieselbe Struktur viermal im Quelltext, und die Kopien waren
  * bereits auseinandergelaufen: die alten Abschnitte zentriert mit grauem
@@ -7,8 +7,8 @@
  * der Eindruck, eine Seite sei aus Teilen zusammengesetzt.
  *
  * **Linksbündig, nicht zentriert.** Zentrierte Überschriften über linksbündigem
- * Inhalt sind der Standardlook jeder Vorlage. Für die gewählte Richtung —
- * hell, luftig, editorial — beginnt Text an einer gemeinsamen Kante; das Auge
+ * Inhalt sind der Standardlook jeder Vorlage. Für die gewählte Richtung,
+ * hell, luftig, editorial. Beginnt Text an einer gemeinsamen Kante; das Auge
  * findet den Zeilenanfang, ohne ihn zu suchen.
  *
  * **Breite auf `max-w-2xl` begrenzt.** Über etwa 70 Zeichen je Zeile wird

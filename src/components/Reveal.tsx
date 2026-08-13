@@ -9,7 +9,7 @@ import { useEffect, useRef } from "react";
  *
  * **Ohne React-Zustand.** Die Sichtbarkeit wird direkt als Klasse am Element
  * gesetzt. Ein Zustand würde bei jedem Abschnitt einen Neuaufbau auslösen,
- * nur um eine CSS-Eigenschaft zu ändern — und React beschwert sich zu Recht
+ * nur um eine CSS-Eigenschaft zu ändern, und React beschwert sich zu Recht
  * über `setState` im Effekt.
  *
  * **Nur einmal.** Wer zurückscrollt, soll nicht dieselbe Animation noch
@@ -17,7 +17,7 @@ import { useEffect, useRef } from "react";
  * Beobachter hängt sich nach dem ersten Auslösen selbst aus.
  *
  * **Sichtbar, wenn kein JavaScript läuft.** Der Ausgangszustand im Markup ist
- * sichtbar. Versteckt wird erst, wenn der Effekt läuft — sonst bliebe die
+ * sichtbar. Versteckt wird erst, wenn der Effekt läuft. Sonst bliebe die
  * Seite ohne JavaScript leer, und das wäre ein hoher Preis für eine
  * Verzierung.
  */
@@ -27,7 +27,7 @@ export default function Reveal({
   className = "",
 }: {
   children: React.ReactNode;
-  /** Versatz in Millisekunden – für gestaffelte Reihen. */
+  /** Versatz in Millisekunden, für gestaffelte Reihen. */
   delay?: number;
   className?: string;
 }) {
@@ -53,7 +53,7 @@ export default function Reveal({
     };
 
     // Steht der Abschnitt beim Laden schon im Bild, sofort zeigen. Sonst
-    // bliebe er unsichtbar, bis jemand scrollt — auf grossen Bildschirmen
+    // bliebe er unsichtbar, bis jemand scrollt. Auf grossen Bildschirmen
     // trifft das den zweiten Abschnitt regelmässig.
     const beobachter = new IntersectionObserver(
       (eintraege) => {
@@ -65,7 +65,7 @@ export default function Reveal({
         }
       },
       // 15 % statt 0: Der Abschnitt soll sichtbar angekommen sein, bevor er
-      // sich bewegt – sonst ist die Animation vorbei, ehe man hinschaut.
+      // sich bewegt, sonst ist die Animation vorbei, ehe man hinschaut.
       { threshold: 0.15, rootMargin: "0px 0px -40px 0px" }
     );
 

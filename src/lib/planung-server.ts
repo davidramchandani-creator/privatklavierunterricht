@@ -1,5 +1,5 @@
 // ============================================================
-// Planungsrunde — Serverseite
+// Planungsrunde, Serverseite
 //
 // Der Ablauf einer Runde:
 //   1. Runde starten → alle aktiven Schüler bekommen eine Anfrage
@@ -71,7 +71,7 @@ export type AntwortStand = {
 /**
  * Wer hat geantwortet, wer nicht.
  *
- * Bewusst inklusive derer, die noch nichts eingetragen haben — das ist die
+ * Bewusst inklusive derer, die noch nichts eingetragen haben. Das ist die
  * eigentlich interessante Liste. Ohne sie müsste David selbst nachhalten,
  * bei wem er nachfragen muss.
  */
@@ -158,7 +158,7 @@ export async function ladeVerfuegbarkeit(
 /**
  * Der laufende Stundenplan: alle Schüler mit gesetztem Fixplatz.
  *
- * Grundlage fürs Einpassen einzelner Schüler mitten in der Periode — dort
+ * Grundlage fürs Einpassen einzelner Schüler mitten in der Periode, dort
  * wird nichts umgestellt, sondern nur gesucht, wo der Neue am wenigsten
  * zusätzliche Fahrzeit kostet.
  */
@@ -174,7 +174,7 @@ export async function ladeBestehendenPlan(
     .eq("status", "active")
     .eq("booking_mode", "fix")
     // Ein Testschüler wird gegen den Testplan eingepasst, nicht gegen die
-    // echten Termine – sonst wäre die Zusatzfahrzeit frei erfunden.
+    // echten Termine, sonst wäre die Zusatzfahrzeit frei erfunden.
     .eq("profiles.ist_test", istTest(kreis))
     .not("fixplatz_weekday", "is", null);
 
@@ -213,7 +213,7 @@ export type EinpassKontext = {
  *
  * Eine Einzelanfrage ist technisch eine Runde mit einem einzigen Adressaten.
  * Dadurch funktionieren Formular, Speichern und Zuteilungsrechnung
- * unverändert — nur der Kreis ist kleiner.
+ * unverändert, nur der Kreis ist kleiner.
  */
 export async function ladeOffeneEinzelanfrage(
   client: SupabaseClient,
@@ -242,7 +242,7 @@ export async function ladeOffeneEinzelanfrage(
 /**
  * Sucht die besten Plätze für einen einzelnen Schüler im laufenden Plan.
  *
- * Nimmt seine Verfügbarkeiten — bevorzugt die der offenen Runde, sonst die
+ * Nimmt seine Verfügbarkeiten, bevorzugt die der offenen Runde, sonst die
  * Dauerangabe aus dem Abo-Abschluss.
  */
 export async function findeEinpassungFuer(
@@ -340,7 +340,7 @@ export type ZuteilKontext = {
   mitAntwort: number;
   /**
    * Schüler mit laufendem Abo, die noch keinen Termin haben. Sie zahlen
-   * bereits — sie dürfen in keiner Runde untergehen.
+   * bereits, sie dürfen in keiner Runde untergehen.
    */
   wartend: { name: string; hatZeiten: boolean }[];
 };
@@ -349,7 +349,7 @@ export type ZuteilKontext = {
  * Rechnet die Zuteilung für eine Runde.
  *
  * Gibt zusätzlich aus, was die Fahrzeit **ohne** die Verfügbarkeitsangaben
- * wäre. Die Differenz ist der Preis der Einschränkungen — und damit die
+ * wäre. Die Differenz ist der Preis der Einschränkungen, und damit die
  * Grundlage für die Entscheidung, ob es sich lohnt, bei einzelnen Schülern
  * um mehr Flexibilität zu bitten.
  */
@@ -368,7 +368,7 @@ export async function rechneZuteilung(
   // Der Kreis richtet sich nach der Runde: ein Probelauf rechnet
   // ausschliesslich mit Testschülern, eine echte Runde lässt sie aus. Ohne
   // diese Grenze würde ein Probelauf beim Anwenden die echten Schüler
-  // umbuchen — der teuerste denkbare Fehler an dieser Stelle.
+  // umbuchen, der teuerste denkbare Fehler an dieser Stelle.
   const { data: rundeInfo } = await admin
     .from("planungsrunden")
     .select("nur_test")
@@ -407,7 +407,7 @@ export async function rechneZuteilung(
       .eq("runde_id", rundeId)
       .in("student_id", ids),
     // Dauerangaben aus dem Abo-Abschluss (ohne Runde). Sie greifen, wenn
-    // jemand zur laufenden Runde nichts eingetragen hat — sonst müsste er
+    // jemand zur laufenden Runde nichts eingetragen hat, sonst müsste er
     // dieselben Zeiten zweimal angeben und fiele sonst grundlos heraus.
     admin
       .from("student_verfuegbarkeit")
@@ -484,7 +484,7 @@ export async function rechneZuteilung(
   });
 
   // Vergleichsrechnung: alle können überall. Zeigt, was die Einschränkungen
-  // kosten – nicht als Vorwurf, sondern als Entscheidungsgrundlage.
+  // kosten, nicht als Vorwurf, sondern als Entscheidungsgrundlage.
   const alleFenster: Verfuegbarkeit[] = fenster.map((f) => ({
     wochentag: f.wochentag,
     fruehestens: f.beginn,
@@ -500,7 +500,7 @@ export async function rechneZuteilung(
   });
 
   // Wer bezahlt schon, hat aber noch keinen Termin? Diese Liste ist das
-  // Wichtigste an der ganzen Ansicht — hier darf niemand durchrutschen.
+  // Wichtigste an der ganzen Ansicht, hier darf niemand durchrutschen.
   const mitAbo = new Set((pakete ?? []).map((p) => p.student_id as string));
   const wartend = schueler
     .filter((s) => mitAbo.has(s.id) && s.bisher == null)

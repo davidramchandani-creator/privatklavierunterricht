@@ -1,6 +1,6 @@
 // ============================================================
 // Aufbereitung des Ratenplans für Portal und Admin.
-// Reine Funktionen – keine DB, kein React.
+// Reine Funktionen, keine DB, kein React.
 // ============================================================
 
 import { roundRappen, todayInZurich } from "@/lib/subscription";
@@ -38,7 +38,7 @@ export type InstalmentView = {
   invoiceId: string | null;
   /** Tage bis zur Fälligkeit; negativ = überfällig. */
   daysUntilDue: number;
-  /** Die nächste zu zahlende Rate – genau eine im Plan. */
+  /** Die nächste zu zahlende Rate, genau eine im Plan. */
   isNext: boolean;
 };
 
@@ -180,7 +180,7 @@ const OPEN_LOCK: BookingLock = {
  *  - Ratenzahlung   → erst buchbar, wenn die Anzahlung bestätigt bezahlt ist.
  *
  * Eine vom Schüler nur gemeldete Zahlung ("Ich habe bezahlt", Status
- * `pending_confirmation`) reicht bewusst nicht – sonst liesse sich die
+ * `pending_confirmation`) reicht bewusst nicht, sonst liesse sich die
  * Sperre durch einen Klick umgehen.
  */
 export function bookingLock(

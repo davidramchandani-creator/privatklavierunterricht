@@ -130,7 +130,7 @@ export default function PushToggle({
     setBusy(true);
     setMsg(null);
     const res = await sendTestPush();
-    setMsg("error" in res && res.error ? res.error : "Test gesendet – schau auf dein Gerät.");
+    setMsg("error" in res && res.error ? res.error : "Test gesendet, schau auf dein Gerät.");
     setBusy(false);
   }, []);
 

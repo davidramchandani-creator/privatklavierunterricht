@@ -1,5 +1,5 @@
 // ============================================================
-// Routenplaner — Schüler auf Wochentage und Uhrzeiten verteilen
+// Routenplaner, Schüler auf Wochentage und Uhrzeiten verteilen
 //
 // Aufgabe: Aus einer Liste von Schülern mit Adressen und Rhythmus einen
 // Wochenplan bauen, der möglichst wenig Fahrzeit kostet und in die
@@ -7,11 +7,11 @@
 //
 // Der Kern-Trick: Der Plan beschreibt einen **Zwei-Wochen-Zyklus**. Ein
 // wöchentlicher Schüler belegt eine Position in beiden Wochen. Zwei
-// zweiwöchentliche Schüler teilen sich eine Position — der eine in geraden,
+// zweiwöchentliche Schüler teilen sich eine Position, der eine in geraden,
 // der andere in ungeraden Wochen. Genau dort liegt der Kapazitätsgewinn:
 // eine Position trägt zwei Schüler statt anderthalb.
 //
-// Verfahren (Heuristik, kein exakter Optimierer — das wäre ein VRP und für
+// Verfahren (Heuristik, kein exakter Optimierer. Das wäre ein VRP und für
 // 15–25 Schüler überdimensioniert):
 //   1. Zweiwöchentliche Schüler paarweise auf gemeinsame Positionen legen
 //   2. Positionen nach Fahrtrichtung gruppieren („Sweep“), so viele Gruppen
@@ -22,9 +22,9 @@
 //
 // Die Reihenfolge von 1 und 2 ist wesentlich: Wird zuerst gruppiert, landen
 // zweiwöchentliche Schüler in verschiedenen Tagesgruppen und finden keinen
-// Partner mehr — genau der Partner ist aber der Kapazitätsgewinn.
+// Partner mehr, genau der Partner ist aber der Kapazitätsgewinn.
 //
-// Reine Funktionen — DB-Zugriff und Geokodierung liegen in routing-server.ts.
+// Reine Funktionen, DB-Zugriff und Geokodierung liegen in routing-server.ts.
 // ============================================================
 
 import {
@@ -51,7 +51,7 @@ export type PlanSchueler = {
    * Zeiten **je Wochentag**. Das ist der genaue Fall, und er hat Vorrang.
    *
    * Ohne diese Aufschlüsselung müsste man die Angaben zu einem einzigen
-   * Fenster verrechnen — und das geht schief, sobald jemand an
+   * Fenster verrechnen, und das geht schief, sobald jemand an
    * verschiedenen Tagen verschieden kann: „Di ab 18:00" und „Fr bis 18:00"
    * ergäben zusammengezogen 18:00 bis 18:00, also gar nichts. Der Schüler
    * fiele lautlos aus dem Plan, obwohl er am Dienstag den ganzen Abend Zeit
@@ -97,7 +97,7 @@ export type Position = {
   anfahrtSekunden: number;
   /**
    * Start- und Zielpunkt dieser Teilstrecke. Nötig, damit sich die Fahrzeit
-   * im Admin von Hand korrigieren lässt – Daves Ortskenntnis schlägt jede
+   * im Admin von Hand korrigieren lässt, Daves Ortskenntnis schlägt jede
    * Schätzung.
    */
   vonKoordinate: Punkt;
@@ -116,7 +116,7 @@ export type Tagesplan = {
   auslastung: number;
   /** Passt alles ins Fenster? */
   passt: boolean;
-  /** Auffälligkeiten, die David sehen sollte – z. B. unrentable Fahrten. */
+  /** Auffälligkeiten, die David sehen sollte. Z. B. unrentable Fahrten. */
   warnungen: string[];
 };
 
@@ -134,7 +134,7 @@ export type Routenplan = {
   lektionenProWoche: number;
   /** Belegte Positionen insgesamt. */
   positionen: number;
-  /** Fahrzeit je erteilte Lektion — die eigentliche Effizienzkennzahl. */
+  /** Fahrzeit je erteilte Lektion, die eigentliche Effizienzkennzahl. */
   fahrzeitProLektion: number;
 };
 
@@ -164,7 +164,7 @@ function tagErlaubt(s: PlanSchueler, wochentag: number): boolean {
  * Passt die Lektion in das persönliche Zeitfenster des Schülers?
  *
  * Tagesgenaue Angaben schlagen die pauschalen. Gibt es für den Tag mehrere
- * Fenster, genügt eines — der Schüler kann ja in jedem davon.
+ * Fenster, genügt eines. Der Schüler kann ja in jedem davon.
  */
 function zeitErlaubt(
   s: PlanSchueler,
@@ -190,7 +190,7 @@ function zeitErlaubt(
  * Frühestmöglicher Beginn, der die Zeiten aller Beteiligten achtet.
  *
  * Gibt es für den Tag mehrere Fenster, wird das erste genommen, das noch
- * erreichbar ist — sonst schöbe ein Schüler mit einem späten Zweitfenster den
+ * erreichbar ist, sonst schöbe ein Schüler mit einem späten Zweitfenster den
  * ganzen Abend nach hinten.
  */
 function spaetesterBeginn(
@@ -238,14 +238,14 @@ function peilung(zuhause: Punkt, ziel: Punkt): number {
  * der Kreis dann in zusammenhängende Sektoren geschnitten.
  *
  * Das ist für Hausbesuche das passendere Verfahren als k-Means. Beispiel:
- * Elgg liegt weit weg und hat keinen nahen Nachbarn — k-Means gibt ihm eine
+ * Elgg liegt weit weg und hat keinen nahen Nachbarn, k-Means gibt ihm eine
  * eigene Gruppe und damit einen eigenen Abend mit einer Stunde Fahrt für eine
  * Lektion. Tatsächlich liegt Elgg aber in derselben Richtung wie
  * Wiesendangen und Rickenbach: man fährt ohnehin daran vorbei. Nach Richtung
  * gruppiert landen die drei am selben Abend, und aus einer Stunde Leerfahrt
  * wird eine Route.
  *
- * Der Startpunkt des Schnitts ist die grösste Lücke im Kreis — dort trennt
+ * Der Startpunkt des Schnitts ist die grösste Lücke im Kreis, dort trennt
  * man am wenigsten zusammengehörige Ziele.
  */
 export function gruppiereNachRichtung(
@@ -261,7 +261,7 @@ export function gruppiereNachRichtung(
     .map((z) => ({ z, winkel: peilung(zuhause, z) }))
     .sort((a, b) => a.winkel - b.winkel);
 
-  // Grösste Lücke im Kreis finden – dort beginnt der erste Sektor.
+  // Grösste Lücke im Kreis finden, dort beginnt der erste Sektor.
   let luecke = -1;
   let start = 0;
   for (let i = 0; i < mitWinkel.length; i++) {
@@ -285,7 +285,7 @@ export function gruppiereNachRichtung(
   // Gleichmässig in k zusammenhängende Sektoren schneiden.
   //
   // Wichtig: die Grössen exakt austarieren statt mit Math.ceil zu rechnen.
-  // Bei 16 Zielen auf 5 Tage ergäbe ceil(16/5)=4 die Aufteilung 4-4-4-4-0 —
+  // Bei 16 Zielen auf 5 Tage ergäbe ceil(16/5)=4 die Aufteilung 4-4-4-4-0,
   // ein leerer Tag als reines Rundungsartefakt. Richtig ist 4-3-3-3-3.
   const gruppen: PlanSchueler[][] = [];
   const basis = Math.floor(rotiert.length / k);
@@ -323,7 +323,7 @@ export const MAX_PAAR_DISTANZ_M = 4000;
  * Legt zweiwöchentliche Schüler paarweise auf gemeinsame Positionen.
  *
  * Gepaart wird nach Nähe: zwei Schüler, die nahe beieinander wohnen, kosten
- * an derselben Position fast dieselbe Fahrzeit — der Plan bleibt in beiden
+ * an derselben Position fast dieselbe Fahrzeit, der Plan bleibt in beiden
  * Wochen stabil. Wer keinen nahen Partner hat, bekommt eine Position für
  * sich; die steht dann jede zweite Woche leer, aber der Plan stimmt.
  */
@@ -496,7 +496,7 @@ function baueTag(
     //
     // Vorher wurde starr zum frühestmöglichen Zeitpunkt geprüft: Wer ab 18:00
     // konnte, fiel an einem Abend ab 16:15 durch und landete unter „kein
-    // Platz mehr" — obwohl der ganze Abend frei war. Das Warten kostet
+    // Platz mehr", obwohl der ganze Abend frei war. Das Warten kostet
     // Leerzeit, deshalb steht es als Warnung im Tagesplan; es ist aber
     // allemal besser, als jemanden gar nicht einzuplanen.
     const start = spaetesterBeginn(schuelerHier, wochentag, frueheste);
@@ -539,7 +539,7 @@ function baueTag(
   );
   if (gebaut.length > 0 && gesamtFahrzeit / 60 > unterrichtsMinuten) {
     warnungen.push(
-      `Mehr Fahrzeit (${Math.round(gesamtFahrzeit / 60)} Min.) als Unterricht (${unterrichtsMinuten} Min.) – dieser Tag trägt sich nicht.`
+      `Mehr Fahrzeit (${Math.round(gesamtFahrzeit / 60)} Min.) als Unterricht (${unterrichtsMinuten} Min.), dieser Tag trägt sich nicht.`
     );
   }
   if (leerlaufMin >= 30) {
@@ -612,13 +612,13 @@ export function planeRouten(eingabe: PlanEingabe): Routenplan {
   const nichtEingeplant: NichtEingeplant[] = [];
 
   // Schüler ohne Koordinaten kann der Planer nicht verorten. Sichtbar melden,
-  // nicht still weglassen – sonst fehlt jemand im Plan und niemand merkt es.
+  // nicht still weglassen, sonst fehlt jemand im Plan und niemand merkt es.
   const planbar: PlanSchueler[] = [];
   for (const s of eingabe.schueler) {
     if (!Number.isFinite(s.lat) || !Number.isFinite(s.lng)) {
       nichtEingeplant.push({
         schueler: s,
-        grund: "Keine Koordinaten – Adresse fehlt oder ist nicht auffindbar.",
+        grund: "Keine Koordinaten, Adresse fehlt oder ist nicht auffindbar.",
       });
       continue;
     }
@@ -633,13 +633,13 @@ export function planeRouten(eingabe: PlanEingabe): Routenplan {
     planbar.push(s);
   }
 
-  // Schritt 1: Positionen bilden — und zwar **über alle Schüler hinweg**,
+  // Schritt 1: Positionen bilden, und zwar **über alle Schüler hinweg**,
   // bevor irgendetwas auf Tage verteilt wird.
   //
   // Zuerst zu gruppieren und erst dann zu paaren wäre der naheliegende, aber
   // falsche Weg: zweiwöchentliche Schüler landen dann in verschiedenen
   // Tagesgruppen und finden keinen Partner mehr. Genau der Partner ist aber
-  // der Kapazitätsgewinn — ohne ihn belegt jeder zweiwöchentliche Schüler
+  // der Kapazitätsgewinn, ohne ihn belegt jeder zweiwöchentliche Schüler
   // eine ganze Position und die halbe Zeit steht der Slot leer.
   const positionenGesamt = paareZweiwoechentliche(planbar);
 
@@ -751,7 +751,7 @@ export function planeRouten(eingabe: PlanEingabe): Routenplan {
         nichtEingeplant.push({
           schueler: s,
           grund:
-            "Kein Platz mehr in den Unterrichtsfenstern – Fenster erweitern oder Schüler auf Flex setzen.",
+            "Kein Platz mehr in den Unterrichtsfenstern, Fenster erweitern oder Schüler auf Flex setzen.",
         });
       }
     }
@@ -815,12 +815,12 @@ export type TagesanzahlVariante = {
 
 /**
  * Rechnet denselben Schülerstamm auf unterschiedlich viele Unterrichtstage
- * durch — von wenigen vollen Tagen bis zu allen Tagen dünn belegt.
+ * durch, von wenigen vollen Tagen bis zu allen Tagen dünn belegt.
  *
  * Der Grund, warum das die wichtigste Frage überhaupt ist: **jeder zusätzliche
  * Unterrichtstag kostet einen eigenen Hin- und Rückweg.** Vier volle Abende
  * brauchen weniger Fahrzeit als fünf halbleere, obwohl dieselben Lektionen
- * erteilt werden. Wer nach Umsatz pro Zeit fragt, muss hier hinschauen — nicht
+ * erteilt werden. Wer nach Umsatz pro Zeit fragt, muss hier hinschauen. Nicht
  * beim Lektionspreis.
  *
  * Die Varianten behalten immer die längsten Fenster (dort passen am meisten
@@ -875,7 +875,7 @@ export function vergleicheTagesanzahl(
 /**
  * Empfiehlt eine Variante: die wenigste Fahrzeit, sofern alle Schüler
  * untergebracht sind. Varianten, bei denen jemand hinausfällt, kommen nicht
- * in Frage — Kapazität geht vor Effizienz.
+ * in Frage, Kapazität geht vor Effizienz.
  */
 export function empfohleneVariante(
   varianten: TagesanzahlVariante[]
@@ -891,13 +891,13 @@ export function empfohleneVariante(
  * Stellt den optimierten Plan dem gegenüber, was ohne Planung entsteht.
  *
  * Die Vergleichsrechnung bildet das Flex-Modell nach: die Schüler verteilen
- * sich **ohne Rücksicht auf die Geografie** auf die Tage (hier alphabetisch —
+ * sich **ohne Rücksicht auf die Geografie** auf die Tage (hier alphabetisch,
  * so zufällig wie „wer zuerst bucht, kriegt den Slot“) und stehen innerhalb
  * des Tages in beliebiger Reihenfolge.
  *
  * Nur die Reihenfolge innerhalb eines Tages zu vergleichen wäre zu
  * wohlwollend: Der grössere Teil des Gewinns steckt in der Tageszuteilung
- * — dass Andelfingen und Henggart am selben Abend liegen und nicht an zwei
+ *, dass Andelfingen und Henggart am selben Abend liegen und nicht an zwei
  * verschiedenen.
  */
 export function vergleicheMitUnsortiert(
@@ -919,7 +919,7 @@ export function vergleicheMitUnsortiert(
     };
   }
 
-  // Alphabetisch durchnummerieren und reihum auf die Tage verteilen – das
+  // Alphabetisch durchnummerieren und reihum auf die Tage verteilen, das
   // entspricht „jeder sucht sich selbst einen Termin“.
   const sortiert = [...allePositionen].sort((a, b) => {
     const na = a.geradeWoche?.name ?? a.ungeradeWoche?.name ?? "";

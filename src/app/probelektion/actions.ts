@@ -102,7 +102,7 @@ export async function submitAnfrage(formData: FormData) {
   }
   // Die Nachricht ist Pflicht: Ohne sie steht David vor einer Anfrage, bei
   // der er nicht weiss, ob es um ein sechsjähriges Kind oder einen
-  // Wiedereinsteiger geht — und muss erst zurückfragen, bevor er antworten
+  // Wiedereinsteiger geht, und muss erst zurückfragen, bevor er antworten
   // kann. Das Pflichtfeld im Formular allein genügt nicht, es lässt sich
   // abschalten.
   if (!nachricht) {

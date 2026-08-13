@@ -46,7 +46,7 @@ const pakete = [
       "Zugang zum Schülerportal",
     ],
     hinweis:
-      "Wie viele Lektionen im Abo liegen, hängt von deinem Termin und den Ferien ab — du siehst die genaue Zahl vor dem Abschluss.",
+      "Wie viele Lektionen im Abo liegen, hängt von deinem Termin und den Ferien ab. Du siehst die genaue Zahl vor dem Abschluss.",
     cta: "Jetzt anfragen",
     href: "/probelektion",
   },
@@ -70,7 +70,7 @@ const pakete = [
       "Beste Planbarkeit für beide Seiten",
     ],
     hinweis:
-      "Wie viele Lektionen im Abo liegen, hängt von deinem Termin und den Ferien ab — du siehst die genaue Zahl vor dem Abschluss.",
+      "Wie viele Lektionen im Abo liegen, hängt von deinem Termin und den Ferien ab. Du siehst die genaue Zahl vor dem Abschluss.",
     cta: "Jetzt anfragen",
     href: "/probelektion",
   },
@@ -84,7 +84,7 @@ export default function Pakete() {
         <AbschnittsKopf
           kicker="Angebote"
           titel="Wähle dein Abo"
-          text="Ob einmalig zum Reinschnuppern oder mit festem Platz für langfristigen Fortschritt – hier findest du das passende Angebot."
+          text="Ob einmalig zum Reinschnuppern oder mit festem Platz für langfristigen Fortschritt, hier findest du das passende Angebot."
           className="mb-12"
         />
 
@@ -137,7 +137,7 @@ export default function Pakete() {
                         {paket.preisAlt} CHF
                       </span>
                       <span className="text-status-paid font-600 text-sm">
-                        –{paket.rabatt}% Rabatt
+                        {paket.rabatt}% Rabatt
                       </span>
                     </div>
                   )}
@@ -188,7 +188,7 @@ export default function Pakete() {
 
         {/*
           Der einzige Weg von der Startseite zur Preisseite. Dort steht die
-          ausführliche Übersicht samt Preisrechner — der hier auf der
+          ausführliche Übersicht samt Preisrechner, der hier auf der
           Startseite nichts verloren hatte, weil er eine Adresseingabe
           verlangt, bevor überhaupt ein Verhältnis besteht.
         */}

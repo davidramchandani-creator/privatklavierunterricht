@@ -38,7 +38,7 @@ function minusSekunden(hhmm: string, sekunden: number): string {
   return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 }
 
-/** Kleiner Erklärkasten – überall gleich, damit nichts unerklärt bleibt. */
+/** Kleiner Erklärkasten, überall gleich, damit nichts unerklärt bleibt. */
 function Infobox({
   titel,
   children,
@@ -183,7 +183,7 @@ export default function RoutenplanerBoard({
         <p>
           Es verteilt deine Schüler auf Wochentage und Uhrzeiten, sodass möglichst
           wenig Fahrzeit anfällt. Gruppiert wird nach <strong>Fahrtrichtung</strong>,
-          nicht nach Luftlinie — Elgg und Wiesendangen liegen auf derselben Strecke
+          nicht nach Luftlinie, Elgg und Wiesendangen liegen auf derselben Strecke
           und gehören darum auf denselben Abend.
         </p>
         <p>
@@ -204,7 +204,7 @@ export default function RoutenplanerBoard({
           <p className="font-600 text-[#1C244B]">Ausgangspunkt</p>
         </div>
         <p className="text-sm text-gray-500 leading-snug">
-          Jede Tagesroute beginnt und endet hier. Der Rückweg zählt mit — sonst
+          Jede Tagesroute beginnt und endet hier. Der Rückweg zählt mit, sonst
           sähe ein weit entfernter letzter Schüler künstlich günstig aus.
         </p>
         <div className="flex flex-col sm:flex-row gap-2">
@@ -233,7 +233,7 @@ export default function RoutenplanerBoard({
               {ohneAdresse} Schüler ohne Koordinaten
             </p>
             <p className="text-sm text-amber-800 leading-snug mt-0.5">
-              Sie können nicht eingeplant werden. Adressen einmal auflösen lassen —
+              Sie können nicht eingeplant werden. Adressen einmal auflösen lassen,
               das dauert etwa eine Sekunde pro Schüler und wird danach gespeichert.
             </p>
             <button
@@ -253,7 +253,7 @@ export default function RoutenplanerBoard({
           <p className="text-sm font-600 text-[#1C244B]">Womit rechnen?</p>
           <p className="text-sm text-gray-600 leading-snug">
             Es sind gerade Testschüler angelegt. Beide zusammen zu rechnen
-            ergäbe Fahrzeiten, die für keinen der beiden Fälle stimmen — darum
+            ergäbe Fahrzeiten, die für keinen der beiden Fälle stimmen. Darum
             entweder oder.
           </p>
           <div className="flex gap-2">
@@ -300,7 +300,7 @@ export default function RoutenplanerBoard({
             </span>
             <br />
             Flex-Schüler buchen selbst und lassen sich nicht fest einplanen. Ohne
-            Häkchen werden alle {schuelerGesamt} aktiven Schüler gerechnet — nützlich,
+            Häkchen werden alle {schuelerGesamt} aktiven Schüler gerechnet, nützlich,
             um zu sehen, was ein Umstieg auf Fixplatz bringen würde.
           </span>
         </label>
@@ -310,7 +310,7 @@ export default function RoutenplanerBoard({
             Puffer zwischen zwei Lektionen: {puffer} Min.
           </label>
           <p className="text-xs text-gray-500 leading-snug mt-0.5 mb-2">
-            Zusätzlich zur reinen Fahrzeit — Verabschieden, Instrument einpacken,
+            Zusätzlich zur reinen Fahrzeit, Verabschieden, Instrument einpacken,
             parkieren. Zu knapp gerechnet stimmt der Plan im Alltag nicht.
           </p>
           <input
@@ -359,8 +359,8 @@ export default function RoutenplanerBoard({
  * Fahrzeit einer Teilstrecke, per Klick korrigierbar.
  *
  * Die Schätzung aus Luftlinie und Umwegfaktor liegt für die meisten Strecken
- * nahe genug. Wo sie danebenliegt — Baustelle, Stau zur Unterrichtszeit, eine
- * Abkürzung, die kein Algorithmus kennt — ist die eingetippte Zahl die
+ * nahe genug. Wo sie danebenliegt, Baustelle, Stau zur Unterrichtszeit, eine
+ * Abkürzung, die kein Algorithmus kennt. Ist die eingetippte Zahl die
  * richtige. Sie gilt ab dem nächsten Rechnen und bleibt gespeichert.
  */
 function Fahrzeit({
@@ -486,7 +486,7 @@ function Ergebnisansicht({
         </div>
         <p className="text-sm text-gray-500 leading-snug mb-4">
           Jeder zusätzliche Tag bringt einen eigenen Hin- und Rückweg mit. Dieselben
-          Lektionen auf weniger Abende gelegt kosten darum weniger Fahrzeit — bei
+          Lektionen auf weniger Abende gelegt kosten darum weniger Fahrzeit, bei
           identischem Umsatz.
         </p>
 
@@ -615,7 +615,7 @@ function Ergebnisansicht({
                         {i + 1}
                       </span>
                       <span className="text-sm font-700 text-[#1C244B] tabular-nums whitespace-nowrap w-[92px] flex-shrink-0">
-                        {p.beginn}–{p.ende}
+                        {p.beginn}, {p.ende}
                       </span>
                       <div className="min-w-0 flex-1">
                         {woechentlich ? (
@@ -628,13 +628,13 @@ function Ergebnisansicht({
                               <span className="text-xs text-gray-400 mr-1.5">
                                 gerade KW
                               </span>
-                              {p.geradeWoche?.name ?? "— frei —"}
+                              {p.geradeWoche?.name ?? ", frei, "}
                             </p>
                             <p className="text-gray-900">
                               <span className="text-xs text-gray-400 mr-1.5">
                                 ungerade KW
                               </span>
-                              {p.ungeradeWoche?.name ?? "— frei —"}
+                              {p.ungeradeWoche?.name ?? ", frei, "}
                             </p>
                           </div>
                         )}
@@ -707,7 +707,7 @@ function Ergebnisansicht({
           <ul className="space-y-1.5">
             {plan.nichtEingeplant.map((n, i) => (
               <li key={i} className="text-sm text-gray-600">
-                <span className="font-600 text-gray-900">{n.schueler.name}</span> —{" "}
+                <span className="font-600 text-gray-900">{n.schueler.name}</span>, {" "}
                 {n.grund}
               </li>
             ))}

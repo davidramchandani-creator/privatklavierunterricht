@@ -50,7 +50,7 @@ function tagFrist(iso: string): string {
  * Verfügbarkeitsabfrage im Portal.
  *
  * Bewusst so knapp wie möglich: Tag antippen, Zeitspanne wählen, fertig.
- * Je mehr Felder, desto weniger Leute füllen es aus — und ein Formular, das
+ * Je mehr Felder, desto weniger Leute füllen es aus. Und ein Formular, das
  * niemand ausfüllt, ist schlechter als gar keins, weil die Planung dann auf
  * halben Daten aufsetzt.
  */
@@ -145,7 +145,7 @@ export default function VerfuegbarkeitFormular({
             <p>
               Gib möglichst <strong>mehrere Zeitfenster</strong> an. Ich fahre zu
               allen Schülern und plane die Route so, dass möglichst wenig Leerfahrt
-              entsteht — je mehr Auswahl ich habe, desto eher bekommst du eine
+              entsteht, je mehr Auswahl ich habe, desto eher bekommst du eine
               Zeit, die dir wirklich passt.
             </p>
             <p className="text-gray-500">
@@ -184,7 +184,7 @@ export default function VerfuegbarkeitFormular({
                     {t.lang}
                   </span>
                   <span className="text-xs text-gray-400">
-                    {f.beginn}–{f.ende} möglich
+                    {f.beginn}, {f.ende} möglich
                   </span>
                 </label>
 
@@ -297,7 +297,7 @@ export default function VerfuegbarkeitFormular({
 
         {aktiveTage.length === 1 && (
           <p className="text-xs text-gray-400 text-center leading-snug">
-            Nur ein Tag ausgewählt — mit mehreren findet sich eher eine Zeit, die
+            Nur ein Tag ausgewählt, mit mehreren findet sich eher eine Zeit, die
             dir wirklich passt.
           </p>
         )}

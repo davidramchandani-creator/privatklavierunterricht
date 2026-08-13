@@ -73,7 +73,7 @@ export async function sendTestPush() {
   const admin = await createAdminClient();
   const { sent } = await sendPushToUser(admin, user.id, {
     title: "Test-Benachrichtigung",
-    body: "Super – Benachrichtigungen funktionieren auf diesem Gerät.",
+    body: "Super, Benachrichtigungen funktionieren auf diesem Gerät.",
     url: "/schueler/portal",
     tag: "test",
   });

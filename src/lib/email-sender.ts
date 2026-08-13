@@ -18,7 +18,7 @@ function fromAddress(): string {
  * Testmodus: Umleitungsadresse, falls gesetzt.
  *
  * Solange `EMAIL_REDIRECT_TO` gesetzt ist, bekommt **kein** Schüler Post. Das
- * ist der einzige Ort, an dem umgeleitet wird — bewusst ganz unten am
+ * ist der einzige Ort, an dem umgeleitet wird. Bewusst ganz unten am
  * Versand, damit auch geplante Mails aus der Outbox und jede künftige
  * Mailstelle erfasst sind, ohne dass jemand daran denken muss.
  */

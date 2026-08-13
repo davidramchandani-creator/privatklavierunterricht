@@ -3,7 +3,7 @@
  * Das SVG ist schwarz; auf dunklen Flächen `invert` setzen, damit es weiss wird.
  *
  * `withText` blendet rechts daneben „privatklavierunterricht" ein.
- * Die Textfarbe folgt `currentColor` – die aufrufende Komponente steuert sie
+ * Die Textfarbe folgt `currentColor`, die aufrufende Komponente steuert sie
  * also über die Text-Klasse (z. B. `text-navy-900` oder `text-white`).
  */
 export default function Logo({
@@ -22,7 +22,7 @@ export default function Logo({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/Ueberschrift-hinzufuegen-4.svg"
-        alt="Privatklavierunterricht – David Ramchandani"
+        alt="Privatklavierunterricht, David Ramchandani"
         className={`${className} ${invert ? "[filter:brightness(0)_invert(1)]" : ""}`.trim()}
       />
       {withText && (

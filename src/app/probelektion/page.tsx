@@ -124,7 +124,7 @@ export default function ProbelektionPage() {
             </div>
 
             {/*
-              Die Fragen, die jemand genau hier hat — und die die Seite bisher
+              Die Fragen, die jemand genau hier hat. Und die die Seite bisher
               nirgends beantwortete. Wer sie sich selbst zusammensuchen muss,
               füllt das Formular oft gar nicht erst aus.
             */}
@@ -136,7 +136,7 @@ export default function ProbelektionPage() {
             </div>
 
             {/*
-              Der Ablauf. „Anfrage senden" heisst nicht „Termin gebucht" — ohne
+              Der Ablauf. „Anfrage senden" heisst nicht „Termin gebucht", ohne
               diesen Zwischenschritt wartet jemand auf eine Bestätigung, die er
               für schon erfolgt hält.
             */}
@@ -144,7 +144,7 @@ export default function ProbelektionPage() {
               <h2 className="font-700 text-navy-900 mb-4">So läuft es ab</h2>
               <ol className="space-y-3">
                 <Schritt nr={1} titel="Du schickst die Anfrage">
-                  Wunschtermin ist freiwillig — wenn dir keiner passt, finden
+                  Wunschtermin ist freiwillig, wenn dir keiner passt, finden
                   wir zusammen einen.
                 </Schritt>
                 <Schritt nr={2} titel="Ich melde mich">
@@ -159,7 +159,7 @@ export default function ProbelektionPage() {
             </div>
 
             {/*
-              Die häufigste ungestellte Frage — und ein echter Abbruchgrund.
+              Die häufigste ungestellte Frage, und ein echter Abbruchgrund.
               Wer kein Instrument hat, hält sich für nicht gemeint und schliesst
               die Seite, ohne je zu fragen. Die Miete verwandelt das Hindernis
               in eine Zahl, über die man nachdenken kann.
@@ -174,7 +174,7 @@ export default function ProbelektionPage() {
                     Brauchst du ein eigenes Instrument?
                   </h2>
                   <p className="text-sm text-gray-500 leading-relaxed mt-1.5">
-                    Zum Üben zwischen den Lektionen ja — mindestens ein
+                    Zum Üben zwischen den Lektionen ja, mindestens ein
                     Keyboard. Am besten ein E-Piano oder Klavier mit{" "}
                     <strong className="text-navy-900 font-600">88 Tasten</strong>{" "}
                     und Anschlagdynamik, damit du von Anfang an richtig lernst.
@@ -183,7 +183,7 @@ export default function ProbelektionPage() {
                     <p className="text-sm text-navy-900">
                       <strong className="font-700">Noch keins?</strong> Ich
                       vermittle ein Mietklavier für{" "}
-                      <strong className="font-700">CHF 65 im Monat</strong> —
+                      <strong className="font-700">CHF 65 im Monat</strong>,
                       so musst du nichts kaufen, bevor du weisst, ob es dir
                       liegt.
                     </p>
@@ -347,7 +347,7 @@ export default function ProbelektionPage() {
               Eine Aufnahme kurz vor dem Formular.
 
               Wer hierher gefolgt ist, hat vermutlich auf der Startseite
-              zugehört — bis hier unten liegen aber Terminraster und Ablauf
+              zugehört, bis hier unten liegen aber Terminraster und Ablauf
               dazwischen. Die kürzeste Aufnahme holt den Grund zurück, warum
               jemand überhaupt bucht, direkt bevor er tippt.
             */}
@@ -398,8 +398,8 @@ export default function ProbelektionPage() {
 
                 <div className="space-y-1.5">
                   <label className="text-sm font-500 text-gray-700">
-                    Telefon{" "}
-                    <span className="text-gray-400 font-400">— freiwillig</span>
+                    Telefon
+                    <span className="text-gray-400 font-400">, freiwillig</span>
                   </label>
                   <input
                     name="telefon"
@@ -490,7 +490,7 @@ function Schritt({
   );
 }
 
-/** Zürcher Kalenderdatum (YYYY-MM-DD) – DST-sicher */
+/** Zürcher Kalenderdatum (YYYY-MM-DD), DST-sicher */
 function zurichDateKey(d: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Zurich",
@@ -501,7 +501,7 @@ function zurichDateKey(d: Date): string {
 }
 
 /**
- * Montag der Zielwoche – immer auf Basis des Zürcher Kalenderdatums.
+ * Montag der Zielwoche, immer auf Basis des Zürcher Kalenderdatums.
  *
  * Wichtig gegen Hydration-Mismatches: Der Server rendert in UTC, der Browser in
  * Europe/Zurich. Mit `new Date().getDay()`/`setHours()` konnten Server und Client

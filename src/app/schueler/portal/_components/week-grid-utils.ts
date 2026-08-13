@@ -13,7 +13,7 @@ export function getMonday(weekOffset: number): Date {
   return monday;
 }
 
-/** Zürcher Kalenderdatum (YYYY-MM-DD) eines Instants – DST-sicher. */
+/** Zürcher Kalenderdatum (YYYY-MM-DD) eines Instants, DST-sicher. */
 export function zurichDateKey(d: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Zurich",

@@ -44,7 +44,7 @@ describe("Laufzeit nach Pakettyp und Rhythmus", () => {
   });
 });
 
-describe("addTermMonths – gebrochene Laufzeiten", () => {
+describe("addTermMonths, gebrochene Laufzeiten", () => {
   it("verhält sich bei ganzen Monaten wie addMonths", () => {
     expect(addTermMonths("2026-08-09", 4)).toBe("2026-12-09");
     expect(addTermMonths("2026-08-09", 0)).toBe("2026-08-09");
@@ -58,7 +58,7 @@ describe("addTermMonths – gebrochene Laufzeiten", () => {
   });
 
   it("rutscht am Monatsende nicht in den Folgemonat", () => {
-    // 31. Januar + 1 Monat gibt es nicht – muss auf den 28. klemmen.
+    // 31. Januar + 1 Monat gibt es nicht, muss auf den 28. klemmen.
     expect(addTermMonths("2026-01-31", 1)).toBe("2026-02-28");
   });
 });
@@ -72,7 +72,7 @@ describe("Wie lange die Lektionen wirklich dauern", () => {
     expect(lessonMonths(20, "zweiwoechentlich")).toBe(8.74);
   });
 
-  it("liegt immer deutlich unter der Laufzeit – das ist der Puffer", () => {
+  it("liegt immer deutlich unter der Laufzeit, das ist der Puffer", () => {
     for (const lektionen of [10, 20] as const) {
       for (const r of ["woechentlich", "zweiwoechentlich"] as const) {
         const typ = lektionen === 10 ? "10er" : "20er";
@@ -90,7 +90,7 @@ describe("Wie lange die Lektionen wirklich dauern", () => {
 describe("Ratenplan folgt der Unterrichtsdauer, nicht der Laufzeit", () => {
   // Der Grund: Wer seine 10 Lektionen wöchentlich bezieht, ist nach gut
   // 2 Monaten fertig. Laufzeitgekoppelte Raten liefen noch 2 Monate weiter,
-  // ohne dass Unterricht stattfindet – und überlappten mit dem Folgepaket.
+  // ohne dass Unterricht stattfindet, und überlappten mit dem Folgepaket.
   const faelle: Array<{
     typ: "10er" | "20er";
     preis: number;
@@ -113,7 +113,7 @@ describe("Ratenplan folgt der Unterrichtsdauer, nicht der Laufzeit", () => {
     });
   }
 
-  it("ändert den Gesamtpreis nie – nur die Verteilung", () => {
+  it("ändert den Gesamtpreis nie, nur die Verteilung", () => {
     for (const f of faelle) {
       const plan = buildPlanForRhythmus(f.typ, f.preis, "2026-08-09", f.rhythmus);
       const summe = plan.entries.reduce((s, e) => s + e.amount, 0);
@@ -133,7 +133,7 @@ describe("Ratenplan folgt der Unterrichtsdauer, nicht der Laufzeit", () => {
         "2026-08-09",
         lessonMonths(lektionen, f.rhythmus)
       );
-      // Höchstens ein paar Tage Überhang – nie Monate.
+      // Höchstens ein paar Tage Überhang, nie Monate.
       const tageDanach =
         (Date.parse(`${letzteRate}T00:00:00Z`) -
           Date.parse(`${lektionenFertig}T00:00:00Z`)) /
@@ -150,7 +150,7 @@ describe("Ratenplan folgt der Unterrichtsdauer, nicht der Laufzeit", () => {
     expect(zwei.instalmentAmount).toBeLessThan(woe.instalmentAmount);
   });
 
-  it("lässt die Gültigkeit unangetastet – der Puffer bleibt", () => {
+  it("lässt die Gültigkeit unangetastet, der Puffer bleibt", () => {
     // Die Raten wurden kürzer, das Ablaufdatum nicht. Wer krank wird, hat
     // weiterhin die volle Laufzeit, um die Lektionen zu beziehen.
     const plan = buildPlanForRhythmus("10er", 700, "2026-08-09", "woechentlich");
@@ -193,7 +193,7 @@ describe("Rhythmuswechsel mitten im Paket", () => {
   it("nimmt beim Wechsel auf den langsameren Rhythmus nie Zeit weg", () => {
     // Mit 1 Restlektion ergäbe die reine Rechnung 0.6 Monate = 43 Tage
     // *weniger* als bisher. Wer auf zweiwöchentlich wechselt, will aber mehr
-    // Zeit, nicht weniger – das bisherige Datum bleibt stehen.
+    // Zeit, nicht weniger. Das bisherige Datum bleibt stehen.
     const c = computeRhythmusChange({
       von: "woechentlich",
       nach: "zweiwoechentlich",
@@ -208,7 +208,7 @@ describe("Rhythmuswechsel mitten im Paket", () => {
 
   it("lässt sich nicht ausnutzen: später wechseln bringt weniger", () => {
     // Wer früh wechselt (viele Restlektionen), bekommt viel Zeit dazu.
-    // Wer spät wechselt, bekommt wenig – die Zeit hängt an den Lektionen,
+    // Wer spät wechselt, bekommt wenig. Die Zeit hängt an den Lektionen,
     // nicht am Wechselzeitpunkt.
     const frueh = computeRhythmusChange({
       von: "woechentlich",
@@ -227,7 +227,7 @@ describe("Rhythmuswechsel mitten im Paket", () => {
     expect(frueh.differenzTage).toBeGreaterThan(spaet.differenzTage);
   });
 
-  it("behandelt 0 Restlektionen wie 1 – nie sofort abgelaufen", () => {
+  it("behandelt 0 Restlektionen wie 1, nie sofort abgelaufen", () => {
     const c = computeRhythmusChange({
       von: "zweiwoechentlich",
       nach: "woechentlich",

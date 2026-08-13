@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import Preisrechner from "@/components/sections/Preisrechner";
 
 export const metadata: Metadata = {
-  title: "Preise & Transparenz – Privatklavierunterricht David Ramchandani",
+  title: "Preise & Transparenz: Privatklavierunterricht David Ramchandani",
   description:
     "Wie sich meine Unterrichtspreise zusammensetzen und warum sie fair und nachhaltig sind. Einzellektion CHF 85, Halbjahresabo CHF 70, Jahresabo CHF 65 pro Lektion.",
 };
@@ -19,7 +19,7 @@ const modelle = [
 /**
  * Beispielwerte für einen Dienstagstermin ab 01.10.2026. Die tatsächliche
  * Lektionszahl hängt von Wochentag und Ferienlage ab und wird beim Abschluss
- * exakt gerechnet – darum steht hier "ca." und keine Festzusage.
+ * exakt gerechnet, darum steht hier "ca." und keine Festzusage.
  */
 const abobeispiele = [
   {
@@ -45,11 +45,11 @@ const abobeispiele = [
 ];
 
 const leistungen = [
-  "Hohe Unterrichtsqualität – 16 Jahre Spielerfahrung, individuelle Methoden ohne Notenzwang",
+  "Hohe Unterrichtsqualität, 16 Jahre Spielerfahrung, individuelle Methoden ohne Notenzwang",
   "Vorbereitung und Nachbearbeitung jeder Lektion",
   "Nutzung von Material, Equipment und Software",
   "Faire Entlohnung, damit ich Studium und Unterricht langfristig vereinbaren kann",
-  "Günstigere Abos für langfristige Schüler – Musik braucht Zeit und Entwicklung",
+  "Günstigere Abos für langfristige Schüler, Musik braucht Zeit und Entwicklung",
 ];
 
 export default function PreisePage() {
@@ -118,7 +118,7 @@ export default function PreisePage() {
               Monatlich zahlbar
             </h2>
             <p className="text-gray-600 leading-relaxed">
-              Beim Abo zahlst du jeden Monat denselben Betrag – unabhängig davon,
+              Beim Abo zahlst du jeden Monat denselben Betrag, unabhängig davon,
               wie viele Lektionen in diesen Monat fallen. Im Dezember sind es wegen
               der Weihnachtsferien vielleicht zwei, im März fünf. Der Betrag bleibt
               gleich. Das ist der Sinn eines Abos: eine verlässliche Zahl auf beiden
@@ -153,7 +153,7 @@ export default function PreisePage() {
               </table>
             </div>
             <p className="text-sm text-gray-500 leading-relaxed">
-              In den Schulferien findet kein Unterricht statt – diese Termine sind
+              In den Schulferien findet kein Unterricht statt, diese Termine sind
               in der Lektionszahl bereits abgezogen und werden nicht verrechnet.
               Wie viele Lektionen dein Abo genau enthält, hängt von deinem
               Wochentag und der Ferienlage ab; du siehst die exakte Zahl mit allen
@@ -195,7 +195,7 @@ export default function PreisePage() {
               und trotzdem hohes Engagement erwarten. Mein Ziel ist es, ein Umfeld zu
               schaffen, in dem sich beide Seiten wertschätzen und bewusst sind, was sie
               wollen. Wer nur mal «ausprobieren» will, ohne zu üben, ist bei mir nicht
-              richtig – ich setze auf nachhaltige Entwicklung und Freude am Spielen.
+              richtig, ich setze auf nachhaltige Entwicklung und Freude am Spielen.
             </p>
           </div>
 
@@ -218,7 +218,7 @@ export default function PreisePage() {
 
           {/*
             Das Instrument gehört zu den Kosten, auch wenn es keine Lektion
-            ist. Wer hier rechnet, rechnet mit allem — und stolpert sonst
+            ist. Wer hier rechnet, rechnet mit allem. Und stolpert sonst
             später über einen Posten, den er nicht eingeplant hat.
           */}
           <div className="bg-surface rounded-2xl p-6 border border-[#EAECEF] space-y-3">
@@ -229,8 +229,8 @@ export default function PreisePage() {
               <h2 className="text-xl font-800 text-navy-900">Das Instrument</h2>
             </div>
             <p className="text-gray-600 leading-relaxed text-sm">
-              Zum Üben zwischen den Lektionen brauchst du ein Instrument zuhause
-              — mindestens ein Keyboard, am besten ein E-Piano oder Klavier mit
+              Zum Üben zwischen den Lektionen brauchst du ein Instrument
+              zuhause: mindestens ein Keyboard, am besten ein E-Piano oder Klavier mit
               88 Tasten und Anschlagdynamik. Damit lernst du von Anfang an die
               richtige Technik statt sie später umzulernen.
             </p>
@@ -238,9 +238,8 @@ export default function PreisePage() {
               Wenn du noch keins hast: Ich vermittle ein{" "}
               <strong className="text-navy-900 font-600">
                 Mietklavier für CHF 65 im Monat
-              </strong>
-              . So musst du nichts kaufen, bevor du weisst, ob dir das Spielen
-              liegt.
+              </strong>. So musst du nichts kaufen, bevor du weisst, ob dir das
+              Spielen liegt.
             </p>
           </div>
 
@@ -270,7 +269,7 @@ export default function PreisePage() {
         <div className="max-w-2xl mx-auto space-y-6">
           <h2 className="text-3xl font-800 text-white">Unverbindlich ausprobieren?</h2>
           <p className="text-white/70">
-            Die Probelektion ist kostenlos – lerne mich und meinen Unterricht in Ruhe
+            Die Probelektion ist kostenlos, lerne mich und meinen Unterricht in Ruhe
             kennen.
           </p>
           <Link href="/probelektion">

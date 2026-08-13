@@ -65,7 +65,7 @@ export default function Hoerproben({ proben }: { proben: Hoerprobe[] }) {
             <div>
               <p className="text-white font-700">Klingt nach deinem Ding?</p>
               <p className="text-white/60 text-sm mt-0.5">
-                In der Probelektion spielen wir zusammen — unverbindlich, kein
+                In der Probelektion spielen wir zusammen. Unverbindlich, kein
                 Abo nötig.
               </p>
             </div>
@@ -86,7 +86,7 @@ export default function Hoerproben({ proben }: { proben: Hoerprobe[] }) {
 /**
  * Eine einzelne Hörprobe, die sich selbst verwaltet.
  *
- * Für Stellen ausserhalb der Startseite — etwa auf der Probelektionsseite,
+ * Für Stellen ausserhalb der Startseite, etwa auf der Probelektionsseite,
  * wo eine Aufnahme daran erinnert, warum man überhaupt hier ist. Dort gibt
  * es keine Geschwister, mit denen sie sich abstimmen müsste.
  */
@@ -124,11 +124,11 @@ function ProbenZeile({
   const [laedt, setLaedt] = useState(false);
   const [fehler, setFehler] = useState(false);
   const [analyse, setAnalyse] = useState<Analyse | null>(null);
-  // createMediaElementSource darf je Element nur einmal laufen – ein zweiter
+  // createMediaElementSource darf je Element nur einmal laufen, ein zweiter
   // Aufruf wirft, und ab dann ist der Ton weg.
   const analyseGestartet = useRef(false);
 
-  // AudioContext schliessen, wenn die Zeile verschwindet – ein offener
+  // AudioContext schliessen, wenn die Zeile verschwindet. Ein offener
   // Kontext je Aufnahme summiert sich, und Browser begrenzen die Anzahl.
   useEffect(() => {
     return () => analyse?.schliessen();
@@ -213,7 +213,7 @@ function ProbenZeile({
         Auf dem Handy gestapelt statt nebeneinander.
 
         Vorher lag alles in einer Zeile: Knopf, Titel, Wellenform, Dauer. Auf
-        einem 375-Pixel-Bildschirm blieben der Wellenform 75 Pixel — für
+        einem 375-Pixel-Bildschirm blieben der Wellenform 75 Pixel, für
         etwas, das 144 bräuchte. Sie war auf die Hälfte gequetscht und die
         Bewegung darin praktisch unsichtbar. Ab sm liegt wieder alles in
         einer Zeile, dort ist der Platz da.
@@ -272,7 +272,7 @@ function ProbenZeile({
       </div>
 
       {/*
-        Die Klaviatur erscheint nur, während gespielt wird — sie ist kein
+        Die Klaviatur erscheint nur, während gespielt wird. Sie ist kein
         Bedienelement, sondern die Antwort auf „was passiert gerade".
         Dauerhaft sichtbar wäre sie vier stumme Tastaturen untereinander.
       */}
@@ -311,7 +311,7 @@ function Wellenform({
   titel: string;
   onSpringen: (anteil: number) => void;
 }) {
-  // Auf schmalen Geräten weniger Balken – sonst werden sie dünner als ein
+  // Auf schmalen Geräten weniger Balken, sonst werden sie dünner als ein
   // Pixel und die Wellenform franst zu einem grauen Band aus.
   const [maxBalken, setMaxBalken] = useState(64);
   useEffect(() => {

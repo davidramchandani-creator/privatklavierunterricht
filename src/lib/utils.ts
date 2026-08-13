@@ -17,7 +17,7 @@ export function formatCHF(amount: number): string {
  * Alle Datums-/Zeit-Ausgaben laufen über `Europe/Zurich`, unabhängig davon,
  * in welcher Zeitzone der Server läuft (Vercel = UTC). Ohne diese feste Zone
  * zeigte das Admin-Portal UTC-Zeiten (z. B. 17:00) und das Schülerportal die
- * korrekte Lokalzeit (19:00) – derselbe Termin sah unterschiedlich aus.
+ * korrekte Lokalzeit (19:00), derselbe Termin sah unterschiedlich aus.
  */
 export const APP_TIMEZONE = "Europe/Zurich";
 

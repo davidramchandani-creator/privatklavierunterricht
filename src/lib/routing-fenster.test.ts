@@ -5,7 +5,7 @@ import { planeRouten, type PlanSchueler } from "./routing";
  * Der Fall, der in der Praxis aufgefallen ist.
  *
  * Ein Schüler gibt an: „Dienstag ab 18:00" und „Freitag bis 18:00". Beides
- * zusammen zu einer Grenze zu verrechnen ergibt 18:00 bis 18:00 — ein Fenster
+ * zusammen zu einer Grenze zu verrechnen ergibt 18:00 bis 18:00, ein Fenster
  * von null Minuten. Der Schüler verschwand daraufhin aus dem Plan mit der
  * Begründung, er sei an keinem Unterrichtstag verfügbar, obwohl er dienstags
  * den ganzen Abend Zeit hat.
@@ -75,7 +75,7 @@ describe("Zeiten je Wochentag", () => {
   });
 
   it("meldet nur dann „an keinem Tag verfügbar“, wenn es stimmt", () => {
-    // Mittwoch ist kein Unterrichtstag – hier ist die Meldung berechtigt.
+    // Mittwoch ist kein Unterrichtstag, hier ist die Meldung berechtigt.
     const plan = planeRouten({
       zuhause: ZUHAUSE,
       schueler: [

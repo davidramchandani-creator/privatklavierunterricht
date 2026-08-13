@@ -1,12 +1,12 @@
 // ============================================================
-// Fixplatz — die Terminserie eines Pakets
+// Fixplatz, die Terminserie eines Pakets
 //
 // Ein Fixplatz ist ein fester Wochentag + Uhrzeit über die ganze
 // Paketlaufzeit. Die Serie wird beim Kauf einmal komplett erzeugt, nicht
 // Lektion für Lektion gebucht. Genau darin liegt der Zeitgewinn: eine
 // planbare Route und keine laufende Terminverwaltung.
 //
-// Reine Funktionen — Kollisionsprüfung und DB-Zugriff liegen in
+// Reine Funktionen, Kollisionsprüfung und DB-Zugriff liegen in
 // fixplatz-server.ts.
 // ============================================================
 
@@ -69,7 +69,7 @@ export function describeFixplatz(
  * Erster Termin der Serie: der nächste passende Wochentag, der weit genug in
  * der Zukunft liegt.
  *
- * `minLeadHours` schützt die 24-Stunden-Regel — ein Fixplatz darf nicht mit
+ * `minLeadHours` schützt die 24-Stunden-Regel, ein Fixplatz darf nicht mit
  * einer Lektion morgen früh starten, nur weil heute zufällig der richtige
  * Wochentag ist.
  */
@@ -91,7 +91,7 @@ export function firstSeriesStart(
 
     if (kandidat.getTime() < frühestens) continue;
 
-    // Wochentag in Zürcher Lokalzeit prüfen, nicht in UTC – bei Abendterminen
+    // Wochentag in Zürcher Lokalzeit prüfen, nicht in UTC. Bei Abendterminen
     // liegt der UTC-Tag sonst falsch.
     const lokalerWochentag = new Date(
       Date.UTC(cal.y, cal.m - 1, cal.d)
@@ -105,7 +105,7 @@ export function firstSeriesStart(
     return kandidat;
   }
 
-  // Unerreichbar bei gültigem Wochentag – 28 Tage decken alles ab.
+  // Unerreichbar bei gültigem Wochentag, 28 Tage decken alles ab.
   throw new Error(
     `Kein passender Starttermin für ${WEEKDAY_LABELS[wunsch.weekday]} gefunden.`
   );
@@ -116,7 +116,7 @@ export function firstSeriesStart(
  *
  * Der Abstand wird in Kalendertagen gerechnet und die Uhrzeit anschliessend
  * neu in Zürcher Lokalzeit gesetzt. Dadurch bleibt die Lektion über die
- * Sommerzeitumstellung hinweg auf derselben Uhrzeit — ein reines
+ * Sommerzeitumstellung hinweg auf derselben Uhrzeit, ein reines
  * "+7×86400000 ms" würde im Herbst plötzlich eine Stunde früher landen.
  */
 export function fixplatzSeriesStarts(
@@ -157,7 +157,7 @@ export type FixplatzPruefung = {
   belegte: FixplatzSlot[];
   /** Alle Termine frei = Serie sofort buchbar. */
   vollstaendigFrei: boolean;
-  /** Letzter Termin der Serie — muss in die Laufzeit passen. */
+  /** Letzter Termin der Serie, muss in die Laufzeit passen. */
   letzterTermin: Date | null;
 };
 
@@ -167,7 +167,7 @@ export type FixplatzPruefung = {
  * Anders als bei einer normalen Serienbuchung ist ein einzelner belegter
  * Termin hier **kein Abbruchgrund**. Über 4 bis 12 Monate hinweg liegt fast
  * immer mal eine Ferienwoche oder ein Feiertag im Weg. Diese Lektionen werden
- * markiert und bekommen einen Ausweichtermin — die Serie als Ganzes bleibt
+ * markiert und bekommen einen Ausweichtermin, die Serie als Ganzes bleibt
  * bestehen. Ein Abbruch würde bedeuten, dass praktisch niemand je einen
  * Fixplatz buchen könnte.
  */
@@ -198,7 +198,7 @@ export function pruefeFixplatzSerie(
 
 /**
  * Anteil der Serie, der auf Anhieb klappt. Unter diesem Wert lohnt sich der
- * Fixplatz nicht — dann ist der Slot schlicht der falsche.
+ * Fixplatz nicht, dann ist der Slot schlicht der falsche.
  */
 export const MIN_FREIE_QUOTE = 0.7;
 
@@ -225,7 +225,7 @@ export type AusweichKandidat = {
  *
  * Die Rangfolge bildet die vereinbarte Kaskade ab: zuerst dieselbe Woche,
  * dann die Folgewoche. Innerhalb einer Stufe gewinnt, was dem ursprünglichen
- * Termin am nächsten kommt — gleiche Uhrzeit schlägt gleicher Wochentag,
+ * Termin am nächsten kommt, gleiche Uhrzeit schlägt gleicher Wochentag,
  * denn die gewohnte Uhrzeit ist für Schüler meist das Verbindlichere.
  *
  * Bewusst **keine** Rückerstattung und keine Gutschrift hier: das sind die
@@ -261,8 +261,8 @@ export function ausweichKandidaten(
     const gleicheZeit = Math.abs(minuten - originalMinuten) < 60000;
     const gleicherTag = new Date(tag).getUTCDay() === originalWochentag;
 
-    // Rang: zuerst alle Termine mit der **gewohnten Uhrzeit** – quer über die
-    // Wochentage –, erst danach andere Uhrzeiten. Andersherum (nach Datum
+    // Rang: zuerst alle Termine mit der **gewohnten Uhrzeit**, quer über die
+    // Wochentage hinweg, erst danach andere Uhrzeiten. Andersherum (nach Datum
     // sortiert) würden vier Vorschläge am selben Tag die Liste füllen und der
     // Schüler sähe gar keine Auswahl an Tagen.
     const rang =
@@ -282,7 +282,7 @@ export function ausweichKandidaten(
 
   kandidaten.sort((a, b) => a.stufe - b.stufe || a.rang - b.rang);
 
-  // Pro Stufe nur die besten paar zeigen – eine Liste mit 30 Vorschlägen
+  // Pro Stufe nur die besten paar zeigen, eine Liste mit 30 Vorschlägen
   // hilft niemandem. Zusätzlich höchstens zwei pro Kalendertag, damit die
   // Auswahl über mehrere Tage streut statt sich auf einem zu stapeln.
   const proStufe = new Map<number, number>();
@@ -303,7 +303,7 @@ export function ausweichKandidaten(
  * Passt die Serie in die Paketlaufzeit?
  *
  * Bei wöchentlichem Rhythmus brauchen 10 Lektionen gut 2 Monate, die Laufzeit
- * beträgt 4 — es bleibt reichlich Luft. Trotzdem geprüft, weil ein sehr
+ * beträgt 4, es bleibt reichlich Luft. Trotzdem geprüft, weil ein sehr
  * später Serienstart (z. B. Kauf kurz vor den Sommerferien) die letzte
  * Lektion hinter das Ablaufdatum schieben könnte.
  */

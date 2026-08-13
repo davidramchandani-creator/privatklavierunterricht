@@ -1,7 +1,7 @@
 // ============================================================
 // Live-Frequenzanalyse einer laufenden Aufnahme
 //
-// Für die *Wellenform* wäre eine Analyse zur Laufzeit falsch — sie bräuchte
+// Für die *Wellenform* wäre eine Analyse zur Laufzeit falsch, sie bräuchte
 // die ganze Datei entschlüsselt im Speicher, bevor überhaupt etwas zu sehen
 // ist. Darum ist die vorberechnet.
 //
@@ -23,13 +23,13 @@ export type Analyse = {
 /**
  * Hängt einen Analyser an ein Audio-Element.
  *
- * Gibt `null` zurück, wenn der Browser nicht mitspielt — dann bleibt die
+ * Gibt `null` zurück, wenn der Browser nicht mitspielt. Dann bleibt die
  * Klaviatur eben ruhig. Eine fehlende Verzierung ist kein Grund, die
  * Wiedergabe zu gefährden.
  *
  * Wichtig: `createMediaElementSource` darf je Element nur **einmal**
  * aufgerufen werden, und ab dann läuft der Ton durch den Graphen. Wird der
- * Analyser nicht mit dem Ausgang verbunden, hört man nichts mehr — ein
+ * Analyser nicht mit dem Ausgang verbunden, hört man nichts mehr. Ein
  * Fehler, der sich als „Ton kaputt" zeigt und nicht als „Animation kaputt".
  */
 export function starteAnalyse(el: HTMLAudioElement): Analyse | null {
@@ -44,7 +44,7 @@ export function starteAnalyse(el: HTMLAudioElement): Analyse | null {
     const ctx = new Ctor();
     const quelle = ctx.createMediaElementSource(el);
     const analyser = ctx.createAnalyser();
-    // 2048 gibt bei 48 kHz rund 23 Hz je Feld – fein genug, um einzelne
+    // 2048 gibt bei 48 kHz rund 23 Hz je Feld, fein genug, um einzelne
     // Töne im unteren Bereich auseinanderzuhalten.
     analyser.fftSize = 2048;
     // Ohne Glättung zappeln die Tasten im Takt der Bildwiederholrate statt
@@ -60,7 +60,7 @@ export function starteAnalyse(el: HTMLAudioElement): Analyse | null {
     return {
       lesen(tasten: number) {
         // Browser halten den Kontext angehalten, bis eine Geste kommt. Der
-        // Klick auf Abspielen ist eine – hier nachziehen, falls nötig.
+        // Klick auf Abspielen ist eine, hier nachziehen, falls nötig.
         if (ctx.state === "suspended") void ctx.resume();
 
         analyser.getByteFrequencyData(daten);

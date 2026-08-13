@@ -211,7 +211,7 @@ async function sendRenewalNotices(
 ): Promise<number> {
   const until = new Date(now.getTime() + RENEWAL_NOTICE_DAYS * 86400000);
 
-  // Alle bald ablaufenden Perioden – mit und ohne Verlängerung.
+  // Alle bald ablaufenden Perioden, mit und ohne Verlängerung.
   //
   // Bisher wurden nur Pakete mit `auto_renew` benachrichtigt. Beim Abo ist
   // aber gerade der andere Fall wichtig: Wer die Verlängerung abgeschaltet
@@ -304,7 +304,7 @@ async function findeAufgebrauchtePakete(
     // Beim alten Lektionspaket war "aufgebraucht" gleichbedeutend mit
     // "fertig". Beim Abo ist es das nicht: Gekauft wird die Laufzeit, nicht
     // die Lektionszahl. Ein flexibler Schüler, der seine 20 Lektionen in zwei
-    // statt sechs Monaten bezieht, würde hier sonst sein Abo beenden – und
+    // statt sechs Monaten bezieht, würde hier sonst sein Abo beenden. Und
     // die vier restlichen Monatsbeträge nie bezahlen.
     if (pkg.abo_variante) continue;
 
@@ -313,7 +313,7 @@ async function findeAufgebrauchtePakete(
     if (total <= 0 || used < total) continue;
 
     // Wann war die letzte gebuchte Lektion? Erst eine Woche danach wird
-    // geschlossen – vorher könnte noch ein Ausweichtermin dazukommen.
+    // geschlossen, vorher könnte noch ein Ausweichtermin dazukommen.
     const { data: letzte } = await admin
       .from("appointments")
       .select("start_at")
@@ -337,7 +337,7 @@ async function findeAufgebrauchtePakete(
  * zusammen.
  *
  * Betroffen sind nur Raten ohne Rechnung. Was bereits fakturiert ist, bleibt
- * unangetastet — eine Rechnung, die draussen ist, schreibt man nicht um.
+ * unangetastet, eine Rechnung, die draussen ist, schreibt man nicht um.
  *
  * Mit lektionsgekoppelten Raten ist dieser Fall selten geworden: bei drei der
  * vier Paketvarianten bleibt beim Abschluss nichts offen. Übrig bleibt vor
@@ -389,7 +389,7 @@ async function zieheRestratenZusammen(
       .eq("id", r.id);
   }
 
-  // Sofort in Rechnung stellen – der Unterricht ist erbracht.
+  // Sofort in Rechnung stellen, der Unterricht ist erbracht.
   const ergebnis = await issueInstalmentInvoice(
     admin,
     {
@@ -417,7 +417,7 @@ async function zieheRestratenZusammen(
  * Die Werte des Vorgängers einfach zu übernehmen wäre in der Hälfte der Fälle
  * falsch.
  *
- * Übernommen werden dagegen Rhythmus, Buchungsart und Fixplatz – das ist die
+ * Übernommen werden dagegen Rhythmus, Buchungsart und Fixplatz. Das ist die
  * Leistung, die der Schüler gekauft hat.
  */
 async function verlaengereAbo(
@@ -576,7 +576,7 @@ async function processExpiredPackages(
     .from("packages")
     .select(PACKAGE_FIELDS)
     .eq("status", "active")
-    // Während einer Pause bleibt `expires_at` auf dem alten Stand stehen –
+    // Während einer Pause bleibt `expires_at` auf dem alten Stand stehen,
     // die Restlaufzeit liegt in `pause_remaining_seconds`. Ohne diese Zeile
     // würde ein pausiertes Paket ablaufen, die Lektionen verfallen und bei
     // aktiver Auto-Verlängerung sogar ein neues Paket in Rechnung gestellt.
@@ -587,7 +587,7 @@ async function processExpiredPackages(
     .overrideTypes<PackageJobRow[]>();
 
   // Zwei Wege führen zum Abschluss: die Laufzeit ist um, oder die Lektionen
-  // sind aufgebraucht. Beide enden gleich – nur der Grund unterscheidet sich,
+  // sind aufgebraucht. Beide enden gleich, nur der Grund unterscheidet sich,
   // und davon hängt ab, ob Lektionen verfallen.
   const aufgebraucht = await findeAufgebrauchtePakete(admin, now);
   const gesehen = new Set((abgelaufen ?? []).map((p) => p.id));
@@ -605,7 +605,7 @@ async function processExpiredPackages(
       Number(pkg.lessons_total ?? 0) - Number(pkg.lessons_used ?? 0)
     );
 
-    // Altes Paket schliessen – zuerst, damit der Unique-Index
+    // Altes Paket schliessen, zuerst, damit der Unique-Index
     // `packages_one_active_per_student` das Folgepaket nicht blockiert.
     const { error: closeErr } = await admin
       .from("packages")
@@ -621,13 +621,13 @@ async function processExpiredPackages(
 
     // Noch offene Raten zu **einer** Schlussrechnung zusammenziehen.
     //
-    // Der Betrag ist sauber geschuldet – bezahlt wird das Paket, nicht die
+    // Der Betrag ist sauber geschuldet, bezahlt wird das Paket, nicht die
     // einzelne Lektion. Es geht allein um die Übersicht: liefe der alte
     // Ratenplan neben dem neuen weiter, sähe der Schüler zwei Zahlungspläne
     // gleichzeitig und wüsste nicht mehr, wofür er zahlt.
     await zieheRestratenZusammen(admin, pkg, now);
 
-    // Nicht genutzte Lektionen verfallen – darüber wird informiert.
+    // Nicht genutzte Lektionen verfallen, darüber wird informiert.
     if (remaining > 0) {
       await enqueueOnce(
         admin,
@@ -658,7 +658,7 @@ async function processExpiredPackages(
 
     // Abos haben ihren eigenen Weg: die neue Periode wird komplett neu
     // gerechnet, weil in einem Winterhalbjahr andere Ferien liegen als in
-    // einem Sommerhalbjahr – und damit eine andere Lektionszahl und ein
+    // einem Sommerhalbjahr, und damit eine andere Lektionszahl und ein
     // anderer Monatsbetrag herauskommt.
     if (pkg.abo_variante) {
       const ok = await verlaengereAbo(admin, pkg, profile, now);
@@ -667,7 +667,7 @@ async function processExpiredPackages(
     }
 
     // Rhythmus und Buchungsart des Vorgängers weiterführen. Wer einen
-    // Fixplatz am Dienstag um 17:15 hatte, will ihn behalten – ein
+    // Fixplatz am Dienstag um 17:15 hatte, will ihn behalten. Ein
     // Verlängerungspaket, das stillschweigend auf wöchentlich/flexibel
     // zurückfällt, wäre eine andere Leistung als die gekaufte.
     const rhythmus: Rhythmus =

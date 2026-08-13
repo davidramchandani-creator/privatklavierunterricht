@@ -1,0 +1,53 @@
+; ============================================================
+; Sicherungskopie der DNS-Zone bei Infomaniak
+; Ausgelesen am 13. August 2026 aus dem Infomaniak-Manager
+; (DNS-Zone → Erweiterte Ansicht), also die vollständige Zone,
+; nicht nur das, was sich von aussen abfragen lässt.
+;
+; Das ist der Rückweg. Geht beim Umzug etwas verloren, steht hier,
+; was dagewesen ist.
+;
+; SOA und NS stehen der Vollständigkeit halber hier, sie werden beim
+; neuen Anbieter NICHT nachgebaut — den Teil stellt jeder DNS-Anbieter
+; selbst. Nachzubauen sind die zehn übrigen Einträge.
+; ============================================================
+
+$TTL 86400
+
+@                     IN SOA   ns11.infomaniak.ch. hostmaster.infomaniak.ch. (2026051604 10800 3600 605800 86400)
+@               86400 IN NS    ns11.infomaniak.ch.
+@               86400 IN NS    ns12.infomaniak.ch.
+
+; ── Website (zeigt heute auf Infomaniak) ────────────────────
+@               300   IN A     185.125.27.109
+@               300   IN AAAA  2001:1600:0:aaaa::80:3c
+www             300   IN A     185.125.27.109
+www             300   IN AAAA  2001:1600:0:aaaa::80:3c
+
+; ── E-Mail: eingehend über Amazon SES ───────────────────────
+@               3600  IN MX 10 inbound-smtp.eu-west-1.amazonaws.com.
+
+; ── E-Mail: Absenderprüfung ─────────────────────────────────
+@               3600  IN TXT   "v=spf1 -all"
+_dmarc          3600  IN TXT   "v=DMARC1; p=reject;"
+
+; ── E-Mail: Versand über Resend ─────────────────────────────
+; Der DKIM-Wert ist die einzige Zeile, über die der Versand
+; überhaupt funktioniert (siehe docs/Umzug.md). Wert hier aus der
+; DNS-Abfrage, nicht abgetippt.
+resend._domainkey 3600 IN TXT "p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDR3ue4iTgC91fYs6CKpFHJ0yfnbbDkjIKSdq3PNOWM895ynkmwvYYYtYCM1A+zysnFyyG5C3DOwWsSJDROdJER0/11J455OoSXNWG1UrajrCjIDTPWfyvH+NFOYSill7jnq9CmyXGq7/iqNqDM9R5iJi1WHz5gJ9BwYp6uQLxNlQIDAQAB"
+send            3600  IN MX 10 feedback-smtp.eu-west-1.amazonses.com.
+send            3600  IN TXT   "v=spf1 include:amazonses.com ~all"
+
+; ============================================================
+; Was beim Umzug damit passiert
+;
+;   A und AAAA (@ und www)   → auf Vercel umbiegen
+;   alles Übrige             → unverändert übernehmen
+;   SOA und NS               → nicht anlegen
+;
+; Die beiden AAAA-Einträge sind der Punkt, an dem so ein Umzug
+; still halb misslingt: Biegt man nur A um, erreichen Besucher mit
+; IPv6 weiterhin die alte Seite. Man selbst sieht die neue und hält
+; alles für erledigt.
+; ============================================================

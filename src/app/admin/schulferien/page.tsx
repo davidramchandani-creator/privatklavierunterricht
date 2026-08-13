@@ -37,7 +37,7 @@ export default async function SchulferienPage() {
       <div>
         <h1 className="text-2xl font-800 text-[#1C244B]">Schulferien</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Unterrichtsfreie Zeiten — Grundlage für die Lektionszahl eines Abos.
+          Unterrichtsfreie Zeiten, Grundlage für die Lektionszahl eines Abos.
         </p>
       </div>
 

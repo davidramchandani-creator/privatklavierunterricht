@@ -121,7 +121,7 @@ export default function GruppenAnfrageCard({
           </div>
           {firstDate && lastDate && firstDate !== lastDate && (
             <p className="text-xs text-gray-400 mt-0.5">
-              {formatDateTime(firstDate)} – {formatDateTime(lastDate)}
+              {formatDateTime(firstDate)}, {formatDateTime(lastDate)}
             </p>
           )}
           {firstDate && firstDate === lastDate && (

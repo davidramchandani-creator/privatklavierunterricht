@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import PushToggle from "@/components/PushToggle";
 
 export const metadata: Metadata = {
-  title: "Benachrichtigungen – Privatklavierunterricht",
+  title: "Benachrichtigungen: Privatklavierunterricht",
 };
 
 const arten = [

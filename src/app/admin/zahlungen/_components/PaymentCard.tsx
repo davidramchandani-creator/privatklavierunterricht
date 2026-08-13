@@ -32,7 +32,7 @@ export type Invoice = {
   lesson_date: string | null;
   paid_at: string | null;
   studentName: string;
-  /** z. B. "10er-Paket – Rate 2/4"; bei Lektionsrechnungen leer. */
+  /** z. B. "10er-Paket, Rate 2/4"; bei Lektionsrechnungen leer. */
   description?: string | null;
   due_date?: string | null;
 };
@@ -261,7 +261,7 @@ export default function PaymentCard({ invoice }: { invoice: Invoice }) {
         ) : null}
       </div>
 
-      {/* Bottom sheets – via Portal an document.body, damit sie nicht von
+      {/* Bottom sheets, via Portal an document.body, damit sie nicht von
           transformierten/overflow-hidden-Vorfahren zerschossen werden. */}
       {mounted && sheet && createPortal(
         <div className="fixed inset-0 z-[100]" onClick={() => setSheet(null)}>

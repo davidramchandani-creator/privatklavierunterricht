@@ -32,7 +32,7 @@ export default function Footer() {
             </div>
             <p className="text-white/50 text-sm leading-relaxed">
               Individueller Klavierunterricht in Neftenbach und Umgebung.
-              Ohne Schema F – mit Gefühl und Verstand.
+              Ohne Schema F, mit Gefühl und Verstand.
             </p>
             <div className="flex gap-3 mt-4">
               <a
@@ -113,7 +113,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-white/30 text-xs">
-            © {new Date().getFullYear()} David Ramchandani – Alle Rechte
+            © {new Date().getFullYear()} David Ramchandani, Alle Rechte
             vorbehalten
           </p>
           <div className="flex items-center gap-4">

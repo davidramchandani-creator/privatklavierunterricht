@@ -4,7 +4,7 @@ import { getNextPublicSlot } from "@/app/probelektion/actions";
  * Nächsten freien Termin als lesbaren Text.
  *
  * Lag vorher als private Hilfsfunktion im Hero. Seit die mitlaufende
- * Buchungsleiste denselben Termin zeigt, braucht es eine Quelle statt zwei —
+ * Buchungsleiste denselben Termin zeigt, braucht es eine Quelle statt zwei.
  * sonst driften die beiden Darstellungen irgendwann auseinander und die Seite
  * behauptet an zwei Stellen etwas Verschiedenes.
  */
@@ -49,7 +49,7 @@ export function formatSlotKurz(iso: string): string {
 
 /**
  * Holt den nächsten freien Termin, ohne bei einem Fehler die Seite zu
- * gefährden. Fällt die Verfügbarkeit aus, steht dort „Auf Anfrage" — der
+ * gefährden. Fällt die Verfügbarkeit aus, steht dort „Auf Anfrage", der
  * Knopf bleibt in jedem Fall bedienbar. Jemanden wegen fehlender Termine
  * abzuweisen, verliert ihn endgültig.
  */

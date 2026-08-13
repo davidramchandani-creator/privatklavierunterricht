@@ -57,7 +57,7 @@ export default function PaketCard({
   }
 
   // Abos werden anders dargestellt als die alten Lektionspakete: Was zählt,
-  // ist die laufende Periode und der Monatsbetrag – nicht ein Lektionszähler,
+  // ist die laufende Periode und der Monatsbetrag, nicht ein Lektionszähler,
   // der gegen null läuft. Ein Abo geht ja weiter.
   if (paket.abo_variante) {
     return (
@@ -163,7 +163,7 @@ export default function PaketCard({
               day: "numeric",
               month: "short",
             })}{" "}
-            –{" "}
+            bis{" "}
             {new Date(upcomingAbsence.end_date).toLocaleDateString("de-CH", {
               timeZone: "Europe/Zurich",
               day: "numeric",
@@ -181,7 +181,7 @@ export default function PaketCard({
  * Darstellung eines laufenden Abos.
  *
  * Bewusst ohne den Lektionszähler des alten Paketmodells. Bei einem Abo läuft
- * nichts gegen null – gekauft ist die Laufzeit, und was zählt, ist wie weit
+ * nichts gegen null, gekauft ist die Laufzeit, und was zählt, ist wie weit
  * die Periode fortgeschritten ist und was monatlich läuft.
  */
 function AboKarte({
@@ -246,8 +246,8 @@ function AboKarte({
         )
       : paket.booking_mode === "fix"
         ? paket.rhythmus === "zweiwoechentlich"
-          ? "Fester Termin alle zwei Wochen – wird noch festgelegt"
-          : "Fester Termin jede Woche – wird noch festgelegt"
+          ? "Fester Termin alle zwei Wochen, wird noch festgelegt"
+          : "Fester Termin jede Woche, wird noch festgelegt"
         : paket.rhythmus === "zweiwoechentlich"
           ? "Alle zwei Wochen, frei wählbar"
           : "Jede Woche, frei wählbar";
@@ -338,7 +338,7 @@ function AboKarte({
               day: "numeric",
               month: "short",
             })}{" "}
-            –{" "}
+            bis{" "}
             {new Date(upcomingAbsence.end_date).toLocaleDateString("de-CH", {
               timeZone: "Europe/Zurich",
               day: "numeric",

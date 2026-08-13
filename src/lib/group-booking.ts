@@ -82,7 +82,7 @@ async function slotBookableForStudent(
 
 /**
  * Setzt Dauer + end_at einer Session konsistent auf die aktuelle Teilnehmerzahl
- * (45 Min bei 1–2, 90 Min ab 3 – pro Kurs konfigurierbar). Aktualisiert alle
+ * (45 Min bei 1–2, 90 Min ab 3. Pro Kurs konfigurierbar). Aktualisiert alle
  * Teilnehmer-Termine, verschiebt die geplanten Zahlungsmails auf das neue Ende
  * und synchronisiert den Kalender. Idempotent (no-op, wenn Dauer schon stimmt).
  */
@@ -199,7 +199,7 @@ export async function adminCreateGroupSessions(
   if (created === 0) {
     return {
       error:
-        "Keine Sessions erstellt – die gewählten Zeiten liegen ausserhalb der Verfügbarkeit, sind belegt oder in der Vergangenheit.",
+        "Keine Sessions erstellt, die gewählten Zeiten liegen ausserhalb der Verfügbarkeit, sind belegt oder in der Vergangenheit.",
     };
   }
   return { success: true, created, skipped };

@@ -122,7 +122,7 @@ export default function RatenBoard({ zeilen }: { zeilen: RatenZeile[] }) {
         setBusyId(null);
         return;
       }
-      // Erst die Serverdaten neu laden, dann den Spinner beenden – sonst
+      // Erst die Serverdaten neu laden, dann den Spinner beenden. Sonst
       // springt die Zeile kurz auf den alten Stand zurück.
       router.refresh();
       setBusyId(null);
@@ -143,7 +143,7 @@ export default function RatenBoard({ zeilen }: { zeilen: RatenZeile[] }) {
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* Kennzahlen – auf dem Handy 2 Spalten, "ausstehend" volle Breite */}
+      {/* Kennzahlen, auf dem Handy 2 Spalten, "ausstehend" volle Breite */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
         <div className="bg-white rounded-2xl border border-[#EAECEF] p-3.5 sm:p-4">
           <p className="text-xs sm:text-[13px] text-gray-500">Überfällig</p>
@@ -165,7 +165,7 @@ export default function RatenBoard({ zeilen }: { zeilen: RatenZeile[] }) {
         </div>
       </div>
 
-      {/* Filter – horizontal scrollbar auf schmalen Displays */}
+      {/* Filter, horizontal scrollbar auf schmalen Displays */}
       <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {FILTERS.map((f) => (
           <button

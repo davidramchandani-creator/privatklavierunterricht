@@ -1,5 +1,6 @@
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.ch";
+import { BASIS_URL } from "@/lib/seo";
+
+const APP_URL = BASIS_URL;
 
 function fmtDateTime(iso: string): string {
   try {
@@ -140,7 +141,7 @@ export function renderEmail(
         subject: "Deine Nachricht ist angekommen",
         html: baseWrapper(
           `<p>Hallo ${payload.vorname ?? ""}</p>
-           <p>Danke für deine Nachricht – ich habe sie erhalten und melde mich
+           <p>Danke für deine Nachricht, ich habe sie erhalten und melde mich
               so bald wie möglich bei dir.</p>
            ${payload.betreff ? `<p><strong>Betreff:</strong> ${payload.betreff}</p>` : ""}
            <p style="background:#f9fafb;border-left:3px solid #1C244B;padding:12px 16px;color:#4b5563;white-space:pre-wrap;">${String(payload.nachricht ?? "")}</p>
@@ -175,7 +176,7 @@ export function renderEmail(
           `<p>Hallo${payload.student_name ? " " + payload.student_name : ""}</p>
            <p>Kurze Erinnerung: Deine Klavierlektion findet <strong>${start}</strong> statt.</p>
            <p>Falls es dir nicht passt, kannst du den Termin <strong>bis 24 Stunden vorher</strong>
-              im Portal verschieben oder stornieren – danach ist das leider nicht mehr möglich.</p>
+              im Portal verschieben oder stornieren, danach ist das leider nicht mehr möglich.</p>
            <p style="text-align:center;margin:28px 0;">
              <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Schülerportal</a>
            </p>
@@ -186,7 +187,7 @@ export function renderEmail(
     case "lesson_reminder_2h": {
       const start = fmtDateTime(String(payload.start_at));
       return {
-        subject: `Gleich geht's los – Klavierunterricht um ${start}`,
+        subject: `Gleich geht's los: Klavierunterricht um ${start}`,
         html: baseWrapper(
           `<p>Hallo${payload.student_name ? " " + payload.student_name : ""}</p>
            <p>Deine Klavierlektion beginnt <strong>${start}</strong>. Bis gleich!</p>
@@ -197,13 +198,13 @@ export function renderEmail(
     case "payment_overdue": {
       const amount = Number(payload.amount ?? 0).toFixed(2);
       return {
-        subject: `Zahlungserinnerung – CHF ${amount} offen`,
+        subject: `Zahlungserinnerung: CHF ${amount} offen`,
         html: baseWrapper(
           `<p>Hallo${payload.student_name ? " " + payload.student_name : ""}</p>
            <p>Der Betrag von <strong>CHF ${amount}</strong>${
              payload.invoice_number ? ` (Rechnung ${payload.invoice_number})` : ""
            } war am <strong>${fmtDate(String(payload.due_date))}</strong> fällig und ist noch offen.</p>
-           <p>Diese erste Erinnerung ist rein informativ – bitte begleiche den Betrag
+           <p>Diese erste Erinnerung ist rein informativ, bitte begleiche den Betrag
               bei Gelegenheit im Portal.</p>
            <p style="text-align:center;margin:28px 0;">
              <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Jetzt bezahlen</a>
@@ -221,7 +222,7 @@ export function renderEmail(
           `<p>Hallo${payload.student_name ? " " + payload.student_name : ""}</p>
            <p>Dein Paket ist noch bis <strong>${fmtDate(String(payload.expires_at))}</strong> gültig${
              remaining > 0
-               ? ` – du hast noch <strong>${remaining} Lektion${remaining === 1 ? "" : "en"}</strong> offen`
+               ? `, du hast noch <strong>${remaining} Lektion${remaining === 1 ? "" : "en"}</strong> offen`
                : ""
            }.</p>
            <p>Nicht genutzte Lektionen verfallen nach Ablauf. Am besten buchst du deine
@@ -242,7 +243,7 @@ export function renderEmail(
           : [];
       const count = desiredStarts.length;
 
-      const subject = `Neue Terminanfrage – ${studentName} (${count} Termin${count !== 1 ? "e" : ""})`;
+      const subject = `Neue Terminanfrage: ${studentName} (${count} Termin${count !== 1 ? "e" : ""})`;
       const dateRows = desiredStarts
         .map(
           (s) =>
@@ -319,7 +320,7 @@ export function renderEmail(
       const lessonsCount = Number(payload.lessons_count ?? starts.length);
       const intervalDays = Number(payload.interval_days ?? 0);
 
-      const subject = "Deine Termine wurden bestätigt – Klavierunterricht";
+      const subject = "Deine Termine wurden bestätigt: Klavierunterricht";
       const displayedStarts = starts.slice(0, 10);
       const remaining = starts.length - displayedStarts.length;
 
@@ -353,7 +354,7 @@ export function renderEmail(
     case "booking_rejected": {
       const reason = payload.reason ? String(payload.reason) : null;
 
-      const subject = "Deine Terminanfrage – Absage";
+      const subject = "Deine Terminanfrage: Absage";
       const content = `
         <p style="margin:0 0 16px;">
           Leider kann ich deinen angefragten Termin nicht bestätigen.
@@ -412,7 +413,7 @@ export function renderEmail(
         : null;
       const formattedDate = startAt ? fmtDateTime(startAt) : "–";
 
-      const subject = `Termin storniert – ${startAt ? fmtDate(startAt) : "Unbekanntes Datum"}`;
+      const subject = `Termin storniert: ${startAt ? fmtDate(startAt) : "Unbekanntes Datum"}`;
       const content = `
         <p style="margin:0 0 16px;">
           ${
@@ -447,7 +448,7 @@ export function renderEmail(
       const originalStart = String(payload.original_start ?? "");
       const proposedStart = String(payload.proposed_start ?? "");
 
-      const subject = `Verschiebungswunsch – ${studentName}`;
+      const subject = `Verschiebungswunsch: ${studentName}`;
       const content = `
         <p style="margin:0 0 16px;"><strong>${studentName}</strong> möchte einen Termin verschieben:</p>
         <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;">
@@ -476,7 +477,7 @@ export function renderEmail(
 
       const subject = "Dein Verschiebungswunsch wurde erhalten";
       const content = `
-        <p style="margin:0 0 16px;">Vielen Dank – ich habe deinen Verschiebungswunsch erhalten.</p>
+        <p style="margin:0 0 16px;">Vielen Dank, ich habe deinen Verschiebungswunsch erhalten.</p>
         <p style="margin:0 0 16px;">
           David prüft den neuen Zeitpunkt und bestätigt ihn so bald wie möglich.
           Bis dahin bleibt dein bisheriger Termin gültig.
@@ -498,7 +499,7 @@ export function renderEmail(
     case "reschedule_confirmed": {
       const proposedStart = String(payload.proposed_start ?? "");
 
-      const subject = "Dein Termin wurde verschoben – Klavierunterricht";
+      const subject = "Dein Termin wurde verschoben: Klavierunterricht";
       const content = `
         <p style="margin:0 0 16px;font-size:18px;font-weight:bold;color:#1C244B;">
           Dein Termin wurde verschoben ✓
@@ -519,7 +520,7 @@ export function renderEmail(
       const originalStart = String(payload.original_start ?? "");
       const reason = payload.reason ? String(payload.reason) : null;
 
-      const subject = "Dein Verschiebungswunsch – Absage";
+      const subject = "Dein Verschiebungswunsch: Absage";
       const content = `
         <p style="margin:0 0 16px;">
           Leider kann ich deinen Verschiebungswunsch nicht annehmen.
@@ -603,11 +604,11 @@ export function renderEmail(
 
       const chf = amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const subject = isPackage
-        ? `Zahlungsaufforderung – ${description}`
-        : `Zahlungsaufforderung – Klavierstunde vom ${lessonDate ? fmtDate(lessonDate) : ""}`;
+        ? `Zahlungsaufforderung: ${description}`
+        : `Zahlungsaufforderung: Klavierstunde vom ${lessonDate ? fmtDate(lessonDate) : ""}`;
       const introText = isPackage
         ? `vielen Dank für deine Buchung! Bitte überweise den Betrag für dein ${description} per TWINT.`
-        : `deine Klavierstunde hat stattgefunden – vielen Dank! Bitte überweise den Betrag per TWINT.`;
+        : `deine Klavierstunde hat stattgefunden, vielen Dank! Bitte überweise den Betrag per TWINT.`;
       const content = `
         <p style="margin:0 0 16px;">Hallo ${studentName ? studentName.split(" ")[0] : ""},</p>
         <p style="margin:0 0 16px;">
@@ -674,10 +675,10 @@ export function renderEmail(
       const chf = amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const subject = isPackage
         ? `Rechnung ${invoiceNumber} – ${description}`
-        : `Rechnung ${invoiceNumber} – Klavierstunde vom ${lessonDate ? fmtDate(lessonDate) : ""}`;
+        : `Rechnung ${invoiceNumber}: Klavierstunde vom ${lessonDate ? fmtDate(lessonDate) : ""}`;
       const introText = isPackage
         ? `vielen Dank für deine Buchung! Anbei die QR-Rechnung für dein ${description}.`
-        : `deine Klavierstunde hat stattgefunden – vielen Dank! Anbei deine Rechnung als QR-Rechnung.`;
+        : `deine Klavierstunde hat stattgefunden, vielen Dank! Anbei deine Rechnung als QR-Rechnung.`;
       const content = `
         <p style="margin:0 0 16px;">Hallo ${studentName ? studentName.split(" ")[0] : ""},</p>
         <p style="margin:0 0 16px;">
@@ -736,7 +737,7 @@ export function renderEmail(
     case "group_session_created": {
       const courseTitle = String(payload.course_title ?? "Gruppenkurs");
       const startAt = String(payload.start_at ?? "");
-      const subject = `Gruppenlektion eröffnet – ${courseTitle}`;
+      const subject = `Gruppenlektion eröffnet: ${courseTitle}`;
       const content = `
         <p style="margin:0 0 16px;">Hallo,</p>
         <p style="margin:0 0 16px;">
@@ -763,7 +764,7 @@ export function renderEmail(
     case "group_session_joined": {
       const courseTitle = String(payload.course_title ?? "Gruppenkurs");
       const startAt = String(payload.start_at ?? "");
-      const subject = `Anmeldung bestätigt – ${courseTitle}`;
+      const subject = `Anmeldung bestätigt: ${courseTitle}`;
       const content = `
         <p style="margin:0 0 16px;">Hallo,</p>
         <p style="margin:0 0 16px;">
@@ -787,7 +788,7 @@ export function renderEmail(
 
     case "group_session_left": {
       const startAt = String(payload.start_at ?? "");
-      const subject = "Abmeldung bestätigt – Gruppenlektion";
+      const subject = "Abmeldung bestätigt: Gruppenlektion";
       const content = `
         <p style="margin:0 0 16px;">Hallo,</p>
         <p style="margin:0 0 16px;">
@@ -812,7 +813,7 @@ export function renderEmail(
           : kind === "joined"
             ? "ist einer Gruppenlektion beigetreten"
             : "hat sich von einer Gruppenlektion abgemeldet";
-      const subject = `Gruppenkurs – ${studentName} ${verb}`;
+      const subject = `Gruppenkurs: ${studentName} ${verb}`;
       const content = `
         <p style="margin:0 0 16px;">Hallo David,</p>
         <p style="margin:0 0 16px;">
@@ -876,11 +877,11 @@ export function renderEmail(
               </a>
             </p>`;
 
-      const subject = `Zahlungsaufforderung – Gruppenlektion ${courseTitle}`;
+      const subject = `Zahlungsaufforderung: Gruppenlektion ${courseTitle}`;
       const content = `
         <p style="margin:0 0 16px;">Hallo ${studentName ? studentName.split(" ")[0] : ""},</p>
         <p style="margin:0 0 16px;">
-          deine Gruppenlektion hat stattgefunden – vielen Dank! Bitte begleiche den Betrag.
+          deine Gruppenlektion hat stattgefunden, vielen Dank! Bitte begleiche den Betrag.
         </p>
         <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background-color:#f9fafb;border-radius:6px;padding:16px;">
           ${detailRows}
@@ -912,9 +913,9 @@ export function renderEmail(
 
       const chf = amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const subject = lessonDate
-        ? `Zahlung bestätigt – Klavierstunde vom ${fmtDate(lessonDate)}`
+        ? `Zahlung bestätigt: Klavierstunde vom ${fmtDate(lessonDate)}`
         : bezeichnung
-          ? `Zahlung bestätigt – ${bezeichnung}`
+          ? `Zahlung bestätigt: ${bezeichnung}`
           : "Zahlung bestätigt";
       const content = `
         <p style="margin:0 0 16px;">Hallo ${studentName ? studentName.split(" ")[0] : ""},</p>
@@ -945,7 +946,7 @@ export function renderEmail(
           <p style="margin:0 0 8px;font-weight:600;color:#166534;">Du kannst jetzt Termine buchen</p>
           <p style="margin:0;color:#166534;font-size:14px;">
             Mit der Anzahlung ist dein Paket freigeschaltet. Alle Lektionen
-            stehen dir ab sofort zur Verfügung – die weiteren Raten laufen
+            stehen dir ab sofort zur Verfügung, die weiteren Raten laufen
             monatlich weiter.
           </p>
         </div>
@@ -971,9 +972,9 @@ export function renderEmail(
 
       const chf = amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const subject = lessonDate
-        ? `Zahlung nicht gefunden – Klavierstunde vom ${fmtDate(lessonDate)}`
+        ? `Zahlung nicht gefunden: Klavierstunde vom ${fmtDate(lessonDate)}`
         : bezeichnung
-          ? `Zahlung nicht gefunden – ${bezeichnung}`
+          ? `Zahlung nicht gefunden: ${bezeichnung}`
           : "Zahlung nicht gefunden";
       const content = `
         <p style="margin:0 0 16px;">Hallo ${studentName ? studentName.split(" ")[0] : ""},</p>
@@ -1022,7 +1023,7 @@ export function renderEmail(
       const startAt = String(payload.start_at ?? "");
       const formattedDate = startAt ? fmtDateTime(startAt) : "–";
 
-      const subject = `Deine Stornierung ist bestätigt – ${startAt ? fmtDate(startAt) : ""}`.trim();
+      const subject = `Deine Stornierung ist bestätigt: ${startAt ? fmtDate(startAt) : ""}`.trim();
       const content = `
         <p style="margin:0 0 16px;">Hallo,</p>
         <p style="margin:0 0 16px;">
@@ -1050,7 +1051,7 @@ export function renderEmail(
       const formattedDate = startAt ? fmtDateTime(startAt) : "–";
       const reason = payload.reason ? String(payload.reason) : null;
 
-      const subject = `Termin abgesagt – ${startAt ? fmtDate(startAt) : ""}`.trim();
+      const subject = `Termin abgesagt: ${startAt ? fmtDate(startAt) : ""}`.trim();
       const content = `
         <p style="margin:0 0 16px;">Hallo,</p>
         <p style="margin:0 0 16px;">
@@ -1173,11 +1174,11 @@ export function renderEmail(
 
     case "package_settlement_paid": {
       const amount = Number(payload.amount ?? 0);
-      const subject = "Zahlung erhalten – Stornierungsbetrag";
+      const subject = "Zahlung erhalten: Stornierungsbetrag";
       const content = `
         <p style="margin:0 0 16px;">Hallo,</p>
         <p style="margin:0 0 16px;">
-          vielen Dank – der Stornierungsbetrag von
+          vielen Dank, der Stornierungsbetrag von
           <strong>CHF ${amount.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
           ist bei mir eingegangen. Damit ist die Stornierung vollständig abgeschlossen.
         </p>
@@ -1206,7 +1207,7 @@ export function renderEmail(
         </p>
         <p style="margin:0 0 16px;font-size:13px;color:#6b7280;">
           Der Link ist <strong>60 Minuten</strong> gültig. Falls du keine Zurücksetzung
-          angefragt hast, kannst du diese E-Mail ignorieren – dein Passwort bleibt unverändert.
+          angefragt hast, kannst du diese E-Mail ignorieren. Dein Passwort bleibt unverändert.
         </p>
         <p style="margin:0;">Liebe Grüsse<br/>David Ramchandani</p>
       `;
@@ -1251,7 +1252,7 @@ export function renderEmail(
       const telefon = payload.telefon ? String(payload.telefon) : null;
       const nachricht = payload.nachricht ? String(payload.nachricht) : null;
       const wunschtermin = payload.wunschtermin ? String(payload.wunschtermin) : null;
-      const subject = `Neue Probestunden-Anfrage – ${vorname} ${nachname}`;
+      const subject = `Neue Probestunden-Anfrage: ${vorname} ${nachname}`;
       const content = `
         <p style="margin:0 0 16px;">Es liegt eine neue Probestunden-Anfrage vor:</p>
         <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:20px;background:#f8f9fa;border-radius:8px;">
@@ -1308,7 +1309,7 @@ export function renderEmail(
 
       return {
         subject: raten
-          ? `Dein ${payload.package_label ?? "Paket"} ist bereit – Anzahlung offen`
+          ? `Dein ${payload.package_label ?? "Paket"} ist bereit: Anzahlung offen`
           : `Dein ${payload.package_label ?? "Paket"} ist bereit`,
         html: baseWrapper(
           `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
@@ -1330,7 +1331,7 @@ export function renderEmail(
                       Die Rechnung dazu bekommst du in einer separaten E-Mail.
                     </p>
                   </div>`
-               : `<p>Du kannst ab sofort Termine buchen – du musst nicht auf den
+               : `<p>Du kannst ab sofort Termine buchen, du musst nicht auf den
                     Zahlungseingang warten. Die Rechnung über
                     <strong>CHF ${chf(payload.total_price)}</strong> erhältst du in einer
                     separaten E-Mail, zahlbar innert 15 Tagen.</p>`
@@ -1376,12 +1377,12 @@ export function renderEmail(
            ${
              remaining > 0
                ? `<p>Du hast noch <strong>${remaining} Lektion${remaining === 1 ? "" : "en"}</strong> offen.
-                   Nicht genutzte Lektionen verfallen beim Ablauf – buch dir am besten
+                   Nicht genutzte Lektionen verfallen beim Ablauf, buch dir am besten
                    jetzt noch die restlichen Termine.</p>`
                : ""
            }
            <p>Wenn du nicht verlängern möchtest, kannst du die automatische Verlängerung
-              im Portal abschalten – bis 14 Tage vor Ablauf.</p>
+              im Portal abschalten, bis 14 Tage vor Ablauf.</p>
            <p style="text-align:center;margin:28px 0;">
              <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
            </p>
@@ -1426,7 +1427,7 @@ export function renderEmail(
                ? `<p>Dabei sind <strong>${verfallen} nicht genutzte Lektion${verfallen === 1 ? "" : "en"}</strong> verfallen.</p>`
                : ""
            }
-           <p>Du kannst jederzeit ein neues Paket lösen – auf Wunsch auch in Monatsraten.</p>
+           <p>Du kannst jederzeit ein neues Paket lösen, auf Wunsch auch in Monatsraten.</p>
            <p style="text-align:center;margin:28px 0;">
              <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Neues Paket wählen</a>
            </p>
@@ -1443,7 +1444,7 @@ export function renderEmail(
               <strong>${payload.package_label ?? "Paket"}</strong> ist abgeschaltet.</p>
            <p>Dein Paket bleibt bis <strong>${fmtDate(String(payload.expires_at))}</strong>
               wie gewohnt nutzbar. Danach läuft es aus, ohne dass ein neues startet.</p>
-           <p>Nicht genutzte Lektionen verfallen beim Ablauf – buch dir also
+           <p>Nicht genutzte Lektionen verfallen beim Ablauf, buch dir also
               rechtzeitig deine restlichen Termine.</p>
            <p style="text-align:center;margin:28px 0;">
              <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Termine buchen</a>
@@ -1454,7 +1455,7 @@ export function renderEmail(
     }
     case "subscription_renewed_admin": {
       return {
-        subject: `Abo verlängert – ${payload.student_name ?? "Schüler"}`,
+        subject: `Abo verlängert: ${payload.student_name ?? "Schüler"}`,
         html: baseWrapper(
           `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat ein automatisch
               verlängertes <strong>${payload.package_label ?? "Paket"}</strong>.</p>
@@ -1468,7 +1469,7 @@ export function renderEmail(
     }
     case "subscription_cancelled_admin": {
       return {
-        subject: `Abo gekündigt – ${payload.student_name ?? "Schüler"}`,
+        subject: `Abo gekündigt: ${payload.student_name ?? "Schüler"}`,
         html: baseWrapper(
           `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat die automatische
               Verlängerung für das <strong>${payload.package_label ?? "Paket"}</strong>
@@ -1504,7 +1505,7 @@ export function renderEmail(
                ${payload.fixplatz_text ?? ""}
              </p>
              <p style="margin:8px 0 0;color:#475569;font-size:14px;">
-               ${termine.length} Termine sind bereits eingetragen – du musst nichts
+               ${termine.length} Termine sind bereits eingetragen, du musst nichts
                mehr einzeln buchen.
              </p>
            </div>
@@ -1533,7 +1534,7 @@ export function renderEmail(
            ${
              offen.length > 0
                ? `<p><strong>${offen.length} Lektion${offen.length === 1 ? "" : "en"}</strong>
-                    konnte ich noch nicht platzieren. Ich melde mich dazu bei dir –
+                    konnte ich noch nicht platzieren. Ich melde mich dazu bei dir,
                     die Lektionen sind dir gutgeschrieben und verfallen nicht.</p>`
                : ""
            }
@@ -1565,7 +1566,7 @@ export function renderEmail(
 
     case "fixplatz_admin": {
       return {
-        subject: `Neuer Fixplatz – ${payload.student_name ?? "Schüler"}`,
+        subject: `Neuer Fixplatz: ${payload.student_name ?? "Schüler"}`,
         html: baseWrapper(
           `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat einen festen
               Platz gebucht:</p>
@@ -1603,7 +1604,7 @@ export function renderEmail(
               <strong>${payload.original_datum ? fmtDateTime(String(payload.original_datum)) : ""}</strong>
               fällt aus${payload.grund ? ` (${payload.grund})` : ""}.</p>
 
-           <p><strong>Die Lektion ist dir erhalten</strong> – sie wird nicht abgezogen.
+           <p><strong>Die Lektion ist dir erhalten</strong>, sie wird nicht abgezogen.
               Such dir einen der folgenden Ausweichtermine aus:</p>
 
            <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:24px;background:#f8fafc;border-radius:6px;">
@@ -1619,7 +1620,7 @@ export function renderEmail(
 
            <p style="color:#64748b;font-size:14px;">
              Passt keiner davon? Dann verlängert sich stattdessen die Laufzeit deines
-             Pakets um die entsprechende Zeit – du verlierst nichts.
+             Pakets um die entsprechende Zeit, du verlierst nichts.
            </p>
 
            <p style="text-align:center;margin:28px 0;">
@@ -1643,7 +1644,7 @@ export function renderEmail(
                Die Lektion bleibt dir erhalten und die Laufzeit deines Pakets
                verlängert sich um <strong>${payload.tage ?? 0} Tage</strong>${
                  payload.neues_ablaufdatum
-                   ? ` – neu gültig bis <strong>${fmtDate(String(payload.neues_ablaufdatum))}</strong>`
+                   ? `, neu gültig bis <strong>${fmtDate(String(payload.neues_ablaufdatum))}</strong>`
                    : ""
                }.
              </p>
@@ -1660,7 +1661,7 @@ export function renderEmail(
 
     case "ausfall_kurzfristig": {
       return {
-        subject: `Absage erhalten – ${payload.original_datum ? fmtDate(String(payload.original_datum)) : ""}`,
+        subject: `Absage erhalten: ${payload.original_datum ? fmtDate(String(payload.original_datum)) : ""}`,
         html: baseWrapper(
           `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
            <p>Deine Absage für den
@@ -1670,7 +1671,7 @@ export function renderEmail(
            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
              <p style="margin:0;color:#92400e;font-size:14px;">
                Weil die Absage weniger als 24 Stunden vorher kam, gilt die Lektion
-               als gehalten – die Zeit war für dich reserviert und liess sich nicht
+               als gehalten, die Zeit war für dich reserviert und liess sich nicht
                mehr anderweitig vergeben.
              </p>
            </div>
@@ -1695,8 +1696,8 @@ export function renderEmail(
               abgesagt${payload.grund ? `: „${payload.grund}“` : "."}</p>
            <p>${
              payload.kurzfristig
-               ? "Kurzfristig (unter 24 Stunden) – die Lektion gilt als gehalten."
-               : "Rechtzeitig abgesagt – der Schüler hat Ausweichtermine vorgeschlagen bekommen."
+               ? "Kurzfristig (unter 24 Stunden), die Lektion gilt als gehalten."
+               : "Rechtzeitig abgesagt, der Schüler hat Ausweichtermine vorgeschlagen bekommen."
            }</p>
            <p style="text-align:center;margin:28px 0;">
              <a href="${APP_URL}/admin/kalender" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Kalender öffnen</a>
@@ -1735,7 +1736,7 @@ export function renderEmail(
            </div>
 
            <p style="color:#64748b;font-size:14px;">
-             Der Preis bleibt gleich – gleiche Lektionszahl, gleicher Lektionspreis.
+             Der Preis bleibt gleich, gleiche Lektionszahl, gleicher Lektionspreis.
              Der Rhythmus ändert nur, über welchen Zeitraum du sie beziehst.
              ${
                payload.raten_angepasst
@@ -1776,7 +1777,7 @@ export function renderEmail(
              <tr>
                <td style="padding:12px 16px;color:#64748b;font-size:14px;">Laufzeit</td>
                <td style="padding:12px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;">
-                 ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""} –
+                 ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""},
                  ${payload.periode_ende ? fmtDate(String(payload.periode_ende)) : ""}
                </td>
              </tr>
@@ -1800,7 +1801,7 @@ export function renderEmail(
              </tr>
            </table>
 
-           <p>Der Monatsbetrag bleibt über die ganze Laufzeit gleich – auch in
+           <p>Der Monatsbetrag bleibt über die ganze Laufzeit gleich, auch in
               Monaten mit mehr oder weniger Lektionen. Insgesamt sind es
               <strong>${payload.lektionen ?? 0} Lektionen</strong> über
               ${payload.laufzeit_monate ?? 0} Monate.</p>
@@ -1812,7 +1813,7 @@ export function renderEmail(
                     <p style="margin:0;color:#92400e;font-size:14px;">
                       Ich lege die Termine aller Schüler gemeinsam fest, damit die
                       Fahrwege aufgehen. Sobald dein fester Platz steht, bekommst du
-                      ihn per E-Mail — mit allen Daten der ganzen Laufzeit.
+                      ihn per E-Mail, mit allen Daten der ganzen Laufzeit.
                     </p>
                   </div>`
                : ""
@@ -1825,7 +1826,7 @@ export function renderEmail(
                       In den Ferien findet kein Unterricht statt
                     </p>
                     <p style="margin:0 0 8px;color:#475569;font-size:14px;">
-                      Diese Termine sind <strong>bereits eingerechnet</strong> – du
+                      Diese Termine sind <strong>bereits eingerechnet</strong>, du
                       zahlst nichts dafür und verlierst nichts:
                     </p>
                     <ul style="margin:0;padding-left:20px;color:#475569;font-size:14px;">
@@ -1879,7 +1880,7 @@ export function renderEmail(
           maximumFractionDigits: 2,
         });
       return {
-        subject: `Neues Abo – ${payload.student_name ?? "Schüler"}`,
+        subject: `Neues Abo: ${payload.student_name ?? "Schüler"}`,
         html: baseWrapper(
           `<p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat ein
               <strong>${payload.abo_label ?? "Abo"}</strong> abgeschlossen.</p>
@@ -1891,7 +1892,7 @@ export function renderEmail(
              <tr>
                <td style="padding:10px 16px;color:#64748b;font-size:14px;border-top:1px solid #e2e8f0;">Laufzeit</td>
                <td style="padding:10px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e2e8f0;">
-                 ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""} –
+                 ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""},
                  ${payload.periode_ende ? fmtDate(String(payload.periode_ende)) : ""}
                </td>
              </tr>
@@ -1923,7 +1924,7 @@ export function renderEmail(
         ? (payload.ferientage as { tag: string; grund: string }[])
         : [];
 
-      // Die neue Periode kann eine andere Lektionszahl haben – im Sommer
+      // Die neue Periode kann eine andere Lektionszahl haben, im Sommer
       // liegen mehr Ferien als im Winter. Das wird offen benannt, statt es
       // in einer geänderten Zahl zu verstecken.
       const vorherLekt = Number(payload.vorher_lektionen ?? 0);
@@ -1941,7 +1942,7 @@ export function renderEmail(
              <tr>
                <td style="padding:12px 16px;color:#64748b;font-size:14px;">Neue Laufzeit</td>
                <td style="padding:12px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;">
-                 ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""} –
+                 ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""},
                  ${payload.periode_ende ? fmtDate(String(payload.periode_ende)) : ""}
                </td>
              </tr>
@@ -1962,8 +1963,8 @@ export function renderEmail(
                       Diese Periode enthält <strong>${jetztLekt} statt ${vorherLekt} Lektionen</strong>
                       ${
                         jetztLekt < vorherLekt
-                          ? "– in diesem Zeitraum liegen mehr Ferien"
-                          : "– in diesem Zeitraum liegen weniger Ferien"
+                          ? ", in diesem Zeitraum liegen mehr Ferien"
+                          : ", in diesem Zeitraum liegen weniger Ferien"
                       }.
                       Der Monatsbetrag ist entsprechend angepasst; der Preis pro
                       Lektion bleibt unverändert.
@@ -1985,7 +1986,7 @@ export function renderEmail(
 
            <p style="color:#64748b;font-size:14px;">
              Wenn du nicht weitermachen möchtest, kannst du die Verlängerung
-             jederzeit im Portal abschalten – spätestens 30 Tage vor Ablauf der
+             jederzeit im Portal abschalten, spätestens 30 Tage vor Ablauf der
              laufenden Periode.
            </p>
 
@@ -2003,13 +2004,13 @@ export function renderEmail(
           maximumFractionDigits: 2,
         });
       return {
-        subject: `Abo verlängert – ${payload.student_name ?? "Schüler"}`,
+        subject: `Abo verlängert: ${payload.student_name ?? "Schüler"}`,
         html: baseWrapper(
           `<p>Das <strong>${payload.abo_label ?? "Abo"}</strong> von
               <strong>${payload.student_name ?? "einem Schüler"}</strong> hat sich
               verlängert.</p>
            <p>Neue Periode
-              ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""} –
+              ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""},
               ${payload.periode_ende ? fmtDate(String(payload.periode_ende)) : ""}
               mit <strong>${payload.lektionen ?? 0} Lektionen</strong> zu
               CHF ${chf(payload.monatsbetrag)} pro Monat. Die Terminserie ist
@@ -2054,7 +2055,7 @@ export function renderEmail(
            </table>
 
            <p style="color:#475569;font-size:14px;">
-             Angefangene Monate werden voll verrechnet – in diesen Monaten hat
+             Angefangene Monate werden voll verrechnet, in diesen Monaten hat
              Unterricht stattgefunden und dein Platz war reserviert. Die
              restlichen ${payload.monate_offen ?? 0} Monate entfallen.
            </p>
@@ -2112,7 +2113,7 @@ export function renderEmail(
            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
              <p style="margin:0;color:#92400e;font-size:14px;">
                Du hast die automatische Verlängerung abgeschaltet. Danach ist
-               dein fester Platz wieder frei — falls du weitermachen möchtest,
+               dein fester Platz wieder frei, falls du weitermachen möchtest,
                melde dich bitte vorher bei mir oder schalte die Verlängerung im
                Portal wieder ein.
              </p>
@@ -2162,7 +2163,7 @@ export function renderEmail(
            <p><strong>Warum ich frage:</strong> Ich fahre zu allen Schülern und
               lege die Termine so, dass möglichst wenig Leerfahrt entsteht. Wenn
               ich von allen weiss, wann sie können, finde ich eine Reihenfolge,
-              die für alle passt — statt dass der Schnellste den besten Platz
+              die für alle passt, statt dass der Schnellste den besten Platz
               bekommt.</p>
 
            <p style="color:#64748b;font-size:14px;">
@@ -2198,7 +2199,7 @@ export function renderEmail(
 
            <p><strong>Warum ich frage:</strong> Ich fahre zu allen Schülern.
               Wenn ich weiss, wann du kannst, finde ich einen Platz, der auf
-              einer Strecke liegt, die ich ohnehin fahre — das ist für dich die
+              einer Strecke liegt, die ich ohnehin fahre. Das ist für dich die
               beste Zeit und für mich die kürzeste Fahrt.</p>
 
            <p style="color:#64748b;font-size:14px;">
@@ -2226,7 +2227,7 @@ export function renderEmail(
                ${payload.fixplatz_text ?? ""}
              </p>
              <p style="margin:8px 0 0;color:#475569;font-size:14px;">
-               ${payload.anzahl_termine ?? 0} Termine sind eingetragen – du musst
+               ${payload.anzahl_termine ?? 0} Termine sind eingetragen, du musst
                nichts mehr einzeln buchen.
              </p>
            </div>
@@ -2236,7 +2237,7 @@ export function renderEmail(
                ? `<p style="color:#065f46;font-size:14px;">Das ist die Zeit, die du als
                     Wunschtermin markiert hattest.</p>`
                : `<p style="color:#64748b;font-size:14px;">Deine Wunschzeit liess sich
-                    diesmal nicht mit allen anderen Terminen vereinbaren — dieser Platz
+                    diesmal nicht mit allen anderen Terminen vereinbaren, dieser Platz
                     war der beste, der für alle aufging. Wenn er gar nicht passt, melde
                     dich bitte, dann schauen wir nochmals.</p>`
            }

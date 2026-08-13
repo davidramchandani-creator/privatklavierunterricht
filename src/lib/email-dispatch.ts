@@ -6,6 +6,7 @@ import { buildLessonTwintLink, buildTwintLink } from "@/lib/twint";
 import { pricePerPersonFor } from "@/lib/group-courses";
 import { sendPushToUser, sendPushToAdmin } from "@/lib/push";
 import { buildPush } from "@/lib/notification-push";
+import { BASIS_URL } from "@/lib/seo";
 
 export const ADMIN_RECIPIENT_TYPES = [
   "booking_request_admin",
@@ -212,7 +213,7 @@ export async function dispatchEmail(
 
 /**
  * Sendet die Push-Variante einer Benachrichtigung.
- * Wirft nie – eine fehlgeschlagene Push-Nachricht darf weder die E-Mail noch
+ * Wirft nie, eine fehlgeschlagene Push-Nachricht darf weder die E-Mail noch
  * die ausloesende Aktion beeintraechtigen.
  */
 export async function dispatchPush(
@@ -281,7 +282,7 @@ async function ensureInvoicePdfLink(
     .maybeSingle();
   if (!inv) return null;
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://privatklavierunterricht.ch";
+  const appUrl = BASIS_URL;
 
   if (!inv.pdf_url) {
     const result = await generateQRInvoicePdf({
@@ -293,7 +294,7 @@ async function ensureInvoicePdfLink(
 
     // Nur ein echtes PDF wird festgeschrieben.
     //
-    // Vorher landete auch der SPC-Notbehelf dauerhaft in `pdf_url` — mit der
+    // Vorher landete auch der SPC-Notbehelf dauerhaft in `pdf_url`, mit der
     // Folge, dass eine einmal fehlgeschlagene Erzeugung die Rechnung für
     // immer kaputt liess: beim nächsten Aufruf war `pdf_url` ja gesetzt, also
     // wurde nichts mehr versucht, und der Schüler bekam bis ans Ende eine
@@ -372,11 +373,11 @@ async function prepareGroupPayment(
   );
 
   // Ohne hinterlegte Preisstaffel liefert pricePerPersonFor 0. Dann lieber
-  // gar keine Rechnung stellen als eine über CHF 0 – die würde als bezahlt
+  // gar keine Rechnung stellen als eine über CHF 0, die würde als bezahlt
   // durchlaufen und der Betrag wäre für immer verloren.
   if (!(amount > 0)) {
     throw new Error(
-      `Gruppenkurs "${course.title}" hat keine gültige Preisstaffel – ` +
+      `Gruppenkurs "${course.title}" hat keine gültige Preisstaffel: ` +
         `Rechnung für Termin ${appointmentId} wurde nicht erstellt.`
     );
   }

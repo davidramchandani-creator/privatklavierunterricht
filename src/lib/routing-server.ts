@@ -1,5 +1,5 @@
 // ============================================================
-// Routenplaner — Serverseite
+// Routenplaner, Serverseite
 //
 // Holt die Daten zusammen, die der Planer braucht, und speichert Ergebnisse.
 // Die eigentliche Rechnung steht in routing.ts und kommt ohne DB aus.
@@ -15,7 +15,7 @@ import { istTest, type Kreis } from "./kreis";
 
 /**
  * Daves Ausgangspunkt. Steht in den Einstellungen, damit er nicht im Code
- * festgenagelt ist — mit der Rechnungsadresse als Vorgabe.
+ * festgenagelt ist, mit der Rechnungsadresse als Vorgabe.
  */
 export const STANDARD_ZUHAUSE: Punkt = { lat: 47.5266, lng: 8.6706 };
 export const STANDARD_ZUHAUSE_ADRESSE = "Sattleracherstrasse 59, 8413 Neftenbach";
@@ -78,7 +78,7 @@ export async function setzeZuhause(
 
 /**
  * Die vom Admin gepflegten Unterrichtszeiten. Ohne Eintrag gelten die
- * Standardfenster aus der Buchungs-Engine (Mo–Do 16:30–20:30, Fr 16:30–18:00).
+ * Standardfenster aus der Buchungs-Engine (Mo, Do 16:30–20:30, Fr 16:30–18:00).
  */
 export async function ladeFenster(
   admin: SupabaseClient
@@ -109,7 +109,7 @@ export async function ladeFenster(
 // ── Fahrzeiten ─────────────────────────────────────────────
 
 /**
- * Lädt gespeicherte Fahrzeiten. Alles, was nicht drinsteht, wird geschätzt —
+ * Lädt gespeicherte Fahrzeiten. Alles, was nicht drinsteht, wird geschätzt.
  * der Planer funktioniert also auch mit leerem Cache.
  */
 export async function ladeFahrzeiten(
@@ -168,7 +168,7 @@ export type SchuelerRohdaten = {
   bookingMode: string;
   hatAktivesPaket: boolean;
   moeglicheTage: number[];
-  /** Zeiten je Wochentag – der genaue Fall. */
+  /** Zeiten je Wochentag, der genaue Fall. */
   fenster: { wochentag: number; fruehestens: string; spaetestens: string }[];
 };
 
@@ -176,7 +176,7 @@ export type SchuelerRohdaten = {
  * Alle aktiven Schüler samt Adresse, Rhythmus und persönlicher Verfügbarkeit.
  *
  * Der Rhythmus kommt aus dem aktiven Paket. Wer keines hat, wird als
- * wöchentlich geführt — für die Planung ist das die vorsichtigere Annahme,
+ * wöchentlich geführt, für die Planung ist das die vorsichtigere Annahme,
  * weil sie mehr Platz reserviert.
  */
 export async function ladeSchueler(
@@ -188,7 +188,7 @@ export async function ladeSchueler(
     .select("id, vorname, nachname, adresse, lat, lng, geocode_adresse, aktiv, role")
     .eq("role", "student")
     .eq("aktiv", true)
-    // Test und Ernst nie vermischen – sonst rechnet die Route über erfundene
+    // Test und Ernst nie vermischen, sonst rechnet die Route über erfundene
     // und echte Adressen zugleich und stimmt für keinen der beiden Fälle.
     .eq("ist_test", istTest(kreis))
     .order("nachname");
@@ -220,7 +220,7 @@ export async function ladeSchueler(
   //
   // Vorher wurde daraus eine einzige engste Grenze gerechnet. Das ist falsch,
   // sobald jemand an verschiedenen Tagen verschieden kann: „Di ab 18:00" und
-  // „Fr bis 18:00" ergaben zusammengezogen 18:00 bis 18:00 — ein Fenster von
+  // „Fr bis 18:00" ergaben zusammengezogen 18:00 bis 18:00, ein Fenster von
   // null Minuten. Der Schüler verschwand lautlos aus dem Plan mit der Meldung,
   // er sei an keinem Tag verfügbar, obwohl er dienstags den ganzen Abend Zeit
   // hat.
@@ -261,7 +261,7 @@ export async function ladeSchueler(
 
 /**
  * Geokodiert alle Schüler, deren Koordinaten fehlen oder veraltet sind.
- * Gibt zurück, was geklappt hat und was nicht — Fehlschläge müssen sichtbar
+ * Gibt zurück, was geklappt hat und was nicht. Fehlschläge müssen sichtbar
  * werden, sonst fehlt jemand still im Plan.
  */
 export async function geokodiereOffene(
@@ -269,7 +269,7 @@ export async function geokodiereOffene(
 ): Promise<{ erledigt: number; fehlgeschlagen: { name: string; adresse: string }[] }> {
   // kreis-uebergreifend: Adressen auflösen gilt für alle. Testadressen
   // brauchen genauso Koordinaten, sonst fällt der Testschüler still aus dem
-  // Plan – und das Auflösen wertet nichts aus, es füllt nur Stammdaten.
+  // Plan, und das Auflösen wertet nichts aus, es füllt nur Stammdaten.
   const { data: profile } = await admin
     .from("profiles")
     .select("id, vorname, nachname, adresse, lat, lng, geocode_adresse")

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { findeEinpassung, type BestehenderTermin } from "./zuteilung";
 import { navigationsLink } from "./geo";
 
-// Reale Geografie rund um Neftenbach – damit die Zahlen nachvollziehbar sind.
+// Reale Geografie rund um Neftenbach, damit die Zahlen nachvollziehbar sind.
 const ZUHAUSE = { lat: 47.5305, lng: 8.6717 }; // Neftenbach
 const PFUNGEN = { lat: 47.5158, lng: 8.6497 };
 const WINTERTHUR = { lat: 47.4995, lng: 8.7241 };
@@ -53,7 +53,7 @@ describe("findeEinpassung", () => {
         lektionMinuten: 45,
         paritaet: null,
       },
-      // Mittwoch führt weit nach Norden – jeder Zusatzhalt kostet dort mehr.
+      // Mittwoch führt weit nach Norden, jeder Zusatzhalt kostet dort mehr.
       {
         schuelerId: "c",
         name: "Andelfingen",
@@ -85,7 +85,7 @@ describe("findeEinpassung", () => {
     expect(bester.davor).toBe("Pfungen");
     expect(bester.danach).toBe("Winterthur");
 
-    // Der Mittwoch – Umweg nach Andelfingen – muss teurer sein.
+    // Der Mittwoch, Umweg nach Andelfingen, muss teurer sein.
     const mittwoch = vorschlaege.find((v) => v.wochentag === 3);
     if (mittwoch) {
       expect(mittwoch.zusatzSekunden).toBeGreaterThan(bester.zusatzSekunden);
@@ -122,7 +122,7 @@ describe("findeEinpassung", () => {
   });
 
   it("schlägt nichts vor, wenn der Schüler an keinem freien Tag kann", () => {
-    // Er kann nur am Montag – dafür gibt es kein Fenster.
+    // Er kann nur am Montag, dafür gibt es kein Fenster.
     const vorschlaege = findeEinpassung({
       zuhause: ZUHAUSE,
       neuer: schueler(WINTERTHUR, [1]),
@@ -185,7 +185,7 @@ describe("navigationsLink", () => {
     expect(url.searchParams.get("origin")).toBe("47.5305,8.6717");
     expect(url.searchParams.get("destination")).toBe("47.5305,8.6717");
     expect(url.searchParams.get("travelmode")).toBe("driving");
-    // Reihenfolge wie übergeben – Pfungen zuerst.
+    // Reihenfolge wie übergeben, Pfungen zuerst.
     expect(url.searchParams.get("waypoints")).toBe(
       "47.5158,8.6497|47.4995,8.7241"
     );

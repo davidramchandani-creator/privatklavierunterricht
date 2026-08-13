@@ -13,7 +13,7 @@ export default function UeberMichTeaser() {
             <div className="relative aspect-[4/5] max-w-md mx-auto lg:mx-0 rounded-3xl overflow-hidden bg-surface ring-1 ring-[#EAECEF]">
               <Image
                 src="/david-ramchandani-portrait-720-762.jpg"
-                alt="David Ramchandani – dein Klavierlehrer"
+                alt="David Ramchandani, dein Klavierlehrer"
                 fill
                 sizes="(max-width: 1024px) 100vw, 28rem"
                 className="object-cover object-top"
@@ -34,7 +34,7 @@ export default function UeberMichTeaser() {
               Über mich
             </p>
             <h2 className="text-3xl sm:text-4xl font-800 text-navy-900 mb-6 leading-tight tracking-tight">
-              Hallo, ich bin David –<br />
+              Hallo, ich bin David, <br />
               <span className="text-gray-400 font-500 text-2xl">
                 dein Klavierlehrer.
               </span>

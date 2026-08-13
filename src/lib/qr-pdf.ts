@@ -1,9 +1,9 @@
 // ============================================================
-// Schweizer QR-Rechnung als PDF — lokal erzeugt
+// Schweizer QR-Rechnung als PDF, lokal erzeugt
 //
 // Warum lokal und nicht über einen Dienst: Die Rechnung ist der Weg, auf dem
 // das Geld hereinkommt. Hängt sie an einem fremden HTTP-Dienst, hängt auch
-// der Zahlungseingang daran — und der bisherige Ausweg bei einem Ausfall war
+// der Zahlungseingang daran, und der bisherige Ausweg bei einem Ausfall war
 // eine Textdatei mit dem rohen QR-Datenstring, die niemand bezahlen kann.
 //
 // Der Swiss-QR-Standard ist vollständig offengelegt, das Erzeugen braucht
@@ -25,7 +25,7 @@ export type SchweizerAdresse = {
 /**
  * Zerlegt „Sattleracherstrasse 59, 8413 Neftenbach" in seine Teile.
  *
- * Der QR-Standard verlangt Strasse, Hausnummer, PLZ und Ort einzeln — eine
+ * Der QR-Standard verlangt Strasse, Hausnummer, PLZ und Ort einzeln. Eine
  * einzeilige Adresse genügt ihm nicht. Gespeichert wird sie bei uns aber als
  * eine Zeile, also muss sie hier zerlegt werden.
  *
@@ -40,13 +40,13 @@ export function parseSchweizerAdresse(text: string | null): SchweizerAdresse | n
   const roh = text.trim().replace(/\s+/g, " ");
   if (!roh) return null;
 
-  // Erwartet wird „Strassenteil, PLZ Ort". Ohne Komma fehlt der Ortsteil —
+  // Erwartet wird „Strassenteil, PLZ Ort". Ohne Komma fehlt der Ortsteil,
   // etwa bei einer Adresse, die nur aus Strasse und Nummer besteht.
   const teile = roh.split(",").map((t) => t.trim()).filter(Boolean);
   if (teile.length < 2) return null;
 
   // Der Ortsteil ist der letzte Abschnitt: vierstellige PLZ, dann der Ort.
-  // Klammerzusätze wie „Aesch (Neftenbach)" bleiben erhalten – sie gehören
+  // Klammerzusätze wie „Aesch (Neftenbach)" bleiben erhalten, sie gehören
   // zum amtlichen Ortsnamen und stören die Zustellung nicht.
   const ortsTeil = teile[teile.length - 1];
   const ortsTreffer = ortsTeil.match(/^(\d{4})\s+(.+)$/);
@@ -60,7 +60,7 @@ export function parseSchweizerAdresse(text: string | null): SchweizerAdresse | n
   const strassenTeil = teile[teile.length - 2];
 
   // Hausnummer: die letzte Zahl am Ende, samt möglichem Zusatz wie „12a"
-  // oder „7-9". Fehlt sie, ist die Adresse trotzdem gültig — es gibt Häuser
+  // oder „7-9". Fehlt sie, ist die Adresse trotzdem gültig. Es gibt Häuser
   // ohne Nummer, und der Standard erlaubt ein leeres Feld.
   const nummerTreffer = strassenTeil.match(/^(.*?)\s+(\d+\s*[a-zA-Z]?(?:[-/]\d+\s*[a-zA-Z]?)?)$/);
 
@@ -78,7 +78,7 @@ export type QrRechnungParams = {
   /** Zahlungspflichtiger. */
   debtorName: string;
   debtorAdresse: SchweizerAdresse;
-  /** Zahlungsempfänger – deine Angaben. */
+  /** Zahlungsempfänger, deine Angaben. */
   creditor: {
     name: string;
     iban: string;
@@ -125,7 +125,7 @@ export async function erzeugeQrRechnungPdf(
   doc.moveDown(1.5);
 
   doc.fontSize(12).fillColor("#000000");
-  doc.text(params.message ?? `Klavierunterricht – Rechnung ${params.invoiceNumber}`);
+  doc.text(params.message ?? `Klavierunterricht, Rechnung ${params.invoiceNumber}`);
   doc.moveDown(0.5);
   doc.fontSize(14).text(`Betrag: CHF ${betrag}`);
   doc.moveDown(1);

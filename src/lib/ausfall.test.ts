@@ -61,7 +61,7 @@ describe("Behandlung eines Ausfalls", () => {
 
 describe("Laufzeitgutschrift", () => {
   it("verschiebt die Serie um genau einen Takt", () => {
-    // Eine ausgefallene Lektion hängt sich hinten an – die Laufzeit wächst
+    // Eine ausgefallene Lektion hängt sich hinten an, die Laufzeit wächst
     // um ein Rhythmusintervall, nicht um einen pauschalen Wert.
     expect(gutschriftTage("woechentlich")).toBe(7);
     expect(gutschriftTage("zweiwoechentlich")).toBe(14);

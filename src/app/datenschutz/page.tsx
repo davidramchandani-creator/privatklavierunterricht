@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Datenschutzerklärung – Privatklavierunterricht David Ramchandani",
+  title: "Datenschutzerklärung: Privatklavierunterricht David Ramchandani",
   description:
     "Wie ich mit deinen Daten umgehe: Erhebung, Verwendung, Speicherung und deine Rechte.",
 };
@@ -13,7 +13,7 @@ const abschnitte = [
   },
   {
     titel: "Welche Daten ich erhebe",
-    text: "Bei einer Anfrage für eine Probelektion erhebe ich Vorname, Nachname, E-Mail-Adresse, optional Telefonnummer sowie deine Nachricht und einen allfälligen Wunschtermin. Als Schülerin oder Schüler kommen Adresse, gebuchte Lektionen, Pakete und Zahlungsstatus dazu – all das ist für die Organisation des Unterrichts nötig.",
+    text: "Bei einer Anfrage für eine Probelektion erhebe ich Vorname, Nachname, E-Mail-Adresse, optional Telefonnummer sowie deine Nachricht und einen allfälligen Wunschtermin. Als Schülerin oder Schüler kommen Adresse, gebuchte Lektionen, Pakete und Zahlungsstatus dazu. All das ist für die Organisation des Unterrichts nötig.",
   },
   {
     titel: "Zweck der Bearbeitung",
@@ -29,7 +29,7 @@ const abschnitte = [
   },
   {
     titel: "Cookies & Statistik",
-    text: "Diese Website setzt technisch notwendige Cookies für den Login ein. Zusätzlich nutze ich Vercel Analytics und Speed Insights, um die Website zu verbessern – dabei werden keine personenbezogenen Profile gebildet.",
+    text: "Diese Website setzt technisch notwendige Cookies für den Login ein. Zusätzlich nutze ich Vercel Analytics und Speed Insights, um die Website zu verbessern. Dabei werden keine personenbezogenen Profile gebildet.",
   },
   {
     titel: "Deine Rechte",

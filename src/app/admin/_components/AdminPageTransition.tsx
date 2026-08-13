@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 
 /**
  * Spielt bei jedem Routenwechsel im Admin-Bereich eine dezente
- * „Hochgleiten"-Animation – gibt dem Portal ein cleanes App-Gefühl.
+ * „Hochgleiten"-Animation, gibt dem Portal ein cleanes App-Gefühl.
  * Der `key` erzwingt das Neu-Mounten und damit den Animations-Restart.
  */
 export default function AdminPageTransition({
