@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import PwaInit from "@/components/PwaInit";
+import AppInstallieren from "@/components/AppInstallieren";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -23,6 +24,7 @@ export default async function SchuelerLayout({ children }: { children: React.Rea
     <>
       <PwaInit />
       {children}
+      <AppInstallieren />
     </>
   );
 }
