@@ -4,6 +4,9 @@ import { CalendarCheck, CalendarX, Mail, BellOff } from "lucide-react";
 import CalendarSettings from "./_components/CalendarSettings";
 import EmailTest from "./_components/EmailTest";
 import EmailSettingsClient from "./_components/EmailSettingsClient";
+import GescheiterteMails, {
+  type GescheiterteMail,
+} from "./_components/GescheiterteMails";
 
 export const dynamic = "force-dynamic";
 
@@ -34,9 +37,38 @@ export default async function EinstellungenPage() {
     .gte("start_at", new Date().toISOString())
     .not("google_event_id", "is", null);
 
+  // Die endgültig gescheiterten Mails. Der Warnstreifen im Admin zählt sie
+  // und verlinkt hierher; ohne diese Liste war das eine Sackgasse.
+  const { data: fehlgeschlagen } = await admin
+    .from("scheduled_emails")
+    .select("id, type, payload, send_at, versuche")
+    .eq("status", "failed")
+    .order("send_at", { ascending: false })
+    .limit(50);
+
+  const gescheiterteMails: GescheiterteMail[] = (fehlgeschlagen ?? []).map((m) => {
+    const payload = (m.payload ?? {}) as Record<string, unknown>;
+    return {
+      id: m.id,
+      typ: m.type,
+      empfaenger: typeof payload.to === "string" ? payload.to : null,
+      geplant: new Date(m.send_at).toLocaleString("de-CH", {
+        timeZone: "Europe/Zurich",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      versuche: Number(m.versuche ?? 0),
+    };
+  });
+
   return (
     <div className="space-y-6 max-w-2xl">
       <h1 className="text-2xl font-800 text-[#1C244B]">Einstellungen</h1>
+
+      <GescheiterteMails mails={gescheiterteMails} />
 
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5">
         <div className="flex items-start gap-3">

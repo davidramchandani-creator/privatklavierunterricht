@@ -2691,6 +2691,72 @@ export async function abrechnenUndSenden(appointmentId: string) {
   return { success: true, error: undefined, invoiceId: rechnung.invoiceId };
 }
 
+/**
+ * Eine endgültig gescheiterte Mail noch einmal versuchen.
+ *
+ * Setzt sie zurück auf „wartend" und auf jetzt fällig, damit der nächste
+ * Lauf sie mitnimmt. Der Versuchszähler geht auf null: Was der Admin
+ * bewusst neu anstösst, hat drei frische Versuche verdient.
+ */
+export async function mailErneutVersuchen(id: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("scheduled_emails")
+    .update({ status: "pending", versuche: 0, send_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("status", "failed");
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/einstellungen");
+  revalidatePath("/admin");
+  return { success: true, error: undefined };
+}
+
+/**
+ * Eine gescheiterte Mail verwerfen.
+ *
+ * Nicht löschen, sondern auf „abgebrochen" setzen: Die Zeile bleibt als
+ * Beleg erhalten, dass hier etwas nicht angekommen ist, verschwindet aber
+ * aus der Warnung. Ohne diesen Weg stand der Warnstreifen für immer da,
+ * wegen Fehlschlägen aus dem Juni, die längst niemanden mehr betrafen.
+ */
+export async function mailVerwerfen(id: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("scheduled_emails")
+    .update({ status: "cancelled" })
+    .eq("id", id)
+    .eq("status", "failed");
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/einstellungen");
+  revalidatePath("/admin");
+  return { success: true, error: undefined };
+}
+
+/** Alle gescheiterten Mails auf einmal verwerfen. */
+export async function alleMailsVerwerfen() {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("scheduled_emails")
+    .update({ status: "cancelled" })
+    .eq("status", "failed");
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/einstellungen");
+  revalidatePath("/admin");
+  return { success: true, error: undefined };
+}
+
 // ── Aufräumen / Löschen ───────────────────────────────────────────────────────
 
 /** Erledigte Buchungsanfrage (nicht open) endgültig löschen. */
