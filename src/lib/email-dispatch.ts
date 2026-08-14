@@ -169,10 +169,24 @@ export async function dispatchEmail(
 
   if (!to) throw new Error(`No recipient email resolved for type: ${type}`);
 
-  // QR-Rechnung: PDF erzeugen und in Storage ablegen
+  // QR-Rechnung: PDF erzeugen und in Storage ablegen.
+  //
+  // Scheitert die Erzeugung, wird **nicht** versendet. Vorher ging die Mail
+  // trotzdem raus, mit einem Link auf eine Datei, die es nicht gab: Die
+  // Schülerin klickte auf ihre Rechnung und bekam einen Fehler. Eine Mail,
+  // die nie ankommt, ist besser als eine, die den Empfänger ratlos
+  // zurücklässt — und der Fehlschlag steht so sichtbar in der Outbox, statt
+  // still in einem Protokoll zu verschwinden.
   if (type === "qr_invoice" && payload.invoice_id) {
     const link = await ensureInvoicePdfLink(admin, String(payload.invoice_id));
-    if (link) extraContext.pdf_link = link;
+    if (!link) {
+      throw new Error(
+        `QR-Rechnung ${payload.invoice_id}: PDF konnte nicht erzeugt werden, ` +
+          `Mail nicht versendet. Adresse prüfen (Format: Strasse Nr., PLZ Ort) ` +
+          `oder auf TWINT umstellen.`,
+      );
+    }
+    extraContext.pdf_link = link;
   }
 
   // TWINT: Deep-Link mit Betrag + Zahlungszweck bauen.
@@ -312,16 +326,19 @@ async function ensureInvoicePdfLink(
         });
       if (uploadErr) {
         console.error(`[qr] Upload der Rechnung ${invoiceId} fehlgeschlagen:`, uploadErr);
-      } else {
-        await admin
-          .from("invoices")
-          .update({ pdf_url: storagePath })
-          .eq("id", invoiceId);
+        return null;
       }
+      await admin
+        .from("invoices")
+        .update({ pdf_url: storagePath })
+        .eq("id", invoiceId);
     } else {
       console.error(
         `[qr] Rechnung ${invoiceId}: kein PDF erzeugbar, bleibt offen für einen neuen Versuch.`
       );
+      // Kein Link zurückgeben. Der Aufrufer bricht damit den Versand ab,
+      // statt auf eine nicht vorhandene Datei zu verweisen.
+      return null;
     }
   }
 

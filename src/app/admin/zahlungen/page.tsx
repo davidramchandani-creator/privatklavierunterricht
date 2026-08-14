@@ -110,13 +110,17 @@ export default async function ZahlungenPage() {
   // Ratenkäufen. Damit standen auch Pakete darin, deren Gesamtbetrag beim
   // Anlegen bereits fakturiert wurde — ein Klick auf „Abrechnen" hätte dem
   // Schüler dieselbe Lektion ein zweites Mal in Rechnung gestellt.
+  // Bewusst ohne Zeitfilter: Auch kommende Lektionen erscheinen in der
+  // Liste und lassen sich abrechnen. Der Admin entscheidet, wann Geld
+  // gefordert wird — die übliche Reihenfolge (erst Unterricht, dann
+  // Rechnung) ist eine Konvention, keine Sperre. Die Trennung in
+  // „gehalten" und „kommend" übernimmt die Anzeige.
   const jetzt = new Date().toISOString();
   const { data: gehalten } = await admin
     .from("appointments")
     .select(
       "id, start_at, end_at, status, student_id, profiles(vorname, nachname, ist_test), packages(price_per_lesson, payment_method, billing_mode)"
     )
-    .lt("end_at", jetzt)
     .in("status", ["booked", "completed"])
     .order("start_at", { ascending: false })
     .limit(200);
@@ -148,13 +152,15 @@ export default async function ZahlungenPage() {
       betrag: Number(pkg?.price_per_lesson ?? 85),
       methode: pkg?.payment_method === "qr" ? "qr" : "twint",
       istTest: p?.ist_test === true,
+      gehalten: a.end_at < jetzt,
     });
   }
+  const anzahlGehalten = offeneLektionen.filter((l) => l.gehalten).length;
 
   return (
     <ZahlungenTabs
       ratenBadge={zuErledigen}
-      lektionenBadge={offeneLektionen.length}
+      lektionenBadge={anzahlGehalten}
       lektionen={<LektionenBoard lektionen={offeneLektionen} />}
       rechnungen={<PaymentsBoard invoices={invoices} />}
       raten={<RatenBoard zeilen={zeilen} />}

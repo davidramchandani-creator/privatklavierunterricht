@@ -32,7 +32,24 @@ export async function bookSeriesForStudent(
   startIso: string,
   lessonsCount: number,
   intervalDays: number,
-  source: "direct" | "public_request" | "admin_proposal" | "reschedule"
+  source: "direct" | "public_request" | "admin_proposal" | "reschedule",
+  opts?: {
+    /**
+     * Der Admin bucht an allen Regeln vorbei.
+     *
+     * Zeitfenster, Abwesenheiten und Zeitblöcke sind Regeln für Schüler —
+     * sie schützen den Kalender vor Anfragen, die nicht in den Alltag
+     * passen. Der Admin ist derjenige, der die Ausnahmen macht: die
+     * Ersatzlektion am Samstagvormittag, der Termin in den Ferien, weil es
+     * beiden gerade passt. Ihn an die eigenen Schutzregeln zu binden hiesse,
+     * für jede Ausnahme erst die Regel umzubauen.
+     *
+     * Was auch mit Übersteuerung geprüft wird: Überschneidung mit einem
+     * bestehenden Termin. Das ist keine Regel, sondern Physik — niemand
+     * kann gleichzeitig an zwei Orten unterrichten.
+     */
+    adminOverride?: boolean;
+  }
 ): Promise<{ appointmentIds: string[] } | { error: string }> {
   const { data: profile } = await admin
     .from("profiles")
@@ -63,21 +80,50 @@ export async function bookSeriesForStudent(
     starts[starts.length - 1].getTime() + LESSON_DURATION_MIN * 60000
   );
 
-  const ctx = await loadAvailabilityContext(
-    admin,
-    studentUserId,
-    bufferMin,
-    desiredStart,
-    seriesEnd,
-    now,
-    { skipLeadTime: true }
-  );
-  const validation = validateSeries(desiredStart, lessonsCount, intervalDays, ctx);
-  if (!validation.ok) {
-    return {
-      error:
-        "Mindestens ein Termin ist nicht verfügbar (Kollision/Abwesenheit/Zeitblock).",
-    };
+  if (opts?.adminOverride) {
+    // Nur die Überschneidung prüfen, sonst nichts.
+    const slots = slotsFromStarts(starts);
+    const { data: bestehende } = await admin
+      .from("appointments")
+      .select("id, start_at, end_at")
+      .eq("status", "booked")
+      .lt("start_at", seriesEnd.toISOString())
+      .gt("end_at", desiredStart.toISOString());
+    for (const s of slots) {
+      const konflikt = (bestehende ?? []).find(
+        (b) => new Date(b.start_at) < s.end && new Date(b.end_at) > s.start
+      );
+      if (konflikt) {
+        const wann = new Date(konflikt.start_at).toLocaleString("de-CH", {
+          timeZone: "Europe/Zurich",
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        return {
+          error: `Überschneidet sich mit einem bestehenden Termin (${wann}).`,
+        };
+      }
+    }
+  } else {
+    const ctx = await loadAvailabilityContext(
+      admin,
+      studentUserId,
+      bufferMin,
+      desiredStart,
+      seriesEnd,
+      now,
+      { skipLeadTime: true }
+    );
+    const validation = validateSeries(desiredStart, lessonsCount, intervalDays, ctx);
+    if (!validation.ok) {
+      return {
+        error:
+          "Mindestens ein Termin ist nicht verfügbar (Kollision/Abwesenheit/Zeitblock).",
+      };
+    }
   }
 
   const seriesId = lessonsCount > 1 ? crypto.randomUUID() : null;

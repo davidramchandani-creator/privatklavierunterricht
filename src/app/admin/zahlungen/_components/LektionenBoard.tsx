@@ -13,6 +13,8 @@ export type OffeneLektion = {
   betrag: number;
   methode: "twint" | "qr";
   istTest: boolean;
+  /** Hat die Lektion bereits stattgefunden? */
+  gehalten: boolean;
 };
 
 function formatiere(iso: string): string {
@@ -63,20 +65,53 @@ export default function LektionenBoard({ lektionen }: { lektionen: OffeneLektion
       <div className="bg-white rounded-2xl border border-[#EAECEF] p-8 text-center">
         <p className="text-gray-500">Keine offenen Lektionen.</p>
         <p className="text-sm text-gray-400 mt-1">
-          Alle vergangenen Lektionen sind abgerechnet.
+          Alle Lektionen mit Abrechnung pro Lektion sind fakturiert.
         </p>
       </div>
     );
   }
 
+  const gehaltene = lektionen.filter((l) => l.gehalten);
+  const kommende = lektionen.filter((l) => !l.gehalten);
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       <p className="text-sm text-gray-500">
-        Lektionen, die stattgefunden haben und für die noch keine Rechnung
+        Lektionen mit Abrechnung pro Lektion, für die noch keine Rechnung
         besteht. Der Knopf stellt die Rechnung und verschickt die
-        Zahlungsaufforderung sofort.
+        Zahlungsaufforderung sofort — auch im Voraus, wenn du das willst.
       </p>
 
+      {/*
+        Als Funktionsaufruf, nicht als <Gruppe/>: Eine im Render definierte
+        Komponente bekäme bei jedem Durchlauf eine neue Identität, und React
+        würde die Zeilen samt DOM neu aufbauen.
+      */}
+      {gehaltene.length > 0 && Gruppe({ titel: "Gehalten", lektionen: gehaltene })}
+      {kommende.length > 0 &&
+        Gruppe({
+          titel: "Kommend",
+          hinweis: "Diese Lektionen stehen noch aus. Abrechnen ist trotzdem möglich.",
+          lektionen: kommende,
+        })}
+    </div>
+  );
+
+  function Gruppe({
+    titel,
+    hinweis,
+    lektionen,
+  }: {
+    titel: string;
+    hinweis?: string;
+    lektionen: OffeneLektion[];
+  }) {
+    return (
+    <div className="space-y-2">
+      <p className="text-xs font-700 uppercase tracking-widest text-gray-400">
+        {titel}
+      </p>
+      {hinweis && <p className="text-xs text-gray-400">{hinweis}</p>}
       <div className="bg-white rounded-2xl border border-[#EAECEF] overflow-hidden">
         {lektionen.map((l, i) => (
           <div
@@ -135,5 +170,6 @@ export default function LektionenBoard({ lektionen }: { lektionen: OffeneLektion
         ))}
       </div>
     </div>
-  );
+    );
+  }
 }
