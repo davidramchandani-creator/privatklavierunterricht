@@ -3,6 +3,7 @@ import PaymentsBoard from "./_components/PaymentsBoard";
 import RatenBoard, { type RatenZeile } from "./_components/RatenBoard";
 import ZahlungenTabs from "./_components/ZahlungenTabs";
 import LektionenBoard, { type OffeneLektion } from "./_components/LektionenBoard";
+import { zahlungsartFuer } from "@/lib/zahlungsart";
 import type { Invoice } from "./_components/PaymentCard";
 import { buildPlanSummary, type InstalmentRow } from "@/lib/instalment-view";
 import { PACKAGE_LABELS } from "@/lib/packages";
@@ -119,7 +120,7 @@ export default async function ZahlungenPage() {
   const { data: gehalten } = await admin
     .from("appointments")
     .select(
-      "id, start_at, end_at, status, student_id, profiles(vorname, nachname, ist_test), packages(price_per_lesson, payment_method, billing_mode)"
+      "id, start_at, end_at, status, student_id, profiles(vorname, nachname, ist_test, payment_method), packages(price_per_lesson, payment_method, billing_mode)"
     )
     .in("status", ["booked", "completed"])
     .order("start_at", { ascending: false })
@@ -142,7 +143,12 @@ export default async function ZahlungenPage() {
     if (pkg?.billing_mode !== "pro_lektion") continue;
 
     const p = nameOf(a.profiles) as unknown as
-      | { vorname: string; nachname: string; ist_test: boolean | null }
+      | {
+          vorname: string;
+          nachname: string;
+          ist_test: boolean | null;
+          payment_method: string | null;
+        }
       | null;
 
     offeneLektionen.push({
@@ -150,7 +156,10 @@ export default async function ZahlungenPage() {
       studentName: p ? `${p.vorname} ${p.nachname}`.trim() : "Unbekannt",
       beginn: a.start_at,
       betrag: Number(pkg?.price_per_lesson ?? 85),
-      methode: pkg?.payment_method === "qr" ? "qr" : "twint",
+      // Dieselbe Regel wie beim Erstellen der Rechnung, sonst kündigt die
+      // Liste etwas anderes an, als der Knopf dann tut. Genau das ist
+      // passiert: Hier stand QR, obwohl beim Schüler TWINT hinterlegt war.
+      methode: zahlungsartFuer(p, pkg),
       istTest: p?.ist_test === true,
       gehalten: a.end_at < jetzt,
     });

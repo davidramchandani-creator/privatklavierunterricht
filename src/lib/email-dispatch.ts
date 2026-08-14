@@ -7,6 +7,7 @@ import { pricePerPersonFor } from "@/lib/group-courses";
 import { sendPushToUser, sendPushToAdmin } from "@/lib/push";
 import { buildPush } from "@/lib/notification-push";
 import { BASIS_URL } from "@/lib/seo";
+import { zahlungsartFuer } from "@/lib/zahlungsart";
 
 export const ADMIN_RECIPIENT_TYPES = [
   "booking_request_admin",
@@ -404,8 +405,7 @@ async function prepareGroupPayment(
     .select("vorname, nachname, adresse, payment_method")
     .eq("id", appt.student_id)
     .maybeSingle();
-  const method: "twint" | "qr" =
-    (profile?.payment_method as "twint" | "qr" | null) ?? "qr";
+  const method: "twint" | "qr" = zahlungsartFuer(profile);
   const studentName = profile
     ? `${profile.vorname} ${profile.nachname}`
     : "Schüler";

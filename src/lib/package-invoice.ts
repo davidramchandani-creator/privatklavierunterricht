@@ -7,6 +7,7 @@ import {
   type SubscriptionType,
 } from "@/lib/subscription";
 import { buildPlanForRhythmus, type Rhythmus } from "@/lib/rhythmus";
+import { zahlungsartFuer } from "@/lib/zahlungsart";
 
 /** Zahlungsfrist für Paket-Rechnungen in Tagen (Spec: Zahlung innert 15 Tagen fällig). */
 export const PACKAGE_INVOICE_DUE_DAYS = 15;
@@ -32,11 +33,9 @@ type ProfileRow = {
 };
 
 function resolveMethod(pkg: PackageRow, profile: ProfileRow): "twint" | "qr" {
-  return (
-    ((pkg.payment_method as "twint" | "qr" | null) ??
-      (profile.payment_method as "twint" | "qr" | null)) ??
-    "qr"
-  );
+  // Nahm früher das Paket zuerst. Damit gewann eine Momentaufnahme vom Tag
+  // des Anlegens gegen die Zahlungsart, die der Admin beim Schüler pflegt.
+  return zahlungsartFuer(profile, pkg);
 }
 
 function studentNameOf(profile: ProfileRow): string {
