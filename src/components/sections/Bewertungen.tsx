@@ -2,40 +2,11 @@ import Link from "next/link";
 import { Star, Quote } from "lucide-react";
 import AbschnittsKopf from "@/components/AbschnittsKopf";
 import Schuelervideos from "@/components/sections/Schuelervideos";
+import {
+  BEWERTUNGEN,
+  SCHNITT_BEWERTUNG,
+} from "@/lib/bewertungen";
 
-interface Bewertung {
-  id: string;
-  sterne: number;
-  text: string;
-  name: string;
-}
-
-const BEWERTUNGEN: Bewertung[] = [
-  {
-    id: "flurina",
-    sterne: 5,
-    text: "Diego ist sehr motiviert und happy!",
-    name: "Flurina",
-  },
-  {
-    id: "marina",
-    sterne: 5,
-    text: "Wir haben Spass zusammen zu spielen und zu lernen.",
-    name: "Marina",
-  },
-  {
-    id: "jan",
-    sterne: 5,
-    text: "David ist ein sehr engagierter Klavierlehrer. Die Kinder fühlen sich super wohl mit ihm, haben Freude am Klavier spielen und machen tolle Fortschritte. Wir können ihn von Herzen weiterempfehlen.",
-    name: "Jan",
-  },
-  {
-    id: "pierre",
-    sterne: 5,
-    text: "Er hat eine sehr angenehme Art und Weise mir genau da zu helfen wo ich seine Hilfe benötige. Sehr vertrauenswürdige Lektionen auf schon fast kollegialer Basis. Toller Prof!",
-    name: "Pierre",
-  },
-];
 
 function Sterne({ count }: { count: number }) {
   return (
@@ -74,7 +45,7 @@ export default function Bewertungen() {
               <Star key={i} className="w-5 h-5 fill-amber-400 text-amber-400" />
             ))}
           </div>
-          <span className="font-700 text-navy-900">5.0</span>
+          <span className="font-700 text-navy-900">{SCHNITT_BEWERTUNG}</span>
           <span className="text-gray-500 text-sm">
             aus {anzeigen.length} Bewertungen
           </span>

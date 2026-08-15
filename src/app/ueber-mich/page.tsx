@@ -3,6 +3,11 @@ import { Music, Users, Heart, CheckCircle2, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import {
+  ANZAHL_BEWERTUNGEN,
+  BEWERTUNGEN,
+  SCHNITT_BEWERTUNG,
+} from "@/lib/bewertungen";
 
 export const metadata: Metadata = {
   title: "Über mich: David Ramchandani | Privatklavierunterricht",
@@ -61,21 +66,6 @@ const werte = [
   },
 ];
 
-/** Echte Schülerstimmen von der bisherigen Website. */
-const stimmen = [
-  {
-    name: "Jan",
-    text: "Perfekt! David ist ein sehr engagierter Klavierlehrer. Er unterrichtet meine zwei Kinder seit gut einem halben Jahr wöchentlich. Die Kinder fühlen sich super wohl mit ihm, haben Freude am Klavier spielen und machen tolle Fortschritte. David ist professionell, kommuniziert super und er ist sehr zuverlässig. Wir können ihn von Herzen weiterempfehlen :).",
-  },
-  {
-    name: "Pierre",
-    text: "Ich gehe zu ihm in die Stunden was ich keinen Moment bereue. Er hat eine sehr angenehme Art und Weise mir genau da zu helfen wo ich seine Hilfe benötige. Sehr vertrauenswürdige Lektionen auf schon fast kollegialer Basis, was ich enorm schätze. Toller Prof!",
-  },
-  {
-    name: "Julian",
-    text: "David spielt schon seit Kindheit Klavier und ich bin jedes mal überrascht wenn ich ihn spielen höre wie exakt und präzise er die Töne spielt. Er ist ein sehr geduldiger Mensch und kann einem sehr viel beibringen auf dem Klavier. Mit David hat man einen sehr guten, jungen Klavierlehrer der professionell und auf moderne Art und Weise Klavierunterricht erteilt.",
-  },
-];
 
 export default function UeberMichPage() {
   return (
@@ -142,7 +132,10 @@ export default function UeberMichPage() {
         <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
             { value: "16", label: "Jahre Klaviererfahrung" },
-            { value: "5.0★", label: "aus 4 Bewertungen" },
+            {
+              value: `${SCHNITT_BEWERTUNG}★`,
+              label: `aus ${ANZAHL_BEWERTUNGEN} Bewertungen`,
+            },
             { value: "45 Min", label: "pro Lektion" },
             { value: "100%", label: "Unterricht bei dir zuhause" },
           ].map(({ value, label }) => (
@@ -245,9 +238,15 @@ export default function UeberMichPage() {
           <h2 className="text-2xl font-800 text-navy-900 mb-2">Das sagen Schüler/innen</h2>
           <p className="text-gray-500 text-sm mb-10">Echte Erfahrungen aus dem Unterricht</p>
           <div className="grid md:grid-cols-3 gap-4">
-            {stimmen.map(({ name, text }) => (
+            {/*
+              Hier stand eine eigene Liste mit drei Stimmen, während die
+              Startseite ihre eigenen vier hatte. Zwei Listen über dieselbe
+              Sache laufen auseinander, sobald man eine davon pflegt.
+              Jetzt dieselbe Quelle, hier nur im vollen Wortlaut.
+            */}
+            {BEWERTUNGEN.map(({ id, name, text, textLang }) => (
               <figure
-                key={name}
+                key={id}
                 className="bg-white rounded-2xl p-6 border border-[#EAECEF] flex flex-col gap-4"
               >
                 <div className="flex gap-0.5" aria-label="5 von 5 Sternen">
@@ -256,7 +255,7 @@ export default function UeberMichPage() {
                   ))}
                 </div>
                 <blockquote className="text-sm text-gray-600 leading-relaxed flex-1">
-                  {text}
+                  {textLang ?? text}
                 </blockquote>
                 <figcaption className="text-sm font-700 text-navy-900">{name}</figcaption>
               </figure>

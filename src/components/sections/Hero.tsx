@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CalendarCheck, Star, Users, Clock, ArrowRight } from "lucide-react";
 import { naechsterTerminText } from "@/lib/naechster-termin";
+import { ANZAHL_BEWERTUNGEN, SCHNITT_BEWERTUNG } from "@/lib/bewertungen";
 
 
 export default async function Hero() {
@@ -62,7 +63,7 @@ export default async function Hero() {
 
             {/* Social proof pills */}
             <div className="flex flex-wrap gap-3 pt-2 opacity-0 animate-fade-in delay-300">
-              <Pill icon={<Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />} text="5.0 aus 4 Bewertungen" />
+              <Pill icon={<Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />} text={`${SCHNITT_BEWERTUNG} aus ${ANZAHL_BEWERTUNGEN} Bewertungen`} />
               <Pill icon={<Users className="w-3.5 h-3.5 text-navy-900" />} text="Unterricht bei dir zuhause" />
               <Pill icon={<Clock className="w-3.5 h-3.5 text-navy-900" />} text="16 Jahre Klaviererfahrung" />
             </div>
@@ -120,7 +121,7 @@ export default async function Hero() {
                   ))}
                 </div>
                 <div>
-                  <p className="text-xs font-700 text-gray-900 leading-none">5.0</p>
+                  <p className="text-xs font-700 text-gray-900 leading-none">{SCHNITT_BEWERTUNG}</p>
                   <p className="text-[10px] text-gray-400 leading-none mt-0.5">Bewertungen</p>
                 </div>
               </div>
