@@ -30,7 +30,7 @@ export type Schuelervideo = {
    * gross auf dem Standbild und als Punkt auf der Zeitachse. Steckt er in
    * einem Satz, kann man ihn nur vorlesen.
    *
-   * Alle vier nehmen wöchentlich Unterricht, Woche 5 heisst also fünf
+   * Alle nehmen wöchentlich Unterricht, Woche 5 heisst also fünf
    * Lektionen. Dass sie bei Null angefangen haben, steht einmal über dem
    * Block, in jeder Zeile wiederholt, hörte man auf, es zu bemerken.
    */
@@ -44,10 +44,15 @@ export type Schuelervideo = {
 };
 
 /**
- * Reihenfolge ist Absicht: Diegos zwei Aufnahmen stehen nebeneinander, erst
- * „Happy Birthday" nach fünf Wochen, dann „Für Elise" nach sechs. Man sieht
- * denselben Menschen eine Woche später, das erzählt mehr als vier
- * unverbundene Einzelstücke.
+ * Reihenfolge ist Absicht: Diegos drei Aufnahmen stehen beieinander, erst
+ * „Happy Birthday" nach fünf Wochen, dann „Für Elise" nach sechs, dann
+ * „Pirates of the Caribbean" nach zehn. Man sieht denselben Menschen
+ * dreimal weiterkommen, und das erzählt mehr als lauter unverbundene
+ * Einzelstücke.
+ *
+ * Auf breiten Bildschirmen füllt Diegos Reihe damit genau die erste Zeile,
+ * darunter stehen Phia und Regina. Das ist kein Zufall, sondern der Grund
+ * für diese Reihenfolge: Der Weg liegt in einer Linie nebeneinander.
  *
  * Ist die Liste leer, zeigt der Bewertungsabschnitt nur die Zitate. Kein
  * Platzhalter, kein „Videos folgen".
@@ -76,6 +81,15 @@ export const SCHUELERVIDEOS: Schuelervideo[] = [
     datei: "/schuelervideos/diego-fuer-elise.mp4",
     poster: "/schuelervideos/diego-fuer-elise.jpg",
     dauer: 22,
+  },
+  {
+    id: "diego-pirates-of-the-caribbean",
+    titel: "Pirates of the Caribbean",
+    name: "Diego",
+    woche: 10,
+    datei: "/schuelervideos/diego-pirates-of-the-caribbean.mp4",
+    poster: "/schuelervideos/diego-pirates-of-the-caribbean.jpg",
+    dauer: 36,
   },
   {
     id: "phia-another-love",

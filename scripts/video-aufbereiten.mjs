@@ -2,8 +2,8 @@
 // ============================================================
 // Handyvideo für die Website aufbereiten.
 //
-// Ein Video direkt vom Handy wiegt schnell 30 MB für 20 Sekunden — mehr als
-// die ganze übrige Startseite. Dieses Skript macht daraus etwa 1–3 MB, ohne
+// Ein Video direkt vom Handy wiegt schnell 30 MB für 20 Sekunden, mehr als
+// die ganze übrige Startseite. Dieses Skript macht daraus etwa 1 bis 3 MB, ohne
 // dass man den Unterschied sieht, und schneidet ein Standbild heraus.
 //
 // Vier Dinge passieren dabei, die einzeln unscheinbar wirken:
@@ -14,7 +14,7 @@
 //
 // **Lautheit angleichen.** Vier Aufnahmen aus vier Wohnzimmern liegen leicht
 // 12 dB auseinander. Ohne Angleich ist ein Video kaum hörbar und das nächste
-// so laut, dass man erschrickt — und niemand schaut ein drittes an.
+// so laut, dass man erschrickt, und niemand schaut ein drittes an.
 //
 // **Standbild.** Ohne `poster` zeigt der Browser einen schwarzen Kasten, bis
 // jemand auf Abspielen drückt. Vier schwarze Kästen sehen nach kaputt aus.
@@ -30,6 +30,9 @@
 // Zusätzlich möglich:
 //   --oben 8      obere 8 % wegschneiden (Bildausschnitt bleibt 16:9).
 //                 Nützlich, wenn am oberen Rand ein Kopf ins Bild ragt.
+//   --links 26    linke 26 % wegschneiden. Nützlich, wenn seitlich etwas
+//                 steht, das nicht ins Bild gehört: ein Notenheft mit
+//                 fremdem Umschlag, eine Wasserflasche, ein Stück Zimmer.
 //   --von 5       erst ab Sekunde 5
 //   --bis 35      nur bis Sekunde 35
 //   --stumm       Tonspur ganz entfernen
@@ -48,6 +51,7 @@ function opt(name) {
   return i >= 0 ? argv[i + 1] : undefined;
 }
 const obenProzent = Number(opt("oben") ?? 0);
+const linksProzent = Number(opt("links") ?? 0);
 const von = opt("von");
 const bis = opt("bis");
 const stumm = argv.includes("--stumm");
@@ -88,16 +92,24 @@ const vorher = statSync(eingabe).size;
 
 // ── Bildfilter zusammensetzen ───────────────────────────────
 //
-// Beim Wegschneiden oben bleibt das Seitenverhältnis 16:9 erhalten: Die
-// Breite wird mitgekürzt und der Ausschnitt mittig gesetzt. Sonst quetscht
-// der Browser das Bild in seinen 16:9-Rahmen und die Hände werden schmal.
+// Zwei Schritte, weil sie zwei verschiedene Fragen beantworten.
+//
+// Zuerst wird weggeschnitten, was nicht ins Bild gehört. Danach wird das
+// Ergebnis auf 16:9 zurückgeführt, egal wie krumm es geworden ist. Die
+// Seite zeigt das Video in einem 16:9-Rahmen mit `object-cover`; liefert
+// man ein anderes Verhältnis, schneidet der Browser selbst nach, und zwar
+// dort, wo es ihm passt. Lieber hier entscheiden, wo geschnitten wird.
 const filter = [];
-if (obenProzent > 0) {
-  const anteil = obenProzent / 100;
+if (obenProzent > 0 || linksProzent > 0) {
+  const oben = obenProzent / 100;
+  const links = linksProzent / 100;
   filter.push(
-    `crop=w='min(iw\\,(ih*(1-${anteil}))*16/9)':h='ih*(1-${anteil})':x='(iw-ow)/2':y='ih*${anteil}'`,
+    `crop=w='iw*(1-${links})':h='ih*(1-${oben})':x='iw*${links}':y='ih*${oben}'`,
   );
 }
+filter.push(
+  `crop=w='min(iw\\,ih*16/9)':h='min(ih\\,iw*9/16)':x='(iw-ow)/2':y='(ih-oh)/2'`,
+);
 filter.push("scale='min(1280,iw)':-2");
 
 // Der fps-Filter versteht keine Ausdrücke wie `min(30,source_fps)`, deshalb

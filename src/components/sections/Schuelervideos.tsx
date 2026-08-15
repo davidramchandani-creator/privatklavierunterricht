@@ -26,14 +26,19 @@ export default function Schuelervideos() {
         Aus dem Unterricht
       </p>
       {/*
-        Der eigentliche Satz. Ohne ihn sind es vier Leute, die Klavier
-        spielen, mit ihm ist es der Beweis, dass fünf Wochen reichen.
+        Der eigentliche Satz. Ohne ihn sind es Leute, die Klavier spielen,
+        mit ihm ist es der Beweis, dass wenige Wochen reichen.
         Der Zusatz „eine Lektion pro Woche" ist nicht schmückend: Ohne ihn
         könnte „nach 5 Wochen" auch einen Intensivkurs meinen, und genau die
         Vermutung entwertet die Aufnahmen.
+
+        Hier stand einmal „Keiner der vier". Sobald ein fünftes Video
+        dazukam, stimmte der Satz nicht mehr, und gemerkt hätte es niemand.
+        Zahlen im Fliesstext, die von einer Liste daneben abhängen, veralten
+        still. Deshalb jetzt ohne.
       */}
       <p className="text-lg text-gray-500 leading-relaxed max-w-2xl mb-6">
-        Keiner der vier hatte vorher je am Klavier gesessen. Eine Lektion pro
+        Niemand hier hatte vorher je am Klavier gesessen. Eine Lektion pro
         Woche, mehr nicht.
       </p>
 
