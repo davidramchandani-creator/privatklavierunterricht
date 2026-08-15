@@ -33,8 +33,13 @@ export const SMPV_STUNDE = 110;
 
 /**
  * Das Tarifblatt empfiehlt für Kinder und Jugendliche bis zum 20.
- * Altersjahr eine Reduktion von höchstens 20 Prozent. Steht hier, damit es
- * nicht übersehen wird: Wer das PDF öffnet, liest diese Zeile mit.
+ * Altersjahr eine Reduktion von höchstens 20 Prozent.
+ *
+ * Auf der Preisseite steht diese Zahl bewusst nicht. Sie ist eine
+ * Empfehlung des Verbands, keine Grösse, mit der David wirbt, und wer sie
+ * sucht, findet sie im verlinkten PDF. Hier bleibt sie stehen, damit
+ * nachvollziehbar ist, dass sie bedacht und nicht übersehen wurde: Das
+ * Halbjahresabo läge mit CHF 93 darüber.
  */
 export const SMPV_JUGEND_RABATT = 0.2;
 

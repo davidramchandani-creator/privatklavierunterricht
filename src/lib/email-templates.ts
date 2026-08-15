@@ -1,4 +1,5 @@
 import { BASIS_URL } from "@/lib/seo";
+import { GOOGLE_BEWERTEN_URL } from "@/lib/google-bewertung";
 
 const APP_URL = BASIS_URL;
 
@@ -2267,6 +2268,7 @@ export function renderEmail(
     case "bewertung_anfrage": {
       const vorname = String(payload.vorname ?? "");
       const link = String(payload.link ?? APP_URL);
+      const google = String(payload.google_link ?? GOOGLE_BEWERTEN_URL);
       return {
         subject: "Magst du kurz etwas zum Unterricht sagen?",
         html: baseWrapper(
@@ -2278,8 +2280,12 @@ export function renderEmail(
            <p style="margin:0 0 24px;">
              Ein paar Sterne genuegen. Wenn du magst, schreib zwei Saetze dazu, das dauert keine Minute.
            </p>
-           <p style="text-align:center;margin:28px 0;">
-             <a href="${link}" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Bewertung abgeben</a>
+           <p style="text-align:center;margin:28px 0 12px;">
+             <a href="${google}" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Bei Google bewerten</a>
+           </p>
+           <p style="text-align:center;margin:0 0 28px;font-size:13px;color:#6b7280;">
+             Kein Google-Konto oder lieber nicht oeffentlich?
+             <a href="${link}" style="color:#1C244B;">Dann hier direkt bei mir</a>.
            </p>
            <p style="margin:0 0 24px;color:#6b7280;font-size:14px;">
              Und wenn dir gerade nicht danach ist: auch voellig in Ordnung, ignorier die Mail einfach.

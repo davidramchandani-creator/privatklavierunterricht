@@ -8,7 +8,6 @@ import {
   LEKTION_MINUTEN,
   SMPV_REGION,
   SMPV_STUNDE,
-  SMPV_STUNDE_JUGEND,
   SMPV_TARIFBLATT,
   vergleiche,
 } from "@/lib/tarifvergleich";
@@ -323,17 +322,19 @@ export default function PreisePage() {
           </div>
 
           {/*
-            Die zwei unbequemen Zeilen. Sie hier wegzulassen waere bequemer
-            und ginge eine Weile gut: Wer aber das Tarifblatt oeffnet, findet
-            beides sofort, und dann steht nicht nur die Zahl in Frage,
-            sondern alles andere auf dieser Seite gleich mit.
+            Die Einzellektion liegt ueber der Empfehlung, und das steht auch
+            da. Wer das Tarifblatt oeffnet, sieht es sowieso; eine Tabelle,
+            die genau die eine unguenstige Zeile verschweigt, faellt beim
+            Nachrechnen sofort auf.
+
+            Den Jugendtarif nennt die Seite bewusst nicht. Er ist eine
+            Empfehlung des Verbands, keine Zahl, mit der David wirbt, und
+            eine Preisseite muss nicht jede Vergleichsgroesse aufzaehlen,
+            die es sonst noch gibt. Nachzulesen ist er im verlinkten PDF.
           */}
           <p className="text-sm text-gray-500 leading-relaxed">
             Die Abos liegen damit unter der Empfehlung, die Einzellektion knapp
-            darüber. Für Kinder und Jugendliche bis 20 empfiehlt der Verband
-            zusätzlich eine Reduktion von bis zu 20 Prozent, also rund
-            CHF {SMPV_STUNDE_JUGEND}.– pro Stunde. Wer regelmässig kommt, liegt
-            bei mir auch darunter.
+            darüber.
           </p>
 
           <a

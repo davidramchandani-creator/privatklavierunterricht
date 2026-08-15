@@ -3266,3 +3266,52 @@ export async function bewertungKuerzen(reviewId: string, textKurz: string) {
   revalidatePath("/");
   return { success: true, error: undefined };
 }
+
+/**
+ * Eine Bewertung von Hand eintragen.
+ *
+ * Der Weg für alles, was ausserhalb der eigenen Seite geschrieben wurde:
+ * Google, Matchspace, eine Nachricht per WhatsApp. Ohne diesen Weg stünde
+ * eine gute Google-Bewertung zwar bei Google, aber nie auf der Website, und
+ * wer direkt auf der Startseite landet, sähe sie nie.
+ *
+ * Sie wird sofort freigegeben. Freigabe schützt vor Fremden mit einem
+ * weitergeleiteten Link; hier tippt David selbst, da wäre ein zweiter Klick
+ * auf „freigeben" nur eine Schleife.
+ */
+export async function bewertungVonHand(formData: FormData) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const name = String(formData.get("name") ?? "").trim();
+  const text = String(formData.get("text") ?? "").trim();
+  const sterne = Math.round(Number(formData.get("sterne") ?? 5));
+  const quelle = String(formData.get("quelle") ?? "google");
+
+  if (!Number.isFinite(sterne) || sterne < 1 || sterne > 5) {
+    return { error: "Sterne müssen zwischen 1 und 5 liegen." };
+  }
+  if (text.length > 0 && name.length === 0) {
+    return { error: "Zu einem Text gehört ein Name." };
+  }
+  if (!["google", "matchspace", "admin", "website_alt"].includes(quelle)) {
+    return { error: "Unbekannte Herkunft." };
+  }
+
+  const admin = await createAdminClient();
+  const { error } = await admin.from("reviews").insert({
+    name: name.length > 0 ? name : null,
+    sterne,
+    text: text.length > 0 ? text : null,
+    quelle,
+    status: "freigegeben",
+    freigegeben_am: new Date().toISOString(),
+  });
+
+  if (error) return { error: "Die Bewertung konnte nicht gespeichert werden." };
+
+  revalidatePath("/admin/bewertungen");
+  revalidatePath("/");
+  revalidatePath("/ueber-mich");
+  return { success: true, error: undefined };
+}

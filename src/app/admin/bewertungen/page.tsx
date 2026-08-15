@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import BewertungsListe, { type AdminBewertung } from "./_components/BewertungsListe";
+import BewertungEintragen from "./_components/BewertungEintragen";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,7 @@ export default async function AdminBewertungenPage() {
           Neue Bewertungen stehen erst auf der Website, wenn du sie freigibst.
         </p>
       </div>
+      <BewertungEintragen />
       <BewertungsListe bewertungen={bewertungen} />
     </div>
   );
