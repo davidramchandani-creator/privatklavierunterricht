@@ -63,9 +63,12 @@ export const BEWERTUNGEN: Bewertung[] = [
   {
     id: "julian",
     sterne: 5,
-    text: "Er ist ein sehr geduldiger Mensch und kann einem sehr viel beibringen auf dem Klavier. Mit David hat man einen sehr guten, jungen Klavierlehrer der professionell und auf moderne Art und Weise Klavierunterricht erteilt.",
+    // Das kleine „mit" nach dem Punkt ist keine Schlamperei von uns,
+    // sondern steht so in seiner Bewertung. Korrigieren hiesse
+    // umschreiben, und dann ist es nicht mehr seine.
+    text: "Er ist ein sehr geduldiger Mensch und kann einem sehr viel beibringen auf dem Klavier. mit David hat man einen sehr guten, jungen Klavierlehrer der professionell und auf moderne Art und Weise Klavierunterricht erteilt.",
     textLang:
-      "David spielt schon seit Kindheit Klavier und ich bin jedes mal überrascht wenn ich ihn spielen höre wie exakt und präzise er die Töne spielt. Er ist ein sehr geduldiger Mensch und kann einem sehr viel beibringen auf dem Klavier. Mit David hat man einen sehr guten, jungen Klavierlehrer der professionell und auf moderne Art und Weise Klavierunterricht erteilt.",
+      "David spielt schon seit Kindheit Klavier und ich bin jedes mal überrascht wenn ich ihn spielen höre wie exakt und präzise er die Töne spielt. Er ist ein sehr geduldiger Mensch und kann einem sehr viel beibringen auf dem Klavier. mit David hat man einen sehr guten, jungen Klavierlehrer der professionell und auf moderne Art und Weise Klavierunterricht erteilt.",
     name: "Julian",
   },
   {
