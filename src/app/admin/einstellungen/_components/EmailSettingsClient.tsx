@@ -20,6 +20,7 @@ const GROUPS: { label: string; types: EmailType[] }[] = [
       { id: "reschedule_request_withdrawn", label: "Verschiebungsanfrage zurückgezogen" },
       { id: "proposal_rejected_admin", label: "Vorschlag abgelehnt" },
       { id: "group_session_admin", label: "Neue Gruppen-Session" },
+      { id: "bewertung_eingegangen", label: "Neue Bewertung wartet auf Freigabe" },
     ],
   },
   {
@@ -29,6 +30,7 @@ const GROUPS: { label: string; types: EmailType[] }[] = [
       { id: "booking_confirmed", label: "Termine bestätigt" },
       { id: "booking_rejected", label: "Terminanfrage abgelehnt" },
       { id: "proposal_new", label: "Neuer Terminvorschlag" },
+      { id: "bewertung_anfrage", label: "Bitte um eine Bewertung" },
     ],
   },
   {

@@ -3155,3 +3155,114 @@ export async function saveEmailSettings(disabledTypes: string[]) {
   if (error) return { error: "Einstellungen konnten nicht gespeichert werden." };
   return { success: true, error: undefined };
 }
+
+// ── Bewertungen ──────────────────────────────────────────────────────────────
+
+/**
+ * Einen Schüler um eine Bewertung bitten.
+ *
+ * Eine offene Einladung pro Schüler, dafür sorgt schon ein Index in der
+ * Datenbank. Ein zweiter Klick schickt deshalb dieselbe Adresse noch einmal,
+ * statt einen weiteren gültigen Link in die Welt zu setzen: Sonst
+ * funktionieren nach dreimal Drücken drei Links, und über jeden davon lässt
+ * sich schreiben.
+ */
+export async function bewertungAnfordern(studentId: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+
+  const { data: profil } = await admin
+    .from("profiles")
+    .select("vorname, email")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (!profil?.email) return { error: "Für diesen Schüler ist keine E-Mail hinterlegt." };
+
+  const { data: offen } = await admin
+    .from("review_einladungen")
+    .select("token")
+    .eq("student_id", studentId)
+    .is("benutzt_am", null)
+    .maybeSingle();
+
+  let token = offen?.token as string | undefined;
+
+  if (!token) {
+    const { data: neu, error } = await admin
+      .from("review_einladungen")
+      .insert({ student_id: studentId })
+      .select("token")
+      .single();
+    if (error || !neu) return { error: "Einladung konnte nicht angelegt werden." };
+    token = neu.token as string;
+  }
+
+  await sendEmailNow(admin, "bewertung_anfrage", {
+    student_id: studentId,
+    vorname: profil.vorname ?? "",
+    link: `${BASIS_URL}/bewerten/${token}`,
+  });
+
+  revalidatePath(`/admin/schueler/${studentId}`);
+  return { success: true, error: undefined };
+}
+
+/**
+ * Eine Bewertung freigeben oder ablehnen.
+ *
+ * Abgelehnte werden nicht gelöscht. Wer eine Bewertung wegklickt und sie
+ * später doch sucht, soll sie finden können, und ausserdem gehört sie
+ * jemandem: Sie einfach verschwinden zu lassen wäre etwas anderes, als sie
+ * nicht zu veröffentlichen.
+ */
+export async function bewertungEntscheiden(
+  reviewId: string,
+  entscheidung: "freigegeben" | "abgelehnt",
+) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("reviews")
+    .update({
+      status: entscheidung,
+      freigegeben_am: entscheidung === "freigegeben" ? new Date().toISOString() : null,
+    })
+    .eq("id", reviewId);
+
+  if (error) return { error: "Das hat nicht geklappt." };
+
+  revalidatePath("/admin/bewertungen");
+  revalidatePath("/");
+  revalidatePath("/ueber-mich");
+  return { success: true, error: undefined };
+}
+
+/**
+ * Die gekürzte Fassung für die Startseite setzen.
+ *
+ * Es wird ausschliesslich weggelassen. Die Datenbank achtet darauf, dass die
+ * Kurzfassung nicht länger ist als das Original; sie kann aber nicht prüfen,
+ * ob jemand umformuliert hat. Das bleibt eine Frage der Haltung, und die
+ * steht im Kommentar über der Tabelle.
+ */
+export async function bewertungKuerzen(reviewId: string, textKurz: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const sauber = textKurz.trim();
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("reviews")
+    .update({ text_kurz: sauber.length > 0 ? sauber : null })
+    .eq("id", reviewId);
+
+  if (error) return { error: "Die Kurzfassung muss kürzer sein als das Original." };
+
+  revalidatePath("/admin/bewertungen");
+  revalidatePath("/");
+  return { success: true, error: undefined };
+}

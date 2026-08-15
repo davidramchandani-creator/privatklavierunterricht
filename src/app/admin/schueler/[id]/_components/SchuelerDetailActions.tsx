@@ -8,6 +8,7 @@ import {
   reactivateSchueler,
   hardDeleteSchueler,
   resendInvite,
+  bewertungAnfordern,
   updateInvoiceStatus,
   updateStudentPrices,
   aboAnlegenAdmin,
@@ -38,7 +39,25 @@ import {
   CANCELLATION_SINGLE_BASE,
   CANCELLATION_SINGLE_THRESHOLD,
 } from "@/lib/packages";
-import { Loader2, Pencil, Trash2, UserX, XCircle, CheckCircle2, Plus, Mail, AlertTriangle, Calendar, Pause, Play, Clock, Ban, Send, SlidersHorizontal } from "lucide-react";
+import {
+  AlertTriangle,
+  Ban,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  Mail,
+  Pause,
+  Pencil,
+  Play,
+  Plus,
+  Send,
+  SlidersHorizontal,
+  Star,
+  Trash2,
+  UserX,
+  XCircle,
+} from "lucide-react";
 
 type Profile = {
   id: string;
@@ -57,6 +76,7 @@ function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [inviteSent, setInviteSent] = useState(false);
+  const [bewertungGesendet, setBewertungGesendet] = useState(false);
 
   function handleUpdate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -92,6 +112,18 @@ function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
       const result = await hardDeleteSchueler(profile.id);
       if (result?.error) setError(result.error ?? null);
       else router.push("/admin/schueler");
+    });
+  }
+
+  // Die Bitte um eine Bewertung. Bewusst ein Knopf und kein Automatismus:
+  // David weiss selbst am besten, wann bei wem der Moment passt. Ein zweiter
+  // Klick schickt denselben Link nochmal, statt einen weiteren gueltigen
+  // anzulegen.
+  function handleBewertungAnfordern() {
+    startTransition(async () => {
+      const result = await bewertungAnfordern(profile.id);
+      if (result?.error) setError(result.error ?? null);
+      else setBewertungGesendet(true);
     });
   }
 
@@ -178,6 +210,16 @@ function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
         >
           <Mail className="w-3.5 h-3.5" />
           {inviteSent ? "E-Mail gesendet ✓" : "Einladung erneut senden"}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleBewertungAnfordern}
+          disabled={isPending || bewertungGesendet}
+          className="flex items-center gap-1.5"
+        >
+          <Star className="w-3.5 h-3.5" />
+          {bewertungGesendet ? "Angefragt ✓" : "Um Bewertung bitten"}
         </Button>
         {profile.aktiv ? (
           <Button

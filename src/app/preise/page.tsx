@@ -1,14 +1,25 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { Check, Car, ShieldCheck, Piano } from "lucide-react";
+import { Check, Car, ShieldCheck, Piano, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Preisrechner from "@/components/sections/Preisrechner";
+import {
+  EIGENE_ANGEBOTE,
+  LEKTION_MINUTEN,
+  SMPV_REGION,
+  SMPV_STUNDE,
+  SMPV_STUNDE_JUGEND,
+  SMPV_TARIFBLATT,
+  vergleiche,
+} from "@/lib/tarifvergleich";
 
 export const metadata: Metadata = {
   title: "Preise & Transparenz: Privatklavierunterricht David Ramchandani",
   description:
     "Wie sich meine Unterrichtspreise zusammensetzen und warum sie fair und nachhaltig sind. Einzellektion CHF 85, Halbjahresabo CHF 70, Jahresabo CHF 65 pro Lektion.",
 };
+
+const vergleichszeilen = vergleiche(EIGENE_ANGEBOTE);
 
 const modelle = [
   { modell: "Einzellektion", preis: "CHF 85.–" },
@@ -258,6 +269,82 @@ export default function PreisePage() {
               ))}
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Vergleich mit dem Berufsverband */}
+      <section className="py-16 px-4 bg-surface border-t border-[#EAECEF]">
+        <div className="max-w-3xl mx-auto space-y-6">
+          <div>
+            <p className="text-sm font-600 text-gray-400 uppercase tracking-widest mb-2">
+              Zur Einordnung
+            </p>
+            <h2 className="text-2xl font-800 text-navy-900">
+              Was ist üblich?
+            </h2>
+            <p className="text-gray-500 mt-3 leading-relaxed">
+              Der Schweizerische Musikpädagogische Verband gibt jedes Jahr
+              empfohlene Mindesttarife heraus. Für {SMPV_REGION} stehen dort
+              CHF {SMPV_STUNDE}.– für eine Lektion à 60 Minuten. Meine Lektionen
+              dauern {LEKTION_MINUTEN} Minuten, deshalb sind sie unten auf eine
+              volle Stunde hochgerechnet. Anders wäre der Vergleich schief.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-[#EAECEF] overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 bg-navy-900">
+              <span className="text-sm font-600 text-white/80">
+                Empfehlung SMPV, Erwachsene
+              </span>
+              <span className="text-lg font-800 text-white">
+                CHF {SMPV_STUNDE}.–
+              </span>
+            </div>
+            {vergleichszeilen.map((z) => (
+              <div
+                key={z.bezeichnung}
+                className="flex items-center justify-between px-5 py-4 border-t border-[#EAECEF]"
+              >
+                <div>
+                  <p className="text-sm font-600 text-navy-900">{z.bezeichnung}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    CHF {z.preis45}.– für {LEKTION_MINUTEN} Minuten
+                  </p>
+                </div>
+                <span
+                  className={`text-lg font-800 ${
+                    z.unterEmpfehlung ? "text-emerald-600" : "text-navy-900"
+                  }`}
+                >
+                  CHF {z.preis60}.–
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/*
+            Die zwei unbequemen Zeilen. Sie hier wegzulassen waere bequemer
+            und ginge eine Weile gut: Wer aber das Tarifblatt oeffnet, findet
+            beides sofort, und dann steht nicht nur die Zahl in Frage,
+            sondern alles andere auf dieser Seite gleich mit.
+          */}
+          <p className="text-sm text-gray-500 leading-relaxed">
+            Die Abos liegen damit unter der Empfehlung, die Einzellektion knapp
+            darüber. Für Kinder und Jugendliche bis 20 empfiehlt der Verband
+            zusätzlich eine Reduktion von bis zu 20 Prozent, also rund
+            CHF {SMPV_STUNDE_JUGEND}.– pro Stunde. Wer regelmässig kommt, liegt
+            bei mir auch darunter.
+          </p>
+
+          <a
+            href={SMPV_TARIFBLATT}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-sm font-600 text-navy-900 underline decoration-navy-200 hover:decoration-navy-900 underline-offset-4"
+          >
+            Tarifblatt des SMPV ansehen
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
         </div>
       </section>
 

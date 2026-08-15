@@ -4,21 +4,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  LayoutDashboard,
-  Users,
-  UsersRound,
+  Bell,
   Calendar,
+  CalendarCheck,
   CalendarClock,
   CalendarOff,
-  CreditCard,
-  Inbox,
-  Settings,
-  FlaskConical,
-  Clock,
   ChevronDown,
-  Bell,
+  Clock,
+  CreditCard,
+  FlaskConical,
+  Inbox,
+  LayoutDashboard,
   Route,
-  CalendarCheck,
+  Settings,
+  Star,
+  Users,
+  UsersRound,
 } from "lucide-react";
 
 type NavItem = {
@@ -58,6 +59,7 @@ export const navEntries: NavEntry[] = [
   },
   { href: "/admin/gruppenkurse", label: "Gruppenkurse", icon: UsersRound },
   { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
+  { href: "/admin/bewertungen", label: "Bewertungen", icon: Star },
   { href: "/benachrichtigungen", label: "Benachrichtigungen", icon: Bell },
   { href: "/admin/einstellungen", label: "Einstellungen", icon: Settings },
   { href: "/admin/testmodus", label: "Testmodus", icon: FlaskConical },

@@ -3,11 +3,7 @@ import { Music, Users, Heart, CheckCircle2, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import {
-  ANZAHL_BEWERTUNGEN,
-  BEWERTUNGEN,
-  SCHNITT_BEWERTUNG,
-} from "@/lib/bewertungen";
+import { ladeBewertungen } from "@/lib/bewertungen";
 
 export const metadata: Metadata = {
   title: "Über mich: David Ramchandani | Privatklavierunterricht",
@@ -67,7 +63,9 @@ const werte = [
 ];
 
 
-export default function UeberMichPage() {
+export default async function UeberMichPage() {
+  const { liste, anzahl, schnitt } = await ladeBewertungen();
+
   return (
     <main>
       {/* Hero */}
@@ -133,8 +131,8 @@ export default function UeberMichPage() {
           {[
             { value: "16", label: "Jahre Klaviererfahrung" },
             {
-              value: `${SCHNITT_BEWERTUNG}★`,
-              label: `aus ${ANZAHL_BEWERTUNGEN} Bewertungen`,
+              value: `${schnitt}★`,
+              label: `aus ${anzahl} Bewertungen`,
             },
             { value: "45 Min", label: "pro Lektion" },
             { value: "100%", label: "Unterricht bei dir zuhause" },
@@ -244,7 +242,7 @@ export default function UeberMichPage() {
               Sache laufen auseinander, sobald man eine davon pflegt.
               Jetzt dieselbe Quelle, hier nur im vollen Wortlaut.
             */}
-            {BEWERTUNGEN.map(({ id, name, text, textLang }) => (
+            {liste.map(({ id, name, text }) => (
               <figure
                 key={id}
                 className="bg-white rounded-2xl p-6 border border-[#EAECEF] flex flex-col gap-4"
@@ -255,7 +253,7 @@ export default function UeberMichPage() {
                   ))}
                 </div>
                 <blockquote className="text-sm text-gray-600 leading-relaxed flex-1">
-                  {textLang ?? text}
+                  {text}
                 </blockquote>
                 <figcaption className="text-sm font-700 text-navy-900">{name}</figcaption>
               </figure>

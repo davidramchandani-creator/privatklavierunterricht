@@ -30,6 +30,9 @@ export const ADMIN_RECIPIENT_TYPES = [
   // Fixplatz-Modell
   "fixplatz_admin",
   "ausfall_admin",
+  // Eine Bewertung wartet auf Freigabe. Ohne diese Mail bliebe sie liegen:
+  // Niemand schaut taeglich in eine Liste, die meistens leer ist.
+  "bewertung_eingegangen",
   // Abo-Modell
   "abo_gestartet_admin",
   "abo_verlaengert_admin",
@@ -72,6 +75,7 @@ export const STUDENT_LOOKUP_TYPES = [
   "fixplatz_confirmed",
   "ausfall_ersatz_vorschlag",
   "ausfall_gutschrift",
+  "bewertung_anfrage",
   "ausfall_kurzfristig",
   "rhythmus_changed",
   // Abo-Modell

@@ -2257,6 +2257,69 @@ export function renderEmail(
       };
     }
 
+    // ── Bewertungen ────────────────────────────────────────────────
+    //
+    // Die Bitte um eine Bewertung ist heikel: Sie kann leicht wie eine
+    // Forderung klingen, und dann schreibt jemand aus Pflichtgefuehl etwas
+    // Hoefliches. Deshalb steht ausdruecklich drin, dass Sterne genuegen
+    // und dass ein Nein in Ordnung ist. Wer sich frei fuehlt, schreibt
+    // ehrlicher, und ehrlich ist das, was auf der Seite wirkt.
+    case "bewertung_anfrage": {
+      const vorname = String(payload.vorname ?? "");
+      const link = String(payload.link ?? APP_URL);
+      return {
+        subject: "Magst du kurz etwas zum Unterricht sagen?",
+        html: baseWrapper(
+          `<p style="margin:0 0 16px;">Hallo ${vorname},</p>
+           <p style="margin:0 0 16px;">
+             wenn dir der Unterricht gefaellt, wuerde mir eine kurze Bewertung sehr helfen.
+             Die meisten, die bei mir anfragen, schauen zuerst, was andere schreiben.
+           </p>
+           <p style="margin:0 0 24px;">
+             Ein paar Sterne genuegen. Wenn du magst, schreib zwei Saetze dazu, das dauert keine Minute.
+           </p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${link}" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Bewertung abgeben</a>
+           </p>
+           <p style="margin:0 0 24px;color:#6b7280;font-size:14px;">
+             Und wenn dir gerade nicht danach ist: auch voellig in Ordnung, ignorier die Mail einfach.
+             Auf den Unterricht hat das keinen Einfluss.
+           </p>
+           <p style="margin:0;color:#6b7280;font-size:13px;">
+             Liebe Gruesse<br/>David Ramchandani<br/>
+             <a href="${APP_URL}" style="color:#6b7280;">privatklavierunterricht.ch</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "bewertung_eingegangen": {
+      const sterne = Number(payload.sterne ?? 0);
+      const text = payload.text ? String(payload.text) : null;
+      return {
+        subject: `Neue Bewertung: ${sterne} von 5 Sternen von ${payload.name ?? "jemandem"}`,
+        html: baseWrapper(
+          `<p style="margin:0 0 16px;">
+             <strong>${payload.name ?? "Jemand"}</strong> hat eine Bewertung abgegeben:
+             <strong>${sterne} von 5 Sternen</strong>.
+           </p>
+           ${
+             text
+               ? `<table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:20px;background:#f8f9fa;border-radius:8px;">
+                    <tr><td style="padding:14px 18px;font-size:15px;color:#1f2937;line-height:1.7;">${text}</td></tr>
+                  </table>`
+               : `<p style="margin:0 0 16px;color:#6b7280;font-size:14px;">Ohne Text, nur die Sterne.</p>`
+           }
+           <p style="margin:0 0 24px;">
+             Sie steht noch nicht auf der Website. Erst nach deiner Freigabe.
+           </p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/bewertungen" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Bewertung ansehen</a>
+           </p>`
+        ),
+      };
+    }
+
     default:
       return null;
   }

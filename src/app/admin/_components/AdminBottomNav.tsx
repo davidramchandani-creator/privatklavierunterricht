@@ -4,20 +4,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  LayoutDashboard,
-  Users,
-  Calendar,
-  MoreHorizontal,
-  CalendarClock,
-  Inbox,
-  CreditCard,
-  Settings,
-  UsersRound,
   Bell,
-  X,
-  LogOut,
-  Route,
+  Calendar,
   CalendarCheck,
+  CalendarClock,
+  CreditCard,
+  Inbox,
+  LayoutDashboard,
+  LogOut,
+  MoreHorizontal,
+  Route,
+  Settings,
+  Star,
+  Users,
+  UsersRound,
+  X,
 } from "lucide-react";
 import { logout } from "@/app/auth/actions";
 
@@ -32,6 +33,7 @@ const MORE_ITEMS = [
   { href: "/admin/anfragen", label: "Probelektionen", icon: Inbox },
   { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
   { href: "/admin/gruppenkurse", label: "Gruppenkurse", icon: UsersRound },
+  { href: "/admin/bewertungen", label: "Bewertungen", icon: Star },
   { href: "/admin/planung", label: "Terminplanung", icon: CalendarCheck },
   { href: "/admin/routenplanung", label: "Routenplanung", icon: Route },
   { href: "/benachrichtigungen", label: "Benachrichtigungen", icon: Bell },

@@ -2,10 +2,7 @@ import Link from "next/link";
 import { Star, Quote } from "lucide-react";
 import AbschnittsKopf from "@/components/AbschnittsKopf";
 import Schuelervideos from "@/components/sections/Schuelervideos";
-import {
-  BEWERTUNGEN,
-  SCHNITT_BEWERTUNG,
-} from "@/lib/bewertungen";
+import { ladeBewertungen } from "@/lib/bewertungen";
 
 
 function Sterne({ count }: { count: number }) {
@@ -25,8 +22,12 @@ function Sterne({ count }: { count: number }) {
   );
 }
 
-export default function Bewertungen() {
-  const anzeigen = BEWERTUNGEN;
+export default async function Bewertungen() {
+  const { liste, anzahl, schnitt } = await ladeBewertungen();
+
+  // Ohne freigegebene Bewertungen keinen leeren Abschnitt mit der
+  // Ueberschrift "Was Schueler sagen" stehen lassen. Die Videos bleiben.
+  if (anzahl === 0) return null;
 
   return (
     <section className="py-16 md:py-24 bg-surface">
@@ -45,15 +46,20 @@ export default function Bewertungen() {
               <Star key={i} className="w-5 h-5 fill-amber-400 text-amber-400" />
             ))}
           </div>
-          <span className="font-700 text-navy-900">{SCHNITT_BEWERTUNG}</span>
+          <span className="font-700 text-navy-900">{schnitt}</span>
+          {/*
+            Gezaehlt werden alle, auch die zwei, die damals nur fuenf Sterne
+            gegeben und nichts geschrieben haben. Gezeigt werden nur die mit
+            Text: Eine Karte mit leerem Zitat sieht nach Fehler aus.
+          */}
           <span className="text-gray-500 text-sm">
-            aus {anzeigen.length} Bewertungen
+            aus {anzahl} Bewertungen
           </span>
         </div>
 
         {/* Cards */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {anzeigen.map((b) => (
+          {liste.map((b) => (
             <div
               key={b.id}
               className="bg-white rounded-2xl border border-[#EAECEF] p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
@@ -61,7 +67,7 @@ export default function Bewertungen() {
               <Quote className="w-8 h-8 text-gray-200 mb-3" />
               <Sterne count={b.sterne} />
               <p className="text-gray-600 mt-3 mb-4 text-sm leading-relaxed">
-                  &ldquo;{b.text}&rdquo;
+                  &ldquo;{b.textKurz ?? b.text}&rdquo;
                 </p>
               <p className="text-xs font-600 text-gray-400">{b.name}</p>
             </div>

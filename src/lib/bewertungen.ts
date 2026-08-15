@@ -1,113 +1,111 @@
 // ============================================================
 // Bewertungen
 //
-// Die Liste steht hier und nicht im Abschnitt, der sie anzeigt, weil drei
-// Stellen auf der Website ihre Länge nennen: der Abschnitt selbst, das
-// Abzeichen im Hero und die Zahlenreihe auf „Über mich". Zwei davon hatten
-// die Zahl ausgeschrieben. Als Bewertungen dazukamen, stand dort weiter
-// „aus 4 Bewertungen", und gemerkt hätte es niemand, weil niemand beim
-// Lesen mitzählt.
+// Sie standen einmal als feste Liste in dieser Datei. Jetzt kommen sie aus
+// der Datenbank, weil Schüler selbst welche abgeben können und niemand für
+// jedes Lob den Code anfassen soll.
 //
-// Darum die Regel: Die Zahl wird nirgends getippt, sie wird gezählt. Ein
-// Test wacht darüber (bewertungen.test.ts).
+// ── Warum die Zahl nirgends getippt wird ────────────────────
+//
+// Drei Stellen auf der Website nennen die Anzahl: der Abschnitt selbst, das
+// Abzeichen im Hero und die Zahlenreihe auf „Über mich". Zwei davon hatten
+// „aus 4 Bewertungen" ausgeschrieben. Als die fünfte dazukam, log die Seite
+// an beiden Stellen weiter, und gemerkt hätte es niemand, weil beim Lesen
+// niemand die Karten nachzählt. Anzahl und Schnitt werden deshalb gerechnet,
+// und ein Test (bewertungen.test.ts) lässt feste Zahlen nicht zurück.
+//
+// ── Sterne ohne Text ────────────────────────────────────────
+//
+// Zwei Leute haben im alten System fünf Sterne gegeben, ohne etwas zu
+// schreiben. Ihre Wertung zählt: Sie ist ja abgegeben worden. Eine Karte
+// bekommen sie nicht, denn ein leeres Zitatfeld sieht nach Fehler aus.
+// Deshalb die Trennung unten in `liste` (hat Text, wird gezeigt) und
+// `anzahl` (alle, wird gezählt).
 //
 // ── Zum Kürzen ──────────────────────────────────────────────
 //
-// Es wird **weggelassen, nie umformuliert**. Kein Wort wird geglättet,
-// keins ergänzt, keine Rechtschreibung korrigiert. Eine Bewertung, die
-// jemand für den Autor schöner geschrieben hat, ist keine Bewertung mehr,
-// sondern Werbetext, und man hört den Unterschied beim Lesen sofort.
+// Es wird **weggelassen, nie umformuliert**. Kein Wort geglättet, keins
+// ergänzt, keine Rechtschreibung korrigiert. Julian schrieb „auf dem
+// Klavier. mit David", klein nach dem Punkt; genau so steht es da. Eine
+// Bewertung, die jemand für den Autor schöner geschrieben hat, ist keine
+// mehr, sondern Werbetext, und man hört den Unterschied beim Lesen sofort.
 // ============================================================
+
+import { cache } from "react";
+import { createClient } from "@/lib/supabase/server";
 
 export interface Bewertung {
   id: string;
   sterne: number;
-  /** Gekürzt, für die Karten auf der Startseite. */
+  /** Der volle Wortlaut, so wie abgeschickt. */
   text: string;
-  /**
-   * Der volle Wortlaut, für „Über mich". Dort hat man Zeit, dort darf es
-   * lang sein. Fehlt der Eintrag, wird `text` genommen.
-   *
-   * Beide Fassungen stehen hier nebeneinander und nicht in den zwei
-   * Seiten, die sie zeigen. Vorher war es getrennt, und prompt lagen auf
-   * der Startseite vier Bewertungen und auf „Über mich" drei andere.
-   */
-  textLang?: string;
+  /** Gekürzt für die Karten auf der Startseite. Fehlt sie, gilt `text`. */
+  textKurz: string | null;
   name: string;
 }
 
-/**
- * Die Reihenfolge mischt die Herkunft absichtlich: erst ein Elternteil, ein
- * erwachsener Schüler und jemand, der selbst Musik macht, danach zwei
- * weitere Eltern. Sechs Zitate derselben Sorte lesen sich wie eines.
- * Sechs füllen ausserdem genau zwei Dreierreihen, ohne dass eine Karte
- * allein in der letzten Zeile steht.
- */
-export const BEWERTUNGEN: Bewertung[] = [
-  {
-    id: "jan",
-    sterne: 5,
-    text: "David ist ein sehr engagierter Klavierlehrer. Er unterrichtet meine zwei Kinder seit gut einem halben Jahr wöchentlich. Die Kinder fühlen sich super wohl mit ihm, haben Freude am Klavier spielen und machen tolle Fortschritte. Wir können ihn von Herzen weiterempfehlen.",
-    textLang:
-      "Perfekt! David ist ein sehr engagierter Klavierlehrer. Er unterrichtet meine zwei Kinder seit gut einem halben Jahr wöchentlich. Die Kinder fühlen sich super wohl mit ihm, haben Freude am Klavier spielen und machen tolle Fortschritte. David ist professionell, kommuniziert super und er ist sehr zuverlässig. Wir können ihn von Herzen weiterempfehlen :).",
-    name: "Jan",
-  },
-  {
-    id: "pierre",
-    sterne: 5,
-    text: "Er hat eine sehr angenehme Art und Weise mir genau da zu helfen wo ich seine Hilfe benötige. Sehr vertrauenswürdige Lektionen auf schon fast kollegialer Basis. Toller Prof!",
-    textLang:
-      "Ich gehe zu ihm in die Stunden was ich keinen Moment bereue. Er hat eine sehr angenehme Art und Weise mir genau da zu helfen wo ich seine Hilfe benötige. Sehr vertrauenswürdige Lektionen auf schon fast kollegialer Basis, was ich enorm schätze. Toller Prof!",
-    name: "Pierre",
-  },
-  {
-    id: "julian",
-    sterne: 5,
-    // Das kleine „mit" nach dem Punkt ist keine Schlamperei von uns,
-    // sondern steht so in seiner Bewertung. Korrigieren hiesse
-    // umschreiben, und dann ist es nicht mehr seine.
-    text: "Er ist ein sehr geduldiger Mensch und kann einem sehr viel beibringen auf dem Klavier. mit David hat man einen sehr guten, jungen Klavierlehrer der professionell und auf moderne Art und Weise Klavierunterricht erteilt.",
-    textLang:
-      "David spielt schon seit Kindheit Klavier und ich bin jedes mal überrascht wenn ich ihn spielen höre wie exakt und präzise er die Töne spielt. Er ist ein sehr geduldiger Mensch und kann einem sehr viel beibringen auf dem Klavier. mit David hat man einen sehr guten, jungen Klavierlehrer der professionell und auf moderne Art und Weise Klavierunterricht erteilt.",
-    name: "Julian",
-  },
-  {
-    id: "mirela",
-    sterne: 5,
-    text: "David ist eine natürliche und feine Persönlichkeit. Er unterrichtet mit Leidenschaft und Respekt für Klavier und Mitmenschen! Wir würden David jeder Zeit sehr gerne weiterempfehlen.",
-    // Der Originaltext nennt den Vornamen des Kindes. Weggelassen: Auf
-    // den Videos ist bewusst kein Gesicht zu sehen, dann sollte hier auch
-    // kein Kindername stehen. Die Familie hat den Text bei Matchspace
-    // geschrieben, nicht für diese Seite.
-    textLang:
-      "David ist eine natürliche und feine Persönlichkeit. Er verfügt über sehr gute Sozial- und Selbstkompetenzen. Er unterrichtet mit Leidenschaft und Respekt für Klavier und Mitmenschen! Wir würden David jeder Zeit sehr gerne weiterempfehlen. DANKE DAVID!",
-    name: "Mirela",
-  },
-  {
-    id: "flurina",
-    sterne: 5,
-    text: "Er ist sehr geduldig, kompetent und man spürt die Leidenschaft für seine Aufgabe. Unser Sohn freut sich jeweils sehr auf die Klavierstunden. Wir können David zu 100% weiterempfehlen.",
-    textLang:
-      "Wir sind sehr begeistert von David. Er ist sehr geduldig, kompetent und man spürt die Leidenschaft für seine Aufgabe. Unser Sohn freut sich jeweils sehr auf die Klavierstunden. Wir können David zu 100% weiterempfehlen.",
-    name: "Flurina",
-  },
-  {
-    id: "marina",
-    sterne: 5,
-    text: "Wir haben Spass zusammen zu spielen und zu lernen.",
-    name: "Marina",
-  },
-];
+export interface Bewertungsdaten {
+  /** Nur die mit Text. Diese bekommen eine Karte. */
+  liste: Bewertung[];
+  /** Alle freigegebenen, auch die ohne Text. */
+  anzahl: number;
+  /** Auf eine Nachkommastelle, gerechnet statt behauptet. */
+  schnitt: string;
+}
 
-export const ANZAHL_BEWERTUNGEN = BEWERTUNGEN.length;
+export const LEER: Bewertungsdaten = { liste: [], anzahl: 0, schnitt: "0.0" };
+
+type Zeile = {
+  id: string;
+  sterne: number;
+  text: string | null;
+  text_kurz: string | null;
+  name: string | null;
+};
+
+export function rechneDaten(zeilen: Zeile[]): Bewertungsdaten {
+  if (zeilen.length === 0) return LEER;
+
+  const schnitt = (
+    zeilen.reduce((summe, z) => summe + z.sterne, 0) / zeilen.length
+  ).toFixed(1);
+
+  const liste: Bewertung[] = zeilen
+    .filter((z): z is Zeile & { text: string; name: string } =>
+      Boolean(z.text && z.name),
+    )
+    .map((z) => ({
+      id: z.id,
+      sterne: z.sterne,
+      text: z.text,
+      textKurz: z.text_kurz,
+      name: z.name,
+    }));
+
+  return { liste, anzahl: zeilen.length, schnitt };
+}
 
 /**
- * Der Schnitt, ausgerechnet statt behauptet.
+ * Die freigegebenen Bewertungen.
  *
- * Steht heute überall als „5.0", weil bisher alle fünf Sterne gegeben
- * haben. Sobald einmal vier Sterne dabei sind, soll die Seite das auch
- * sagen und nicht weiter 5.0 behaupten.
+ * `cache` von React, damit drei Abschnitte auf derselben Seite nicht drei
+ * Abfragen auslösen. Innerhalb einer Anfrage wird nur einmal gefragt.
+ *
+ * Kein Rückfall auf eine fest eingebaute Liste, falls die Datenbank
+ * schweigt. Das war überlegt: Eine solche Liste veraltet unbemerkt und
+ * widerspricht dann dem, was im Admin steht. Ausserdem holt schon der Hero
+ * den nächsten freien Termin aus derselben Datenbank; ist sie weg, fehlt
+ * ohnehin mehr als die Zitate.
  */
-export const SCHNITT_BEWERTUNG = (
-  BEWERTUNGEN.reduce((summe, b) => summe + b.sterne, 0) / BEWERTUNGEN.length
-).toFixed(1);
+export const ladeBewertungen = cache(async (): Promise<Bewertungsdaten> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("id, sterne, text, text_kurz, name")
+    .eq("status", "freigegeben")
+    .order("reihenfolge", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error || !data) return LEER;
+  return rechneDaten(data as Zeile[]);
+});
