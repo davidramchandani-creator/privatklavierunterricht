@@ -4,13 +4,19 @@
 // Die Kaskade, in dieser Reihenfolge:
 //   1. Ausweichtermin in derselben Woche
 //   2. Ausweichtermin in der Folgewoche
-//   3. Laufzeitgutschrift (Paket läuft entsprechend länger)
+//   3. Lektion hinten an die Serie anhängen (Fixplatz)
+//      bzw. Laufzeitgutschrift (Paket läuft entsprechend länger)
 //   4. Rückerstattung, nur von Hand, nie automatisch
 //
 // Warum diese Reihenfolge: Jede Stufe kostet David mehr als die vorige. Ein
 // Ausweichtermin kostet nichts (die Lücke war ohnehin da), eine Gutschrift
 // kostet nur später Geld, eine Rückerstattung kostet echtes Geld. Die für
 // den Schüler fairste Reihenfolge ist damit zugleich die günstigste.
+//
+// Stufe 3 hat zwei Gestalten, weil zwei Modelle nebeneinander laufen. Beim
+// alten Lektionspaket buchte der Schüler selbst, dort genügte mehr Zeit.
+// Beim Fixplatz-Abo steht die Serie fest, dort braucht es einen echten
+// zusätzlichen Termin. Dieselbe Absicht, zwei Umsetzungen.
 //
 // Sonderfall: Sagt der Schüler weniger als 24 Stunden vorher ab, gilt die
 // Lektion als gehalten. Die Zeit war reserviert und liess sich nicht mehr
@@ -20,7 +26,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { BOOKING_LEAD_HOURS } from "./booking";
-import { findeAusweichtermine } from "./fixplatz-server";
+import { findeAusweichtermine, haengeLektionAn } from "./fixplatz-server";
 import { sendEmailNow } from "./emails-outbox";
 
 export type Verursacher = "schueler" | "admin";
@@ -210,11 +216,24 @@ export async function meldeAusfall(
 }
 
 /**
- * Stufe 3: Laufzeit verlängern, weil kein Ausweichtermin zustande kam.
+ * Stufe 3: die Lektion wird nachgeholt, sonst wird die Laufzeit verlängert.
  *
- * Wird auch aufgerufen, wenn der Schüler alle Vorschläge ablehnt. Die
- * Verlängerung wird protokolliert, damit sie nachvollziehbar bleibt und bei
- * Bedarf zurückgerechnet werden kann.
+ * Wird auch aufgerufen, wenn der Schüler alle Vorschläge ablehnt.
+ *
+ * ── Warum zuerst nachholen ──────────────────────────────────
+ *
+ * Beim alten Lektionspaket genügte die Laufzeitverlängerung: Der Schüler
+ * buchte selbst, und in der gewonnenen Woche holte er die Lektion nach.
+ *
+ * Beim Fixplatz-Abo stimmt das nicht mehr. Die Terminserie steht fest, der
+ * Schüler bucht nichts selbst, und eine um eine Woche längere Laufzeit
+ * erzeugt keinen einzigen zusätzlichen Termin. Er hätte eine Lektion bezahlt
+ * und keine bekommen — und weil das Abo formal „verlängert" wurde, sähe es
+ * nach einer Kompensation aus.
+ *
+ * Deshalb wird beim Fixplatz zuerst ein Termin hinten angehängt, auf
+ * demselben Platz. Erst wenn das nicht geht (kein Fixplatz, alles belegt),
+ * greift die Verlängerung als Rückfallebene.
  */
 export async function gewaehreGutschrift(
   admin: SupabaseClient,
@@ -225,7 +244,40 @@ export async function gewaehreGutschrift(
     originalStart: Date;
     studentName?: string;
   }
-): Promise<{ tage: number; neuesAblaufdatum: string | null } | { error: string }> {
+): Promise<
+  | { nachgeholt: true; start: string }
+  | { tage: number; neuesAblaufdatum: string | null }
+  | { error: string }
+> {
+  // Zuerst der Versuch, die Lektion tatsächlich nachzuholen.
+  if (params.packageId) {
+    const nachgeholt = await haengeLektionAn(admin, {
+      studentId: params.studentId,
+      packageId: params.packageId,
+      originalStart: params.originalStart,
+    });
+
+    if (nachgeholt) {
+      await admin
+        .from("lesson_ausfaelle")
+        .update({
+          status: "ersatz_gebucht",
+          ersatz_appointment_id: nachgeholt.appointmentId,
+          erledigt_am: new Date().toISOString(),
+        })
+        .eq("id", params.ausfallId);
+
+      await sendEmailNow(admin, "ausfall_nachgeholt", {
+        student_id: params.studentId,
+        student_name: params.studentName,
+        original_datum: params.originalStart.toISOString(),
+        neuer_termin: nachgeholt.start.toISOString(),
+      });
+
+      return { nachgeholt: true, start: nachgeholt.start.toISOString() };
+    }
+  }
+
   let tage = 7;
   let neuesAblaufdatum: string | null = null;
 

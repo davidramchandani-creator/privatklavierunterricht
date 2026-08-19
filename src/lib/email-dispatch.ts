@@ -75,6 +75,7 @@ export const STUDENT_LOOKUP_TYPES = [
   "fixplatz_confirmed",
   "ausfall_ersatz_vorschlag",
   "ausfall_gutschrift",
+  "ausfall_nachgeholt",
   "bewertung_anfrage",
   "ausfall_kurzfristig",
   "rhythmus_changed",

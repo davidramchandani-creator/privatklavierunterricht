@@ -1668,6 +1668,36 @@ export function renderEmail(
       };
     }
 
+    case "ausfall_nachgeholt": {
+      return {
+        subject: "Deine Lektion wird nachgeholt",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Für die ausgefallene Lektion vom
+              <strong>${payload.original_datum ? fmtDate(String(payload.original_datum)) : ""}</strong>
+              liess sich in den nächsten zwei Wochen kein Ausweichtermin
+              finden. Sie ist deshalb <strong>hinten angehängt</strong>, auf
+              deinem gewohnten Platz.</p>
+
+           <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0 0 6px;color:#065f46;font-size:14px;font-weight:600;">
+               Neuer Termin
+             </p>
+             <p style="margin:0;color:#065f46;font-size:16px;font-weight:700;">
+               ${payload.neuer_termin ? fmtDateTime(String(payload.neuer_termin)) : ""}
+             </p>
+           </div>
+
+           <p>Er steht bereits in deinem Kalender im Portal, du musst nichts
+              tun. Deine Lektionszahl bleibt damit vollständig.</p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>`
+        ),
+      };
+    }
+
     case "ausfall_kurzfristig": {
       return {
         subject: `Absage erhalten: ${payload.original_datum ? fmtDate(String(payload.original_datum)) : ""}`,

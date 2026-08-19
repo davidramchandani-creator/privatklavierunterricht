@@ -100,3 +100,69 @@ describe("Sichtbarkeit im Portal", () => {
     expect(quelle).toContain('allgemein.art !== "umstellung"');
   });
 });
+
+/**
+ * Stufe 3 der Ausfall-Kaskade muss beim Abo eine Lektion anhängen.
+ *
+ * Die alte Umsetzung verlängerte die Laufzeit um eine Woche. Beim
+ * Lektionspaket war das eine echte Kompensation: Der Schüler buchte selbst
+ * und holte die Lektion in der gewonnenen Zeit nach.
+ *
+ * Beim Fixplatz-Abo ist es keine. Die Terminserie steht fest, der Schüler
+ * bucht nichts, und eine längere Laufzeit erzeugt keinen einzigen Termin.
+ * Er hätte bezahlt und nichts bekommen — und weil das Paket formal
+ * „verlängert" wurde, sähe es nach Wiedergutmachung aus.
+ *
+ * Geprüft wird die Reihenfolge im Code, weil der eigentliche Ablauf ohne
+ * Datenbank nicht nachzustellen ist.
+ */
+describe("Ausfall beim Fixplatz-Abo", () => {
+  const quelle = readFileSync(
+    join(process.cwd(), "src", "lib", "ausfall.ts"),
+    "utf8"
+  );
+
+  it("versucht zuerst anzuhängen, bevor die Laufzeit wächst", () => {
+    const anhaengen = quelle.indexOf("haengeLektionAn");
+    const verlaengern = quelle.indexOf("gutschriftTage(pkg.rhythmus)");
+    expect(anhaengen).toBeGreaterThan(-1);
+    expect(verlaengern).toBeGreaterThan(-1);
+    expect(anhaengen).toBeLessThan(verlaengern);
+  });
+
+  it("meldet den Nachholtermin als gebuchten Ersatz, nicht als Gutschrift", () => {
+    expect(quelle).toContain('status: "ersatz_gebucht"');
+    expect(quelle).toContain("ersatz_appointment_id");
+  });
+
+  it("schickt eine eigene Mail mit dem neuen Termin", () => {
+    expect(quelle).toContain("ausfall_nachgeholt");
+  });
+
+  it("behält die Laufzeitverlängerung als Rückfallebene", () => {
+    // Flex-Abos und alte Pakete haben keinen Fixplatz, an den sich etwas
+    // anhängen liesse. Für sie muss die bisherige Regel bestehen bleiben.
+    expect(quelle).toContain('status: "gutschrift"');
+  });
+});
+
+/**
+ * Die Nachholstunde muss auf dem Fixplatz landen.
+ *
+ * War der zuletzt gebuchte Termin ein Ausweichtermin an einem anderen
+ * Wochentag, ergäbe blosses Weiterzählen ab diesem Datum eine Nachholstunde
+ * am falschen Tag — und die nächste ginge wieder von der falschen aus.
+ */
+describe("Nachholtermin rastet auf den Fixplatz ein", () => {
+  it("bestimmt den ersten Kandidaten über firstSeriesStart", () => {
+    const quelle = readFileSync(
+      join(process.cwd(), "src", "lib", "fixplatz-server.ts"),
+      "utf8"
+    );
+    const fn = quelle.slice(quelle.indexOf("export async function haengeLektionAn"));
+    expect(fn).toContain("firstSeriesStart(wunsch, ab, paritaet, 0)");
+    // Und die Parität muss mitgegeben werden, sonst landet ein
+    // zweiwöchentlicher Schüler in der falschen Kalenderwoche.
+    expect(fn).toContain("fixplatz_week_parity");
+  });
+});

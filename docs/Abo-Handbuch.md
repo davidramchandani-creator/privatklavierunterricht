@@ -156,12 +156,31 @@ Weg wie bisher (Rechnung → „Ich habe bezahlt" → du bestätigst).
 
 ## 7. Wenn jemand nicht kann
 
-Unverändert zum Fixplatz-Modell:
-
 1. Ausweichtermin in derselben Woche
 2. Ausweichtermin in der Folgewoche
-3. Laufzeitgutschrift
+3. **Lektion hinten anhängen** — ein zusätzlicher Termin am Ende der Serie,
+   auf demselben Fixplatz
 4. Rückerstattung — nur von Hand
+
+### Warum Stufe 3 anders aussieht als früher
+
+Beim alten Lektionspaket wurde stattdessen die **Laufzeit verlängert**. Das
+war eine echte Kompensation: Der Schüler buchte selbst und holte die Lektion
+in der gewonnenen Woche nach.
+
+Beim Fixplatz-Abo stimmt das nicht mehr. Die Terminserie steht fest, der
+Schüler bucht nichts selbst — eine um eine Woche längere Laufzeit erzeugt
+keinen einzigen zusätzlichen Termin. Er hätte eine Lektion bezahlt und keine
+bekommen, und weil das Abo formal „verlängert" wurde, hätte es nach
+Wiedergutmachung ausgesehen.
+
+Deshalb wird jetzt ein Termin hinten angehängt, im gewohnten Takt auf dem
+gewohnten Platz. Er bekommt die Mail `ausfall_nachgeholt` mit dem konkreten
+Datum, der Termin steht sofort in seinem Kalender.
+
+Die Laufzeitverlängerung bleibt als Rückfallebene für alles ohne Fixplatz:
+Flex-Abos und die alten Pakete. Findet sich auch hinten kein freier Platz,
+greift ebenfalls sie.
 
 | Fall | Lektion erhalten? |
 |---|---|
@@ -396,11 +415,30 @@ Das ist bewusst so und wird von einem Test festgehalten: Würde beim Anwenden
 mit dem tatsächlichen Tag neu gerechnet, stünde auf der Rechnung ein anderer
 Betrag als in dem, was er bestätigt hat.
 
+### Wenn am Ende Termine fehlen
+
+Die Terminserie überspringt die Schulferien und trifft damit dieselben Tage,
+die auch der Rechnung zugrunde liegen. Trotzdem kann ein einzelner Termin
+unbesetzt bleiben, etwa weil dort eine Abwesenheit oder ein Zeitblock liegt.
+
+Solche Fälle stehen nach dem Anwenden namentlich in der Meldung: „Nur 37 von
+39 Terminen gebucht. Fehlend: 12.10.2026, 08.02.2027." Das Abo läuft dann und
+wird bezahlt — es ist nur zu kurz. Genau deshalb wird es eigens gemeldet: Ohne
+Hinweis fiele es niemandem auf, bis die Serie im Mai vorzeitig endet.
+
+Die fehlenden Lektionen setzt du danach über **Einzelnen Schüler einpassen**
+oder eine Direktbuchung.
+
 ### Wer nichts wählt, bekommt nichts
 
 Ohne Abowahl wird übersprungen und dir namentlich gemeldet. Ihm still ein
 Halbjahresabo anzudrehen wäre das Gegenteil dessen, was die Bestätigung im
 Formular bedeutet.
+
+Sein bisheriges Paket bleibt dabei **aktiv**. Er fällt also nicht aus dem
+System, sondern läuft vorerst im alten Modell weiter, und du kannst ihn
+einzeln anschreiben oder anrufen. Ein harter Schnitt am Stichtag würde
+vermutlich jemanden kosten, der die Mail bloss übersehen hat.
 
 Ein Fehler bei einem Schüler bricht die Runde nicht ab. Sonst wäre die Hälfte
 umgestellt und die andere nicht, und der zweite Versuch liefe in die bereits

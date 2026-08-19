@@ -7,6 +7,7 @@ import {
   DEFAULT_BUFFER_MIN,
   LESSON_DURATION_MIN,
   computeAvailableSlots,
+  isSlotBookable,
   utcToZonedDate,
   type Slot,
 } from "./booking";
@@ -225,6 +226,168 @@ export async function bookFixplatzSeries(
     verschoben,
     offen,
   };
+}
+
+/**
+ * Hängt eine Lektion hinten an die Fixplatz-Serie an.
+ *
+ * Die letzte Stufe der Ausfall-Kaskade beim Abo. Beim alten Lektionspaket
+ * genügte es, die Laufzeit zu verlängern: In der gewonnenen Zeit liess sich
+ * die Lektion nachbuchen. Beim Fixplatz-Abo steht die Serie fest und der
+ * Schüler bucht nicht selbst — eine verlängerte Laufzeit brächte ihm also
+ * gar nichts, er hätte eine Lektion bezahlt und keine bekommen.
+ *
+ * Gesucht wird auf **demselben Platz**: gleicher Wochentag, gleiche Uhrzeit,
+ * im gewohnten Takt nach dem bisher letzten Termin. Das ist der einzige
+ * Termin, von dem sicher ist, dass er passt — er ist ja seiner.
+ *
+ * Gibt `null` zurück, wenn kein Platz zu finden war oder das Paket keinen
+ * Fixplatz hat. Der Aufrufer fällt dann auf die Laufzeitverlängerung zurück.
+ */
+export async function haengeLektionAn(
+  admin: SupabaseClient,
+  params: {
+    studentId: string;
+    packageId: string;
+    /** Wofür nachgeholt wird, für die Notiz am Termin. */
+    originalStart: Date;
+    now?: Date;
+  }
+): Promise<{ appointmentId: string; start: Date } | null> {
+  const now = params.now ?? new Date();
+
+  const { data: pkg } = await admin
+    .from("packages")
+    .select(
+      "id, booking_mode, rhythmus, fixplatz_weekday, fixplatz_time, fixplatz_week_parity"
+    )
+    .eq("id", params.packageId)
+    .maybeSingle();
+
+  if (
+    !pkg ||
+    pkg.booking_mode !== "fix" ||
+    pkg.fixplatz_weekday == null ||
+    !pkg.fixplatz_time
+  ) {
+    return null;
+  }
+
+  // Der bisher letzte Termin der Serie. Ab dort wird weitergezählt, nicht ab
+  // heute: Sonst landete die Nachholstunde mitten in der laufenden Serie und
+  // der Schüler hätte zweimal in derselben Woche Unterricht.
+  const { data: letzte } = await admin
+    .from("appointments")
+    .select("start_at")
+    .eq("package_id", params.packageId)
+    .in("status", ["booked", "completed"])
+    .order("start_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const ab = letzte?.start_at ? new Date(letzte.start_at) : now;
+
+  const { data: ferienRoh } = await admin
+    .from("schulferien")
+    .select("start_datum, end_datum")
+    .gte("end_datum", ab.toISOString().slice(0, 10));
+
+  const ferien = (ferienRoh ?? []).map((f) => ({
+    start: String(f.start_datum),
+    ende: String(f.end_datum),
+  }));
+
+  const wunsch: FixplatzWunsch = {
+    weekday: Number(pkg.fixplatz_weekday),
+    time: String(pkg.fixplatz_time).slice(0, 5),
+    rhythmus:
+      pkg.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich",
+    // Mehrere Kandidaten holen: Der nächste Takt kann belegt sein, etwa weil
+    // dort bereits eine Nachholstunde aus einem früheren Ausfall liegt.
+    lessons: 8,
+  };
+
+  const paritaet = (pkg.fixplatz_week_parity as 0 | 1 | null) ?? null;
+
+  // Auf den Fixplatz einrasten, statt einfach vom letzten Termin weiterzu-
+  // zählen. Der letzte Termin kann ein Ausweichtermin an einem anderen
+  // Wochentag gewesen sein; von dort aus +7 Tage ergäbe eine Nachholstunde
+  // am falschen Tag, und zwar dauerhaft, weil die nächste wieder von dieser
+  // ausginge.
+  let ersterKandidat: Date;
+  try {
+    ersterKandidat = firstSeriesStart(wunsch, ab, paritaet, 0);
+  } catch {
+    return null;
+  }
+
+  const kandidaten = fixplatzSeriesStarts(wunsch, ersterKandidat, ferien).filter(
+    (d) => d.getTime() > ab.getTime()
+  );
+  if (kandidaten.length === 0) return null;
+
+  const bufferMin = await ladePuffer(admin, params.studentId);
+  const letzterKandidat = kandidaten[kandidaten.length - 1];
+
+  const ctx = await loadAvailabilityContext(
+    admin,
+    params.studentId,
+    bufferMin,
+    kandidaten[0],
+    new Date(letzterKandidat.getTime() + LESSON_DURATION_MIN * 60000),
+    now,
+    { skipLeadTime: true }
+  );
+
+  const treffer = kandidaten.find((start) =>
+    isSlotBookable(
+      { start, end: new Date(start.getTime() + LESSON_DURATION_MIN * 60000) },
+      ctx
+    )
+  );
+  if (!treffer) return null;
+
+  const { data: created, error } = await admin
+    .from("appointments")
+    .insert({
+      student_id: params.studentId,
+      package_id: params.packageId,
+      start_at: treffer.toISOString(),
+      end_at: new Date(
+        treffer.getTime() + LESSON_DURATION_MIN * 60000
+      ).toISOString(),
+      status: "booked",
+      source: "direct",
+      is_fixplatz: true,
+      notes: `Nachholtermin für ${params.originalStart
+        .toISOString()
+        .slice(0, 10)}`,
+    })
+    .select("id, start_at")
+    .single();
+
+  if (error || !created) return null;
+
+  await scheduleLessonReminders(admin, {
+    id: created.id,
+    student_id: params.studentId,
+    start_at: created.start_at,
+  });
+  await syncAppointmentToCalendar(admin, created.id);
+
+  return { appointmentId: created.id, start: treffer };
+}
+
+async function ladePuffer(
+  admin: SupabaseClient,
+  studentId: string
+): Promise<number> {
+  const { data } = await admin
+    .from("profiles")
+    .select("buffer_time_minutes")
+    .eq("id", studentId)
+    .maybeSingle();
+  return data?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
 }
 
 /**
