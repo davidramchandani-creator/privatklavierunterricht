@@ -20,7 +20,13 @@ export default async function PlanungPage() {
       <PlanungBoard
         offeneRunde={
           runde
-            ? { id: runde.id, titel: runde.titel, frist: runde.frist }
+            ? {
+                id: runde.id,
+                titel: runde.titel,
+                frist: runde.frist,
+                art: runde.art,
+                startDatum: runde.startDatum,
+              }
             : null
         }
       />

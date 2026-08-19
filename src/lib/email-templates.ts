@@ -1762,7 +1762,13 @@ export function renderEmail(
     }
 
     // ── Abo ──────────────────────────────────────────────────
-    case "abo_gestartet": {
+    case "abo_gestartet":
+    case "umstellung_bestaetigung": {
+      // Dieselbe Übersicht für beide Fälle. Ein Abo aus der Umstellung ist
+      // dasselbe Abo wie ein einzeln abgeschlossenes, nur der Anlass ist ein
+      // anderer. Zwei getrennte Vorlagen würden mit der Zeit auseinanderlaufen,
+      // und dann stünde in der einen eine Bedingung, die in der anderen fehlt.
+      const vertrag = type === "umstellung_bestaetigung";
       const chf = (n: unknown) =>
         Number(n ?? 0).toLocaleString("de-CH", {
           minimumFractionDigits: 2,
@@ -1776,16 +1782,35 @@ export function renderEmail(
         : [];
 
       return {
-        subject: `Dein ${payload.abo_label ?? "Abo"} läuft`,
+        subject: vertrag
+          ? `Dein fester Termin steht: ${payload.fixplatz_text ?? ""}`
+          : `Dein ${payload.abo_label ?? "Abo"} läuft`,
         html: baseWrapper(
           `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
-           <p>Dein <strong>${payload.abo_label ?? "Abo"}</strong> ist eingerichtet.
-              Hier steht alles Wichtige auf einen Blick:</p>
+           ${
+             vertrag
+               ? `<p>Danke für deine Wahl. Dein Platz ist reserviert und alle
+                     Termine sind eingetragen. Diese Mail ist deine
+                     <strong>Bestätigung</strong>, du musst nichts unterschreiben
+                     und nichts zurückschicken.</p>`
+               : `<p>Dein <strong>${payload.abo_label ?? "Abo"}</strong> ist eingerichtet.
+                     Hier steht alles Wichtige auf einen Blick:</p>`
+           }
 
            <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 24px;background:#F3F5F8;border-radius:8px;">
+             ${
+               vertrag
+                 ? `<tr>
+                      <td style="padding:12px 16px;color:#64748b;font-size:14px;">Abo</td>
+                      <td style="padding:12px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;">
+                        ${payload.abo_label ?? ""}
+                      </td>
+                    </tr>`
+                 : ""
+             }
              <tr>
-               <td style="padding:12px 16px;color:#64748b;font-size:14px;">Laufzeit</td>
-               <td style="padding:12px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;">
+               <td style="padding:12px 16px;color:#64748b;font-size:14px;${vertrag ? "border-top:1px solid #e2e8f0;" : ""}">Laufzeit</td>
+               <td style="padding:12px 16px;color:#1C244B;font-size:14px;font-weight:600;text-align:right;${vertrag ? "border-top:1px solid #e2e8f0;" : ""}">
                  ${payload.periode_start ? fmtDate(String(payload.periode_start)) : ""},
                  ${payload.periode_ende ? fmtDate(String(payload.periode_ende)) : ""}
                </td>
@@ -1877,7 +1902,18 @@ export function renderEmail(
 
            <p style="text-align:center;margin:28px 0;">
              <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
-           </p>`
+           </p>
+
+           ${
+             vertrag && payload.pdf_url
+               ? `<p style="text-align:center;margin:0 0 24px;">
+                    <a href="${payload.pdf_url}" style="color:#1C244B;font-size:14px;font-weight:600;">Bestätigung als PDF herunterladen</a>
+                  </p>
+                  <p style="color:#94a3b8;font-size:13px;text-align:center;">
+                    Im PDF steht dasselbe wie hier, zum Ablegen oder Ausdrucken.
+                  </p>`
+               : ""
+           }`
         ),
       };
     }
@@ -2219,6 +2255,101 @@ export function renderEmail(
 
            <p style="text-align:center;margin:28px 0;">
              <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zeiten eintragen</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "umstellung_info":
+    case "umstellung_erinnerung": {
+      const erinnerung = type === "umstellung_erinnerung";
+      const start = payload.start_datum ? fmtDate(String(payload.start_datum)) : "";
+      const frist = payload.frist ? fmtDate(String(payload.frist)) : "";
+
+      return {
+        subject: erinnerung
+          ? `Erinnerung: dein Abo ab ${start}`
+          : `Ab ${start} läuft der Unterricht neu`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+
+           ${
+             erinnerung
+               ? `<p>Von dir fehlt noch die Wahl für den Unterricht ab
+                    <strong>${start}</strong>. Ohne sie kann ich dir keinen
+                    Termin reservieren, und die Plätze vergebe ich nur einmal.</p>`
+               : `<p>Ab <strong>${start}</strong> stelle ich den Unterricht um:
+                    weg von einzelnen Lektionspaketen, hin zu einem Abo mit
+                    einem <strong>festen Termin</strong>.</p>`
+           }
+
+           ${
+             erinnerung
+               ? ""
+               : `<p><strong>Warum:</strong> Ich fahre zu allen Schülern. Wenn
+                    jede Woche jemand anders zu einer anderen Zeit dran ist,
+                    fahre ich kreuz und quer, und am Ende zahlt das jeder über
+                    den Lektionspreis mit. Mit festen Terminen steht die Route,
+                    und die Lektion wird günstiger statt teurer.</p>
+
+                  <div style="background:#F3F5F8;border-radius:8px;padding:16px;margin:0 0 24px;">
+                    <p style="margin:0 0 10px;color:#1C244B;font-size:14px;font-weight:600;">
+                      Was sich für dich ändert
+                    </p>
+                    <p style="margin:0 0 8px;color:#475569;font-size:14px;">
+                      <strong>Fester Termin.</strong> Immer derselbe Tag, immer
+                      dieselbe Zeit, alle Termine im Voraus eingetragen. Du musst
+                      nichts mehr einzeln buchen.
+                    </p>
+                    <p style="margin:0 0 8px;color:#475569;font-size:14px;">
+                      <strong>Ferien sind schon abgezogen.</strong> In den
+                      Schulferien ist kein Unterricht, und du zahlst auch nichts
+                      dafür. Die Lektionszahl, die du siehst, ist die Zahl, die
+                      du bekommst.
+                    </p>
+                    <p style="margin:0 0 8px;color:#475569;font-size:14px;">
+                      <strong>Gleicher Betrag jeden Monat.</strong> Keine
+                      Rechnung mehr nach jeder Lektion, sondern ein fester
+                      Monatsbeitrag über die ganze Laufzeit.
+                    </p>
+                    <p style="margin:0;color:#475569;font-size:14px;">
+                      <strong>Günstiger pro Lektion</strong> als die
+                      Einzellektion, beim Jahresabo noch einmal weniger als beim
+                      Halbjahr.
+                    </p>
+                  </div>
+
+                  <p>Was du wählst: <strong>Halbjahr oder Jahr</strong> und
+                     <strong>jede Woche oder alle zwei Wochen</strong>. Im Portal
+                     siehst du zu jeder Kombination sofort deine Lektionszahl,
+                     deinen Monatsbeitrag und die Ferien, die darin schon
+                     abgezogen sind.</p>`
+           }
+
+           <div style="background:#F3F5F8;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0 0 8px;color:#1C244B;font-size:14px;font-weight:600;">
+               Bitte bis ${frist} eintragen
+             </p>
+             <p style="margin:0;color:#475569;font-size:14px;">
+               Abo wählen, Tage antippen, Zeitspanne angeben. Zwei Minuten.
+             </p>
+           </div>
+
+           <p style="color:#64748b;font-size:14px;">
+             Den Termin suchst du dir nicht selbst aus, du sagst mir, wann du
+             kannst. Ich lege danach alle Termine so, dass sie auf einer Strecke
+             liegen. Gib gern <strong>mehrere</strong> Zeitfenster an, je mehr
+             Auswahl ich habe, desto eher bekommst du deine Wunschzeit.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Abo und Zeiten wählen</a>
+           </p>
+
+           <p style="color:#94a3b8;font-size:13px;">
+             Dein bisheriges Lektionspaket läuft bis dahin normal weiter und
+             endet mit der Umstellung. Wenn etwas unklar ist oder gar nicht
+             passt, antworte einfach auf diese Mail.
            </p>`
         ),
       };

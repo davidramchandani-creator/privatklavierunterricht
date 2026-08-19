@@ -88,6 +88,10 @@ export const STUDENT_LOOKUP_TYPES = [
   "verfuegbarkeit_einzelanfrage",
   "verfuegbarkeit_erinnerung",
   "verfuegbarkeit_zuteilung",
+  // Umstellung aufs Abo
+  "umstellung_info",
+  "umstellung_erinnerung",
+  "umstellung_bestaetigung",
 ];
 
 async function getDisabledEmailTypes(admin: SupabaseClient): Promise<string[]> {

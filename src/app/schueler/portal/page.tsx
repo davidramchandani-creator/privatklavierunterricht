@@ -320,6 +320,8 @@ export default async function SchuelerPortalPage() {
           vorhanden={abfrage.vorhanden}
           bemerkungVorhanden={abfrage.bemerkung}
           bereitsGeantwortet={abfrage.geantwortet}
+          aboVarianteVorhanden={abfrage.aboVariante}
+          aboRhythmusVorhanden={abfrage.aboRhythmus}
         />
       )}
       <AusweichTermine ausfaelle={ausfaelle} />

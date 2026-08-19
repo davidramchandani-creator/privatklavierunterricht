@@ -89,6 +89,14 @@ const GROUPS: { label: string; types: EmailType[] }[] = [
     ],
   },
   {
+    label: "Umstellung aufs Abo",
+    types: [
+      { id: "umstellung_info", label: "Umstellung angekündigt" },
+      { id: "umstellung_erinnerung", label: "Erinnerung an die Abowahl" },
+      { id: "umstellung_bestaetigung", label: "Abo bestätigt (Vertrag)" },
+    ],
+  },
+  {
     label: "Ausfälle",
     types: [
       { id: "ausfall_gutschrift", label: "Gutschrift nach Ausfall" },

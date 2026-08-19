@@ -46,7 +46,13 @@ function Infobox({ children }: { children: React.ReactNode }) {
 export default function PlanungBoard({
   offeneRunde,
 }: {
-  offeneRunde: { id: string; titel: string; frist: string } | null;
+  offeneRunde: {
+    id: string;
+    titel: string;
+    frist: string;
+    art?: "termine" | "umstellung";
+    startDatum?: string | null;
+  } | null;
 }) {
   const router = useRouter();
   const [ansicht, setAnsicht] = useState<PlanungsAnsicht | null>(null);
@@ -54,7 +60,10 @@ export default function PlanungBoard({
   const [meldung, setMeldung] = useState<string | null>(null);
   const [puffer, setPuffer] = useState(15);
   const [probelauf, setProbelauf] = useState(false);
+  const [umstellung, setUmstellung] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const laufendeUmstellung = offeneRunde?.art === "umstellung";
 
   function starten(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -103,7 +112,9 @@ export default function PlanungBoard({
     if (!offeneRunde || !ansicht) return;
     if (
       !confirm(
-        "Zuteilung anwenden? Bestehende Fixplatz-Termine der betroffenen Schüler werden abgesagt und neu gesetzt."
+        laufendeUmstellung
+          ? `Umstellung anwenden?\n\nDie bisherigen Pakete werden beendet und ihre offenen Termine abgesagt. Für alle, die gewählt haben, entstehen Abos ab ${offeneRunde.startDatum ? tag(offeneRunde.startDatum) : "dem Startdatum"} samt Terminserie, Monatsraten und Bestätigungsmail.\n\nDas lässt sich nicht mit einem Klick rückgängig machen.`
+          : "Zuteilung anwenden? Bestehende Fixplatz-Termine der betroffenen Schüler werden abgesagt und neu gesetzt."
       )
     )
       return;
@@ -115,8 +126,17 @@ export default function PlanungBoard({
         return;
       }
       if (!("gesetzt" in res)) return;
+
+      // Wer übersprungen wurde, muss namentlich dastehen. Eine blosse Zahl
+      // hiesse, jeden einzeln nachzuschlagen, und genau das unterbleibt dann.
+      const hinweise = res.hinweise ?? [];
       setMeldung(
-        `${res.gesetzt} Fixplätze gesetzt, ${res.uebersprungen} übersprungen.`
+        (laufendeUmstellung
+          ? `${res.gesetzt} Abos angelegt, ${res.uebersprungen} übersprungen.`
+          : `${res.gesetzt} Fixplätze gesetzt, ${res.uebersprungen} übersprungen.`) +
+          (hinweise.length > 0
+            ? "\n" + hinweise.map((h) => `${h.name}: ${h.grund}`).join("\n")
+            : "")
       );
       setAnsicht(null);
       router.refresh();
@@ -167,12 +187,52 @@ export default function PlanungBoard({
         >
           <p className="font-600 text-[#1C244B]">Neue Runde starten</p>
 
+          <input type="hidden" name="art" value={umstellung ? "umstellung" : "termine"} />
+
+          <div className="grid grid-cols-2 gap-2.5">
+            {[
+              {
+                wert: false,
+                titel: "Nur Termine",
+                text: "Zeiten abfragen und zuteilen. Für Schüler, die schon ein Abo haben.",
+              },
+              {
+                wert: true,
+                titel: "Umstellung aufs Abo",
+                text: "Sie wählen zusätzlich ihr Abo. Beim Anwenden entstehen die Abos.",
+              },
+            ].map((o) => (
+              <button
+                key={String(o.wert)}
+                type="button"
+                onClick={() => setUmstellung(o.wert)}
+                className={`text-left rounded-xl border p-3.5 transition-colors ${
+                  umstellung === o.wert
+                    ? "border-[#1C244B] bg-[#1C244B]/[0.04]"
+                    : "border-gray-200"
+                }`}
+              >
+                <span className="block font-600 text-sm text-gray-900">
+                  {o.titel}
+                </span>
+                <span className="block text-xs text-gray-500 mt-1 leading-snug">
+                  {o.text}
+                </span>
+              </button>
+            ))}
+          </div>
+
           <div className="space-y-1">
             <label className="text-xs font-500 text-gray-600">Titel</label>
             <input
               name="titel"
               required
-              placeholder="z. B. Planung Halbjahr ab Oktober"
+              defaultValue=""
+              placeholder={
+                umstellung
+                  ? "z. B. Umstellung auf Abo ab 14. September"
+                  : "z. B. Planung Halbjahr ab Oktober"
+              }
               className="w-full rounded-lg border border-gray-200 px-3.5 min-h-[44px] text-sm focus:outline-none focus:border-[#1C244B]"
             />
           </div>
@@ -191,15 +251,32 @@ export default function PlanungBoard({
             </div>
             <div className="space-y-1">
               <label className="text-xs font-500 text-gray-600">
-                Periode beginnt (freiwillig)
+                {umstellung ? "Abos beginnen am" : "Periode beginnt (freiwillig)"}
               </label>
               <input
-                name="periode_start"
+                name={umstellung ? "start_datum" : "periode_start"}
                 type="date"
+                required={umstellung}
                 className="w-full rounded-lg border border-gray-200 px-3.5 min-h-[44px] text-sm focus:outline-none focus:border-[#1C244B]"
               />
             </div>
           </div>
+
+          {umstellung && (
+            <Infobox>
+              <p>
+                Die Schüler bekommen eine Info-Mail mit der Begründung und
+                wählen im Portal Abo, Rhythmus und ihre Zeiten. Sie sehen dabei
+                sofort Lektionszahl und Monatsbeitrag.
+              </p>
+              <p>
+                Es passiert <strong>nichts automatisch</strong>. Nach der Frist
+                rechnest du die Zuteilung, prüfst den Stundenplan und drückst
+                erst dann auf Anwenden. Dabei werden die alten Pakete beendet,
+                die Abos angelegt und alle Termine gebucht.
+              </p>
+            </Infobox>
+          )}
 
           <label className="flex items-start gap-2.5 cursor-pointer rounded-xl border border-amber-200 bg-amber-50 p-3.5">
             <input
@@ -252,9 +329,19 @@ export default function PlanungBoard({
       <div className="bg-white rounded-2xl border border-[#EAECEF] p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-700 text-[#1C244B]">{offeneRunde.titel}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-700 text-[#1C244B]">{offeneRunde.titel}</p>
+              {laufendeUmstellung && (
+                <span className="text-xs font-600 px-2 py-0.5 rounded-full bg-[#1C244B]/10 text-[#1C244B]">
+                  Umstellung
+                </span>
+              )}
+            </div>
             <p className="text-sm text-gray-500 mt-0.5">
               Antwortfrist {tag(offeneRunde.frist)}
+              {laufendeUmstellung && offeneRunde.startDatum
+                ? ` · Abos ab ${tag(offeneRunde.startDatum)}`
+                : ""}
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -444,6 +531,38 @@ export default function PlanungBoard({
             </div>
           )}
 
+          {/* Was gewählt wurde. Nur bei der Umstellung: sonst gibt es nichts
+              zu wählen, und eine leere Tabelle wäre nur Lärm. */}
+          {laufendeUmstellung && stand.some((s) => s.aboVariante) && (
+            <div className="bg-white rounded-2xl border border-[#EAECEF] p-4 sm:p-5">
+              <p className="font-600 text-[#1C244B] mb-3">Gewählte Abos</p>
+              <ul className="space-y-2">
+                {stand
+                  .filter((s) => s.aboVariante)
+                  .map((s) => (
+                    <li
+                      key={s.studentId}
+                      className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
+                    >
+                      <span className="font-600 text-gray-900">{s.name}</span>
+                      <span className="text-gray-600">
+                        {s.aboVariante === "jahr" ? "Jahresabo" : "Halbjahresabo"}
+                        {" · "}
+                        {s.aboRhythmus === "zweiwoechentlich"
+                          ? "alle zwei Wochen"
+                          : "jede Woche"}
+                        {" · "}
+                        <span className="text-gray-400">
+                          {s.fensterAnzahl}{" "}
+                          {s.fensterAnzahl === 1 ? "Zeitfenster" : "Zeitfenster"}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
+
           {/* Bemerkungen der Schüler */}
           {stand.some((s) => s.bemerkung) && (
             <div className="bg-white rounded-2xl border border-[#EAECEF] p-4 sm:p-5">
@@ -473,12 +592,25 @@ export default function PlanungBoard({
             ) : (
               <Play className="w-4 h-4" />
             )}
-            Zuteilung anwenden und Termine setzen
+            {laufendeUmstellung
+              ? "Umstellung anwenden und Abos anlegen"
+              : "Zuteilung anwenden und Termine setzen"}
           </button>
           <p className="text-xs text-gray-400 text-center leading-snug">
-            Setzt bei jedem Schüler den Fixplatz und bucht die Terminserie.
-            Bestehende Fixplatz-Termine der betroffenen Schüler werden vorher
-            abgesagt. Wer seinen Platz behält, wird übersprungen.
+            {laufendeUmstellung ? (
+              <>
+                Beendet die bisherigen Pakete, legt für jeden mit Wahl das Abo
+                an, bucht alle Termine und verschickt die Bestätigung mit PDF.
+                Wer nichts gewählt hat, wird übersprungen und dir namentlich
+                gemeldet.
+              </>
+            ) : (
+              <>
+                Setzt bei jedem Schüler den Fixplatz und bucht die Terminserie.
+                Bestehende Fixplatz-Termine der betroffenen Schüler werden
+                vorher abgesagt. Wer seinen Platz behält, wird übersprungen.
+              </>
+            )}
           </p>
         </>
       )}

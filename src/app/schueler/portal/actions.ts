@@ -956,6 +956,9 @@ export async function verfuegbarkeitSpeichern(params: {
     praeferenz: number;
   }[];
   bemerkung: string | null;
+  /** Nur bei einer Umstellungsrunde: das gewählte Abo. */
+  aboVariante?: AboVariante | null;
+  aboRhythmus?: Rhythmus | null;
 }): Promise<{ success: true; error: undefined } | { error: string }> {
   const supabase = await createClient();
   const {
@@ -971,13 +974,29 @@ export async function verfuegbarkeitSpeichern(params: {
 
   const { data: runde } = await admin
     .from("planungsrunden")
-    .select("id, status, frist")
+    .select("id, status, frist, art")
     .eq("id", params.rundeId)
     .maybeSingle();
 
   if (!runde) return { error: "Diese Abfrage gibt es nicht mehr." };
   if (runde.status !== "offen") {
     return { error: "Diese Abfrage ist bereits abgeschlossen." };
+  }
+
+  // Bei einer Umstellung ist die Abowahl Pflicht. Ohne sie liesse sich beim
+  // Anwenden kein Abo anlegen, und der Schüler stünde am Stichtag ohne
+  // Laufzeit, ohne Preis und ohne Termine da.
+  const istUmstellung = runde.art === "umstellung";
+  if (istUmstellung) {
+    if (params.aboVariante !== "halbjahr" && params.aboVariante !== "jahr") {
+      return { error: "Bitte wähle Halbjahres- oder Jahresabo." };
+    }
+    if (
+      params.aboRhythmus !== "woechentlich" &&
+      params.aboRhythmus !== "zweiwoechentlich"
+    ) {
+      return { error: "Bitte wähle, wie oft du kommen möchtest." };
+    }
   }
 
   for (const f of params.fenster) {
@@ -1014,6 +1033,11 @@ export async function verfuegbarkeitSpeichern(params: {
       student_id: user.id,
       geantwortet_am: new Date().toISOString(),
       bemerkung: params.bemerkung,
+      abo_variante: istUmstellung ? params.aboVariante : null,
+      abo_rhythmus: istUmstellung ? params.aboRhythmus : null,
+      // Der Zeitstempel der Bestätigung, nicht bloss ein Häkchen. Später ist
+      // damit belegbar, wann er die Bedingungen gesehen hat.
+      bestaetigt_am: istUmstellung ? new Date().toISOString() : null,
     },
     { onConflict: "runde_id,student_id" }
   );
@@ -1024,7 +1048,13 @@ export async function verfuegbarkeitSpeichern(params: {
 
 /** Die laufende Abfrage samt bereits eingetragener Zeiten. */
 export async function offeneVerfuegbarkeitsabfrage(): Promise<{
-  runde: { id: string; titel: string; frist: string } | null;
+  runde: {
+    id: string;
+    titel: string;
+    frist: string;
+    art: "termine" | "umstellung";
+    startDatum: string | null;
+  } | null;
   fenster: { wochentag: number; beginn: string; ende: string }[];
   vorhanden: {
     wochentag: number;
@@ -1034,6 +1064,8 @@ export async function offeneVerfuegbarkeitsabfrage(): Promise<{
   }[];
   bemerkung: string | null;
   geantwortet: boolean;
+  aboVariante: AboVariante | null;
+  aboRhythmus: Rhythmus | null;
 }> {
   const leer = {
     runde: null,
@@ -1041,6 +1073,8 @@ export async function offeneVerfuegbarkeitsabfrage(): Promise<{
     vorhanden: [],
     bemerkung: null,
     geantwortet: false,
+    aboVariante: null,
+    aboRhythmus: null,
   };
 
   const supabase = await createClient();
@@ -1067,8 +1101,14 @@ export async function offeneVerfuegbarkeitsabfrage(): Promise<{
   // Eine Einzelanfrage bleibt davon unberührt. Die richtet sich an genau
   // diesen Schüler, und wer sie stellt, weiss, was er tut, etwa beim Wechsel
   // von flexibel auf Fixplatz.
+  //
+  // Eine **Umstellungsrunde** ist davon ausgenommen, und zwar zwingend. Sie
+  // richtet sich an alle, die noch im alten Modell sind, und die haben
+  // definitionsgemäss keinen Fixplatz: Genau darum geht es ja. Ohne diese
+  // Ausnahme bekäme kein einziger Schüler das Formular zu sehen, und die
+  // ganze Umstellung liefe ins Leere, ohne dass irgendwo ein Fehler steht.
   let allgemeinPassend = allgemein;
-  if (allgemein) {
+  if (allgemein && allgemein.art !== "umstellung") {
     const { data: paket } = await admin
       .from("packages")
       .select("booking_mode")
@@ -1086,18 +1126,33 @@ export async function offeneVerfuegbarkeitsabfrage(): Promise<{
     ladeVerfuegbarkeit(admin, user.id, runde.id),
     admin
       .from("planungs_antworten")
-      .select("geantwortet_am, bemerkung")
+      .select("geantwortet_am, bemerkung, abo_variante, abo_rhythmus")
       .eq("runde_id", runde.id)
       .eq("student_id", user.id)
       .maybeSingle(),
   ]);
 
   return {
-    runde: { id: runde.id, titel: runde.titel, frist: runde.frist },
+    runde: {
+      id: runde.id,
+      titel: runde.titel,
+      frist: runde.frist,
+      art: runde.art,
+      startDatum: runde.startDatum,
+    },
     fenster,
     vorhanden,
     bemerkung: (antwort?.bemerkung as string) ?? null,
     geantwortet: antwort?.geantwortet_am != null,
+    aboVariante:
+      antwort?.abo_variante === "halbjahr" || antwort?.abo_variante === "jahr"
+        ? antwort.abo_variante
+        : null,
+    aboRhythmus:
+      antwort?.abo_rhythmus === "woechentlich" ||
+      antwort?.abo_rhythmus === "zweiwoechentlich"
+        ? (antwort.abo_rhythmus as Rhythmus)
+        : null,
   };
 }
 
@@ -1117,6 +1172,15 @@ export async function aboVorschau(params: {
   bookingMode: BookingMode;
   /** Nur bei Fixplatz: Tage, an denen der Schüler kann. */
   moeglicheTage?: number[];
+  /**
+   * Läuft die Vorschau innerhalb einer Umstellungsrunde, gilt deren
+   * Startdatum statt des nächsten Monatsersten.
+   *
+   * Übergeben wird nur die Kennung der Runde, nie das Datum selbst: Der
+   * Periodenstart bestimmt Lektionszahl und damit den Preis, und was den
+   * Preis bestimmt, darf nicht aus dem Browser kommen.
+   */
+  rundeId?: string;
 }): Promise<{ vorschau: AboVorschau } | { error: string }> {
   const supabase = await createClient();
   const {
@@ -1130,8 +1194,19 @@ export async function aboVorschau(params: {
 
   const rhythmus: Rhythmus =
     params.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich";
-  const periodeStart = naechsterPeriodenstart(todayInZurich());
   const admin = await createAdminClient();
+
+  let periodeStart = naechsterPeriodenstart(todayInZurich());
+  if (params.rundeId) {
+    const { data: runde } = await admin
+      .from("planungsrunden")
+      .select("start_datum, status, art")
+      .eq("id", params.rundeId)
+      .maybeSingle();
+    if (runde?.status === "offen" && runde.art === "umstellung" && runde.start_datum) {
+      periodeStart = String(runde.start_datum);
+    }
+  }
 
   // Fixplatz: der Termin wird zugeteilt, der Wochentag steht also noch nicht
   // fest. Gerechnet wird mit dem ungünstigsten der möglichen Tage, damit der

@@ -24,6 +24,15 @@ import {
 } from "./zuteilung";
 import type { Rhythmus } from "./rhythmus";
 
+/**
+ * Art einer Runde.
+ *
+ * `termine` fragt nur nach Zeiten, für Schüler, die schon ein Abo haben.
+ * `umstellung` fragt zusätzlich nach dem Abo selbst und legt es beim Anwenden
+ * an. Das ist der Weg vom alten Lektionspaket ins Abo-Modell.
+ */
+export type Rundenart = "termine" | "umstellung";
+
 export type Runde = {
   id: string;
   titel: string;
@@ -31,14 +40,33 @@ export type Runde = {
   frist: string;
   status: string;
   angewendetAm: string | null;
+  art: Rundenart;
+  /** Tag, an dem die Abos beginnen. Nur bei `umstellung` gesetzt. */
+  startDatum: string | null;
 };
+
+const RUNDE_FELDER =
+  "id, titel, periode_start, frist, status, angewendet_am, art, start_datum";
+
+function alsRunde(data: Record<string, unknown>): Runde {
+  return {
+    id: data.id as string,
+    titel: data.titel as string,
+    periodeStart: (data.periode_start as string | null) ?? null,
+    frist: String(data.frist),
+    status: data.status as string,
+    angewendetAm: (data.angewendet_am as string | null) ?? null,
+    art: (data.art === "umstellung" ? "umstellung" : "termine") as Rundenart,
+    startDatum: (data.start_datum as string | null) ?? null,
+  };
+}
 
 export async function ladeOffeneRunde(
   client: SupabaseClient
 ): Promise<Runde | null> {
   const { data } = await client
     .from("planungsrunden")
-    .select("id, titel, periode_start, frist, status, angewendet_am")
+    .select(RUNDE_FELDER)
     .eq("status", "offen")
     // Einzelanfragen laufen daneben her und blockieren keine Runde.
     .is("nur_student_id", null)
@@ -47,14 +75,7 @@ export async function ladeOffeneRunde(
     .maybeSingle();
 
   if (!data) return null;
-  return {
-    id: data.id as string,
-    titel: data.titel as string,
-    periodeStart: data.periode_start as string | null,
-    frist: String(data.frist),
-    status: data.status as string,
-    angewendetAm: data.angewendet_am as string | null,
-  };
+  return alsRunde(data as Record<string, unknown>);
 }
 
 export type AntwortStand = {
@@ -66,6 +87,9 @@ export type AntwortStand = {
   erinnertAm: string | null;
   fensterAnzahl: number;
   bemerkung: string | null;
+  /** Nur bei Umstellungsrunden: was der Schüler gewählt hat. */
+  aboVariante: "halbjahr" | "jahr" | null;
+  aboRhythmus: Rhythmus | null;
 };
 
 /**
@@ -102,7 +126,9 @@ export async function ladeAntwortStand(
   const [{ data: antworten }, { data: fenster }] = await Promise.all([
     admin
       .from("planungs_antworten")
-      .select("student_id, geantwortet_am, erinnert_am, bemerkung")
+      .select(
+        "student_id, geantwortet_am, erinnert_am, bemerkung, abo_variante, abo_rhythmus"
+      )
       .eq("runde_id", rundeId),
     admin
       .from("student_verfuegbarkeit")
@@ -130,6 +156,14 @@ export async function ladeAntwortStand(
       erinnertAm: (a?.erinnert_am as string) ?? null,
       fensterAnzahl: fensterZahl.get(s.id) ?? 0,
       bemerkung: (a?.bemerkung as string) ?? null,
+      aboVariante:
+        a?.abo_variante === "halbjahr" || a?.abo_variante === "jahr"
+          ? a.abo_variante
+          : null,
+      aboRhythmus:
+        a?.abo_rhythmus === "woechentlich" || a?.abo_rhythmus === "zweiwoechentlich"
+          ? (a.abo_rhythmus as Rhythmus)
+          : null,
     };
   });
 }
@@ -221,7 +255,7 @@ export async function ladeOffeneEinzelanfrage(
 ): Promise<Runde | null> {
   const { data } = await client
     .from("planungsrunden")
-    .select("id, titel, periode_start, frist, status, angewendet_am")
+    .select(RUNDE_FELDER)
     .eq("status", "offen")
     .eq("nur_student_id", studentId)
     .order("erstellt_am", { ascending: false })
@@ -229,14 +263,7 @@ export async function ladeOffeneEinzelanfrage(
     .maybeSingle();
 
   if (!data) return null;
-  return {
-    id: data.id as string,
-    titel: data.titel as string,
-    periodeStart: data.periode_start as string | null,
-    frist: String(data.frist),
-    status: data.status as string,
-    angewendetAm: data.angewendet_am as string | null,
-  };
+  return alsRunde(data as Record<string, unknown>);
 }
 
 /**
@@ -371,10 +398,11 @@ export async function rechneZuteilung(
   // umbuchen, der teuerste denkbare Fehler an dieser Stelle.
   const { data: rundeInfo } = await admin
     .from("planungsrunden")
-    .select("nur_test")
+    .select("nur_test, art")
     .eq("id", rundeId)
     .maybeSingle();
   const nurTest = rundeInfo?.nur_test === true;
+  const istUmstellung = rundeInfo?.art === "umstellung";
 
   const { data: profile } = await admin
     .from("profiles")
@@ -400,7 +428,8 @@ export async function rechneZuteilung(
     };
   }
 
-  const [{ data: verf }, { data: dauerhaft }, { data: pakete }] = await Promise.all([
+  const [{ data: verf }, { data: dauerhaft }, { data: pakete }, { data: wahlen }] =
+    await Promise.all([
     admin
       .from("student_verfuegbarkeit")
       .select("student_id, wochentag, fruehestens, spaetestens, praeferenz")
@@ -414,12 +443,19 @@ export async function rechneZuteilung(
       .select("student_id, wochentag, fruehestens, spaetestens, praeferenz")
       .is("runde_id", null)
       .in("student_id", ids),
-    admin
-      .from("packages")
-      .select("student_id, rhythmus, fixplatz_weekday, fixplatz_time, status")
-      .in("student_id", ids)
-      .eq("status", "active"),
-  ]);
+      admin
+        .from("packages")
+        .select("student_id, rhythmus, fixplatz_weekday, fixplatz_time, status")
+        .in("student_id", ids)
+        .eq("status", "active"),
+      // Bei einer Umstellung gibt es noch kein Abo, aus dem sich der Rhythmus
+      // ablesen liesse. Er steht in der Antwort des Schülers.
+      admin
+        .from("planungs_antworten")
+        .select("student_id, abo_rhythmus")
+        .eq("runde_id", rundeId)
+        .in("student_id", ids),
+    ]);
 
   const alsFenster = (v: {
     wochentag: number;
@@ -452,21 +488,35 @@ export async function rechneZuteilung(
   const paketVon = new Map(
     (pakete ?? []).map((p) => [p.student_id as string, p])
   );
+  const wahlVon = new Map(
+    (wahlen ?? []).map((w) => [w.student_id as string, w.abo_rhythmus as string | null])
+  );
 
   const schueler: ZuteilSchueler[] = (profile ?? []).map((p) => {
     const paket = paketVon.get(p.id);
+
+    // Bei der Umstellung zählt, was der Schüler gewählt hat. Das alte Paket
+    // steht zwar noch da, sein Rhythmus ist aber der von gestern: Wer
+    // wöchentlich hatte und neu alle zwei Wochen will, bekäme sonst einen
+    // wöchentlichen Platz reserviert und die halbe Zeit stünde leer.
+    const gewaehlt = istUmstellung ? wahlVon.get(p.id) : null;
+    const rhythmusQuelle = gewaehlt ?? paket?.rhythmus;
+
     return {
       id: p.id,
       name: `${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() || "Ohne Namen",
       lat: p.lat == null ? NaN : Number(p.lat),
       lng: p.lng == null ? NaN : Number(p.lng),
-      rhythmus: (paket?.rhythmus === "zweiwoechentlich"
+      rhythmus: (rhythmusQuelle === "zweiwoechentlich"
         ? "zweiwoechentlich"
         : "woechentlich") as Rhythmus,
       lektionMinuten: LESSON_DURATION_MIN,
       verfuegbarkeiten: verfVon.get(p.id) ?? [],
+      // Bei der Umstellung gibt es bewusst kein „bisher". Die alten Termine
+      // waren frei gebucht, kein fester Platz; sie zu bevorzugen hiesse, den
+      // Zufall von damals in den neuen Stundenplan zu übernehmen.
       bisher:
-        paket?.fixplatz_weekday != null && paket?.fixplatz_time
+        !istUmstellung && paket?.fixplatz_weekday != null && paket?.fixplatz_time
           ? {
               wochentag: Number(paket.fixplatz_weekday),
               zeit: String(paket.fixplatz_time),
@@ -501,10 +551,19 @@ export async function rechneZuteilung(
 
   // Wer bezahlt schon, hat aber noch keinen Termin? Diese Liste ist das
   // Wichtigste an der ganzen Ansicht, hier darf niemand durchrutschen.
+  //
+  // Bei einer Umstellung ist die Frage eine andere: Dort hat noch niemand ein
+  // Abo, und wer wartet, ist wer noch nichts gewählt hat. Ohne diese
+  // Unterscheidung wäre die Liste bei der Umstellung entweder leer oder
+  // vollständig, und damit in beiden Fällen nutzlos.
   const mitAbo = new Set((pakete ?? []).map((p) => p.student_id as string));
-  const wartend = schueler
-    .filter((s) => mitAbo.has(s.id) && s.bisher == null)
-    .map((s) => ({ name: s.name, hatZeiten: s.verfuegbarkeiten.length > 0 }));
+  const wartend = istUmstellung
+    ? schueler
+        .filter((s) => !wahlVon.get(s.id))
+        .map((s) => ({ name: s.name, hatZeiten: s.verfuegbarkeiten.length > 0 }))
+    : schueler
+        .filter((s) => mitAbo.has(s.id) && s.bisher == null)
+        .map((s) => ({ name: s.name, hatZeiten: s.verfuegbarkeiten.length > 0 }));
 
   return {
     ergebnis,

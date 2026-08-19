@@ -18,6 +18,8 @@ import {
   type ZuteilKontext,
 } from "@/lib/planung-server";
 import { beschreibeZuteilung, type Zuteilung } from "@/lib/zuteilung";
+import { ladeBestaetigung, wendeUmstellungAn } from "@/lib/umstellung-server";
+import { BASIS_URL } from "@/lib/seo";
 import type { Rhythmus } from "@/lib/rhythmus";
 import { istTest, standardKreis } from "@/lib/kreis";
 
@@ -54,11 +56,31 @@ export async function rundeStarten(
   const frist = String(formData.get("frist") ?? "");
   const periodeStart = String(formData.get("periode_start") ?? "") || null;
   const nurTest = formData.get("nur_test") === "on";
+  const art = formData.get("art") === "umstellung" ? "umstellung" : "termine";
+  const startDatum = String(formData.get("start_datum") ?? "") || null;
 
   if (!titel) return { error: "Bitte einen Titel angeben." };
   if (!frist) return { error: "Bitte eine Frist angeben." };
   if (frist <= todayInZurich()) {
     return { error: "Die Frist muss in der Zukunft liegen." };
+  }
+
+  if (art === "umstellung") {
+    if (!startDatum) {
+      return { error: "Bitte angeben, ab wann die Abos laufen sollen." };
+    }
+    // Zuerst antworten, dann starten. Andersherum stünden die Abos schon,
+    // bevor jemand gewählt hat, und der Stichtag wäre bereits verstrichen,
+    // wenn du den Stundenplan rechnest.
+    if (startDatum < frist) {
+      return {
+        error:
+          "Der Start liegt vor der Frist. Die Schüler müssen antworten können, bevor die Abos beginnen.",
+      };
+    }
+    if (startDatum <= todayInZurich()) {
+      return { error: "Der Start muss in der Zukunft liegen." };
+    }
   }
 
   const admin = await createAdminClient();
@@ -78,6 +100,8 @@ export async function rundeStarten(
       periode_start: periodeStart,
       status: "offen",
       nur_test: nurTest,
+      art,
+      start_datum: startDatum,
     })
     .select("id")
     .single();
@@ -107,12 +131,18 @@ export async function rundeStarten(
       .from("planungs_antworten")
       .insert({ runde_id: runde.id, student_id: s.id });
 
-    await sendEmailNow(admin, "verfuegbarkeit_anfrage", {
-      student_id: s.id,
-      student_name: `${s.vorname ?? ""} ${s.nachname ?? ""}`.trim() || undefined,
-      titel,
-      frist,
-    });
+    await sendEmailNow(
+      admin,
+      art === "umstellung" ? "umstellung_info" : "verfuegbarkeit_anfrage",
+      {
+        student_id: s.id,
+        student_name:
+          `${s.vorname ?? ""} ${s.nachname ?? ""}`.trim() || undefined,
+        titel,
+        frist,
+        start_datum: startDatum,
+      }
+    );
   }
 
   revalidatePath("/admin/planung");
@@ -131,7 +161,7 @@ export async function erinnern(
 
   const { data: runde } = await admin
     .from("planungsrunden")
-    .select("titel, frist")
+    .select("titel, frist, art, start_datum")
     .eq("id", rundeId)
     .maybeSingle();
   if (!runde) return { error: "Runde nicht gefunden." };
@@ -140,12 +170,19 @@ export async function erinnern(
   const offen = stand.filter((s) => !s.geantwortet);
 
   for (const s of offen) {
-    await sendEmailNow(admin, "verfuegbarkeit_erinnerung", {
-      student_id: s.studentId,
-      student_name: s.name,
-      titel: runde.titel,
-      frist: runde.frist,
-    });
+    await sendEmailNow(
+      admin,
+      runde.art === "umstellung"
+        ? "umstellung_erinnerung"
+        : "verfuegbarkeit_erinnerung",
+      {
+        student_id: s.studentId,
+        student_name: s.name,
+        titel: runde.titel,
+        frist: runde.frist,
+        start_datum: runde.start_datum,
+      }
+    );
     await admin
       .from("planungs_antworten")
       .update({ erinnert_am: new Date().toISOString() })
@@ -215,7 +252,14 @@ export async function zuteilungRechnen(
 export async function zuteilungAnwenden(
   rundeId: string
 ): Promise<
-  | { success: true; error: undefined; gesetzt: number; uebersprungen: number }
+  | {
+      success: true;
+      error: undefined;
+      gesetzt: number;
+      uebersprungen: number;
+      /** Wer und warum übersprungen wurde. Leer bei gewöhnlichen Runden. */
+      hinweise?: { name: string; grund: string }[];
+    }
   | { error: string }
 > {
   const verboten = await assertAdmin();
@@ -225,7 +269,7 @@ export async function zuteilungAnwenden(
 
   const { data: runde } = await admin
     .from("planungsrunden")
-    .select("id, titel, status, plan")
+    .select("id, titel, status, plan, art, start_datum")
     .eq("id", rundeId)
     .maybeSingle();
 
@@ -240,6 +284,57 @@ export async function zuteilungAnwenden(
   const plan = runde.plan as unknown as { zuteilungen: Zuteilung[] };
   const zuteilungen = plan.zuteilungen ?? [];
   if (zuteilungen.length === 0) return { error: "Der Plan ist leer." };
+
+  // Bei einer Umstellung entstehen die Abos hier erst. Eigener Weg, weil die
+  // Schleife unten jeden ohne aktives Abo überspringt, und das wären bei der
+  // Umstellung alle.
+  if (runde.art === "umstellung") {
+    if (!runde.start_datum) {
+      return { error: "Dieser Runde fehlt das Startdatum." };
+    }
+    const ergebnis = await wendeUmstellungAn(admin, {
+      rundeId,
+      startDatum: String(runde.start_datum),
+      zuteilungen,
+      autoRenew: true,
+      beiErfolg: async (packageId, studentId) => {
+        const b = await ladeBestaetigung(admin, packageId);
+        if (!b) return;
+        await sendEmailNow(admin, "umstellung_bestaetigung", {
+          student_id: studentId,
+          student_name: b.studentName,
+          abo_label: b.aboLabel,
+          fixplatz_text: b.fixplatzText,
+          termin_offen: false,
+          lektionen: b.lektionen,
+          monatsbetrag: b.monatsbetrag,
+          laufzeit_monate: b.laufzeitMonate,
+          periode_start: b.periodeStart,
+          periode_ende: b.periodeEnde,
+          termine: b.termine,
+          ferientage: b.ferientage,
+          auto_renew: b.autoRenew,
+          pdf_url: `${BASIS_URL}/api/abo/${packageId}/bestaetigung`,
+        });
+      },
+    });
+
+    await admin
+      .from("planungsrunden")
+      .update({ status: "angewendet", angewendet_am: new Date().toISOString() })
+      .eq("id", rundeId);
+
+    revalidatePath("/admin/planung");
+    revalidatePath("/admin/kalender");
+    revalidatePath("/schueler/portal");
+    return {
+      success: true,
+      error: undefined,
+      gesetzt: ergebnis.angelegt,
+      uebersprungen: ergebnis.uebersprungen.length,
+      hinweise: ergebnis.uebersprungen,
+    };
+  }
 
   let gesetzt = 0;
   let uebersprungen = 0;

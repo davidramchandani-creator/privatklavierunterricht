@@ -351,6 +351,84 @@ Anfrage schicken.
 
 ---
 
+## 9e. Die Umstellung vom Paket aufs Abo
+
+Der einmalige Fall: Alle Schüler sind noch im alten Modell, und an einem
+Stichtag soll das Abo gelten. Dafür gibt es die **Umstellungsrunde**
+(Kalender → Terminplanung → „Umstellung aufs Abo").
+
+### Der Ablauf
+
+1. **Runde starten.** Titel, Antwortfrist und der Tag, ab dem die Abos laufen.
+   Der Start muss nach der Frist liegen — sonst wäre der Stichtag schon
+   vorbei, wenn du den Stundenplan rechnest. Alle aktiven Schüler bekommen
+   eine Info-Mail: was sich ändert, warum, und bis wann sie antworten sollen.
+2. **Sie wählen im Portal.** Halbjahr oder Jahr, jede Woche oder alle zwei
+   Wochen, dann ihre Zeitfenster. Zu jeder Kombination sehen sie sofort ihre
+   Lektionszahl, die Ferien darin und den Monatsbeitrag. Zum Schluss fünf
+   Punkte einzeln bestätigen.
+3. **Du siehst den Stand.** Wer hat gewählt, was hat er gewählt, wie viele
+   Zeitfenster hat er angegeben. Nachzügler kannst du mit einem Klick
+   erinnern.
+4. **Zuteilung rechnen.** Wie bei jeder Runde, nur zählt hier der **gewählte**
+   Rhythmus, nicht der des alten Pakets. Bestehende Termine gelten
+   ausdrücklich **nicht** als zu schonender Fixplatz: Sie waren frei gebucht,
+   und den Zufall von damals in den neuen Stundenplan zu übernehmen wäre das
+   Gegenteil von Planung.
+5. **Anwenden.** Erst hier passiert etwas. Pro Schüler: altes Paket beenden,
+   dessen offene Termine absagen, Abo anlegen, Monatsraten erzeugen,
+   Terminserie buchen, Bestätigung mit PDF verschicken.
+
+Nichts davon läuft automatisch. Der Stichtag ist ein Datum in der Datenbank,
+kein Auslöser — du drückst den Knopf.
+
+### Der Preis, den sie sehen, ist der Preis, den sie zahlen
+
+Beim Ausfüllen kennt der Schüler seinen Wochentag noch nicht. Gerechnet wird
+deshalb mit dem **ungünstigsten** seiner angegebenen Tage.
+
+Beispiel Jahresabo wöchentlich ab 14.09.2026, angegeben Mo und Do: Montag
+ergäbe 40 Lektionen, Donnerstag 39. Zugesichert werden 39, also CHF 2535 und
+CHF 211.25 im Monat. Fällt die Zuteilung auf den Montag, bleibt es bei 39
+gebuchten Lektionen und demselben Preis.
+
+Das ist bewusst so und wird von einem Test festgehalten: Würde beim Anwenden
+mit dem tatsächlichen Tag neu gerechnet, stünde auf der Rechnung ein anderer
+Betrag als in dem, was er bestätigt hat.
+
+### Wer nichts wählt, bekommt nichts
+
+Ohne Abowahl wird übersprungen und dir namentlich gemeldet. Ihm still ein
+Halbjahresabo anzudrehen wäre das Gegenteil dessen, was die Bestätigung im
+Formular bedeutet.
+
+Ein Fehler bei einem Schüler bricht die Runde nicht ab. Sonst wäre die Hälfte
+umgestellt und die andere nicht, und der zweite Versuch liefe in die bereits
+angelegten Abos.
+
+### Was mit dem alten Paket passiert
+
+Es wird auf `expired` gesetzt und seine noch nicht gehaltenen Termine werden
+abgesagt. Restlektionen verfallen — die Pakete des Übergangs waren nie
+vorausbezahlt, geprüft an den Rechnungen: bezahlt wurden nur Einzellektionen.
+
+Wäre das anders, müsste hier eine Gutschrift stehen. Wer diese Runde später
+noch einmal für einen anderen Bestand verwendet, muss das zuerst prüfen.
+
+### Die Bestätigung
+
+Mail und PDF enthalten dasselbe: Abo, Termin, Laufzeit, Lektionszahl, Preis
+pro Lektion, Gesamtbetrag, Monatsbeitrag, alle Ferien und alle Termine.
+
+Das PDF wird bei jedem Abruf neu aus der Datenbank erzeugt, nicht abgelegt.
+Eine gespeicherte Datei wäre nach der ersten Terminverschiebung falsch, ohne
+dass es jemandem auffiele.
+
+Unterschrieben wird nichts. Bestätigt wurde beim Absenden des Formulars, mit
+Zeitstempel in `planungs_antworten.bestaetigt_am`.
+
+---
+
 ## 9c. Die Route zum Abfahren
 
 Der Routenplaner zeigt jeden Abend als das, was er ist: eine Fahrt. Oben die

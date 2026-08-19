@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarCheck, Check, Loader2, Info, Star } from "lucide-react";
-import { verfuegbarkeitSpeichern } from "../actions";
+import { aboVorschau, verfuegbarkeitSpeichern } from "../actions";
+import type { AboVariante } from "@/lib/abo";
+import type { Rhythmus } from "@/lib/rhythmus";
 
 export type Tagesfenster = { wochentag: number; beginn: string; ende: string };
 
@@ -60,14 +62,25 @@ export default function VerfuegbarkeitFormular({
   vorhanden,
   bemerkungVorhanden,
   bereitsGeantwortet,
+  aboVarianteVorhanden,
+  aboRhythmusVorhanden,
 }: {
-  runde: { id: string; titel: string; frist: string };
+  runde: {
+    id: string;
+    titel: string;
+    frist: string;
+    art: "termine" | "umstellung";
+    startDatum: string | null;
+  };
   fenster: Tagesfenster[];
   vorhanden: VorhandenesFenster[];
   bemerkungVorhanden: string | null;
   bereitsGeantwortet: boolean;
+  aboVarianteVorhanden?: AboVariante | null;
+  aboRhythmusVorhanden?: Rhythmus | null;
 }) {
   const router = useRouter();
+  const umstellung = runde.art === "umstellung";
 
   const [stand, setStand] = useState<Record<number, TagStand>>(() => {
     const init: Record<number, TagStand> = {};
@@ -89,7 +102,99 @@ export default function VerfuegbarkeitFormular({
   const [gespeichert, setGespeichert] = useState(bereitsGeantwortet);
   const [isPending, startTransition] = useTransition();
 
+  // ── Abowahl, nur bei der Umstellung ──────────────────────
+  const [variante, setVariante] = useState<AboVariante>(
+    aboVarianteVorhanden ?? "halbjahr"
+  );
+  const [rhythmus, setRhythmus] = useState<Rhythmus>(
+    aboRhythmusVorhanden ?? "woechentlich"
+  );
+  const [bestaetigt, setBestaetigt] = useState<Record<string, boolean>>({});
+  const [vorschau, setVorschau] = useState<{
+    lektionen: number;
+    monatsbetrag: number;
+    gesamtpreis: number;
+    preisProLektion: number;
+    periodeEnde: string;
+    laufzeitMonate: number;
+    ferientage: { tag: string; grund: string }[];
+  } | null>(null);
+  const [vorschauLaeuft, setVorschauLaeuft] = useState(false);
+
   const aktiveTage = TAGE.filter((t) => stand[t.nr].aktiv);
+  const tageSchluessel = aktiveTage.map((t) => t.nr).join(",");
+
+  // Vorschau serverseitig holen, sobald sich Wahl oder Tage ändern.
+  //
+  // Sie hängt von den Tagen ab, nicht nur vom Abo: Welche Ferien auf welchen
+  // Wochentag fallen, entscheidet über die Lektionszahl und damit über den
+  // Preis. Gerechnet wird mit dem ungünstigsten der angegebenen Tage, sonst
+  // stünde in der Vorschau eine Zahl, die sich nach der Zuteilung nicht mehr
+  // halten liesse.
+  useEffect(() => {
+    if (!umstellung || aktiveTage.length === 0) {
+      setVorschau(null);
+      return;
+    }
+    let abgebrochen = false;
+    setVorschauLaeuft(true);
+    (async () => {
+      const res = await aboVorschau({
+        variante,
+        rhythmus,
+        bookingMode: "fix",
+        moeglicheTage: tageSchluessel.split(",").map(Number),
+        rundeId: runde.id,
+      });
+      if (abgebrochen) return;
+      setVorschauLaeuft(false);
+      if ("error" in res) {
+        setVorschau(null);
+        return;
+      }
+      setVorschau({
+        lektionen: res.vorschau.lektionen,
+        monatsbetrag: res.vorschau.monatsbetrag,
+        gesamtpreis: res.vorschau.gesamtpreis,
+        preisProLektion: res.vorschau.preisProLektion,
+        periodeEnde: res.vorschau.periodeEnde,
+        laufzeitMonate: res.vorschau.laufzeitMonate,
+        ferientage: res.vorschau.ferientage,
+      });
+    })();
+    return () => {
+      abgebrochen = true;
+    };
+  }, [umstellung, variante, rhythmus, tageSchluessel, runde.id, aktiveTage.length]);
+
+  const PUNKTE = [
+    {
+      id: "laufzeit",
+      text: vorschau
+        ? `Mein Abo läuft vom ${tagFrist(runde.startDatum ?? "")} bis ${tagFrist(vorschau.periodeEnde)} und umfasst ${vorschau.lektionen} Lektionen.`
+        : "Ich kenne Laufzeit und Lektionszahl meines Abos.",
+    },
+    {
+      id: "ferien",
+      text: "In den Schulferien findet kein Unterricht statt. Diese Wochen sind bereits abgezogen, ich zahle nichts dafür und bekomme dafür auch keinen Ersatz.",
+    },
+    {
+      id: "termin",
+      text: "Meinen festen Termin bekomme ich zugeteilt, ich suche ihn nicht selbst aus. Er liegt in einem der Zeitfenster, die ich angebe.",
+    },
+    {
+      id: "zahlung",
+      text: vorschau
+        ? `Ich zahle CHF ${vorschau.monatsbetrag.toFixed(2)} pro Monat über ${vorschau.laufzeitMonate} Monate, unabhängig davon, wie viele Lektionen in den einzelnen Monat fallen.`
+        : "Ich zahle einen gleichbleibenden Monatsbetrag über die ganze Laufzeit.",
+    },
+    {
+      id: "absage",
+      text: "Wenn ich einmal nicht kann, sage ich spätestens 24 Stunden vorher ab. Danach verfällt die Lektion.",
+    },
+  ];
+
+  const alleBestaetigt = !umstellung || PUNKTE.every((p) => bestaetigt[p.id]);
 
   function speichern() {
     setFehler(null);
@@ -103,6 +208,10 @@ export default function VerfuegbarkeitFormular({
         return;
       }
     }
+    if (umstellung && !alleBestaetigt) {
+      setFehler("Bitte bestätige alle Punkte.");
+      return;
+    }
 
     startTransition(async () => {
       const res = await verfuegbarkeitSpeichern({
@@ -114,6 +223,8 @@ export default function VerfuegbarkeitFormular({
           praeferenz: stand[t.nr].praeferenz,
         })),
         bemerkung: bemerkung.trim() || null,
+        aboVariante: umstellung ? variante : null,
+        aboRhythmus: umstellung ? rhythmus : null,
       });
       if (res.error) {
         setFehler(res.error);
@@ -132,13 +243,108 @@ export default function VerfuegbarkeitFormular({
           <p className="text-sm font-600 text-[#1C244B]">{runde.titel}</p>
           <p className="text-sm text-gray-600 leading-snug mt-0.5">
             {gespeichert
-              ? "Danke, deine Zeiten sind eingetragen. Du kannst sie bis zur Frist noch ändern."
-              : `Bitte trage bis ${tagFrist(runde.frist)} ein, wann du kannst.`}
+              ? umstellung
+                ? "Danke, deine Wahl ist gespeichert. Du kannst sie bis zur Frist noch ändern."
+                : "Danke, deine Zeiten sind eingetragen. Du kannst sie bis zur Frist noch ändern."
+              : umstellung
+                ? `Bitte wähle bis ${tagFrist(runde.frist)} dein Abo und trage ein, wann du kannst.`
+                : `Bitte trage bis ${tagFrist(runde.frist)} ein, wann du kannst.`}
           </p>
         </div>
       </div>
 
       <div className="p-4 sm:p-5 space-y-4">
+        {umstellung && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-600 text-gray-900 mb-2">
+                1. Wie lange möchtest du buchen?
+              </p>
+              <div className="grid grid-cols-2 gap-2.5">
+                {(
+                  [
+                    {
+                      wert: "halbjahr" as const,
+                      titel: "Halbjahr",
+                      dauer: "6 Monate",
+                    },
+                    {
+                      wert: "jahr" as const,
+                      titel: "Jahr",
+                      dauer: "12 Monate",
+                      hinweis: "günstiger pro Lektion",
+                    },
+                  ]
+                ).map((o) => (
+                  <button
+                    key={o.wert}
+                    type="button"
+                    onClick={() => setVariante(o.wert)}
+                    className={`text-left rounded-xl border p-3.5 transition-colors ${
+                      variante === o.wert
+                        ? "border-[#1C244B] bg-[#1C244B]/[0.04]"
+                        : "border-gray-200"
+                    }`}
+                  >
+                    <span className="block font-600 text-sm text-gray-900">
+                      {o.titel}
+                    </span>
+                    <span className="block text-xs text-gray-500 mt-0.5">
+                      {o.dauer}
+                    </span>
+                    {o.hinweis && (
+                      <span className="block text-xs text-emerald-600 font-500 mt-1">
+                        {o.hinweis}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm font-600 text-gray-900 mb-2">
+                2. Wie oft möchtest du kommen?
+              </p>
+              <div className="grid grid-cols-2 gap-2.5">
+                {(
+                  [
+                    { wert: "woechentlich" as const, titel: "Jede Woche" },
+                    {
+                      wert: "zweiwoechentlich" as const,
+                      titel: "Alle zwei Wochen",
+                    },
+                  ]
+                ).map((o) => (
+                  <button
+                    key={o.wert}
+                    type="button"
+                    onClick={() => setRhythmus(o.wert)}
+                    className={`text-left rounded-xl border p-3.5 transition-colors ${
+                      rhythmus === o.wert
+                        ? "border-[#1C244B] bg-[#1C244B]/[0.04]"
+                        : "border-gray-200"
+                    }`}
+                  >
+                    <span className="block font-600 text-sm text-gray-900">
+                      {o.titel}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-2 leading-snug">
+                Der Preis pro Lektion ist in beiden Fällen gleich. Wer alle zwei
+                Wochen kommt, hat halb so viele Lektionen und zahlt halb so viel
+                im Monat.
+              </p>
+            </div>
+
+            <p className="text-sm font-600 text-gray-900 pt-1">
+              3. Wann kannst du?
+            </p>
+          </div>
+        )}
+
         <div className="rounded-xl bg-[#F3F5F8] p-3.5 flex gap-2.5">
           <Info className="w-4 h-4 text-[#1C244B] flex-shrink-0 mt-0.5" />
           <div className="text-sm text-gray-600 leading-snug space-y-1.5">
@@ -274,13 +480,119 @@ export default function VerfuegbarkeitFormular({
           />
         </div>
 
+        {umstellung && (
+          <div className="space-y-4 pt-1">
+            <div>
+              <p className="text-sm font-600 text-gray-900 mb-2">
+                4. Das kommt dabei heraus
+              </p>
+
+              {aktiveTage.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-gray-200 p-4">
+                  <p className="text-sm text-gray-500 leading-snug">
+                    Wähle oben mindestens einen Tag, dann rechne ich dir deine
+                    Lektionszahl und deinen Monatsbeitrag aus.
+                  </p>
+                </div>
+              ) : vorschau ? (
+                <div className="rounded-xl bg-[#1C244B]/[0.04] border border-[#1C244B]/15 p-4 space-y-2.5">
+                  {[
+                    {
+                      k: "Laufzeit",
+                      v: `${tagFrist(runde.startDatum ?? "")} bis ${tagFrist(vorschau.periodeEnde)}`,
+                    },
+                    { k: "Lektionen", v: `${vorschau.lektionen} à 45 Minuten` },
+                    {
+                      k: "Pro Lektion",
+                      v: `CHF ${vorschau.preisProLektion.toFixed(2)}`,
+                    },
+                  ].map((z) => (
+                    <div key={z.k} className="flex justify-between gap-3">
+                      <span className="text-sm text-gray-500">{z.k}</span>
+                      <span className="text-sm font-600 text-gray-900 text-right">
+                        {z.v}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between gap-3 pt-2.5 border-t border-[#1C244B]/10">
+                    <span className="text-sm text-gray-500">Pro Monat</span>
+                    <span className="text-base font-700 text-[#1C244B]">
+                      CHF {vorschau.monatsbetrag.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {vorschau.ferientage.length > 0 && (
+                    <p className="text-xs text-gray-500 leading-snug pt-1.5">
+                      {vorschau.ferientage.length}{" "}
+                      {vorschau.ferientage.length === 1 ? "Termin fällt" : "Termine fallen"}{" "}
+                      in die Schulferien. Bereits abgezogen, du zahlst nichts
+                      dafür.
+                    </p>
+                  )}
+
+                  {vorschauLaeuft && (
+                    <p className="text-xs text-gray-400">Wird neu gerechnet…</p>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-gray-200 p-4">
+                  <p className="text-sm text-gray-500 inline-flex items-center gap-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Wird gerechnet…
+                  </p>
+                </div>
+              )}
+
+              {vorschau && (
+                <p className="text-xs text-gray-400 mt-2 leading-snug">
+                  Die Lektionszahl gilt für den ungünstigsten deiner
+                  angegebenen Tage. Fällt dein Termin auf einen Tag mit einer
+                  Lektion mehr, bleibt der Preis derselbe.
+                </p>
+              )}
+            </div>
+
+            {vorschau && (
+              <div>
+                <p className="text-sm font-600 text-gray-900 mb-2">
+                  5. Bitte einzeln bestätigen
+                </p>
+                <div className="space-y-2">
+                  {PUNKTE.map((p) => (
+                    <label
+                      key={p.id}
+                      className={`flex gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${
+                        bestaetigt[p.id]
+                          ? "border-[#1C244B]/30 bg-[#1C244B]/[0.03]"
+                          : "border-gray-200"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={bestaetigt[p.id] ?? false}
+                        onChange={(e) =>
+                          setBestaetigt((v) => ({ ...v, [p.id]: e.target.checked }))
+                        }
+                        className="w-4 h-4 mt-0.5 rounded border-gray-300 text-[#1C244B] focus:ring-[#1C244B] flex-shrink-0"
+                      />
+                      <span className="text-sm text-gray-700 leading-snug">
+                        {p.text}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {fehler && (
           <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{fehler}</p>
         )}
 
         <button
           onClick={speichern}
-          disabled={isPending}
+          disabled={isPending || !alleBestaetigt}
           className="w-full flex items-center justify-center gap-2 bg-[#1C244B] text-white font-600 text-sm rounded-xl min-h-[48px] hover:bg-[#151c3d] disabled:opacity-40 transition-colors"
         >
           {isPending ? (
@@ -290,7 +602,11 @@ export default function VerfuegbarkeitFormular({
           ) : (
             <>
               <Check className="w-4 h-4" />
-              {gespeichert ? "Änderungen speichern" : "Zeiten absenden"}
+              {gespeichert
+                ? "Änderungen speichern"
+                : umstellung
+                  ? "Abo und Zeiten absenden"
+                  : "Zeiten absenden"}
             </>
           )}
         </button>
