@@ -248,3 +248,111 @@ describe("Beschreibung für die Oberfläche", () => {
     );
   });
 });
+
+/**
+ * Die Serie muss die Schulferien überspringen.
+ *
+ * Der Fehler, den diese Tests festhalten, war lautlos und teuer: Ohne
+ * Ferienwissen erzeugte `fixplatzSeriesStarts` schlicht `lessons`
+ * aufeinanderfolgende Termine. Ein Jahresabo mit 39 wöchentlichen Lektionen
+ * ab dem 14.09.2026 ergab 39 Montage bis zum 07.06.2027 — acht davon in den
+ * Herbst-, Weihnachts-, Sport- und Frühlingsferien.
+ *
+ * Die Folgen standen sich gegenseitig im Weg: Der Schüler hätte Termine an
+ * Weihnachten gehabt, seine Serie wäre im Juni ausgelaufen statt im
+ * September, und von 39 bezahlten Lektionen wären 31 nutzbare geblieben —
+ * während die Bestätigungsmail ihm zusicherte, die Ferien seien bereits
+ * abgezogen.
+ */
+describe("Serie und Schulferien", () => {
+  const FERIEN = [
+    { start: "2026-10-05", ende: "2026-10-16" },
+    { start: "2026-12-21", ende: "2027-01-01" },
+    { start: "2027-02-08", ende: "2027-02-19" },
+    { start: "2027-04-19", ende: "2027-04-30" },
+    { start: "2027-07-19", ende: "2027-08-20" },
+  ];
+
+  const jahresabo: FixplatzWunsch = {
+    weekday: 1,
+    time: "17:00",
+    rhythmus: "woechentlich",
+    lessons: 39,
+  };
+
+  const ersterMontag = new Date("2026-09-14T15:00:00Z");
+
+  function tage(ferien: { start: string; ende: string }[]): string[] {
+    return fixplatzSeriesStarts(jahresabo, ersterMontag, ferien).map((d) =>
+      d.toISOString().slice(0, 10)
+    );
+  }
+
+  it("legt keinen Termin in die Ferien", () => {
+    const inFerien = tage(FERIEN).filter((t) =>
+      FERIEN.some((f) => t >= f.start && t <= f.ende)
+    );
+    expect(inFerien).toEqual([]);
+  });
+
+  it("liefert trotzdem die volle Lektionszahl", () => {
+    expect(tage(FERIEN)).toHaveLength(39);
+  });
+
+  it("reicht damit bis ans Ende der Abo-Periode", () => {
+    const liste = tage(FERIEN);
+    const letzter = liste[liste.length - 1];
+
+    // Ohne Ferienwissen endete die Serie am 07.06.2027, fast ein
+    // Vierteljahr vor dem Abo-Ende am 13.09.2027.
+    expect(letzter > "2027-06-07").toBe(true);
+    expect(letzter <= "2027-09-13").toBe(true);
+  });
+
+  it("verhält sich ohne Ferienangabe wie bisher", () => {
+    // Bestehende Aufrufer, die keine Ferien übergeben, dürfen sich nicht
+    // plötzlich anders verhalten.
+    const ohne = fixplatzSeriesStarts(jahresabo, ersterMontag);
+    expect(ohne).toHaveLength(39);
+    expect(ohne[ohne.length - 1].toISOString().slice(0, 10)).toBe("2027-06-07");
+  });
+
+  it("zählt zweiwöchentlich in Zweiwochenschritten weiter", () => {
+    const zweiwoechentlich = fixplatzSeriesStarts(
+      { ...jahresabo, rhythmus: "zweiwoechentlich", lessons: 19 },
+      ersterMontag,
+      FERIEN
+    ).map((d) => d.toISOString().slice(0, 10));
+
+    expect(zweiwoechentlich).toHaveLength(19);
+    for (let i = 1; i < zweiwoechentlich.length; i++) {
+      const abstand =
+        (Date.parse(zweiwoechentlich[i]) - Date.parse(zweiwoechentlich[i - 1])) /
+        86400000;
+      // 14 Tage im Normalfall, mehr wenn Ferien übersprungen wurden.
+      expect(abstand % 14).toBe(0);
+    }
+  });
+
+  it("bricht ab, statt endlos zu suchen", () => {
+    // Ferien über einen absurd langen Zeitraum. Es darf keine
+    // Endlosschleife geben, sondern eine kürzere Liste; die fehlenden
+    // Termine meldet der Aufrufer.
+    const alles = [{ start: "2026-01-01", ende: "2040-01-01" }];
+    const ergebnis = fixplatzSeriesStarts(jahresabo, ersterMontag, alles);
+    expect(ergebnis).toEqual([]);
+  });
+
+  it("sucht weit genug, um lange Ferienblöcke zu überbrücken", () => {
+    // Die Sommerferien dauern fünf Wochen. Die Suche darf nicht schon
+    // vorher aufgeben, sonst fehlten am Ende der Laufzeit Termine.
+    const sommer = [{ start: "2026-09-21", ende: "2026-11-02" }];
+    const ergebnis = fixplatzSeriesStarts(
+      { ...jahresabo, lessons: 3 },
+      ersterMontag,
+      sommer
+    ).map((d) => d.toISOString().slice(0, 10));
+
+    expect(ergebnis).toEqual(["2026-09-14", "2026-11-09", "2026-11-16"]);
+  });
+});

@@ -111,6 +111,13 @@ export function firstSeriesStart(
   );
 }
 
+/** Ein Zeitraum ohne Unterricht, wie ihn `schulferien` speichert. */
+export type Ferienzeitraum = { start: string; ende: string };
+
+function inFerien(tag: string, ferien: Ferienzeitraum[]): boolean {
+  return ferien.some((f) => tag >= f.start && tag <= f.ende);
+}
+
 /**
  * Alle Termine der Fixplatz-Serie.
  *
@@ -118,10 +125,30 @@ export function firstSeriesStart(
  * neu in Zürcher Lokalzeit gesetzt. Dadurch bleibt die Lektion über die
  * Sommerzeitumstellung hinweg auf derselben Uhrzeit, ein reines
  * "+7×86400000 ms" würde im Herbst plötzlich eine Stunde früher landen.
+ *
+ * ── Ferien werden übersprungen, nicht mitgezählt ────────────
+ *
+ * Ohne `ferien` entstehen `lessons` **aufeinanderfolgende** Termine. Für das
+ * Abo ist das falsch, und zwar auf eine Art, die niemandem sofort auffällt:
+ * Ein Jahresabo mit 39 wöchentlichen Lektionen ab dem 14.09.2026 ergäbe 39
+ * Montage bis zum 07.06.2027, von denen acht in Herbst-, Weihnachts-, Sport-
+ * und Frühlingsferien lägen. Der Schüler bekäme Termine an Weihnachten, seine
+ * Serie wäre im Juni zu Ende, obwohl das Abo bis September läuft, und von den
+ * 39 bezahlten Lektionen blieben 31 nutzbare.
+ *
+ * Die Abo-Rechnung (`baueAboAngebot`) zählt Ferientermine von vornherein
+ * nicht mit. Damit dieselbe Zahl herauskommt, muss die Serie sie ebenso
+ * überspringen: weiterzählen, bis `lessons` **Unterrichtstage** beisammen
+ * sind.
+ *
+ * Die Obergrenze verhindert eine Endlosschleife, falls jemand Ferien über ein
+ * ganzes Jahr anlegt. Dann kommen weniger Termine zurück als verlangt, und
+ * das ist richtig so: Die fehlenden meldet der Aufrufer.
  */
 export function fixplatzSeriesStarts(
   wunsch: FixplatzWunsch,
-  firstStart: Date
+  firstStart: Date,
+  ferien: Ferienzeitraum[] = []
 ): Date[] {
   const [hh, mm] = wunsch.time.split(":").map(Number);
   const abstand = intervalDaysFor(wunsch.rhythmus);
@@ -129,8 +156,13 @@ export function fixplatzSeriesStarts(
   const basis = Date.UTC(ersterTag.y, ersterTag.m - 1, ersterTag.d);
 
   const starts: Date[] = [];
-  for (let i = 0; i < wunsch.lessons; i++) {
+  const maxSchritte = wunsch.lessons * 3 + 60;
+
+  for (let i = 0; i < maxSchritte && starts.length < wunsch.lessons; i++) {
     const tag = new Date(basis + i * abstand * 86400000);
+    const datum = tag.toISOString().slice(0, 10);
+    if (inFerien(datum, ferien)) continue;
+
     starts.push(
       zonedToUtc(
         tag.getUTCFullYear(),
@@ -175,9 +207,10 @@ export function pruefeFixplatzSerie(
   wunsch: FixplatzWunsch,
   firstStart: Date,
   ctx: AvailabilityContext,
-  durationMin = LESSON_DURATION_MIN
+  durationMin = LESSON_DURATION_MIN,
+  ferien: Ferienzeitraum[] = []
 ): FixplatzPruefung {
-  const starts = fixplatzSeriesStarts(wunsch, firstStart);
+  const starts = fixplatzSeriesStarts(wunsch, firstStart, ferien);
   const slots: FixplatzSlot[] = starts.map((start, i) => {
     const slot: Slot = {
       start,

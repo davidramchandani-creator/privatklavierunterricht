@@ -212,7 +212,7 @@ export async function zuteilungRechnen(
 
   const { data: r } = await admin
     .from("planungsrunden")
-    .select("id, titel, periode_start, frist, status, angewendet_am")
+    .select("id, titel, periode_start, frist, status, angewendet_am, art, start_datum")
     .eq("id", rundeId)
     .maybeSingle();
   if (!r) return { error: "Runde nicht gefunden." };
@@ -236,6 +236,10 @@ export async function zuteilungRechnen(
       frist: String(r.frist),
       status: r.status as string,
       angewendetAm: r.angewendet_am as string | null,
+      art: (r.art === "umstellung" ? "umstellung" : "termine") as
+        | "umstellung"
+        | "termine",
+      startDatum: (r.start_datum as string | null) ?? null,
     },
     stand,
     kontext,
@@ -332,7 +336,16 @@ export async function zuteilungAnwenden(
       error: undefined,
       gesetzt: ergebnis.angelegt,
       uebersprungen: ergebnis.uebersprungen.length,
-      hinweise: ergebnis.uebersprungen,
+      hinweise: [
+        ...ergebnis.uebersprungen,
+        // Fehlende Lektionen als eigener Hinweis, nicht als Fussnote: Das
+        // Abo läuft und wird bezahlt, nur ist es zu kurz. Das muss David
+        // sehen, solange er noch etwas daran ändern kann.
+        ...ergebnis.unvollstaendig.map((u) => ({
+          name: u.name,
+          grund: `Nur ${u.gebucht} von ${u.zugesichert} Terminen gebucht. Fehlend: ${u.fehlend.join(", ")}`,
+        })),
+      ],
     };
   }
 

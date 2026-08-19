@@ -42,6 +42,14 @@ export type FixplatzBuchungErgebnis = {
  * Termin nicht passt. Über 4 bis 12 Monate liegt fast immer eine Ferienwoche
  * oder ein Feiertag im Weg; ein Alles-oder-nichts würde bedeuten, dass kaum
  * jemand je einen Fixplatz buchen kann.
+ *
+ * ── Schulferien ─────────────────────────────────────────────
+ *
+ * Sie werden vor der Kollisionsprüfung übersprungen, nicht als Kollision
+ * behandelt. Der Unterschied ist wesentlich: Als Kollision würde jeder
+ * Ferientermin einen Ausweichtermin in der Nachbarwoche suchen, und dort
+ * sitzt bereits die reguläre Lektion. Übersprungen rückt die Serie einfach
+ * um eine Woche weiter, genau wie es die Abo-Rechnung annimmt.
  */
 export async function bookFixplatzSeries(
   admin: SupabaseClient,
@@ -70,7 +78,37 @@ export async function bookFixplatzSeries(
     return { error: "Für diesen Wochentag lässt sich kein Starttermin finden." };
   }
 
-  const starts = fixplatzSeriesStarts(wunsch, ersterStart);
+  // Schulferien. Grosszügig geladen, weil die Serie über ein Jahr laufen
+  // kann und der Zeitraum erst feststeht, wenn die Ferien bekannt sind.
+  const { data: ferienRoh } = await admin
+    .from("schulferien")
+    .select("start_datum, end_datum")
+    .gte("end_datum", ersterStart.toISOString().slice(0, 10));
+
+  const ferien = (ferienRoh ?? []).map((f) => ({
+    start: String(f.start_datum),
+    ende: String(f.end_datum),
+  }));
+
+  // Der erste Termin selbst darf nicht in den Ferien liegen. Sonst startet
+  // das Abo mit einer Lektion, die es nicht gibt.
+  const startInFerien = ferien.some((f) => {
+    const tag = ersterStart.toISOString().slice(0, 10);
+    return tag >= f.start && tag <= f.ende;
+  });
+  if (startInFerien) {
+    const spaeter = fixplatzSeriesStarts(
+      { ...wunsch, lessons: 1 },
+      ersterStart,
+      ferien
+    );
+    if (spaeter.length > 0) ersterStart = spaeter[0];
+  }
+
+  const starts = fixplatzSeriesStarts(wunsch, ersterStart, ferien);
+  if (starts.length === 0) {
+    return { error: "Für diesen Wochentag lässt sich kein Starttermin finden." };
+  }
   const letzterStart = starts[starts.length - 1];
   // Grosszügig laden: die Ausweichsuche schaut bis zu 14 Tage über das
   // Serienende hinaus.
@@ -88,7 +126,13 @@ export async function bookFixplatzSeries(
     { skipLeadTime: true }
   );
 
-  const pruefung = pruefeFixplatzSerie(wunsch, ersterStart, ctx);
+  const pruefung = pruefeFixplatzSerie(
+    wunsch,
+    ersterStart,
+    ctx,
+    LESSON_DURATION_MIN,
+    ferien
+  );
 
   // Für belegte Termine brauchen wir freie Slots im Umfeld. Einmal für den
   // gesamten Zeitraum berechnen statt pro Termin, das ist der teure Teil.

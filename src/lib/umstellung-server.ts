@@ -39,6 +39,19 @@ import type { Zuteilung } from "./zuteilung";
 export type UmstellungErgebnis = {
   angelegt: number;
   uebersprungen: { name: string; grund: string }[];
+  /**
+   * Abos, bei denen weniger Termine zustande kamen als zugesichert.
+   *
+   * Das ist kein Fehler im technischen Sinn: Das Abo läuft, die Rechnung
+   * stimmt, nur fehlen Lektionen. Genau deshalb muss es eigens gemeldet
+   * werden, sonst fiele es überhaupt nicht auf.
+   */
+  unvollstaendig: {
+    name: string;
+    zugesichert: number;
+    gebucht: number;
+    fehlend: string[];
+  }[];
 };
 
 /**
@@ -76,7 +89,20 @@ export async function legeAboAn(
     moeglicheTage: number[];
     autoRenew: boolean;
   }
-): Promise<{ packageId: string; lektionen: number } | { error: string }> {
+): Promise<
+  | {
+      packageId: string;
+      /** Zugesicherte Lektionszahl, Grundlage des Preises. */
+      lektionen: number;
+      /** Tatsächlich gebuchte Termine. */
+      gebucht: number;
+      /** Termine ohne Platz, als Datum. */
+      fehlend: string[];
+      /** Wie viele auf einen Ausweichtermin gerückt sind. */
+      verschoben: number;
+    }
+  | { error: string }
+> {
   // Zugesicherte Lektionszahl und Preis: dieselbe Rechnung wie im Portal,
   // über den ungünstigsten der angegebenen Tage.
   const zugesichert = await baueVorschauOhneTermin(admin, {
@@ -191,7 +217,16 @@ export async function legeAboAn(
     return { error: serie.error };
   }
 
-  return { packageId: pkg.id, lektionen: zugesichert.lektionen };
+  return {
+    packageId: pkg.id,
+    lektionen: zugesichert.lektionen,
+    gebucht: serie.appointmentIds.length,
+    // Termine, für die sich kein Platz fand. Sie müssen nach oben
+    // durchgereicht werden: Wer 39 Lektionen bezahlt und 34 gebucht bekommt,
+    // merkt das erst im Mai, und dann ist die Periode fast vorbei.
+    fehlend: serie.offen.map((d) => d.toISOString().slice(0, 10)),
+    verschoben: serie.verschoben.length,
+  };
 }
 
 /** Was die Bestätigungsmail und das PDF brauchen. */
@@ -310,6 +345,7 @@ export async function wendeUmstellungAn(
   }
 ): Promise<UmstellungErgebnis> {
   const uebersprungen: { name: string; grund: string }[] = [];
+  const unvollstaendig: UmstellungErgebnis["unvollstaendig"] = [];
   let angelegt = 0;
 
   const { data: antworten } = await admin
@@ -363,9 +399,18 @@ export async function wendeUmstellungAn(
       continue;
     }
 
+    if (ergebnis.gebucht < ergebnis.lektionen) {
+      unvollstaendig.push({
+        name: z.name,
+        zugesichert: ergebnis.lektionen,
+        gebucht: ergebnis.gebucht,
+        fehlend: ergebnis.fehlend,
+      });
+    }
+
     await params.beiErfolg(ergebnis.packageId, z.schuelerId);
     angelegt++;
   }
 
-  return { angelegt, uebersprungen };
+  return { angelegt, uebersprungen, unvollstaendig };
 }
