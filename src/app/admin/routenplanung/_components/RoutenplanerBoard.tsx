@@ -14,6 +14,7 @@ import {
   Info,
   Users,
   Navigation,
+  Lightbulb,
 } from "lucide-react";
 import { formatDauer, navigationsLink } from "@/lib/geo";
 import { KREIS_LABEL, type Kreis } from "@/lib/kreis";
@@ -564,6 +565,57 @@ function Ergebnisansicht({
           </p>
         )}
       </div>
+
+      {/* Optimierungen an der Verfügbarkeit.
+          Beantwortet die Frage hinter der Tabelle: nicht „wie plane ich mit
+          dem, was ich habe", sondern „was müsste ich ändern". Ohne diese
+          Liste sieht man nur, DASS jemand herausfällt — nicht, welche
+          Fensteränderung ihn hineinholen würde. */}
+      {ergebnis.optimierungen.length > 0 && (
+        <div className="bg-white rounded-2xl border border-[#EAECEF] p-4 sm:p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <Lightbulb className="w-4 h-4 text-amber-500" />
+            <p className="font-600 text-[#1C244B]">
+              Was sich an deiner Verfügbarkeit lohnen würde
+            </p>
+          </div>
+          <p className="text-sm text-gray-500 leading-snug mb-3">
+            Durchgerechnete Änderungen an deinen Fenstern. Nichts davon wird
+            automatisch übernommen — ändern kannst du es unter{" "}
+            <a
+              href="/admin/verfuegbarkeit"
+              className="underline font-600 text-[#1C244B] hover:opacity-80"
+            >
+              Verfügbarkeit
+            </a>
+            .
+          </p>
+          <ul className="space-y-2">
+            {ergebnis.optimierungen.map((o, i) => (
+              <li
+                key={i}
+                className={`rounded-xl border p-3 text-sm leading-snug ${
+                  o.neuEingeplant.length > 0
+                    ? "border-emerald-200 bg-emerald-50/60 text-emerald-900"
+                    : "border-[#EAECEF] bg-[#FAFBFC] text-gray-700"
+                }`}
+              >
+                {o.beschreibung}
+                <span className="block mt-1 text-xs text-gray-500">
+                  {o.nachher.eingeplant} von{" "}
+                  {o.nachher.eingeplant + o.nachher.nichtEingeplant} Schülern,{" "}
+                  {formatDauer(o.nachher.fahrzeitProWoche)} Fahrt auf{" "}
+                  {o.nachher.tage}{" "}
+                  {o.nachher.tage === 1 ? "Tag" : "Tagen"} (heute:{" "}
+                  {o.vorher.eingeplant} Schüler,{" "}
+                  {formatDauer(o.vorher.fahrzeitProWoche)} auf {o.vorher.tage}{" "}
+                  {o.vorher.tage === 1 ? "Tag" : "Tagen"})
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Tagespläne */}
       <div className="space-y-3">

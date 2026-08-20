@@ -12,6 +12,7 @@ import {
   type Vergleich,
 } from "@/lib/routing";
 import { standardKreis, type Kreis } from "@/lib/kreis";
+import { schlageOptimierungen, type Optimierung } from "@/lib/optimierung";
 import {
   geokodiereOffene,
   ladePlanEingabe,
@@ -47,6 +48,12 @@ export type PlanErgebnis = {
   vergleich: Vergleich;
   varianten: TagesanzahlVariante[];
   empfehlung: TagesanzahlVariante | null;
+  /**
+   * Was sich an der Verfügbarkeit ändern liesse und was es brächte. Immer
+   * auf Basis **aller** Fenster gerechnet, nicht der empfohlenen Auswahl —
+   * sonst würde „Tag streichen" doppelt gemoppelt mit der Empfehlung.
+   */
+  optimierungen: Optimierung[];
   zuhauseAdresse: string;
   ohneKoordinaten: { name: string; adresse: string | null }[];
 };
@@ -113,11 +120,17 @@ export async function berechnePlan(optionen: {
   const plan = planeRouten(eingabe);
   const vergleich = vergleicheMitUnsortiert(plan, eingabe);
 
+  // Auf allen Fenstern rechnen, nicht auf der empfohlenen Auswahl: Die
+  // Vorschläge sollen Davids tatsächliche Verfügbarkeit verbessern, nicht
+  // die bereits gefilterte.
+  const optimierungen = schlageOptimierungen(kontext.eingabe);
+
   return {
     plan,
     vergleich,
     varianten,
     empfehlung,
+    optimierungen,
     zuhauseAdresse: kontext.zuhauseAdresse,
     ohneKoordinaten: kontext.ohneKoordinaten.map((s) => ({
       name: s.name,
