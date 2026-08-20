@@ -87,7 +87,10 @@ export type Tagesfenster = {
 };
 
 export type PlanEingabe = {
-  /** Ausgangspunkt: Wohnort/Studio. Jede Tagesroute startet und endet hier. */
+  /**
+   * Wohnort. Jede Tagesroute endet hier, und hier startet sie auch — ausser
+   * das Tagesfenster nennt einen eigenen `start` (Hochschultage).
+   */
   zuhause: Punkt;
   schueler: PlanSchueler[];
   fenster: Tagesfenster[];

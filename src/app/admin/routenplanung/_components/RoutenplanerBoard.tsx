@@ -204,8 +204,16 @@ export default function RoutenplanerBoard({
           <p className="font-600 text-[#1C244B]">Ausgangspunkt</p>
         </div>
         <p className="text-sm text-gray-500 leading-snug">
-          Jede Tagesroute beginnt und endet hier. Der Rückweg zählt mit, sonst
-          sähe ein weit entfernter letzter Schüler künstlich günstig aus.
+          Dein Zuhause. Jede Tagesroute endet hier, und der Rückweg zählt mit —
+          sonst sähe ein weit entfernter letzter Schüler künstlich günstig aus.
+          Begonnen wird ebenfalls hier, ausser du hinterlegst unter{" "}
+          <a
+            href="/admin/verfuegbarkeit"
+            className="underline font-600 text-[#1C244B] hover:opacity-80"
+          >
+            Verfügbarkeit
+          </a>{" "}
+          für einen Wochentag einen anderen Startpunkt, etwa die Hochschule.
         </p>
         <div className="flex flex-col sm:flex-row gap-2">
           <input
