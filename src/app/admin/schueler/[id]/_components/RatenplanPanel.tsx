@@ -152,6 +152,11 @@ export default function RatenplanPanel({
                     ? "in Prüfung"
                     : e.state === "ueberfaellig"
                     ? dueLabel(e.daysUntilDue, true)
+                    : e.state === "storniert"
+                    ? // Nicht „gestellt": Eine stornierte Rate wird nie
+                      // fällig, und wer hier „gestellt" liest, erwartet
+                      // eine Rechnung, die nie kommt.
+                      "storniert"
                     : "gestellt"}
                 </span>
               )}

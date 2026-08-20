@@ -26,6 +26,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ABO_LABELS, type AboVariante } from "./abo";
+import { schliesseOffeneAusfaelle } from "./ausfall";
 import {
   baueVorschau,
   baueVorschauOhneTermin,
@@ -135,6 +136,10 @@ export async function legeAboAn(
       .eq("package_id", alt.id)
       .eq("status", "booked")
       .gt("start_at", new Date().toISOString());
+
+    // Offene Ausfälle enden mit dem Paket. Sonst fordert das Portal nach
+    // der Umstellung weiter zum Ausweichtermin fürs alte Paket auf.
+    await schliesseOffeneAusfaelle(admin, alt.id as string);
 
     await admin
       .from("packages")

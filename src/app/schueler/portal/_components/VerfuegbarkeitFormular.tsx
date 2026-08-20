@@ -82,6 +82,14 @@ export default function VerfuegbarkeitFormular({
   const router = useRouter();
   const umstellung = runde.art === "umstellung";
 
+  // Nach dem Absenden zeigt die Karte die Wahl, nicht wieder das Formular.
+  //
+  // Vorher stand nach dem Speichern erneut das leere Formular da: Häkchen
+  // zurückgesetzt, Knopf ausgegraut. Das las sich, als wäre nichts
+  // angekommen, und wer sichergehen wollte, füllte alles ein zweites Mal
+  // aus. Gespeichert war es längst.
+  const [bearbeiten, setBearbeiten] = useState(false);
+
   const [stand, setStand] = useState<Record<number, TagStand>>(() => {
     const init: Record<number, TagStand> = {};
     for (const t of TAGE) {
@@ -231,6 +239,7 @@ export default function VerfuegbarkeitFormular({
         return;
       }
       setGespeichert(true);
+      setBearbeiten(false);
       router.refresh();
     });
   }
@@ -253,6 +262,42 @@ export default function VerfuegbarkeitFormular({
         </div>
       </div>
 
+      {/* Gespeicherte Wahl anzeigen statt das Formular erneut. */}
+      {gespeichert && !bearbeiten ? (
+        <div className="p-4 sm:p-5 space-y-3">
+          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 flex gap-3">
+            <Check className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0 text-sm text-emerald-900 leading-snug space-y-1">
+              {umstellung && (
+                <p className="font-600">
+                  {variante === "jahr" ? "Jahresabo" : "Halbjahresabo"},{" "}
+                  {rhythmus === "zweiwoechentlich"
+                    ? "alle zwei Wochen"
+                    : "jede Woche"}
+                </p>
+              )}
+              <p>
+                Deine Zeiten:{" "}
+                {aktiveTage
+                  .map((t) => `${t.kurz} ${stand[t.nr].von}–${stand[t.nr].bis}`)
+                  .join(", ") || "eingetragen"}
+              </p>
+              <p className="text-emerald-700">
+                Alles angekommen. Deinen festen Termin bekommst du nach dem{" "}
+                {tagFrist(runde.frist)} per Mail.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setBearbeiten(true)}
+            className="text-sm font-600 text-[#1C244B] underline underline-offset-2"
+          >
+            Wahl ändern
+          </button>
+        </div>
+      ) : (
       <div className="p-4 sm:p-5 space-y-4">
         {umstellung && (
           <div className="space-y-4">
@@ -618,6 +663,7 @@ export default function VerfuegbarkeitFormular({
           </p>
         )}
       </div>
+      )}
     </div>
   );
 }

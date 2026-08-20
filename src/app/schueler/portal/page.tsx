@@ -54,11 +54,24 @@ export default async function SchuelerPortalPage() {
     .eq("student_id", user.id)
     .order("erstellt_am", { ascending: false });
 
+  // Stornierte und archivierte Pakete sind fürs Portal Vergangenheit.
+  //
+  // Der Rückfall auf das neuste Paket ist gewollt: Ein aufgebrauchtes oder
+  // abgelaufenes soll als solches zu sehen sein, mit Status-Badge und dem
+  // Weg zum neuen Abo. Ein storniertes dagegen wurde beendet, und es als
+  // „Mein Abo" mit Laufzeitbalken anzuzeigen, während darunter „Abo
+  // abschliessen" steht, widerspricht sich selbst: Der Schüler weiss dann
+  // nicht, ob er nun eines hat oder nicht.
+  const relevantePakete =
+    (packagesRows as (Paket & { archiviert_am?: string | null })[] | null)?.filter(
+      (p) => p.status !== "cancelled" && !p.archiviert_am
+    ) ?? [];
+
   const aktivesPackage: Paket | null =
-    (packagesRows as Paket[] | null)?.find(
+    relevantePakete.find(
       (p) => p.status === "active" && !canBuyNewPackage(p)
     ) ??
-    (packagesRows as Paket[] | null)?.[0] ??
+    relevantePakete[0] ??
     null;
 
   let lessonsUsed = aktivesPackage?.lessons_used ?? 0;

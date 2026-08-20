@@ -92,12 +92,21 @@ describe("Preiszusicherung beim Anwenden", () => {
  * lautlos: keine Meldung, keine Antworten, eine leere Runde.
  */
 describe("Sichtbarkeit im Portal", () => {
+  const quelle = readFileSync(
+    join(process.cwd(), "src", "app", "schueler", "portal", "actions.ts"),
+    "utf8"
+  );
+
   it("nimmt Umstellungsrunden vom Fixplatz-Filter aus", () => {
-    const quelle = readFileSync(
-      join(process.cwd(), "src", "app", "schueler", "portal", "actions.ts"),
-      "utf8"
+    expect(quelle).toContain('.art !== "umstellung"');
+  });
+
+  it("zeigt Testrunden nur Testschülern und echte nur echten", () => {
+    // Ohne diese Grenze sähe ein echter Schüler das Formular eines
+    // Probelaufs und antwortete in eine Runde, die ihn nie umstellen wird.
+    expect(quelle).toContain(
+      '(profil?.ist_test === true) !== allgemeinPassend.nurTest'
     );
-    expect(quelle).toContain('allgemein.art !== "umstellung"');
   });
 });
 

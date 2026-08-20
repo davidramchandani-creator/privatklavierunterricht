@@ -212,7 +212,9 @@ export async function zuteilungRechnen(
 
   const { data: r } = await admin
     .from("planungsrunden")
-    .select("id, titel, periode_start, frist, status, angewendet_am, art, start_datum")
+    .select(
+      "id, titel, periode_start, frist, status, angewendet_am, art, start_datum, nur_test"
+    )
     .eq("id", rundeId)
     .maybeSingle();
   if (!r) return { error: "Runde nicht gefunden." };
@@ -240,6 +242,7 @@ export async function zuteilungRechnen(
         | "umstellung"
         | "termine",
       startDatum: (r.start_datum as string | null) ?? null,
+      nurTest: r.nur_test === true,
     },
     stand,
     kontext,

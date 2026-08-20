@@ -125,12 +125,26 @@ export default async function ZahlungenPage() {
     .order("start_at", { ascending: false })
     .limit(200);
 
+  // „Abgerechnet" heisst: Es gibt eine lebende Rechnung, **oder** es wurde
+  // bezahlt. Der zweite Teil fehlte, und das hatte eine tückische Folge:
+  // Wer eine bezahlte Rechnung archivierte (aufräumen, mehr nicht), sah die
+  // Lektion hier wieder als offen auftauchen, mit Abrechnen-Knopf. Ein Klick
+  // hätte dem Schüler dieselbe, längst bezahlte Lektion ein zweites Mal in
+  // Rechnung gestellt.
+  //
+  // Bezahlt bleibt bezahlt, egal ob die Rechnung noch in der Liste steht.
+  // Nur eine **unbezahlt** archivierte Rechnung gibt die Lektion wieder
+  // frei, das ist der Korrekturweg: falsche Rechnung archivieren, neu
+  // stellen.
   const { data: bestehende } = await admin
     .from("invoices")
-    .select("appointment_id")
-    .neq("status", "archived")
+    .select("appointment_id, status, paid_at")
     .not("appointment_id", "is", null);
-  const abgerechnet = new Set((bestehende ?? []).map((r) => r.appointment_id));
+  const abgerechnet = new Set(
+    (bestehende ?? [])
+      .filter((r) => r.status !== "archived" || r.paid_at != null)
+      .map((r) => r.appointment_id)
+  );
 
   const offeneLektionen: OffeneLektion[] = [];
   for (const a of gehalten ?? []) {

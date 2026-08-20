@@ -43,10 +43,12 @@ export type Runde = {
   art: Rundenart;
   /** Tag, an dem die Abos beginnen. Nur bei `umstellung` gesetzt. */
   startDatum: string | null;
+  /** Probelauf: richtet sich ausschliesslich an Testschüler. */
+  nurTest: boolean;
 };
 
 const RUNDE_FELDER =
-  "id, titel, periode_start, frist, status, angewendet_am, art, start_datum";
+  "id, titel, periode_start, frist, status, angewendet_am, art, start_datum, nur_test";
 
 function alsRunde(data: Record<string, unknown>): Runde {
   return {
@@ -58,6 +60,7 @@ function alsRunde(data: Record<string, unknown>): Runde {
     angewendetAm: (data.angewendet_am as string | null) ?? null,
     art: (data.art === "umstellung" ? "umstellung" : "termine") as Rundenart,
     startDatum: (data.start_datum as string | null) ?? null,
+    nurTest: data.nur_test === true,
   };
 }
 

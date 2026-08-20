@@ -45,6 +45,7 @@ function Infobox({ children }: { children: React.ReactNode }) {
 
 export default function PlanungBoard({
   offeneRunde,
+  antwortStand = [],
 }: {
   offeneRunde: {
     id: string;
@@ -53,6 +54,15 @@ export default function PlanungBoard({
     art?: "termine" | "umstellung";
     startDatum?: string | null;
   } | null;
+  /** Wer hat geantwortet und was gewählt — sichtbar ohne erst zu rechnen. */
+  antwortStand?: {
+    studentId: string;
+    name: string;
+    geantwortet: boolean;
+    aboVariante: "halbjahr" | "jahr" | null;
+    aboRhythmus: string | null;
+    fensterAnzahl: number;
+  }[];
 }) {
   const router = useRouter();
   const [ansicht, setAnsicht] = useState<PlanungsAnsicht | null>(null);
@@ -400,6 +410,51 @@ export default function PlanungBoard({
           )}
         </button>
       </div>
+
+      {/* Antwortstand, sofort und ohne Rechnen. Sonst sieht die Runde nach
+          dem Start tot aus, obwohl längst Antworten da sind. */}
+      {antwortStand.length > 0 && (
+        <div className="bg-white rounded-2xl border border-[#EAECEF] p-4 sm:p-5">
+          <p className="font-600 text-[#1C244B] mb-3">
+            Antworten:{" "}
+            {antwortStand.filter((s) => s.geantwortet).length} von{" "}
+            {antwortStand.length}
+          </p>
+          <ul className="space-y-2">
+            {antwortStand.map((s) => (
+              <li
+                key={s.studentId}
+                className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
+              >
+                <span
+                  className={`font-600 ${s.geantwortet ? "text-gray-900" : "text-gray-400"}`}
+                >
+                  {s.name}
+                </span>
+                {s.geantwortet ? (
+                  <span className="text-gray-600">
+                    {s.aboVariante
+                      ? `${s.aboVariante === "jahr" ? "Jahresabo" : "Halbjahresabo"} · ${
+                          s.aboRhythmus === "zweiwoechentlich"
+                            ? "alle zwei Wochen"
+                            : "jede Woche"
+                        } · `
+                      : ""}
+                    <span className="text-gray-400">
+                      {s.fensterAnzahl}{" "}
+                      {s.fensterAnzahl === 1 ? "Zeitfenster" : "Zeitfenster"}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="text-amber-600 text-xs font-600">
+                    noch keine Antwort
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <EinpassenKarte puffer={puffer} />
 

@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server";
-import { ladeOffeneRunde } from "@/lib/planung-server";
+import { ladeAntwortStand, ladeOffeneRunde } from "@/lib/planung-server";
 import PlanungBoard from "./_components/PlanungBoard";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +7,13 @@ export const dynamic = "force-dynamic";
 export default async function PlanungPage() {
   const admin = await createAdminClient();
   const runde = await ladeOffeneRunde(admin);
+
+  // Der Antwortstand gehört auf den ersten Blick, nicht hinter den
+  // Rechnen-Knopf. Vorher sah der Admin nach dem Start einer Runde nur die
+  // Karte mit Frist und Knöpfen — ob überhaupt jemand geantwortet hat und
+  // was gewählt wurde, blieb unsichtbar, bis er die Zuteilung rechnete.
+  // Das las sich, als käme nichts an.
+  const stand = runde ? await ladeAntwortStand(admin, runde.id) : [];
 
   return (
     <div className="space-y-5">
@@ -28,6 +35,15 @@ export default async function PlanungPage() {
                 startDatum: runde.startDatum,
               }
             : null
+        }
+        antwortStand={stand.map((s) => ({
+          studentId: s.studentId,
+          name: s.name,
+          geantwortet: s.geantwortet,
+          aboVariante: s.aboVariante,
+          aboRhythmus: s.aboRhythmus,
+          fensterAnzahl: s.fensterAnzahl,
+        }))
         }
       />
     </div>

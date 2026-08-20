@@ -33,7 +33,7 @@ import {
 } from "@/lib/rhythmus";
 import { describeFixplatz } from "@/lib/fixplatz";
 import { bookFixplatzSeries } from "@/lib/fixplatz-server";
-import { meldeAusfall } from "@/lib/ausfall";
+import { meldeAusfall, schliesseOffeneAusfaelle } from "@/lib/ausfall";
 import { findeFixplaetze, type FixplatzAngebot } from "@/lib/fixplatz-suche";
 import {
   ABO_LABELS,
@@ -1383,6 +1383,10 @@ export async function aboVorzeitigBeenden(
     }
   }
 
+  // Offene Ausfälle enden mit dem Abo. Sonst fordert das Portal weiter zum
+  // Aussuchen eines Ausweichtermins auf, für ein Abo, das es nicht mehr gibt.
+  await schliesseOffeneAusfaelle(admin, packageId);
+
   await admin
     .from("packages")
     .update({
@@ -2328,6 +2332,9 @@ export async function cancelPackage(packageId: string, schuelerId: string) {
       .eq("status", "pending")
       .contains("payload", { invoice_id: inv.id });
   }
+
+  // Offene Ausfälle enden mit dem Paket, siehe schliesseOffeneAusfaelle.
+  await schliesseOffeneAusfaelle(admin, packageId);
 
   const { error } = await admin
     .from("packages")

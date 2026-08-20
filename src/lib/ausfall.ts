@@ -105,6 +105,29 @@ export function gutschriftTage(rhythmus: string | null): number {
   return rhythmus === "zweiwoechentlich" ? 14 : 7;
 }
 
+/**
+ * Schliesst alle offenen Ausfälle eines Pakets.
+ *
+ * Gehört zu jedem Storno. Ohne diesen Schritt bleibt ein Ausfall „offen"
+ * stehen, und das Portal fordert weiter zum Aussuchen eines Ausweichtermins
+ * auf — für ein Paket, das es nicht mehr gibt. Der Schüler wählt womöglich
+ * einen Termin und bucht damit eine Lektion auf ein storniertes Paket.
+ *
+ * Status `verfallen`: Der Anspruch aus dem Ausfall endet mit dem Paket. Was
+ * finanziell noch offen war, regelt die Storno-Abrechnung, nicht die
+ * Ausfall-Kaskade.
+ */
+export async function schliesseOffeneAusfaelle(
+  admin: SupabaseClient,
+  packageId: string
+): Promise<void> {
+  await admin
+    .from("lesson_ausfaelle")
+    .update({ status: "verfallen", erledigt_am: new Date().toISOString() })
+    .eq("package_id", packageId)
+    .eq("status", "offen");
+}
+
 export type AusfallErgebnis = {
   ausfallId: string;
   behandlung: ReturnType<typeof bestimmeBehandlung>;

@@ -460,17 +460,51 @@ export async function offeneAusfaelle(): Promise<{
 
   const { data: rows } = await supabase
     .from("lesson_ausfaelle")
-    .select("id, appointment_id, original_start, status")
+    .select("id, appointment_id, original_start, status, package_id")
     .eq("student_id", user.id)
     .eq("status", "offen")
     .order("original_start");
 
   if (!rows || rows.length === 0) return { ausfaelle: [] };
 
+  // Zweites Schloss neben dem Aufräumen beim Storno: Ein Ausfall wird nur
+  // gezeigt, wenn sein Paket noch läuft. Wer hier einen Ausweichtermin
+  // wählte, buchte sonst eine Lektion auf ein Paket, das es nicht mehr gibt.
+  //
+  // `package_id` kann auch fehlen, etwa wenn das Paket gelöscht wurde und
+  // der Verweis dabei auf null ging. Dann entscheidet, ob der Schüler
+  // überhaupt noch ein aktives Paket hat — ohne eines gäbe es nichts,
+  // worauf sich ein Ausweichtermin buchen liesse.
+  const paketIds = [
+    ...new Set(rows.map((r) => r.package_id as string | null).filter(Boolean)),
+  ] as string[];
+  const lebendig = new Set<string>();
+  if (paketIds.length > 0) {
+    const { data: pakete } = await supabase
+      .from("packages")
+      .select("id")
+      .in("id", paketIds)
+      .eq("status", "active");
+    for (const p of pakete ?? []) lebendig.add(p.id as string);
+  }
+
+  const { count: aktive } = await supabase
+    .from("packages")
+    .select("id", { count: "exact", head: true })
+    .eq("student_id", user.id)
+    .eq("status", "active");
+
+  const relevante = rows.filter((r) =>
+    r.package_id
+      ? lebendig.has(r.package_id as string)
+      : (aktive ?? 0) > 0
+  );
+  if (relevante.length === 0) return { ausfaelle: [] };
+
   const admin = await createAdminClient();
   const ausfaelle = [];
 
-  for (const r of rows) {
+  for (const r of relevante) {
     const kandidaten = await findeAusweichtermine(admin, {
       studentId: user.id,
       originalStart: new Date(r.original_start as string),
@@ -1109,7 +1143,24 @@ export async function offeneVerfuegbarkeitsabfrage(): Promise<{
   // Ausnahme bekäme kein einziger Schüler das Formular zu sehen, und die
   // ganze Umstellung liefe ins Leere, ohne dass irgendwo ein Fehler steht.
   let allgemeinPassend = allgemein;
-  if (allgemein && allgemein.art !== "umstellung") {
+
+  // Probelauf und Ernst nicht vermischen: Eine Testrunde geht nur die
+  // Testschüler an, eine echte nur die echten. Ohne diese Grenze sähe
+  // Marina im Portal die Runde „Umstellung Test" samt Formular — und ihre
+  // Antwort landete in einer Runde, die beim Anwenden nur Testschüler
+  // umstellt. Sie hätte geantwortet und nichts davon gehabt.
+  if (allgemeinPassend) {
+    const { data: profil } = await admin
+      .from("profiles")
+      .select("ist_test")
+      .eq("id", user.id)
+      .maybeSingle();
+    if ((profil?.ist_test === true) !== allgemeinPassend.nurTest) {
+      allgemeinPassend = null;
+    }
+  }
+
+  if (allgemeinPassend && allgemeinPassend.art !== "umstellung") {
     const { data: paket } = await admin
       .from("packages")
       .select("booking_mode")
