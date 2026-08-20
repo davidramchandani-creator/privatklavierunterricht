@@ -114,6 +114,7 @@ const GROUPS: { label: string; types: EmailType[] }[] = [
       { id: "subscription_cancelled_admin", label: "Abo gekündigt (an mich)" },
       { id: "payment_reported_admin", label: "Zahlung gemeldet (an mich)" },
       { id: "proposal_accepted_admin", label: "Vorschlag angenommen (an mich)" },
+      { id: "ausgaben_erinnerung", label: "Ausgaben eintragen (Monatsende)" },
     ],
   },
 ];

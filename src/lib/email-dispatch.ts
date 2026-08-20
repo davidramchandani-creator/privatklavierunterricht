@@ -39,6 +39,8 @@ export const ADMIN_RECIPIENT_TYPES = [
   // Ein Schüler ist in eine freigewordene Lücke vorgerückt — Davids Abend
   // sieht jetzt anders aus, das muss er sofort wissen.
   "vorrueck_admin",
+  // Monatsende: an die Ausgaben erinnern, solange er sie noch weiss.
+  "ausgaben_erinnerung",
 ];
 
 export const STUDENT_PAYLOAD_TO_TYPES = [

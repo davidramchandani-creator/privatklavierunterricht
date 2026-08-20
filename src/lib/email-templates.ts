@@ -1698,6 +1698,48 @@ export function renderEmail(
       };
     }
 
+    case "ausgaben_erinnerung": {
+      const monatText = payload.monat
+        ? new Date(`${payload.monat}-01T12:00:00Z`).toLocaleDateString("de-CH", {
+            timeZone: "UTC",
+            month: "long",
+            year: "numeric",
+          })
+        : "diesen Monat";
+      const bisher = Number(payload.anzahl_ausgaben ?? 0);
+      return {
+        subject: `Ausgaben für ${monatText} eintragen`,
+        html: baseWrapper(
+          `<p>Hallo David</p>
+           <p>${monatText} geht zu Ende. Was hattest du diesen Monat an
+              Ausgaben für den Unterricht — Benzin und Billette, Mittagessen
+              unterwegs, Noten, Weiterbildung?</p>
+
+           <div style="background:#F3F5F8;border:1px solid #E3E7EE;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0 0 6px;color:#1C244B;font-size:14px;">
+               Einnahmen bisher:
+               <strong>CHF ${Number(payload.einnahmen ?? 0).toFixed(2)}</strong>
+             </p>
+             <p style="margin:0;color:#1C244B;font-size:14px;">
+               Erfasste Ausgaben:
+               <strong>CHF ${Number(payload.ausgaben_bisher ?? 0).toFixed(2)}</strong>
+               ${bisher === 0 ? " — noch nichts eingetragen" : ` (${bisher} Posten)`}
+             </p>
+           </div>
+
+           <p style="color:#64748b;font-size:14px;">
+             Jetzt eintragen dauert zwei Minuten. Im Februar, wenn die
+             Steuererklärung ansteht, weisst du nicht mehr, wofür die
+             Tankquittung vom 12. war.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/abrechnung" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Ausgaben eintragen</a>
+           </p>`
+        ),
+      };
+    }
+
     case "vorrueck_angebot": {
       // Der Ton ist wichtig: Es ist ein Angebot, keine Änderung. Wer nicht
       // antwortet oder ablehnt, behält seinen Termin unverändert — das muss

@@ -36,6 +36,7 @@ import {
 import { bookFixplatzSeries } from "@/lib/fixplatz-server";
 import { aktiviereGeplanteAbos } from "@/lib/umstellung-server";
 import { verlaengereExterneSerien } from "@/lib/externe-server";
+import { erinnereAnAusgaben } from "@/lib/abrechnung-server";
 import { ABO_LABELS } from "@/lib/abo";
 import { baueVorschau, legeMonatsratenAn } from "@/lib/abo-server";
 
@@ -847,6 +848,17 @@ export async function runSubscriptionJobs(
     }
   } catch (err) {
     console.error("[extern] Verlängerung fehlgeschlagen:", err);
+  }
+
+  // Gegen Monatsende nach den Ausgaben fragen. Die Einnahmen stehen im
+  // System, die Ausgaben weiss nur David — und nur solange er sich
+  // erinnert. Die Funktion prüft selbst, ob heute der Tag ist und ob schon
+  // erinnert wurde.
+  try {
+    const { gesendet } = await erinnereAnAusgaben(admin, now);
+    if (gesendet) console.log("[abrechnung] Ausgaben-Erinnerung gesendet");
+  } catch (err) {
+    console.error("[abrechnung] Erinnerung fehlgeschlagen:", err);
   }
 
   try {
