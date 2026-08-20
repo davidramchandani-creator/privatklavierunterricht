@@ -203,13 +203,20 @@ export async function ladeBestehendenPlan(
   const { data } = await admin
     .from("packages")
     .select(
-      "student_id, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, rhythmus, profiles!inner(vorname, nachname, lat, lng, ist_test)"
+      "student_id, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, rhythmus, profiles!inner(vorname, nachname, lat, lng, ist_test, aktiv)"
     )
     .eq("status", "active")
     .eq("booking_mode", "fix")
     // Ein Testschüler wird gegen den Testplan eingepasst, nicht gegen die
     // echten Termine, sonst wäre die Zusatzfahrzeit frei erfunden.
     .eq("profiles.ist_test", istTest(kreis))
+    // Wer nicht mehr unterrichtet wird, belegt auch keinen Platz mehr.
+    //
+    // Ohne diese Bedingung blockierte ein stillgelegter Schüler, dessen
+    // Paket noch auf „aktiv" steht, weiterhin seine Uhrzeit. Der Platz wäre
+    // in Wirklichkeit frei, im Plan aber besetzt — und niemand käme darauf,
+    // dort nachzusehen.
+    .eq("profiles.aktiv", true)
     .not("fixplatz_weekday", "is", null);
 
   const termine: BestehenderTermin[] = [];

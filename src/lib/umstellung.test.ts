@@ -166,3 +166,64 @@ describe("Nachholtermin rastet auf den Fixplatz ein", () => {
     expect(fn).toContain("fixplatz_week_parity");
   });
 });
+
+/**
+ * Inaktive Schüler bleiben überall aussen vor.
+ *
+ * „Inaktiv" heisst: unterrichtet nicht mehr, soll aber im System bleiben —
+ * wegen der Historie, der alten Rechnungen und weil vielleicht jemand
+ * zurückkommt. Genau deshalb ist es gefährlich: Die Zeile steht noch da und
+ * wird von jeder Abfrage gefunden, die nicht ausdrücklich filtert.
+ *
+ * Die Folgen wären unterschiedlich unangenehm. Eine Mail an jemanden, der
+ * längst aufgehört hat, ist peinlich. Ein blockierter Platz im Stundenplan
+ * fällt monatelang nicht auf. Ein „hat nicht geantwortet" in der Liste macht
+ * die Liste wertlos, weil dort dauerhaft jemand steht, der nie antworten
+ * wird.
+ *
+ * Der Test liest die Quellen und verlangt, dass jede Abfrage auf `profiles`
+ * in diesen Pfaden nach `aktiv` filtert.
+ */
+describe("Inaktive Schüler", () => {
+  const dateien = [
+    ["src", "lib", "planung-server.ts"],
+    ["src", "lib", "routing-server.ts"],
+    ["src", "app", "admin", "planung", "actions.ts"],
+  ];
+
+  it("werden in keiner Sammelabfrage mitgezählt", () => {
+    const suender: string[] = [];
+
+    for (const teile of dateien) {
+      const pfad = join(process.cwd(), ...teile);
+      const quelle = readFileSync(pfad, "utf8");
+
+      // Jede Abfrage, die alle Schüler holt, erkennt man an role = student.
+      // Sie muss im selben Aufruf auch aktiv prüfen.
+      const stellen = quelle.split('.eq("role", "student")');
+      for (let i = 1; i < stellen.length; i++) {
+        // Der Filter steht direkt daneben, innerhalb weniger Zeilen.
+        const umfeld =
+          stellen[i - 1].slice(-400) + '.eq("role", "student")' + stellen[i].slice(0, 400);
+        if (!umfeld.includes('.eq("aktiv", true)')) {
+          suender.push(`${teile.join("/")}: Abfrage ${i} ohne aktiv-Filter`);
+        }
+      }
+    }
+
+    expect(suender, `Ohne aktiv-Filter:\n${suender.join("\n")}`).toEqual([]);
+  });
+
+  it("belegen keinen Platz im bestehenden Stundenplan", () => {
+    // ladeBestehendenPlan geht über packages und verbindet profiles. Der
+    // Filter muss deshalb auf der verbundenen Tabelle stehen.
+    const quelle = readFileSync(
+      join(process.cwd(), "src", "lib", "planung-server.ts"),
+      "utf8"
+    );
+    const fn = quelle.slice(
+      quelle.indexOf("export async function ladeBestehendenPlan")
+    );
+    expect(fn.slice(0, 1500)).toContain('.eq("profiles.aktiv", true)');
+  });
+});
