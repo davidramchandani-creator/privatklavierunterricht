@@ -35,6 +35,7 @@ import {
 } from "@/lib/rhythmus";
 import { bookFixplatzSeries } from "@/lib/fixplatz-server";
 import { aktiviereGeplanteAbos } from "@/lib/umstellung-server";
+import { verlaengereExterneSerien } from "@/lib/externe-server";
 import { ABO_LABELS } from "@/lib/abo";
 import { baueVorschau, legeMonatsratenAn } from "@/lib/abo-server";
 
@@ -834,6 +835,18 @@ export async function runSubscriptionJobs(
     for (const f of fehler) console.error("[umstellung]", f);
   } catch (err) {
     console.error("[umstellung] Aktivierung fehlgeschlagen:", err);
+  }
+
+  // Unbefristete Externe im Kalender halten. Ohne diesen Schritt läuft ihre
+  // Serie irgendwann aus, und zwar unauffällig: Der Schüler verschwände aus
+  // Kalender und Routenplanung, während der Unterricht weitergeht.
+  try {
+    const { verlaengert, termine } = await verlaengereExterneSerien(admin);
+    if (verlaengert > 0) {
+      console.log(`[extern] ${verlaengert} Serie(n), ${termine} Termine ergänzt`);
+    }
+  } catch (err) {
+    console.error("[extern] Verlängerung fehlgeschlagen:", err);
   }
 
   try {

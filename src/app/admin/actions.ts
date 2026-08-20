@@ -34,6 +34,12 @@ import {
 import { describeFixplatz } from "@/lib/fixplatz";
 import { bookFixplatzSeries } from "@/lib/fixplatz-server";
 import { meldeAusfall, schliesseOffeneAusfaelle } from "@/lib/ausfall";
+import { geocode } from "@/lib/geocoding";
+import {
+  beendeVereinbarung,
+  legeExterneTermineAn,
+  type ExterneVereinbarung,
+} from "@/lib/externe-server";
 import { findeFixplaetze, type FixplatzAngebot } from "@/lib/fixplatz-suche";
 import {
   ABO_LABELS,
@@ -276,7 +282,24 @@ export async function hardDeleteSchueler(id: string) {
     .eq("status", "booked")
     .gte("start_at", new Date().toISOString());
 
-  // Auth-User löschen cascaded auf profiles + alle FK-Tabellen.
+  // Externe haben kein Konto: Bei ihnen gäbe es nichts zu löschen, und der
+  // Aufruf schlüge fehl. Ihr Profil wird direkt entfernt, die Termine gehen
+  // über die Fremdschlüssel mit.
+  const { data: profil } = await adminClient
+    .from("profiles")
+    .select("extern")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (profil?.extern === true) {
+    const { error } = await adminClient.from("profiles").delete().eq("id", id);
+    if (error) return { error: error.message };
+    revalidatePath("/admin/schueler");
+    return { success: true, error: undefined };
+  }
+
+  // Konto löschen; der Trigger räumt das Profil und damit alle daran
+  // hängenden Tabellen weg.
   const { error } = await adminClient.auth.admin.deleteUser(id);
   if (error) return { error: error.message };
 
@@ -3467,4 +3490,184 @@ export async function paketLoeschen(
 
   revalidatePath(`/admin/schueler/${pkg.student_id}`);
   return { success: true, error: undefined };
+}
+
+// ── Externe Schüler ────────────────────────────────────────
+
+/**
+ * Einen Schüler anlegen, dessen Unterricht über eine andere Plattform läuft.
+ *
+ * Kein Login, keine Rechnung, keine Mail — aber ein vollwertiger Eintrag in
+ * Kalender und Routenplanung. Genau dafür ist er da: Der Termin belegt einen
+ * echten Abend, und die Route muss ihn kennen.
+ *
+ * Die Adresse wird sofort geokodiert. Ohne Koordinaten fiele der Schüler
+ * lautlos aus der Routenplanung, und der ganze Zweck wäre verfehlt.
+ */
+export async function externenAnlegen(
+  formData: FormData
+): Promise<
+  | { success: true; error: undefined; termine: number; kollisionen: string[] }
+  | { error: string }
+> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const vorname = String(formData.get("vorname") ?? "").trim();
+  const nachname = String(formData.get("nachname") ?? "").trim();
+  const adresse = String(formData.get("adresse") ?? "").trim();
+  const plattform = String(formData.get("plattform") ?? "").trim() || null;
+  const telefon = String(formData.get("telefon") ?? "").trim() || null;
+  const notizen = String(formData.get("notizen") ?? "").trim() || null;
+  const ertragRoh = String(formData.get("ertrag") ?? "").trim();
+
+  const rhythmus =
+    formData.get("rhythmus") === "zweiwoechentlich"
+      ? "zweiwoechentlich"
+      : "woechentlich";
+  const wochentag = Number(formData.get("wochentag") ?? NaN);
+  const zeit = String(formData.get("zeit") ?? "").trim();
+  const dauer = Number(formData.get("dauer") ?? 45);
+  const startDatum = String(formData.get("start_datum") ?? "").trim();
+  const umfang = String(formData.get("umfang") ?? "unbefristet");
+  const anzahlRoh = Number(formData.get("anzahl") ?? NaN);
+
+  if (!vorname || !nachname) return { error: "Bitte Vor- und Nachnamen angeben." };
+  if (!adresse) {
+    return {
+      error:
+        "Ohne Adresse kann ich den Schüler nicht in die Route rechnen. Bitte mit Strasse, Nummer, PLZ und Ort angeben.",
+    };
+  }
+  if (!Number.isInteger(wochentag) || wochentag < 0 || wochentag > 6) {
+    return { error: "Bitte einen Wochentag wählen." };
+  }
+  if (!/^\d{2}:\d{2}$/.test(zeit)) return { error: "Bitte eine Uhrzeit angeben." };
+  if (!startDatum) return { error: "Bitte ein Startdatum angeben." };
+
+  const anzahl =
+    umfang === "anzahl"
+      ? Number.isInteger(anzahlRoh) && anzahlRoh > 0
+        ? anzahlRoh
+        : null
+      : null;
+  if (umfang === "anzahl" && anzahl == null) {
+    return { error: "Bitte angeben, wie viele Termine vereinbart sind." };
+  }
+
+  const admin = await createAdminClient();
+
+  // Adresse zuerst auflösen: Schlägt es fehl, wird gar nichts angelegt.
+  // Ein Schüler ohne Koordinaten wäre für die Routenplanung unsichtbar.
+  const treffer = await geocode(adresse);
+  if (!treffer) {
+    return {
+      error:
+        "Diese Adresse liess sich nicht auflösen. Bitte so schreiben: Strasse Nummer, PLZ Ort.",
+    };
+  }
+
+  const { data: profil, error: profilFehler } = await admin
+    .from("profiles")
+    .insert({
+      role: "student",
+      vorname,
+      nachname,
+      // Bewusst ohne Mailadresse: Externe bekommen keine Post, und eine
+      // erfundene Adresse würde irgendwann doch angeschrieben.
+      email: null,
+      telefon,
+      adresse,
+      notizen,
+      aktiv: true,
+      extern: true,
+      plattform,
+      externer_ertrag: ertragRoh ? Number(ertragRoh) : null,
+      lat: treffer.lat,
+      lng: treffer.lng,
+      geocoded_am: new Date().toISOString(),
+      geocode_quelle: treffer.quelle,
+      geocode_adresse: adresse,
+    })
+    .select("id")
+    .single();
+
+  if (profilFehler || !profil) {
+    return { error: "Der Schüler konnte nicht angelegt werden." };
+  }
+
+  const { data: vereinbarung, error: vFehler } = await admin
+    .from("externe_vereinbarungen")
+    .insert({
+      student_id: profil.id,
+      rhythmus,
+      wochentag,
+      zeit,
+      lektion_minuten: Number.isFinite(dauer) ? dauer : 45,
+      woche_paritaet:
+        rhythmus === "zweiwoechentlich"
+          ? Number(formData.get("paritaet") ?? 0) === 1
+            ? 1
+            : 0
+          : null,
+      start_datum: startDatum,
+      anzahl,
+      aktiv: true,
+    })
+    .select("*")
+    .single();
+
+  if (vFehler || !vereinbarung) {
+    // Profil wieder entfernen, sonst steht ein Schüler ohne Termine da und
+    // niemand weiss, warum er im Kalender fehlt.
+    await admin.from("profiles").delete().eq("id", profil.id);
+    return { error: "Die Vereinbarung konnte nicht angelegt werden." };
+  }
+
+  const ergebnis = await legeExterneTermineAn(
+    admin,
+    vereinbarung as unknown as ExterneVereinbarung
+  );
+
+  revalidatePath("/admin/schueler");
+  revalidatePath("/admin/kalender");
+  revalidatePath("/admin/routenplanung");
+  return {
+    success: true,
+    error: undefined,
+    termine: ergebnis.angelegt,
+    kollisionen: ergebnis.kollisionen,
+  };
+}
+
+/**
+ * Eine externe Vereinbarung beenden: künftige Termine absagen, nicht mehr
+ * nachlegen. Vergangene Termine bleiben als Historie stehen.
+ */
+export async function externenBeenden(
+  studentId: string
+): Promise<{ success: true; error: undefined; abgesagt: number } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+
+  const { data: vereinbarungen } = await admin
+    .from("externe_vereinbarungen")
+    .select("id")
+    .eq("student_id", studentId)
+    .eq("aktiv", true);
+
+  let abgesagt = 0;
+  for (const v of vereinbarungen ?? []) {
+    const r = await beendeVereinbarung(admin, v.id as string);
+    abgesagt += r.abgesagt;
+  }
+
+  await admin.from("profiles").update({ aktiv: false }).eq("id", studentId);
+
+  revalidatePath("/admin/schueler");
+  revalidatePath(`/admin/schueler/${studentId}`);
+  revalidatePath("/admin/kalender");
+  return { success: true, error: undefined, abgesagt };
 }

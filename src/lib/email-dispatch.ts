@@ -116,6 +116,29 @@ export async function dispatchEmail(
   const disabled = await getDisabledEmailTypes(admin);
   if (disabled.includes(type)) return;
 
+  // ── Externe Schüler bekommen nie Post ────────────────────
+  //
+  // Ihr Unterricht läuft über eine andere Plattform. Sie haben hier kein
+  // Konto, keine Rechnung und oft nicht einmal eine Mailadresse — was sie
+  // von uns bekämen, wäre bestenfalls verwirrend und schlimmstenfalls eine
+  // Zahlungsaufforderung für etwas, das sie längst anderswo bezahlt haben.
+  //
+  // Die Sperre steht hier und nicht an den einzelnen Aufrufstellen: Es gibt
+  // Dutzende davon, und jede neue müsste daran denken. An dieser einen
+  // Stelle kommt alles vorbei.
+  //
+  // Mails an David selbst (ADMIN_RECIPIENT_TYPES) sind ausgenommen, auch
+  // wenn sie einen externen Schüler betreffen — er will ja wissen, wenn bei
+  // ihnen etwas ausfällt.
+  if (payload.student_id && !ADMIN_RECIPIENT_TYPES.includes(type)) {
+    const { data: empfaenger } = await admin
+      .from("profiles")
+      .select("extern")
+      .eq("id", payload.student_id as string)
+      .maybeSingle();
+    if (empfaenger?.extern === true) return;
+  }
+
   // Zahlungsmails: vor Versand prüfen, ob noch fällig.
   if (PAYMENT_TYPES.includes(type)) {
     // Lektionsbezogene Zahlung: Termin muss noch booked/completed sein
@@ -171,7 +194,10 @@ export async function dispatchEmail(
         .eq("id", payload.student_id)
         .single();
       if (profile) {
-        to = profile.email;
+        // Kann seit den externen Schülern null sein. Der Wurf unten ist
+        // dann richtig: lieber ein sichtbarer Fehler in der Outbox als
+        // eine Mail ins Leere.
+        to = profile.email ?? null;
         extraContext.student_name = `${profile.vorname} ${profile.nachname}`;
       }
     }

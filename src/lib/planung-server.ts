@@ -132,6 +132,9 @@ export async function ladeAntwortStand(
     .select("id, vorname, nachname, email")
     .eq("role", "student")
     .eq("aktiv", true)
+    // Externe antworten nie, sie sind gar nicht angeschrieben worden.
+    // Ohne diesen Filter stünden sie dauerhaft unter „keine Antwort".
+    .eq("extern", false)
     .eq("ist_test", rundeInfo?.nur_test === true)
     .order("nachname");
 
@@ -243,6 +246,12 @@ export async function ladeBestehendenPlan(
     .eq("profiles.aktiv", true)
     .not("fixplatz_weekday", "is", null);
 
+  // Externe kommen aus einer eigenen Tabelle, haben aber denselben Anspruch
+  // auf ihren Platz: Er ist über eine andere Plattform vergeben und steht
+  // fest. Wer sie hier auslässt, plant jemanden auf eine Zeit, an der David
+  // längst woanders sitzt.
+  const externe = await ladeExterneTermine(admin, kreis);
+
   const termine: BestehenderTermin[] = [];
   for (const p of data ?? []) {
     const prof = (
@@ -262,6 +271,50 @@ export async function ladeBestehendenPlan(
         p.fixplatz_week_parity == null
           ? null
           : ((Number(p.fixplatz_week_parity) === 1 ? 1 : 0) as 0 | 1),
+    });
+  }
+  return [...termine, ...externe];
+}
+
+/**
+ * Die festen Termine externer Schüler.
+ *
+ * Sie stehen in `externe_vereinbarungen` statt in `packages`, sind für die
+ * Planung aber dasselbe: eine Zeit, die vergeben ist, an einem Ort, der auf
+ * der Route liegt.
+ */
+export async function ladeExterneTermine(
+  admin: SupabaseClient,
+  kreis: Kreis = "echt"
+): Promise<BestehenderTermin[]> {
+  const { data } = await admin
+    .from("externe_vereinbarungen")
+    .select(
+      "student_id, wochentag, zeit, lektion_minuten, woche_paritaet, profiles!inner(vorname, nachname, lat, lng, ist_test, aktiv)"
+    )
+    .eq("aktiv", true)
+    .eq("profiles.ist_test", istTest(kreis))
+    .eq("profiles.aktiv", true);
+
+  const termine: BestehenderTermin[] = [];
+  for (const v of data ?? []) {
+    const prof = (
+      Array.isArray(v.profiles) ? v.profiles[0] : v.profiles
+    ) as { vorname: string; nachname: string; lat: number | null; lng: number | null } | null;
+    if (!prof || prof.lat == null || prof.lng == null) continue;
+
+    termine.push({
+      schuelerId: v.student_id as string,
+      name: `${prof.vorname ?? ""} ${prof.nachname ?? ""}`.trim() || "Extern",
+      lat: Number(prof.lat),
+      lng: Number(prof.lng),
+      wochentag: Number(v.wochentag),
+      beginn: String(v.zeit).slice(0, 5),
+      lektionMinuten: Number(v.lektion_minuten ?? LESSON_DURATION_MIN),
+      paritaet:
+        v.woche_paritaet == null
+          ? null
+          : ((Number(v.woche_paritaet) === 1 ? 1 : 0) as 0 | 1),
     });
   }
   return termine;
@@ -435,11 +488,15 @@ export async function rechneZuteilung(
   const nurTest = rundeInfo?.nur_test === true;
   const istUmstellung = rundeInfo?.art === "umstellung";
 
+  // Externe werden nicht zugeteilt: Ihr Termin ist über eine andere
+  // Plattform vergeben und steht fest. Ihre Zeit ist trotzdem belegt, dafür
+  // sorgt `vorbelegt` weiter unten.
   const { data: profile } = await admin
     .from("profiles")
     .select("id, vorname, nachname, lat, lng")
     .eq("role", "student")
     .eq("aktiv", true)
+    .eq("extern", false)
     .eq("ist_test", nurTest);
 
   const ids = (profile ?? []).map((p) => p.id);
@@ -556,12 +613,15 @@ export async function rechneZuteilung(
     };
   });
 
+  const vorbelegt = await ladeExterneTermine(admin, nurTest ? "test" : "echt");
+
   const ergebnis = teileZu({
     zuhause: { lat: zuhause.lat, lng: zuhause.lng },
     schueler,
     fenster,
     pufferMinuten,
     fahrzeit,
+    vorbelegt,
   });
 
   // Vergleichsrechnung: alle können überall. Zeigt, was die Einschränkungen

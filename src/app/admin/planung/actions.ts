@@ -115,6 +115,9 @@ export async function rundeStarten(
     .select("id, vorname, nachname")
     .eq("role", "student")
     .eq("aktiv", true)
+    // Externe nicht anschreiben: Sie haben hier kein Konto, keine
+    // Mailadresse und ihren Termin längst von woanders.
+    .eq("extern", false)
     .eq("ist_test", nurTest);
 
   if ((schueler ?? []).length === 0) {
@@ -478,6 +481,8 @@ export async function wartendeSchueler(): Promise<{
     .select("id, vorname, nachname")
     .eq("role", "student")
     .eq("aktiv", true)
+    // Externe brauchen kein Einpassen: Ihr Platz steht extern fest.
+    .eq("extern", false)
     .eq("ist_test", istTest(kreis));
 
   const ids = (profile ?? []).map((p) => p.id as string);

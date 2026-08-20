@@ -203,6 +203,18 @@ export type ZuteilEingabe = {
    * Wirkt nur, wenn die Fahrzeit ähnlich ist.
    */
   bonusPraeferenz?: number;
+  /**
+   * Zeiten, die schon vergeben sind und hier nicht verteilt werden.
+   *
+   * Externe Schüler zum Beispiel: Ihr Termin steht über eine andere
+   * Plattform fest, David kann ihn nicht verschieben. Für die Zuteilung
+   * sind sie deshalb keine Kandidaten, ihre Zeit ist aber trotzdem weg —
+   * und ihr Wohnort zählt für die Fahrzeit der Nachbarn mit.
+   *
+   * Ohne sie würde die Zuteilung fröhlich jemanden auf einen Dienstag um
+   * 17:00 legen, an dem David längst woanders sitzt.
+   */
+  vorbelegt?: BestehenderTermin[];
 };
 
 const STANDARD_BONUS_BESTEHEND = 600; // 10 Minuten
@@ -224,6 +236,29 @@ export function teileZu(eingabe: ZuteilEingabe): Zuteilungsergebnis {
 
   const belegung = new Map<number, Belegung[]>();
   for (const f of eingabe.fenster) belegung.set(f.wochentag, []);
+
+  // Fremdtermine eintragen, bevor irgendetwas verteilt wird. Sie sind für
+  // die Zuteilung unverrückbar; siehe `vorbelegt`.
+  for (const t of eingabe.vorbelegt ?? []) {
+    const liste = belegung.get(t.wochentag);
+    if (!liste) continue;
+    const beginnMin = minutenVon(t.beginn.slice(0, 5));
+    liste.push({
+      schueler: {
+        id: t.schuelerId,
+        name: t.name,
+        lat: t.lat,
+        lng: t.lng,
+        rhythmus: t.paritaet === null ? "woechentlich" : "zweiwoechentlich",
+        lektionMinuten: t.lektionMinuten,
+        verfuegbarkeiten: [],
+      },
+      beginnMin,
+      endeMin: beginnMin + t.lektionMinuten,
+      paritaet: t.paritaet,
+      praeferenz: 2,
+    });
+  }
 
   const nichtZugeteilt: NichtZugeteilt[] = [];
 
@@ -349,6 +384,15 @@ export function teileZu(eingabe: ZuteilEingabe): Zuteilungsergebnis {
   verbessereDurchTausch(belegung, eingabe, fahrzeit, puffer);
 
   // Ergebnis zusammenstellen, je Tag nach Uhrzeit sortiert.
+  //
+  // Die Fremdtermine zählen bei der Fahrzeit mit — sie liegen ja auf der
+  // Route — erscheinen aber nicht als Zuteilung. Sie wurden hier nicht
+  // vergeben, und beim Anwenden würde sonst versucht, ihnen einen Fixplatz
+  // zu setzen, den sie gar nicht haben.
+  const fremd = new Set(
+    (eingabe.vorbelegt ?? []).map((t) => t.schuelerId)
+  );
+
   const zuteilungen: Zuteilung[] = [];
   let fahrzeitGesamt = 0;
 
@@ -360,6 +404,10 @@ export function teileZu(eingabe: ZuteilEingabe): Zuteilungsergebnis {
     let vorherigerOrt: Punkt = eingabe.zuhause;
     for (const b of sortiert) {
       const anfahrt = fahrzeit(vorherigerOrt, b.schueler);
+      if (fremd.has(b.schueler.id)) {
+        vorherigerOrt = b.schueler;
+        continue;
+      }
       const unveraendert =
         b.schueler.bisher != null &&
         b.schueler.bisher.wochentag === wochentag &&

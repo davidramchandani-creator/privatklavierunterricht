@@ -1,0 +1,12 @@
+-- Ein Profil ohne Anmeldung braucht eine eigene Kennung.
+-- Angewendet am 2026-08-20.
+--
+-- Bisher kam `profiles.id` immer aus `auth.users`: Der Admin legt ein Konto
+-- an, Supabase vergibt die Kennung, das Profil übernimmt sie. Externe
+-- Schüler haben kein Konto, also gibt es niemanden, der sie vergibt.
+--
+-- Ein Vorgabewert ändert für alle bestehenden Wege nichts: Sie setzen die
+-- Kennung ausdrücklich, und ein gesetzter Wert schlägt den Vorgabewert.
+-- Nur wo keiner mitkommt, entsteht jetzt einer, statt dass das Anlegen
+-- scheitert.
+alter table public.profiles alter column id set default gen_random_uuid();

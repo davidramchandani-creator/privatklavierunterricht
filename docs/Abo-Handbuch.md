@@ -516,6 +516,65 @@ Zeitstempel in `planungs_antworten.bestaetigt_am`.
 
 ---
 
+## 9f. Externe Schüler
+
+Für Unterricht, der über eine andere Plattform läuft (Matchspace und
+ähnliche). Du fährst hin, der Termin belegt deinen Abend und deine Route —
+abgerechnet wird dort.
+
+**Anlegen:** Schüler → „Extern". Gefragt wird nach Name, Adresse, Plattform,
+optional Telefon, Notiz und was du dort pro Lektion verdienst. Dann, was
+abgemacht ist: Rhythmus, Wochentag, Uhrzeit, Dauer und Umfang.
+
+Beim Umfang zwei Möglichkeiten:
+
+- **Läuft weiter** — ein halbes Jahr wird gebucht, der Cron hängt laufend
+  an, sobald weniger als zwei Monate Vorlauf bleiben. Zum Beenden setzt du
+  den Schüler auf inaktiv.
+- **Feste Anzahl** — 10, 20 oder was vereinbart ist. Danach endet die Serie.
+
+Ferien werden übersprungen, genau wie bei den eigenen Abos.
+
+### Was sie mitmachen und was nicht
+
+| | |
+|---|---|
+| Kalender | ja, mit Google-Sync |
+| Blockieren die Zeit | ja, gegen Doppelbuchungen |
+| Routenplanung | ja, mit Adresse und Fahrzeit |
+| Zuteilung | als **belegte Zeit**, nicht als Kandidat |
+| Konto, Portal, Login | nein |
+| Rechnungen, Raten | nein |
+| E-Mails | nein, hart gesperrt |
+| Planungsrunden | nein |
+
+Der Grund für „belegte Zeit, nicht Kandidat": Ihr Termin ist über die andere
+Plattform vergeben, du kannst ihn nicht verschieben. Die Zuteilung darf ihn
+deshalb nicht neu vergeben — muss ihn aber kennen, sonst legt sie jemanden
+auf einen Dienstag um 18:00, an dem du längst woanders sitzt.
+
+### Terminkollisionen
+
+Beim Anlegen wird **nicht** ausgewichen. Was extern abgemacht ist, ist
+abgemacht — ein Ausweichtermin wäre erfunden. Überschneidet sich ein Termin
+mit einem bestehenden, wird er trotzdem eingetragen und dir mit Datum
+gemeldet: Du hast dann zwei Verpflichtungen zur selben Zeit und musst die
+eigene verschieben.
+
+### Warum sie in derselben Tabelle stehen
+
+Externe sind normale `profiles`-Zeilen mit `extern = true`, ohne Konto und
+ohne Mailadresse. Eine eigene Tabelle wäre sauberer getrennt gewesen, hätte
+aber bedeutet, dass Kalender, Routenplaner, Zuteilung und Geokodierung je
+zwei Quellen zusammenführen — an jeder Stelle eine Gelegenheit, die Externen
+zu vergessen. Genau das soll nicht passieren.
+
+Dafür musste der Fremdschlüssel von `profiles.id` auf `auth.users` weichen.
+Was er garantierte („Konto gelöscht → Profil weg"), macht jetzt ein Trigger;
+was er verbot („Profil ohne Konto"), ist jetzt erlaubt.
+
+---
+
 ## 9c. Die Route zum Abfahren
 
 Der Routenplaner zeigt jeden Abend als das, was er ist: eine Fahrt. Oben die

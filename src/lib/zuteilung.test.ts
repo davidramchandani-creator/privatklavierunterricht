@@ -458,3 +458,104 @@ describe("Zuteilung, Präferenzen", () => {
     expect(eng.beginn).toBe("18:00");
   });
 });
+
+/**
+ * Fremdtermine sind unverrückbar und blockieren.
+ *
+ * Externe Schüler laufen über eine andere Plattform: Ihr Termin ist dort
+ * vergeben, David kann ihn nicht verschieben. Für die Zuteilung sind sie
+ * keine Kandidaten — ihre Zeit ist aber weg, und ihr Wohnort liegt auf der
+ * Route.
+ *
+ * Ohne `vorbelegt` würde die Zuteilung jemanden auf einen Dienstag um 17:00
+ * legen, an dem David längst woanders sitzt. Im Kalender stünden dann zwei
+ * Termine übereinander, und auffallen würde es frühestens am Dienstag.
+ */
+describe("Zuteilung, fremde Termine", () => {
+  const extern = {
+    schuelerId: "extern-1",
+    name: "Matchspace-Schüler",
+    lat: 47.52,
+    lng: 8.67,
+    wochentag: 2,
+    beginn: "17:00",
+    lektionMinuten: 45,
+    paritaet: null,
+  };
+
+  it("legt niemanden auf eine fremd belegte Zeit", () => {
+    const s = schueler({
+      id: "a",
+      verfuegbarkeiten: [
+        { wochentag: 2, fruehestens: "17:00", spaetestens: "20:30", praeferenz: 2 },
+      ],
+    });
+    const r = teileZu({
+      zuhause: ZUHAUSE,
+      schueler: [s],
+      fenster: FENSTER,
+      pufferMinuten: 15,
+      vorbelegt: [extern],
+    });
+
+    expect(r.zuteilungen).toHaveLength(1);
+    // Erst nach der fremden Lektion plus Puffer.
+    expect(r.zuteilungen[0].beginn >= "18:00").toBe(true);
+  });
+
+  it("teilt den fremden Termin nicht selbst zu", () => {
+    const s = schueler({ id: "a", verfuegbarkeiten: [GANZ_DIENSTAG] });
+    const r = teileZu({
+      zuhause: ZUHAUSE,
+      schueler: [s],
+      fenster: FENSTER,
+      pufferMinuten: 15,
+      vorbelegt: [extern],
+    });
+
+    // Der Externe darf nirgends als Zuteilung auftauchen: Er hat hier
+    // keinen Fixplatz, den man setzen könnte.
+    expect(r.zuteilungen.map((z) => z.schuelerId)).not.toContain("extern-1");
+    expect(r.zuteilungen).toHaveLength(1);
+  });
+
+  it("rechnet die Fahrt zum fremden Termin mit", () => {
+    // Er liegt auf der Route, also gehört seine Anfahrt in die Fahrzeit.
+    // Sonst sähe ein Abend mit einem weit entfernten externen Schüler
+    // künstlich günstig aus.
+    const s = schueler({ id: "a", verfuegbarkeiten: [GANZ_DIENSTAG] });
+    const basis = teileZu({
+      zuhause: ZUHAUSE,
+      schueler: [s],
+      fenster: FENSTER,
+      pufferMinuten: 15,
+    });
+    const mitFremd = teileZu({
+      zuhause: ZUHAUSE,
+      schueler: [s],
+      fenster: FENSTER,
+      pufferMinuten: 15,
+      vorbelegt: [{ ...extern, lat: 47.62, lng: 8.85 }],
+    });
+
+    expect(mitFremd.fahrzeitProWoche).toBeGreaterThan(basis.fahrzeitProWoche);
+  });
+
+  it("kommt ohne fremde Termine unverändert klar", () => {
+    const s = schueler({ id: "a", verfuegbarkeiten: [GANZ_DIENSTAG] });
+    const ohne = teileZu({
+      zuhause: ZUHAUSE,
+      schueler: [s],
+      fenster: FENSTER,
+      pufferMinuten: 15,
+    });
+    const leer = teileZu({
+      zuhause: ZUHAUSE,
+      schueler: [s],
+      fenster: FENSTER,
+      pufferMinuten: 15,
+      vorbelegt: [],
+    });
+    expect(leer.zuteilungen[0].beginn).toBe(ohne.zuteilungen[0].beginn);
+  });
+});

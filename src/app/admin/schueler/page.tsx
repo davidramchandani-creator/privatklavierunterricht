@@ -9,7 +9,7 @@ export default async function AdminSchuelerPage() {
 
   const { data: profiles } = await admin
     .from("profiles")
-    .select("id, vorname, nachname, email, aktiv, erstellt_am")
+    .select("id, vorname, nachname, email, aktiv, erstellt_am, extern, plattform")
     .eq("role", "student")
     .order("erstellt_am", { ascending: false });
 
@@ -34,13 +34,22 @@ export default async function AdminSchuelerPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-800 text-[#1C244B]">Schüler</h1>
-        <Link
-          href="/admin/schueler/neu"
-          className="flex items-center gap-2 bg-[#1C244B] text-white text-sm font-600 px-4 py-2.5 rounded-xl hover:bg-[#151c3d] hover:-translate-y-0.5 transition-all duration-200"
-        >
-          <Plus className="w-4 h-4" />
-          Neuer Schüler
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/schueler/neu-extern"
+            className="flex items-center gap-2 border border-gray-200 text-gray-600 text-sm font-600 px-4 py-2.5 rounded-xl hover:text-gray-900 hover:bg-gray-50 transition-all duration-200"
+          >
+            <Plus className="w-4 h-4" />
+            Extern
+          </Link>
+          <Link
+            href="/admin/schueler/neu"
+            className="flex items-center gap-2 bg-[#1C244B] text-white text-sm font-600 px-4 py-2.5 rounded-xl hover:bg-[#151c3d] hover:-translate-y-0.5 transition-all duration-200"
+          >
+            <Plus className="w-4 h-4" />
+            Neuer Schüler
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
@@ -88,12 +97,26 @@ export default async function AdminSchuelerPage() {
                         >
                           {s.vorname} {s.nachname}
                         </Link>
+                        {/* Externe erkennbar machen: Bei ihnen bleiben Paket,
+                            Rechnung und E-Mail leer, und ohne Hinweis sähe
+                            das nach einem unvollständigen Eintrag aus. */}
+                        {s.extern && (
+                          <span className="ml-2 text-xs font-600 px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
+                            {s.plattform || "extern"}
+                          </span>
+                        )}
                       </td>
                       <td className="px-5 py-3.5 text-sm text-gray-600 hidden sm:table-cell">
-                        {s.email}
+                        {s.email ?? <span className="text-gray-400">—</span>}
                       </td>
                       <td className="px-5 py-3.5 text-sm text-gray-600 hidden md:table-cell">
-                        {pkg ? paketBezeichnung(pkg) : <span className="text-gray-400">—</span>}
+                        {s.extern ? (
+                          <span className="text-gray-400">läuft extern</span>
+                        ) : pkg ? (
+                          paketBezeichnung(pkg)
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
                       </td>
                       <td className="px-5 py-3.5 text-sm text-gray-600 hidden md:table-cell">
                         {state ? (
