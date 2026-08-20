@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Users, Plus } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-import { computePackageState, PACKAGE_LABELS, type Package } from "@/lib/packages";
+import { computePackageState, paketBezeichnung, type Package } from "@/lib/packages";
 
 export default async function AdminSchuelerPage() {
   const admin = await createAdminClient();
@@ -93,7 +93,7 @@ export default async function AdminSchuelerPage() {
                         {s.email}
                       </td>
                       <td className="px-5 py-3.5 text-sm text-gray-600 hidden md:table-cell">
-                        {pkg ? PACKAGE_LABELS[pkg.type] ?? pkg.name ?? pkg.type : <span className="text-gray-400">—</span>}
+                        {pkg ? paketBezeichnung(pkg) : <span className="text-gray-400">—</span>}
                       </td>
                       <td className="px-5 py-3.5 text-sm text-gray-600 hidden md:table-cell">
                         {state ? (

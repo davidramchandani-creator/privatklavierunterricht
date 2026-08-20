@@ -19,7 +19,7 @@ import {
   createInstalmentSchedule,
   issueInstalmentInvoice,
 } from "@/lib/package-invoice";
-import { PACKAGE_LABELS, PACKAGE_LESSONS } from "@/lib/packages";
+import { PACKAGE_LESSONS, paketBezeichnung } from "@/lib/packages";
 import {
   RENEWAL_NOTICE_DAYS,
   todayInZurich,
@@ -246,9 +246,7 @@ async function sendRenewalNotices(
       {
         student_id: pkg.student_id,
         package_id: pkg.id,
-        package_label: pkg.abo_variante
-          ? ABO_LABELS[pkg.abo_variante === "jahr" ? "jahr" : "halbjahr"]
-          : (PACKAGE_LABELS[pkg.type] ?? pkg.type),
+        package_label: paketBezeichnung(pkg),
         expires_at: pkg.expires_at,
         periode_ende: pkg.periode_ende,
         monatsbetrag: pkg.monatsbetrag,
@@ -635,7 +633,7 @@ async function processExpiredPackages(
         {
           student_id: pkg.student_id,
           package_id: pkg.id,
-          package_label: PACKAGE_LABELS[pkg.type] ?? pkg.type,
+          package_label: paketBezeichnung(pkg),
           lessons_forfeited: remaining,
           expires_at: pkg.expires_at,
         },
@@ -696,7 +694,9 @@ async function processExpiredPackages(
         type,
         lessons_total: lessonsTotal,
         lessons_used: 0,
-        name: PACKAGE_LABELS[type],
+        // Hier nur echte Pakete: Abos gehen weiter oben nach
+        // verlaengereAbo ab und kommen nie bis hierher.
+        name: paketBezeichnung({ type }),
         price_per_lesson: ppl,
         total_price: totalPrice,
         starts_at: now.toISOString(),
@@ -778,7 +778,7 @@ async function processExpiredPackages(
         student_id: pkg.student_id,
         package_id: next.id,
         previous_package_id: pkg.id,
-        package_label: PACKAGE_LABELS[type],
+        package_label: paketBezeichnung({ type }),
         total_price: totalPrice,
         billing_mode: pkg.billing_mode,
         expires_at: next.expires_at,
@@ -794,7 +794,7 @@ async function processExpiredPackages(
         student_name:
           `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim() || undefined,
         package_id: next.id,
-        package_label: PACKAGE_LABELS[type],
+        package_label: paketBezeichnung({ type }),
         billing_mode: pkg.billing_mode,
         expires_at: next.expires_at,
       },

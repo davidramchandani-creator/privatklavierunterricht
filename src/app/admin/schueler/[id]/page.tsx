@@ -3,13 +3,21 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
-import { computePackageState, canCancelPackage, PACKAGE_LABELS, type Package } from "@/lib/packages";
+import {
+  computePackageState,
+  canCancelPackage,
+  istAbo,
+  paketBezeichnung,
+  type Package,
+} from "@/lib/packages";
 import { describeFixplatz } from "@/lib/fixplatz";
 import type { Rhythmus } from "@/lib/rhythmus";
 import { parseSchweizerAdresse } from "@/lib/qr-pdf";
 import SchuelerDetailActions, { InvoiceAction, PreiseForm, PackageFormNew, DirektBuchung, ProposalForm, ProposalWithdraw, AppointmentActions, PackageTimerActions, AdjustLessonsButton } from "./_components/SchuelerDetailActions";
 import { StatusBadge } from "@/components/ui/status-badge";
 import RatenplanPanel from "./_components/RatenplanPanel";
+import PaketAufraeumen from "./_components/PaketAufraeumen";
+import TestschuelerSchalter from "./_components/TestschuelerSchalter";
 import { buildPlanSummary, type InstalmentRow } from "@/lib/instalment-view";
 import { todayInZurich } from "@/lib/subscription";
 
@@ -31,7 +39,7 @@ export default async function SchuelerDetailPage({
   ] = await Promise.all([
     admin
       .from("profiles")
-      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, erstellt_am, price_single, price_halbjahr, price_jahr, price_10er, price_20er, travel_surcharge, buffer_time_minutes, buffer_mode, payment_method")
+      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, ist_test, erstellt_am, price_single, price_halbjahr, price_jahr, price_10er, price_20er, travel_surcharge, buffer_time_minutes, buffer_mode, payment_method")
       .eq("id", id)
       .maybeSingle(),
     admin
@@ -98,6 +106,13 @@ export default async function SchuelerDetailPage({
       })
     );
   }
+
+  // Archiviertes kommt in einen eigenen, eingeklappten Block. Nach einem
+  // halben Jahr stehen hier sonst fünf Zeilen, von denen genau eine zählt.
+  type PaketMitArchiv = Package & { archiviert_am?: string | null };
+  const allePakete = (packages ?? []) as PaketMitArchiv[];
+  const sichtbarePakete = allePakete.filter((p) => !p.archiviert_am);
+  const archivierte = allePakete.filter((p) => p.archiviert_am);
 
   const prices = {
     price_single: Number(profile.price_single ?? 85),
@@ -193,6 +208,13 @@ export default async function SchuelerDetailPage({
         </div>
 
         <SchuelerDetailActions profile={profile} />
+
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <TestschuelerSchalter
+            studentId={id}
+            istTest={profile.ist_test === true}
+          />
+        </div>
       </div>
 
       {/* Preise & Einstellungen */}
@@ -219,9 +241,9 @@ export default async function SchuelerDetailPage({
 
       {/* Pakete */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-700 text-[#1C244B] mb-4">Pakete</h2>
+        <h2 className="text-lg font-700 text-[#1C244B] mb-4">Abos und Pakete</h2>
 
-        {packages && packages.length > 0 ? (
+        {sichtbarePakete.length > 0 ? (
           <table className="w-full mb-4">
             <thead>
               <tr className="border-b border-gray-100">
@@ -235,7 +257,7 @@ export default async function SchuelerDetailPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {(packages as Package[]).map((pkg) => {
+              {sichtbarePakete.map((pkg) => {
                 const usedCount = lessonsUsedByPackage.get(pkg.id) ?? pkg.lessons_used ?? 0;
                 const state = computePackageState(pkg, usedCount);
                 // Halbjahr/Jahr, Rhythmus und Fix/Flex stehen sonst nirgends im
@@ -248,12 +270,12 @@ export default async function SchuelerDetailPage({
                 // 20er-Paket, obwohl das eine über Monatsraten läuft und
                 // sich verlängert und das andere einmal bezahlt wird und
                 // endet.
-                const varianteText =
-                  pkg.abo_variante === "halbjahr"
-                    ? "Abo Halbjahr"
-                    : pkg.abo_variante === "jahr"
-                      ? "Abo Jahr"
-                      : "Paket, einmalig bezahlt";
+                // Die Bezeichnung steht neu in der Überschrift (siehe
+                // paketBezeichnung). Hier bleibt nur, was sie nicht hergibt:
+                // wie bezahlt wird und in welchem Takt.
+                const varianteText = istAbo(pkg)
+                  ? "Monatsraten"
+                  : "einmalig bezahlt";
                 const rhythmusText =
                   pkg.rhythmus === "zweiwoechentlich"
                     ? "alle zwei Wochen"
@@ -283,7 +305,7 @@ export default async function SchuelerDetailPage({
                 return (
                   <tr key={pkg.id}>
                     <td className="py-3 text-sm font-500 text-gray-900">
-                      {PACKAGE_LABELS[pkg.type] ?? pkg.name ?? pkg.type}
+                      {paketBezeichnung(pkg)}
                       {artText && (
                         <span className="block text-xs font-400 text-gray-500 mt-0.5">
                           {artText}
@@ -332,6 +354,9 @@ export default async function SchuelerDetailPage({
                             lessonsUsed={state.lessonsUsed}
                           />
                         )}
+                        {pkg.status !== "active" && (
+                          <PaketAufraeumen packageId={pkg.id} archiviert={false} />
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -341,6 +366,49 @@ export default async function SchuelerDetailPage({
           </table>
         ) : (
           <p className="text-sm text-gray-400 mb-4">Noch kein Paket vorhanden.</p>
+        )}
+
+        {/* Archiviertes.
+            Eingeklappt statt weggelassen: Es kommt selten vor, dass man
+            nachsehen muss, aber wenn, dann sucht man es genau hier und nicht
+            in der Datenbank. */}
+        {archivierte.length > 0 && (
+          <details className="mb-4 group">
+            <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-800 select-none">
+              {archivierte.length} archiviert
+              <span className="text-gray-400 group-open:hidden"> · anzeigen</span>
+              <span className="text-gray-400 hidden group-open:inline"> · ausblenden</span>
+            </summary>
+            <table className="w-full mt-3">
+              <tbody className="divide-y divide-gray-100">
+                {archivierte.map((pkg) => {
+                  const usedCount =
+                    lessonsUsedByPackage.get(pkg.id) ?? pkg.lessons_used ?? 0;
+                  const state = computePackageState(pkg, usedCount);
+                  return (
+                    <tr key={pkg.id} className="text-gray-400">
+                      <td className="py-2.5 text-sm">{paketBezeichnung(pkg)}</td>
+                      <td className="py-2.5 text-sm">
+                        {state.lessonsUsed}/{state.lessonsTotal}
+                      </td>
+                      <td className="py-2.5 text-sm hidden sm:table-cell">
+                        {pkg.expires_at ? formatDate(pkg.expires_at) : "—"}
+                      </td>
+                      <td className="py-2.5">
+                        <StatusBadge
+                          kind="packageState"
+                          status={state.effectiveStatus}
+                        />
+                      </td>
+                      <td className="py-2.5">
+                        <PaketAufraeumen packageId={pkg.id} archiviert />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </details>
         )}
 
         <PackageFormNew
@@ -356,13 +424,13 @@ export default async function SchuelerDetailPage({
       </div>
 
       {/* Ratenpläne */}
-      {(packages as Package[] | null)
-        ?.filter((pkg) => plaene.has(pkg.id))
+      {sichtbarePakete
+        .filter((pkg) => plaene.has(pkg.id))
         .map((pkg) => (
           <RatenplanPanel
             key={pkg.id}
             plan={plaene.get(pkg.id)!}
-            packageLabel={PACKAGE_LABELS[pkg.type] ?? pkg.name ?? pkg.type}
+            packageLabel={paketBezeichnung(pkg)}
             autoRenew={Boolean((pkg as { auto_renew?: boolean }).auto_renew)}
             expiresOn={
               pkg.expires_at ? todayInZurich(new Date(pkg.expires_at)) : null

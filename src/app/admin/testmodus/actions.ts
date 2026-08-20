@@ -424,3 +424,59 @@ export async function testdatenEntfernen(): Promise<
   revalidatePath("/admin/schueler");
   return { entfernt: ids.length, error: undefined };
 }
+
+/**
+ * Einen bestehenden Schüler zum Testschüler machen oder zurückholen.
+ *
+ * ── Wofür das gut ist ───────────────────────────────────────
+ *
+ * Für den Probelauf einer Planungs- oder Umstellungsrunde. Der Probelauf
+ * schreibt genau die Testschüler an — mit ihrer echten Adresse, denn
+ * unterdrückt wird nichts. Wer einmal sehen will, was bei den Schülern
+ * ankommt, markiert dafür ein eigenes Konto und ist damit allein in der
+ * Runde.
+ *
+ * Angelegte Testschüler bekommen erfundene Adressen. Ein echtes Konto
+ * umzustellen ist etwas anderes und deshalb ein eigener Weg: Es behält seine
+ * Daten und lässt sich jederzeit zurückholen.
+ *
+ * ── Was die Markierung bewirkt ──────────────────────────────
+ *
+ * Test und Ernst werden überall getrennt gehalten. Ein Testschüler ist
+ * dadurch aus echten Runden, aus der Routenplanung und aus der Zuteilung
+ * heraus. Und er wird von „Testdaten entfernen" mitgelöscht, samt Login.
+ * Darauf weist die Oberfläche hin.
+ */
+export async function testschuelerMarkieren(
+  studentId: string,
+  istTest: boolean
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("id, role")
+    .eq("id", studentId)
+    .maybeSingle();
+
+  if (!prof) return { error: "Schüler nicht gefunden." };
+  if (prof.role !== "student") {
+    return { error: "Nur Schülerkonten lassen sich als Test markieren." };
+  }
+
+  const { error } = await admin
+    .from("profiles")
+    .update({ ist_test: istTest })
+    .eq("id", studentId);
+
+  if (error) return { error: "Die Markierung liess sich nicht ändern." };
+
+  revalidatePath("/admin/testmodus");
+  revalidatePath("/admin/schueler");
+  revalidatePath(`/admin/schueler/${studentId}`);
+  revalidatePath("/admin/planung");
+  return { success: true, error: undefined };
+}

@@ -15,7 +15,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import {
   type Package as Paket,
   type EffectiveStatus,
-  PACKAGE_LABELS,
+  paketBezeichnung,
   computePackageState,
   formatRemainingTime,
 } from "@/lib/packages";
@@ -87,7 +87,7 @@ export default function PaketCard({
           </div>
           <div>
             <p className="font-700 text-gray-900">
-              {paket.name ?? PACKAGE_LABELS[paket.type] ?? paket.type}
+              {paketBezeichnung(paket)}
             </p>
             <p className="text-sm text-gray-500 mt-0.5">
               {formatCHF(Number(paket.price_per_lesson))} pro Lektion

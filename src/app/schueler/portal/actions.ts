@@ -5,6 +5,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import {
   type Package as Paket,
   PACKAGE_LABELS,
+  paketBezeichnung,
 
   canBuyNewPackage,
   computePackageState,
@@ -1533,7 +1534,7 @@ export async function setAutoRenew(packageId: string, enabled: boolean) {
       .maybeSingle();
     const studentName =
       `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined;
-    const label = PACKAGE_LABELS[pkg.type as string] ?? "Paket";
+    const label = paketBezeichnung(pkg as unknown as { type: string; abo_variante?: string | null });
 
     await sendEmailNow(admin, "subscription_cancelled", {
       student_id: user.id,

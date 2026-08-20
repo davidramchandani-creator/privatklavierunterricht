@@ -51,7 +51,7 @@ import { ladeFenster } from "@/lib/routing-server";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   type Package as Paket,
-  PACKAGE_LABELS,
+  paketBezeichnung,
   PACKAGE_LESSONS,
   canBuyNewPackage,
   canCancelPackage,
@@ -385,7 +385,11 @@ export async function issueInstalmentNow(instalmentId: string) {
 
   const { data: pkg } = await adminClient
     .from("packages")
-    .select("id, student_id, type, total_price, price_per_lesson, payment_method, instalment_count, status")
+    // abo_variante muss mit: ohne sie stünde auf der Rechnung eines
+    // Halbjahresabos „10er-Paket".
+    .select(
+      "id, student_id, type, total_price, price_per_lesson, payment_method, instalment_count, status, abo_variante"
+    )
     .eq("id", inst.package_id)
     .maybeSingle();
 
@@ -954,7 +958,7 @@ export async function createPackageAdmin(formData: FormData) {
       type,
       lessons_total: lessonsTotal,
       lessons_used: 0,
-      name: PACKAGE_LABELS[type],
+      name: paketBezeichnung({ type }),
       price_per_lesson: pricePerLesson,
       total_price: totalPrice,
       payment_method: paymentMethod,
@@ -1015,7 +1019,7 @@ export async function createPackageAdmin(formData: FormData) {
   await sendEmailNow(admin, "package_created", {
     student_id: userId,
     student_name: `${prof?.vorname ?? ""} ${prof?.nachname ?? ""}`.trim() || undefined,
-    package_label: PACKAGE_LABELS[type] ?? type,
+    package_label: paketBezeichnung({ type }),
     lessons_total: lessonsTotal,
     total_price: totalPrice,
     billing_mode: billingMode,
@@ -3313,5 +3317,147 @@ export async function bewertungVonHand(formData: FormData) {
   revalidatePath("/admin/bewertungen");
   revalidatePath("/");
   revalidatePath("/ueber-mich");
+  return { success: true, error: undefined };
+}
+
+// ── Alte Pakete aufräumen ──────────────────────────────────
+
+/**
+ * Ein beendetes Paket aus der Übersicht nehmen.
+ *
+ * Es bleibt vollständig in der Datenbank; nur die Liste im Schülerdetail
+ * zeigt es nicht mehr. Rechnungen, Raten und Termine bleiben unberührt und
+ * auffindbar.
+ */
+export async function paketArchivieren(
+  packageId: string
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+
+  const { data: pkg } = await admin
+    .from("packages")
+    .select("id, student_id, status")
+    .eq("id", packageId)
+    .maybeSingle();
+
+  if (!pkg) return { error: "Paket nicht gefunden." };
+  if (pkg.status === "active") {
+    return {
+      error:
+        "Das Paket läuft noch. Beende es zuerst, sonst verschwindet es aus der Liste, während es weiter abgerechnet wird.",
+    };
+  }
+
+  const { error } = await admin
+    .from("packages")
+    .update({ archiviert_am: new Date().toISOString() })
+    .eq("id", packageId);
+
+  if (error) return { error: "Das Paket konnte nicht archiviert werden." };
+
+  revalidatePath(`/admin/schueler/${pkg.student_id}`);
+  return { success: true, error: undefined };
+}
+
+/** Ein archiviertes Paket wieder einblenden. */
+export async function paketWiederherstellen(
+  packageId: string
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+
+  const { data: pkg } = await admin
+    .from("packages")
+    .select("id, student_id")
+    .eq("id", packageId)
+    .maybeSingle();
+  if (!pkg) return { error: "Paket nicht gefunden." };
+
+  await admin
+    .from("packages")
+    .update({ archiviert_am: null })
+    .eq("id", packageId);
+
+  revalidatePath(`/admin/schueler/${pkg.student_id}`);
+  return { success: true, error: undefined };
+}
+
+/**
+ * Ein Paket endgültig löschen.
+ *
+ * ── Warum das nicht immer geht ──────────────────────────────
+ *
+ * Am Paket hängt der Zahlungsplan, und der wird beim Löschen mitgelöscht
+ * (CASCADE). Gestellte Rechnungen überleben zwar, verlieren aber ihre
+ * Zuordnung. Bei einem Paket, für das je Geld gefordert oder eingegangen ist,
+ * risse das ein Loch in die Buchhaltung, das sich nicht mehr schliessen lässt
+ * — und zwar unbemerkt, weil die Rechnung ja weiterhin dasteht.
+ *
+ * Gelöscht wird deshalb nur, was nie abgerechnet wurde: Fehlversuche,
+ * Testeinträge, versehentlich angelegte Pakete. Alles andere wird archiviert.
+ */
+export async function paketLoeschen(
+  packageId: string
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+
+  const { data: pkg } = await admin
+    .from("packages")
+    .select("id, student_id, status")
+    .eq("id", packageId)
+    .maybeSingle();
+
+  if (!pkg) return { error: "Paket nicht gefunden." };
+  if (pkg.status === "active") {
+    return { error: "Ein laufendes Paket lässt sich nicht löschen." };
+  }
+
+  const [{ count: rechnungen }, { count: raten }, { count: termine }] =
+    await Promise.all([
+      admin
+        .from("invoices")
+        .select("id", { count: "exact", head: true })
+        .eq("package_id", packageId),
+      admin
+        .from("package_instalments")
+        .select("id", { count: "exact", head: true })
+        .eq("package_id", packageId)
+        .neq("status", "offen"),
+      admin
+        .from("appointments")
+        .select("id", { count: "exact", head: true })
+        .eq("package_id", packageId)
+        .in("status", ["booked", "completed"]),
+    ]);
+
+  if ((rechnungen ?? 0) > 0) {
+    return {
+      error: `Zu diesem Paket ${(rechnungen ?? 0) === 1 ? "gibt es eine Rechnung" : `gibt es ${rechnungen} Rechnungen`}. Es lässt sich deshalb nur archivieren, nicht löschen.`,
+    };
+  }
+  if ((raten ?? 0) > 0) {
+    return {
+      error:
+        "Zu diesem Paket wurden bereits Raten gestellt. Es lässt sich deshalb nur archivieren, nicht löschen.",
+    };
+  }
+  if ((termine ?? 0) > 0) {
+    return {
+      error: `Am Paket hängen noch ${termine} Termine. Sage sie zuerst ab, sonst stehen sie ohne Paket im Kalender.`,
+    };
+  }
+
+  const { error } = await admin.from("packages").delete().eq("id", packageId);
+  if (error) return { error: "Das Paket konnte nicht gelöscht werden." };
+
+  revalidatePath(`/admin/schueler/${pkg.student_id}`);
   return { success: true, error: undefined };
 }

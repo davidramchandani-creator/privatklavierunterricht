@@ -1,8 +1,12 @@
 import { describe, it, expect } from "vitest";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   cancellationSingleLessonPrice,
   computeCancellationSettlement,
   canCancelPackage,
+  istAbo,
+  paketBezeichnung,
   type Package,
 } from "./packages";
 
@@ -162,5 +166,100 @@ describe("computeCancellationSettlement, Ratenzahlung", () => {
   it("vollständig bezahltes Paket verhält sich wie bisher", () => {
     const s = computeCancellationSettlement(ratenPaket(), 2, 700);
     expect(s.refund).toBe(540);
+  });
+});
+
+/**
+ * Ein Abo darf nirgends „10er-Paket" heissen.
+ *
+ * In der Datenbank belegt ein Halbjahresabo das Feld `type` mit `10er` und
+ * ein Jahresabo mit `20er`. Das ist eine Altlast aus dem Paketmodell, an der
+ * Rechnungen, Raten und Buchungssperren hängen — sie bleibt.
+ *
+ * Sichtbar werden darf sie nicht. Ein Schüler mit einem Halbjahresabo über 19
+ * Lektionen sah in der Liste „10er-Paket": falsche Bezeichnung, falsche Zahl.
+ * Wer das liest, glaubt, er habe beim Anlegen danebengegriffen.
+ */
+describe("paketBezeichnung", () => {
+  it("nennt ein Halbjahresabo beim Namen", () => {
+    expect(
+      paketBezeichnung({ type: "10er", abo_variante: "halbjahr", name: null })
+    ).toBe("Halbjahresabo");
+  });
+
+  it("nennt ein Jahresabo beim Namen", () => {
+    expect(
+      paketBezeichnung({ type: "20er", abo_variante: "jahr", name: null })
+    ).toBe("Jahresabo");
+  });
+
+  it("lässt echte Pakete unverändert", () => {
+    expect(paketBezeichnung({ type: "10er", abo_variante: null })).toBe(
+      "10er-Paket"
+    );
+    expect(paketBezeichnung({ type: "20er" })).toBe("20er-Paket");
+    expect(paketBezeichnung({ type: "single" })).toBe("Einzellektion");
+  });
+
+  it("entscheidet über abo_variante, nicht über den Namen", () => {
+    // Der gespeicherte Name kann veralten, etwa nach einem
+    // Rhythmuswechsel. Die Variante ist die verlässliche Angabe.
+    expect(
+      paketBezeichnung({
+        type: "10er",
+        abo_variante: "halbjahr",
+        name: "Irgendwas Altes",
+      })
+    ).toBe("Halbjahresabo");
+  });
+
+  it("kommt mit fehlendem Paket zurecht", () => {
+    expect(paketBezeichnung(null)).toBe("Kein Paket");
+    expect(paketBezeichnung(undefined)).toBe("Kein Paket");
+  });
+
+  it("unterscheidet Abo und Paket", () => {
+    expect(istAbo({ abo_variante: "jahr" })).toBe(true);
+    expect(istAbo({ abo_variante: "halbjahr" })).toBe(true);
+    expect(istAbo({ abo_variante: null })).toBe(false);
+    expect(istAbo(null)).toBe(false);
+  });
+});
+
+/**
+ * Kein Anzeigepfad darf am Typ hängen bleiben.
+ *
+ * Es genügt nicht, die Funktion zu haben — sie muss auch benutzt werden.
+ * PACKAGE_LABELS direkt zu lesen ist genau der Fehler, der die Abos zu
+ * Paketen gemacht hat, und er lässt sich beim nächsten neuen Bildschirm
+ * mühelos wiederholen.
+ */
+describe("PACKAGE_LABELS wird nicht mehr direkt angezeigt", () => {
+  it("kommt ausserhalb von packages.ts nicht mehr vor", () => {
+    const wurzel = join(process.cwd(), "src");
+    const suender: string[] = [];
+
+    function durchsuche(pfad: string) {
+      for (const eintrag of readdirSync(pfad, { withFileTypes: true })) {
+        const voll = join(pfad, eintrag.name);
+        if (eintrag.isDirectory()) {
+          durchsuche(voll);
+          continue;
+        }
+        if (!/\.(ts|tsx)$/.test(eintrag.name)) continue;
+        if (eintrag.name.startsWith("packages.")) continue;
+
+        const quelle = readFileSync(voll, "utf8");
+        if (/PACKAGE_LABELS\s*\[/.test(quelle)) {
+          suender.push(voll.replace(wurzel, "src"));
+        }
+      }
+    }
+
+    durchsuche(wurzel);
+    expect(
+      suender,
+      `Nutzt PACKAGE_LABELS direkt statt paketBezeichnung:\n${suender.join("\n")}`
+    ).toEqual([]);
   });
 });

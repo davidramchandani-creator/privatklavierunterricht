@@ -6,7 +6,7 @@ import LektionenBoard, { type OffeneLektion } from "./_components/LektionenBoard
 import { zahlungsartFuer } from "@/lib/zahlungsart";
 import type { Invoice } from "./_components/PaymentCard";
 import { buildPlanSummary, type InstalmentRow } from "@/lib/instalment-view";
-import { PACKAGE_LABELS } from "@/lib/packages";
+import { paketBezeichnung } from "@/lib/packages";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +50,7 @@ export default async function ZahlungenPage() {
   const { data: instalments } = await admin
     .from("package_instalments")
     .select(
-      "id, package_id, student_id, sequence, kind, amount, due_date, status, invoice_id, paid_at, profiles(vorname, nachname), packages(type, name)"
+      "id, package_id, student_id, sequence, kind, amount, due_date, status, invoice_id, paid_at, profiles(vorname, nachname), packages(type, name, abo_variante)"
     )
     .order("due_date", { ascending: true })
     .limit(500);
@@ -71,11 +71,10 @@ export default async function ZahlungenPage() {
     const first = rows[0];
     const p = nameOf(first.profiles);
     const pkg = nameOf(first.packages) as unknown as
-      | { type: string; name: string | null }
+      | { type: string; name: string | null; abo_variante: string | null }
       | null;
     const studentName = p ? `${p.vorname} ${p.nachname}`.trim() : "Unbekannt";
-    const packageLabel =
-      pkg?.name ?? (pkg ? PACKAGE_LABELS[pkg.type] ?? pkg.type : "Paket");
+    const packageLabel = pkg ? paketBezeichnung(pkg) : "Paket";
 
     for (const e of summary.entries) {
       if (e.state === "storniert") continue;

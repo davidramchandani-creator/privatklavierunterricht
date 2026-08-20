@@ -453,6 +453,43 @@ vorausbezahlt, geprüft an den Rechnungen: bezahlt wurden nur Einzellektionen.
 Wäre das anders, müsste hier eine Gutschrift stehen. Wer diese Runde später
 noch einmal für einen anderen Bestand verwendet, muss das zuerst prüfen.
 
+### Die Runde vorher allein durchspielen
+
+Auf dem Schülerdetail gibt es den Schalter **„Als Testschüler markieren"**.
+Ein so markierter Schüler zählt in echten Runden, in der Routenplanung und in
+der Zuteilung nicht mehr mit — ein **Probelauf** schreibt dafür genau ihn an.
+
+Die Mails gehen dabei an seine **echte Adresse**; unterdrückt wird nichts. Das
+ist der Sinn: Du siehst, was bei den Schülern ankommt.
+
+Zwei Dinge dazu:
+
+- Der Schalter wirkt sofort. Solange er gesetzt ist, fehlt der Schüler in
+  jeder echten Runde. Nach dem Test also wieder zurückholen.
+- **„Testdaten entfernen"** löscht Testschüler vollständig, samt Login. Bei
+  einem angelegten Testkonto ist das gewollt, bei einem echten Konto wäre es
+  ein Verlust.
+
+### Alte Pakete aufräumen
+
+In der Paketliste eines Schülers stehen mit der Zeit fünf oder mehr Zeilen,
+von denen genau eine zählt. Beendete Pakete lassen sich deshalb:
+
+- **archivieren** — sie verschwinden aus der Liste in einen eingeklappten
+  Block darunter. Rechnungen, Raten und Termine bleiben unangetastet und
+  auffindbar. Jederzeit wieder einblendbar.
+- **löschen** — nur, wenn nie eine Rechnung gestellt wurde und keine Termine
+  daran hängen. Für Fehlversuche und Testeinträge.
+
+Warum nicht immer löschen: Am Paket hängt der Zahlungsplan, und der ginge
+mit. Gestellte Rechnungen überlebten zwar, verlören aber ihre Zuordnung — ein
+Loch in der Buchhaltung, das niemandem auffiele, weil die Rechnung ja
+weiterhin dasteht. Der Server weist solche Löschversuche deshalb ab und
+nennt den Grund.
+
+Ein laufendes Paket lässt sich weder archivieren noch löschen. Ausgeblendet
+würde nicht auffallen, dass es weiter abgerechnet wird.
+
 ### Die Bestätigung
 
 Mail und PDF enthalten dasselbe: Abo, Termin, Laufzeit, Lektionszahl, Preis

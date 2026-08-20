@@ -45,6 +45,46 @@ export const PACKAGE_LABELS: Record<string, string> = {
   "20er": "20er-Paket",
 };
 
+/**
+ * Wie ein Paket oder Abo zu nennen ist.
+ *
+ * ── Warum es diese Funktion braucht ─────────────────────────
+ *
+ * Ein Abo wird in derselben Tabelle geführt wie ein Lektionspaket und belegt
+ * dort das Feld `type` mit `10er` (Halbjahr) oder `20er` (Jahr). Das ist eine
+ * Altlast aus dem Paketmodell und für die Datenbank harmlos, weil alles
+ * andere daran hängt: Rechnungen, Raten, Buchungssperren.
+ *
+ * Für die Anzeige ist es falsch, und zwar sichtbar falsch: `PACKAGE_LABELS`
+ * macht daraus „10er-Paket", obwohl der Schüler ein Halbjahresabo mit 19
+ * Lektionen hat. Weder die Zahl noch das Wort stimmen, und wer die Liste
+ * liest, glaubt, er habe das Falsche angelegt.
+ *
+ * Deshalb entscheidet nicht `type`, sondern `abo_variante`: Ist sie gesetzt,
+ * ist es ein Abo, und nur dann. So bleibt die Datenbank, wie sie ist, und die
+ * Anzeige sagt trotzdem die Wahrheit.
+ */
+export function paketBezeichnung(
+  pkg:
+    | { type: string; abo_variante?: string | null; name?: string | null }
+    | null
+    | undefined
+): string {
+  if (!pkg) return "Kein Paket";
+
+  if (pkg.abo_variante === "halbjahr") return "Halbjahresabo";
+  if (pkg.abo_variante === "jahr") return "Jahresabo";
+
+  return PACKAGE_LABELS[pkg.type] ?? pkg.name ?? pkg.type;
+}
+
+/** Ist das ein Abo (Laufzeit) und kein Lektionspaket (Stückzahl)? */
+export function istAbo(
+  pkg: Pick<Package, "abo_variante"> | null | undefined
+): boolean {
+  return pkg?.abo_variante === "halbjahr" || pkg?.abo_variante === "jahr";
+}
+
 // Gültigkeitsdauer ab starts_at = Abo-Laufzeit: 10er = 4 Monate, 20er = 8 Monate.
 // Identisch mit SUBSCRIPTION_TERM_MONTHS in subscription.ts (Entscheid Dave:
 // Gültigkeit und Ratenlaufzeit laufen synchron ab).
