@@ -42,7 +42,7 @@ export default async function PlanungPage() {
           geantwortet: s.geantwortet,
           aboVariante: s.aboVariante,
           aboRhythmus: s.aboRhythmus,
-          fensterAnzahl: s.fensterAnzahl,
+          fenster: s.fenster,
         }))
         }
       />

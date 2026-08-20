@@ -89,6 +89,18 @@ export type AntwortStand = {
   geantwortetAm: string | null;
   erinnertAm: string | null;
   fensterAnzahl: number;
+  /**
+   * Die konkreten Zeitfenster, nicht nur ihre Anzahl. „2 Zeitfenster" sagt
+   * dem Admin nichts — ob Montagabend oder Freitag früh entscheidet, ob er
+   * die Zuteilung überhaupt für plausibel hält.
+   */
+  fenster: {
+    wochentag: number;
+    von: string;
+    bis: string;
+    /** 1 = zur Not, 2 = gut, 3 = am besten. */
+    praeferenz: number;
+  }[];
   bemerkung: string | null;
   /** Nur bei Umstellungsrunden: was der Schüler gewählt hat. */
   aboVariante: "halbjahr" | "jahr" | null;
@@ -135,17 +147,25 @@ export async function ladeAntwortStand(
       .eq("runde_id", rundeId),
     admin
       .from("student_verfuegbarkeit")
-      .select("student_id")
-      .eq("runde_id", rundeId),
+      .select("student_id, wochentag, fruehestens, spaetestens, praeferenz")
+      .eq("runde_id", rundeId)
+      .order("wochentag"),
   ]);
 
   const antwortVon = new Map(
     (antworten ?? []).map((a) => [a.student_id as string, a])
   );
-  const fensterZahl = new Map<string, number>();
+  const fensterVon = new Map<string, AntwortStand["fenster"]>();
   for (const f of fenster ?? []) {
     const id = f.student_id as string;
-    fensterZahl.set(id, (fensterZahl.get(id) ?? 0) + 1);
+    const liste = fensterVon.get(id) ?? [];
+    liste.push({
+      wochentag: Number(f.wochentag),
+      von: String(f.fruehestens ?? "16:30").slice(0, 5),
+      bis: String(f.spaetestens ?? "20:30").slice(0, 5),
+      praeferenz: Number(f.praeferenz ?? 2),
+    });
+    fensterVon.set(id, liste);
   }
 
   return (schueler ?? []).map((s) => {
@@ -157,7 +177,8 @@ export async function ladeAntwortStand(
       geantwortet: a?.geantwortet_am != null,
       geantwortetAm: (a?.geantwortet_am as string) ?? null,
       erinnertAm: (a?.erinnert_am as string) ?? null,
-      fensterAnzahl: fensterZahl.get(s.id) ?? 0,
+      fensterAnzahl: (fensterVon.get(s.id) ?? []).length,
+      fenster: fensterVon.get(s.id) ?? [],
       bemerkung: (a?.bemerkung as string) ?? null,
       aboVariante:
         a?.abo_variante === "halbjahr" || a?.abo_variante === "jahr"

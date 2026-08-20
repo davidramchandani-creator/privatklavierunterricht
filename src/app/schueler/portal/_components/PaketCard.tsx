@@ -27,6 +27,7 @@ const STATUS_ICON: Record<EffectiveStatus, React.ReactNode> = {
   aufgebraucht: <Clock className="w-3 h-3" />,
   abgelaufen: <XCircle className="w-3 h-3" />,
   storniert: <XCircle className="w-3 h-3" />,
+  geplant: <Clock className="w-3 h-3" />,
 };
 
 export default function PaketCard({

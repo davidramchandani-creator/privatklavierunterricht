@@ -151,6 +151,22 @@ function alsZeit(minuten: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+/**
+ * Hebt einen Zeitpunkt auf das nächste Viertelstunden-Raster.
+ *
+ * Ohne das entstehen Anfangszeiten wie 17:09: rechnerisch korrekt (Ende der
+ * vorherigen Lektion plus Fahrt plus Puffer), aber niemand vereinbart eine
+ * Klavierstunde um 17:09. Die Buchungs-Engine arbeitet im selben Raster —
+ * ein Plan, der Zeiten vorschlägt, die sich dort gar nicht buchen liessen,
+ * wäre keiner.
+ *
+ * Die verlorenen Minuten sind der Preis für merkbare Zeiten und stecken im
+ * Plan als etwas Luft zwischen den Lektionen.
+ */
+function aufRaster(minuten: number, raster = 15): number {
+  return Math.ceil(minuten / raster) * raster;
+}
+
 /** Kann dieser Schüler an diesem Wochentag überhaupt? */
 function tagErlaubt(s: PlanSchueler, wochentag: number): boolean {
   if (s.fenster && s.fenster.length > 0) {
@@ -479,9 +495,12 @@ function baueTag(
 
     // Erster Termin: die Anfahrt von zuhause passiert vor Fensterbeginn,
     // der Unterricht startet also pünktlich zum Fensterbeginn. Danach zählt
-    // Fahrzeit plus Puffer zwischen den Lektionen.
+    // Fahrzeit plus Puffer zwischen den Lektionen — angehoben aufs
+    // Viertelstunden-Raster, siehe aufRaster.
     const frueheste =
-      gebaut.length === 0 ? beginnMin : uhr + Math.ceil(anfahrtMin) + pufferMinuten;
+      gebaut.length === 0
+        ? beginnMin
+        : aufRaster(uhr + Math.ceil(anfahrtMin) + pufferMinuten);
 
     const dauer = Math.max(
       pos.gerade?.lektionMinuten ?? 45,
@@ -499,7 +518,12 @@ function baueTag(
     // Platz mehr", obwohl der ganze Abend frei war. Das Warten kostet
     // Leerzeit, deshalb steht es als Warnung im Tagesplan; es ist aber
     // allemal besser, als jemanden gar nicht einzuplanen.
-    const start = spaetesterBeginn(schuelerHier, wochentag, frueheste);
+    // Auch nach dem Warten auf ein späteres Schülerfenster aufs Raster:
+    // Die Fenster aus dem Formular liegen zwar selbst auf Viertelstunden,
+    // aber verlassen will sich der Plan darauf nicht.
+    const start = aufRaster(
+      spaetesterBeginn(schuelerHier, wochentag, frueheste)
+    );
     const schluss = start + dauer;
 
     const zeitPasstAllen = schuelerHier.every((s) =>

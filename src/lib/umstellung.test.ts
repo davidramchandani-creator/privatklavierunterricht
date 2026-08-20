@@ -236,3 +236,67 @@ describe("Inaktive Schüler", () => {
     expect(fn.slice(0, 1500)).toContain('.eq("profiles.aktiv", true)');
   });
 });
+
+/**
+ * Der Stichtag schneidet, nicht der Anwenden-Klick.
+ *
+ * Zwischen Anwenden (kurz nach der Frist) und Abo-Start können Wochen
+ * liegen, und in denen läuft das alte Paket weiter — so verspricht es die
+ * Info-Mail. Die erste Fassung beendete das alte Paket im Moment des Klicks
+ * und sagte auch die Termine vor dem Stichtag ab: Wer am 22.08. anwendete,
+ * nahm den Schülern drei Wochen bezahlten Unterricht weg, ohne Meldung.
+ */
+describe("Übergang am Stichtag", () => {
+  const quelle = readFileSync(
+    join(process.cwd(), "src", "lib", "umstellung-server.ts"),
+    "utf8"
+  );
+
+  it("sagt vom alten Paket nur Termine ab dem Stichtag ab", () => {
+    // gte(stichtag), nicht gt(jetzt): Was vor dem Stichtag liegt, findet statt.
+    expect(quelle).toContain('.gte("start_at", stichtagIso)');
+    expect(quelle).not.toContain('.gt("start_at", new Date().toISOString())');
+  });
+
+  it("legt das Abo als geplant an, wenn der Start in der Zukunft liegt", () => {
+    expect(quelle).toContain('status: sofort ? "active" : "scheduled"');
+  });
+
+  it("beendet das alte Paket nur bei sofortigem Start gleich mit", () => {
+    const block = quelle.slice(
+      quelle.indexOf("for (const alt of alte ?? [])"),
+      quelle.indexOf("const { data: pkg, error }")
+    );
+    expect(block).toContain("if (sofort)");
+    expect(block).toContain('update({ status: "expired" })');
+    // Im Warte-Fall wird nur die Verlängerung abgestellt.
+    expect(block).toContain("auto_renew: false");
+  });
+
+  it("aktiviert am Stichtag in der richtigen Reihenfolge", () => {
+    const fn = quelle.slice(
+      quelle.indexOf("export async function aktiviereGeplanteAbos")
+    );
+    const altBeenden = fn.indexOf('update({ status: "expired" })');
+    const neuAktivieren = fn.indexOf('update({ status: "active" })');
+    // Erst das alte beenden, dann das neue aktivieren. Andersherum bricht
+    // der Eindeutigkeits-Index den Wechsel ab und das Abo bliebe für immer
+    // geplant, ohne dass es jemand merkt.
+    expect(altBeenden).toBeGreaterThan(-1);
+    expect(neuAktivieren).toBeGreaterThan(-1);
+    expect(altBeenden).toBeLessThan(neuAktivieren);
+  });
+
+  it("hängt am Cron, nicht an einem Knopf", () => {
+    const jobs = readFileSync(
+      join(process.cwd(), "src", "lib", "subscription-jobs.ts"),
+      "utf8"
+    );
+    // Vor der Ratenfakturierung, damit die erste Abo-Rate am Stichtag
+    // selbst gestellt werden kann.
+    const aktivierung = jobs.indexOf("aktiviereGeplanteAbos(admin)");
+    const fakturierung = jobs.indexOf("invoiceDueInstalments(admin, today)");
+    expect(aktivierung).toBeGreaterThan(-1);
+    expect(aktivierung).toBeLessThan(fakturierung);
+  });
+});

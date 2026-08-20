@@ -374,3 +374,87 @@ describe("Beschreibung", () => {
     ).toBe("Jeden zweiten Donnerstag um 18:00 (ungerade Wochen)");
   });
 });
+
+/**
+ * „Zur Not" verliert gegen „am besten", wenn die Fahrzeit gleich ist.
+ *
+ * Genau das versprechen Formular und Mail: Der Stern markiert die
+ * Wunschzeit, und wenn die Route es zulässt, bekommt man sie. Ohne diese
+ * Tests wäre das Versprechen nur eine Behauptung — die Präferenz fliesst
+ * als Bonus in die Kostenrechnung ein, und ein stiller Vorzeichenfehler
+ * dort würde niemandem auffallen: Es gäbe ja weiterhin gültige Pläne.
+ */
+describe("Zuteilung, Präferenzen", () => {
+  it("wählt das Wunschfenster statt des Notfensters", () => {
+    // Ein Schüler, ein Tag, zwei Fenster: früh nur zur Not, spät am
+    // liebsten. Die Fahrzeit ist für beide identisch, also muss allein die
+    // Präferenz entscheiden.
+    const s = schueler({
+      id: "a",
+      verfuegbarkeiten: [
+        { wochentag: 2, fruehestens: "16:30", spaetestens: "18:00", praeferenz: 1 },
+        { wochentag: 2, fruehestens: "18:30", spaetestens: "20:30", praeferenz: 3 },
+      ],
+    });
+    const r = teileZu({
+      zuhause: ZUHAUSE,
+      schueler: [s],
+      fenster: FENSTER,
+      pufferMinuten: 0,
+    });
+
+    expect(r.zuteilungen).toHaveLength(1);
+    const beginn = r.zuteilungen[0].beginn;
+    expect(beginn >= "18:30").toBe(true);
+    expect(r.zuteilungen[0].praeferenz).toBe(3);
+    expect(r.wunschErfuellt).toBe(1);
+  });
+
+  it("ordnet 'gut' über 'zur Not' ein, auch ohne Stern", () => {
+    const s = schueler({
+      id: "b",
+      verfuegbarkeiten: [
+        { wochentag: 3, fruehestens: "16:30", spaetestens: "18:00", praeferenz: 1 },
+        { wochentag: 3, fruehestens: "18:30", spaetestens: "20:30", praeferenz: 2 },
+      ],
+    });
+    const r = teileZu({
+      zuhause: ZUHAUSE,
+      schueler: [s],
+      fenster: FENSTER,
+      pufferMinuten: 0,
+    });
+
+    expect(r.zuteilungen[0].praeferenz).toBe(2);
+  });
+
+  it("opfert den Wunsch, wenn er sonst jemanden verdrängt", () => {
+    // Zwei Schüler wollen exakt dasselbe enge Fenster, einer kann sonst
+    // nichts. Der Unflexible muss den Platz bekommen, der andere weicht in
+    // sein Notfenster aus: Kapazität geht vor Wunsch.
+    const unflexibel = schueler({
+      id: "eng",
+      verfuegbarkeiten: [
+        { wochentag: 2, fruehestens: "18:00", spaetestens: "18:45", praeferenz: 3 },
+      ],
+    });
+    const flexibel = schueler({
+      id: "breit",
+      verfuegbarkeiten: [
+        { wochentag: 2, fruehestens: "18:00", spaetestens: "18:45", praeferenz: 3 },
+        { wochentag: 4, fruehestens: "16:30", spaetestens: "20:30", praeferenz: 1 },
+      ],
+    });
+    const r = teileZu({
+      zuhause: ZUHAUSE,
+      schueler: [unflexibel, flexibel],
+      fenster: FENSTER,
+      pufferMinuten: 15,
+    });
+
+    expect(r.nichtZugeteilt).toHaveLength(0);
+    const eng = r.zuteilungen.find((z) => z.schuelerId === "eng")!;
+    expect(eng.wochentag).toBe(2);
+    expect(eng.beginn).toBe("18:00");
+  });
+});

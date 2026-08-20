@@ -342,13 +342,21 @@ describe("Wie viele Unterrichtstage lohnen sich", () => {
   it("zeigt, dass mehr Tage mehr Fahrzeit kosten", () => {
     // Der Kern der unternehmerischen Frage: jeder zusätzliche Unterrichtstag
     // bringt einen eigenen Hin- und Rückweg mit. Vier volle Abende sind
-    // günstiger als fünf halbleere, bei identischer Lektionszahl.
+    // günstiger als fünf halbleere.
+    //
+    // Seit die Zeiten auf dem Viertelstunden-Raster liegen, passt in die
+    // 4-Tage-Variante dieses dicht gepackten Modells eine halbe Lektion
+    // weniger als in die 5-Tage-Variante. Das ist kein Fehler, sondern der
+    // ausgewiesene Preis des Rasters: merkbare Zeiten kosten Minuten.
+    // Verglichen wird deshalb die Fahrzeit je Lektion, die von der leicht
+    // unterschiedlichen Lektionszahl nicht verzerrt wird.
     const vier = varianten.find((v) => v.tage === 4);
     const fuenf = varianten.find((v) => v.tage === 5);
     expect(vier).toBeDefined();
     expect(fuenf).toBeDefined();
-    expect(vier!.lektionenProWoche).toBe(fuenf!.lektionenProWoche);
+    expect(fuenf!.lektionenProWoche - vier!.lektionenProWoche).toBeLessThanOrEqual(0.5);
     expect(vier!.fahrzeitProWoche).toBeLessThan(fuenf!.fahrzeitProWoche);
+    expect(vier!.fahrzeitProLektion).toBeLessThan(fuenf!.fahrzeitProLektion);
   });
 
   it("empfiehlt nur Varianten, in denen alle Platz haben", () => {

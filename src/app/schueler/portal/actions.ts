@@ -1358,9 +1358,22 @@ export async function aboAbschliessen(params: {
     .from("packages")
     .select("*")
     .eq("student_id", user.id)
-    .eq("status", "active");
+    .in("status", ["active", "scheduled"]);
 
-  const nutzbar = (bestehend ?? []).find((p) => !canBuyNewPackage(p as Paket));
+  // Ein geplantes Abo (aus der Umstellung, startet am Stichtag) zählt hier
+  // wie ein laufendes. Sonst schlösse jemand in der Wartezeit ein zweites ab,
+  // und am Stichtag würde das gerade gekaufte vom geplanten beendet.
+  const vorgemerkt = (bestehend ?? []).find((p) => p.status === "scheduled");
+  if (vorgemerkt) {
+    return {
+      error:
+        "Dein Abo ist schon eingerichtet und startet am vereinbarten Datum. Ein weiteres brauchst du nicht.",
+    };
+  }
+
+  const nutzbar = (bestehend ?? []).find(
+    (p) => p.status === "active" && !canBuyNewPackage(p as Paket)
+  );
   if (nutzbar) {
     return {
       error:

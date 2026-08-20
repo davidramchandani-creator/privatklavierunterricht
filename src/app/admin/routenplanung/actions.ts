@@ -87,15 +87,37 @@ export async function berechnePlan(optionen: {
     };
   }
 
-  const plan = planeRouten(kontext.eingabe);
-  const vergleich = vergleicheMitUnsortiert(plan, kontext.eingabe);
+  // Erst die Varianten rechnen, dann den Hauptplan — und zwar den der
+  // **empfohlenen** Variante.
+  //
+  // Vorher zeigte die Seite den Plan über alle verfügbaren Tage, direkt
+  // unter einer Tabelle, die weniger Tage empfahl: oben „2 Tage (Mo, Di)
+  // empfohlen", darunter ein 3-Tage-Plan mit Donnerstag. Zwei Antworten auf
+  // dieselbe Frage auf einem Bildschirm — die Tabelle wirkte kaputt.
+  //
+  // Jetzt gilt: Der grosse Plan ist die Empfehlung. Wer eine andere
+  // Variante sehen will, findet sie in der Tabelle samt Kennzahlen. Gibt es
+  // keine Empfehlung (in jeder Variante fiele jemand heraus), bleibt der
+  // Plan über alle Tage — Kapazität vor Effizienz.
   const varianten = vergleicheTagesanzahl(kontext.eingabe);
+  const empfehlung = empfohleneVariante(varianten);
+
+  const fensterFuerPlan =
+    empfehlung && empfehlung.wochentage.length > 0
+      ? kontext.eingabe.fenster.filter((f) =>
+          empfehlung.wochentage.includes(f.wochentag)
+        )
+      : kontext.eingabe.fenster;
+
+  const eingabe = { ...kontext.eingabe, fenster: fensterFuerPlan };
+  const plan = planeRouten(eingabe);
+  const vergleich = vergleicheMitUnsortiert(plan, eingabe);
 
   return {
     plan,
     vergleich,
     varianten,
-    empfehlung: empfohleneVariante(varianten),
+    empfehlung,
     zuhauseAdresse: kontext.zuhauseAdresse,
     ohneKoordinaten: kontext.ohneKoordinaten.map((s) => ({
       name: s.name,

@@ -34,6 +34,7 @@ import {
   type Rhythmus,
 } from "@/lib/rhythmus";
 import { bookFixplatzSeries } from "@/lib/fixplatz-server";
+import { aktiviereGeplanteAbos } from "@/lib/umstellung-server";
 import { ABO_LABELS } from "@/lib/abo";
 import { baueVorschau, legeMonatsratenAn } from "@/lib/abo-server";
 
@@ -822,6 +823,18 @@ export async function runSubscriptionJobs(
     renewed: 0,
     expired: 0,
   };
+
+  // Zuerst der Stichtag-Wechsel der Umstellung: geplante Abos aktivieren,
+  // alte Pakete beenden. Vor allem anderen, damit die Ratenfakturierung
+  // gleich darunter die erste Abo-Rate am Stichtag selbst stellen kann und
+  // die Ablauf-Prüfung das alte Paket nicht mehr als aktives sieht.
+  try {
+    const { aktiviert, fehler } = await aktiviereGeplanteAbos(admin);
+    if (aktiviert > 0) console.log(`[umstellung] ${aktiviert} Abo(s) aktiviert`);
+    for (const f of fehler) console.error("[umstellung]", f);
+  } catch (err) {
+    console.error("[umstellung] Aktivierung fehlgeschlagen:", err);
+  }
 
   try {
     result.instalmentsInvoiced = await invoiceDueInstalments(admin, today);

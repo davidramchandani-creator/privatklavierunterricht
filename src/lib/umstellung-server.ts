@@ -27,6 +27,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ABO_LABELS, type AboVariante } from "./abo";
 import { schliesseOffeneAusfaelle } from "./ausfall";
+import { todayInZurich } from "./subscription";
 import {
   baueVorschau,
   baueVorschauOhneTermin,
@@ -121,8 +122,27 @@ export async function legeAboAn(
     return { error: "In diesem Zeitraum liegen keine Unterrichtstermine." };
   }
 
-  // Altes Paket schliessen und seine offenen Termine absagen. Erst danach das
-  // neue anlegen, sonst greift die Regel „ein aktives Paket pro Schüler".
+  // ── Der Stichtag schneidet, nicht der Anwenden-Klick ────────
+  //
+  // Zwischen dem Anwenden (kurz nach der Antwortfrist) und dem Start der
+  // Abos können Wochen liegen. In dieser Zeit läuft das alte Paket normal
+  // weiter — das steht so in der Info-Mail, und es wäre auch ohne die Mail
+  // richtig: Der Schüler hat die Lektionen bezahlt.
+  //
+  // Die erste Fassung beendete das alte Paket im Moment des Klicks und
+  // sagte alle künftigen Termine ab, auch die vor dem Stichtag. Wer am 22.08.
+  // anwendete, nahm den Schülern drei Wochen bezahlten Unterricht weg.
+  //
+  // Deshalb zwei Wege:
+  //   Start liegt in der Zukunft → altes Paket bleibt aktiv, das Abo wird
+  //   als `scheduled` angelegt. Ein Cron-Schritt (aktiviereGeplanteAbos)
+  //   vollzieht den Wechsel am Stichtag. `scheduled` zählt beim
+  //   Eindeutigkeits-Index nicht als aktiv, genau dafür wurde der Status
+  //   seinerzeit angelegt.
+  //   Start ist heute oder vorbei → alles sofort, wie bisher.
+  const sofort = params.startDatum <= todayInZurich();
+  const stichtagIso = `${params.startDatum}T00:00:00.000Z`;
+
   const { data: alte } = await admin
     .from("packages")
     .select("id")
@@ -130,21 +150,33 @@ export async function legeAboAn(
     .eq("status", "active");
 
   for (const alt of alte ?? []) {
+    // Termine des alten Pakets ab dem Stichtag absagen — nur die. Was vor
+    // dem Stichtag liegt, findet statt. Absagen muss trotzdem jetzt schon
+    // geschehen, sonst kollidierte die neue Serie mit diesen Terminen und
+    // wiche grundlos auf Ersatztermine aus.
     await admin
       .from("appointments")
       .update({ status: "cancelled" })
       .eq("package_id", alt.id)
       .eq("status", "booked")
-      .gt("start_at", new Date().toISOString());
+      .gte("start_at", stichtagIso);
 
-    // Offene Ausfälle enden mit dem Paket. Sonst fordert das Portal nach
-    // der Umstellung weiter zum Ausweichtermin fürs alte Paket auf.
-    await schliesseOffeneAusfaelle(admin, alt.id as string);
-
-    await admin
-      .from("packages")
-      .update({ status: "expired" })
-      .eq("id", alt.id);
+    if (sofort) {
+      // Offene Ausfälle enden mit dem Paket. Läuft es noch weiter, bleiben
+      // sie bestehen — ein Ausweichtermin vor dem Stichtag ist ja möglich.
+      await schliesseOffeneAusfaelle(admin, alt.id as string);
+      await admin
+        .from("packages")
+        .update({ status: "expired" })
+        .eq("id", alt.id);
+    } else {
+      // Nicht mehr verlängern: Das Paket endet mit dem Stichtag, nicht mit
+      // einer neuen Periode.
+      await admin
+        .from("packages")
+        .update({ auto_renew: false })
+        .eq("id", alt.id);
+    }
   }
 
   const { data: pkg, error } = await admin
@@ -163,7 +195,7 @@ export async function legeAboAn(
       expires_at: new Date(
         `${zugesichert.periodeEnde}T23:59:59.000Z`
       ).toISOString(),
-      status: "active",
+      status: sofort ? "active" : "scheduled",
       billing_mode: "raten",
       term_months: zugesichert.laufzeitMonate,
       auto_renew: params.autoRenew,
@@ -232,6 +264,76 @@ export async function legeAboAn(
     fehlend: serie.offen.map((d) => d.toISOString().slice(0, 10)),
     verschoben: serie.verschoben.length,
   };
+}
+
+/**
+ * Vollzieht am Stichtag den Wechsel: geplante Abos werden aktiv, das alte
+ * Paket endet.
+ *
+ * Läuft im Cron, jeden Lauf, und ist absichtlich stumpf idempotent: Wer
+ * schon aktiv ist, wird nicht gefunden; wer noch nicht dran ist, hat
+ * `periode_start` in der Zukunft. Zwischen zwei Cron-Läufen am Stichtag
+ * selbst gibt es ein kurzes Fenster, in dem das alte Paket schon vorbei und
+ * das Abo noch nicht aktiv ist — das kostet schlimmstenfalls Minuten und
+ * niemand bucht um Mitternacht.
+ *
+ * Die Reihenfolge pro Schüler ist zwingend: erst das alte Paket beenden,
+ * dann das Abo aktivieren. Andersherum stünden zwei aktive Pakete
+ * nebeneinander und der Eindeutigkeits-Index bräche den Wechsel ab —
+ * das Abo bliebe für immer `scheduled`, ohne dass es jemand merkt.
+ *
+ * Mails gehen hier keine raus. Die Bestätigung mit allen Terminen kam beim
+ * Anwenden; ein „dein Abo ist jetzt aktiv" wäre die dritte Mail zum selben
+ * Sachverhalt.
+ */
+export async function aktiviereGeplanteAbos(
+  admin: SupabaseClient
+): Promise<{ aktiviert: number; fehler: string[] }> {
+  const heute = todayInZurich();
+  const fehler: string[] = [];
+  let aktiviert = 0;
+
+  const { data: geplante } = await admin
+    .from("packages")
+    .select("id, student_id, periode_start")
+    .eq("status", "scheduled")
+    .not("abo_variante", "is", null)
+    .lte("periode_start", heute);
+
+  for (const abo of geplante ?? []) {
+    // Altes Paket dieses Schülers beenden. Termine ab Stichtag wurden schon
+    // beim Anwenden abgesagt; hier geht es nur noch um Status und Ausfälle.
+    const { data: alte } = await admin
+      .from("packages")
+      .select("id")
+      .eq("student_id", abo.student_id)
+      .eq("status", "active");
+
+    for (const alt of alte ?? []) {
+      await schliesseOffeneAusfaelle(admin, alt.id as string);
+      const { error: e1 } = await admin
+        .from("packages")
+        .update({ status: "expired" })
+        .eq("id", alt.id);
+      if (e1) {
+        fehler.push(`Paket ${alt.id}: ${e1.message}`);
+      }
+    }
+
+    const { error: e2 } = await admin
+      .from("packages")
+      .update({ status: "active" })
+      .eq("id", abo.id)
+      .eq("status", "scheduled");
+
+    if (e2) {
+      fehler.push(`Abo ${abo.id}: ${e2.message}`);
+      continue;
+    }
+    aktiviert++;
+  }
+
+  return { aktiviert, fehler };
 }
 
 /** Was die Bestätigungsmail und das PDF brauchen. */

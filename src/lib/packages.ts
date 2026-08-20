@@ -108,7 +108,9 @@ export type EffectiveStatus =
   | "pausiert"
   | "aufgebraucht"
   | "abgelaufen"
-  | "storniert";
+  | "storniert"
+  /** Angelegt, startet aber erst am Stichtag. Zählt nirgends als aktiv. */
+  | "geplant";
 
 export type PackageState = {
   lessonsTotal: number;
@@ -170,6 +172,9 @@ export function computePackageState(
 
   let effectiveStatus: EffectiveStatus;
   if (pkg.status === "cancelled") effectiveStatus = "storniert";
+  // Vor allen Datumsprüfungen: Ein geplantes Abo hat weder angefangen noch
+  // etwas verbraucht, jede andere Einstufung wäre geraten.
+  else if (pkg.status === "scheduled") effectiveStatus = "geplant";
   else if (isExpired) effectiveStatus = "abgelaufen";
   else if (isExhausted) effectiveStatus = "aufgebraucht";
   else if (isPaused) effectiveStatus = "pausiert";

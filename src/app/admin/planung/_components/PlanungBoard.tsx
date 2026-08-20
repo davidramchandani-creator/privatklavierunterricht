@@ -61,7 +61,12 @@ export default function PlanungBoard({
     geantwortet: boolean;
     aboVariante: "halbjahr" | "jahr" | null;
     aboRhythmus: string | null;
-    fensterAnzahl: number;
+    fenster: {
+      wochentag: number;
+      von: string;
+      bis: string;
+      praeferenz: number;
+    }[];
   }[];
 }) {
   const router = useRouter();
@@ -420,35 +425,62 @@ export default function PlanungBoard({
             {antwortStand.filter((s) => s.geantwortet).length} von{" "}
             {antwortStand.length}
           </p>
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {antwortStand.map((s) => (
-              <li
-                key={s.studentId}
-                className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
-              >
-                <span
-                  className={`font-600 ${s.geantwortet ? "text-gray-900" : "text-gray-400"}`}
-                >
-                  {s.name}
-                </span>
-                {s.geantwortet ? (
-                  <span className="text-gray-600">
-                    {s.aboVariante
-                      ? `${s.aboVariante === "jahr" ? "Jahresabo" : "Halbjahresabo"} · ${
-                          s.aboRhythmus === "zweiwoechentlich"
-                            ? "alle zwei Wochen"
-                            : "jede Woche"
-                        } · `
-                      : ""}
-                    <span className="text-gray-400">
-                      {s.fensterAnzahl}{" "}
-                      {s.fensterAnzahl === 1 ? "Zeitfenster" : "Zeitfenster"}
+              <li key={s.studentId} className="text-sm">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span
+                    className={`font-600 ${s.geantwortet ? "text-gray-900" : "text-gray-400"}`}
+                  >
+                    {s.name}
+                  </span>
+                  {s.geantwortet ? (
+                    s.aboVariante && (
+                      <span className="text-gray-600">
+                        {s.aboVariante === "jahr" ? "Jahresabo" : "Halbjahresabo"}
+                        {" · "}
+                        {s.aboRhythmus === "zweiwoechentlich"
+                          ? "alle zwei Wochen"
+                          : "jede Woche"}
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-amber-600 text-xs font-600">
+                      noch keine Antwort
                     </span>
-                  </span>
-                ) : (
-                  <span className="text-amber-600 text-xs font-600">
-                    noch keine Antwort
-                  </span>
+                  )}
+                </div>
+
+                {/* Die konkreten Zeiten, mit Präferenz. Der Stern ist die
+                    Wunschzeit, ausgegraut heisst „nur zur Not" — dieselbe
+                    Sprache wie im Formular des Schülers. */}
+                {s.fenster.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {s.fenster.map((f, i) => (
+                      <span
+                        key={i}
+                        title={
+                          f.praeferenz === 3
+                            ? "Wunschzeit"
+                            : f.praeferenz === 1
+                              ? "nur zur Not"
+                              : "passt gut"
+                        }
+                        className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg border ${
+                          f.praeferenz === 3
+                            ? "border-[#1C244B]/30 bg-[#1C244B]/[0.05] text-[#1C244B] font-600"
+                            : f.praeferenz === 1
+                              ? "border-gray-200 text-gray-400"
+                              : "border-gray-200 text-gray-600"
+                        }`}
+                      >
+                        {f.praeferenz === 3 && <Star className="w-3 h-3" />}
+                        {WEEKDAY_LABELS[f.wochentag]?.slice(0, 2) ?? f.wochentag}{" "}
+                        {f.von}–{f.bis}
+                        {f.praeferenz === 1 && " (zur Not)"}
+                      </span>
+                    ))}
+                  </div>
                 )}
               </li>
             ))}

@@ -398,8 +398,20 @@ Stichtag soll das Abo gelten. Dafür gibt es die **Umstellungsrunde**
    dessen offene Termine absagen, Abo anlegen, Monatsraten erzeugen,
    Terminserie buchen, Bestätigung mit PDF verschicken.
 
-Nichts davon läuft automatisch. Der Stichtag ist ein Datum in der Datenbank,
-kein Auslöser — du drückst den Knopf.
+Du drückst den Knopf — aber **der Stichtag schneidet, nicht dein Klick**.
+Liegt der Start noch in der Zukunft, passiert beim Anwenden Folgendes:
+
+- Das alte Paket **bleibt aktiv** und läuft normal weiter, bis zum Stichtag.
+  Nur seine Termine ab dem Stichtag werden abgesagt (sie kollidierten sonst
+  mit der neuen Serie) und seine Auto-Verlängerung wird abgestellt.
+- Das Abo wird als **„Startet bald"** angelegt: Terminserie gebucht (die
+  Plätze sind damit reserviert), Monatsraten angelegt, Bestätigung mit PDF
+  verschickt. Es zählt aber noch nirgends als aktiv.
+- Am Stichtag selbst vollzieht der Cron den Wechsel: altes Paket wird
+  beendet (Restlektionen verfallen), das Abo wird aktiv. Ohne weitere Mail —
+  die Bestätigung mit allen Terminen kam ja schon.
+
+Liegt der Start bereits hinter dir, passiert alles sofort beim Klick.
 
 ### Der Preis, den sie sehen, ist der Preis, den sie zahlen
 

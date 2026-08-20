@@ -67,6 +67,8 @@ const PACKAGE_STATE: Record<string, Entry> = {
   aufgebraucht: { label: "Aufgebraucht", tone: "neutral" },
   abgelaufen: { label: "Abgelaufen", tone: "danger" },
   storniert: { label: "Storniert", tone: "neutral" },
+  // Aus der Umstellung: angelegt, startet aber erst am Stichtag.
+  geplant: { label: "Startet bald", tone: "pending" },
 };
 
 /** Probelektions-Anfragen (öffentliches Lead-Formular, Tabelle `anfragen`). */
