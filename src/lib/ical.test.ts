@@ -431,13 +431,32 @@ describe("Frisch genug beim Buchen", () => {
     expect(serien).toContain("kalenderJetzt: true");
   });
 
-  it("läuft zusätzlich als eigener, häufiger Cron", () => {
+  it("läuft zusätzlich als eigener, täglicher Cron", () => {
     const vercel = JSON.parse(
       readFileSync(join(process.cwd(), "vercel.json"), "utf8")
     ) as { crons: { path: string; schedule: string }[] };
     const job = vercel.crons.find((c) => c.path.includes("apple-kalender"));
     expect(job).toBeDefined();
-    // Deutlich häufiger als der tägliche Mail-Lauf.
-    expect(job!.schedule).not.toMatch(/^\d+ \d+ \* \* \*$/);
+  });
+
+  it("kein Cron läuft öfter als täglich — sonst deployt Vercel gar nicht mehr", () => {
+    // Bitter gelernt: Der Hobby-Plan erlaubt nur tägliche Crons. Ein
+    // 15-Minuten-Takt hier drin hat nicht etwa nur den Cron gedrosselt,
+    // sondern JEDES Deployment kommentarlos verhindert — kein Build, kein
+    // Log, kein Fehler auf GitHub. Die Seite blieb still auf dem alten
+    // Stand, während alle Commits sauber auf main lagen. Die Häufigkeit
+    // ist auch verzichtbar: Das Holen vor jeder Slot-Berechnung
+    // (stelleAppleKalenderSicher) trägt die eigentliche Frische.
+    const vercel = JSON.parse(
+      readFileSync(join(process.cwd(), "vercel.json"), "utf8")
+    ) as { crons: { path: string; schedule: string }[] };
+    for (const cron of vercel.crons) {
+      // Täglich heisst: feste Minute, feste Stunde, keine Schrägstriche,
+      // keine Listen — das Muster "M H * * *" mit reinen Zahlen.
+      expect(
+        cron.schedule,
+        `${cron.path} läuft öfter als täglich (${cron.schedule})`
+      ).toMatch(/^\d{1,2} \d{1,2} \* \* \*$/);
+    }
   });
 });

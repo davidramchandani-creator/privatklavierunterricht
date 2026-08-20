@@ -7,15 +7,17 @@ export const dynamic = "force-dynamic";
 /**
  * Apple-Kalender einlesen.
  *
- * Eigener Endpunkt neben dem täglichen Mail-Cron, weil er in einem ganz
- * anderen Takt laufen soll: Sperrzeiten müssen kurz nach dem Eintragen
- * greifen, Rechnungen und Mails brauchen das nicht.
+ * Läuft einmal täglich um die Mittagszeit — nicht öfter, und das ist eine
+ * harte Grenze, keine Wahl: Vercels Hobby-Plan erlaubt nur tägliche Crons
+ * und **verweigert sonst das gesamte Deployment**. Ein Viertelstunden-Takt
+ * hier hat einmal jede Auslieferung blockiert, ohne dass ein Build-Log
+ * entstand — die Ablehnung sieht man nur beim manuellen Deploy-Versuch.
  *
- * Zusätzlich — und wichtiger — wird der Kalender vor jeder
- * Verfügbarkeitsberechnung geholt, wenn der letzte Abruf älter als eine
- * Minute ist (siehe `stelleAppleKalenderSicher`). Dieser Cron ist nur die
- * Grundversorgung für Zeiten, in denen niemand die Seite benutzt: Ohne ihn
- * wäre der erste Seitenaufruf am Morgen der langsame.
+ * Der tägliche Takt genügt, weil er nur die Grundversorgung ist: Vor jeder
+ * Verfügbarkeitsberechnung wird der Kalender ohnehin geholt, wenn der
+ * letzte Abruf älter als eine Minute ist, und vor jeder echten Buchung
+ * immer (siehe `stelleAppleKalenderSicher`). Dieser Cron sorgt nur dafür,
+ * dass der erste Seitenaufruf des Tages nicht der langsame ist.
  */
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;

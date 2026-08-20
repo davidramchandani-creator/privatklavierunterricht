@@ -702,8 +702,11 @@ bis zwei Minuten, bis der veröffentlichte Kalender die Änderung zeigt.
 Schneller geht es mit einem Freigabe-Link nicht. Für einen Termin in zwei
 Minuten trägst du die Sperre besser von Hand ein.
 
-Zusätzlich läuft alle 15 Minuten ein Abgleich im Hintergrund, damit auch
-ohne Seitenaufruf nichts liegen bleibt. „Jetzt einlesen" macht es sofort.
+Zusätzlich läuft einmal täglich ein Abgleich im Hintergrund, damit der
+erste Seitenaufruf des Tages nicht der langsame ist. Öfter erlaubt der
+Vercel-Hobby-Plan nicht — nötig ist es auch nicht, denn das Holen vor jeder
+Berechnung übernimmt die eigentliche Arbeit. „Jetzt einlesen" in den
+Einstellungen macht es jederzeit sofort.
 
 Zwei Dinge zum Wissen: Wer den Link hat, kann deine Termine lesen — gib ihn
 nicht weiter. Und wenn dir die Titel im System zu privat sind, nimm den
