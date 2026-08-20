@@ -2318,9 +2318,9 @@ export function renderEmail(
                ? ""
                : `<p><strong>Warum:</strong> Ich fahre zu allen Schülern. Wenn
                     jede Woche jemand anders zu einer anderen Zeit dran ist,
-                    fahre ich kreuz und quer, und am Ende zahlt das jeder über
-                    den Lektionspreis mit. Mit festen Terminen steht die Route,
-                    und die Lektion wird günstiger statt teurer.</p>
+                    fahre ich kreuz und quer und verbringe halbe Abende im
+                    Auto. Mit festen Terminen steht die Route, und diese Zeit
+                    fliesst dorthin, wo sie hingehört: in den Unterricht.</p>
 
                   <div style="background:#F3F5F8;border-radius:8px;padding:16px;margin:0 0 24px;">
                     <p style="margin:0 0 10px;color:#1C244B;font-size:14px;font-weight:600;">
@@ -2337,15 +2337,11 @@ export function renderEmail(
                       dafür. Die Lektionszahl, die du siehst, ist die Zahl, die
                       du bekommst.
                     </p>
-                    <p style="margin:0 0 8px;color:#475569;font-size:14px;">
+                    <p style="margin:0;color:#475569;font-size:14px;">
                       <strong>Gleicher Betrag jeden Monat.</strong> Keine
                       Rechnung mehr nach jeder Lektion, sondern ein fester
-                      Monatsbeitrag über die ganze Laufzeit.
-                    </p>
-                    <p style="margin:0;color:#475569;font-size:14px;">
-                      <strong>Günstiger pro Lektion</strong> als die
-                      Einzellektion, beim Jahresabo noch einmal weniger als beim
-                      Halbjahr.
+                      Monatsbeitrag über die ganze Laufzeit. Du weisst von
+                      Anfang an, was auf dich zukommt.
                     </p>
                   </div>
 
