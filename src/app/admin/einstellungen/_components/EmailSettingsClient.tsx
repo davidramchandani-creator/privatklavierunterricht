@@ -102,6 +102,9 @@ const GROUPS: { label: string; types: EmailType[] }[] = [
       { id: "ausfall_nachgeholt", label: "Lektion wird nachgeholt" },
       { id: "ausfall_gutschrift", label: "Gutschrift nach Ausfall" },
       { id: "ausfall_admin", label: "Ausfall gemeldet (an mich)" },
+      { id: "vorrueck_angebot", label: "Vorrück-Angebot (früher kommen?)" },
+      { id: "vorrueck_bestaetigt", label: "Vorrücken bestätigt" },
+      { id: "vorrueck_admin", label: "Vorgerückt (an mich)" },
     ],
   },
   {

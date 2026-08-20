@@ -1698,6 +1698,86 @@ export function renderEmail(
       };
     }
 
+    case "vorrueck_angebot": {
+      // Der Ton ist wichtig: Es ist ein Angebot, keine Änderung. Wer nicht
+      // antwortet oder ablehnt, behält seinen Termin unverändert — das muss
+      // die Mail unmissverständlich sagen, sonst ruft der Schüler besorgt an.
+      return {
+        subject: "Möchtest du früher kommen?",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Vor deiner Lektion am
+              <strong>${payload.alter_beginn ? fmtDateTime(String(payload.alter_beginn)) : ""}</strong>
+              ist ein Platz frei geworden. Wenn es dir passt, könntest du
+              schon früher kommen:</p>
+
+           <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0 0 6px;color:#3730a3;font-size:14px;font-weight:600;">
+               Möglicher neuer Beginn
+             </p>
+             <p style="margin:0;color:#3730a3;font-size:16px;font-weight:700;">
+               ${payload.neuer_beginn ? fmtDateTime(String(payload.neuer_beginn)) : ""}
+             </p>
+           </div>
+
+           <p>Antworten kannst du direkt im Portal, mit einem Klick.
+              <strong>Wenn es nicht geht, ist das völlig in Ordnung</strong> —
+              dann bleibt einfach alles wie geplant, du musst nichts tun.</p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "vorrueck_bestaetigt": {
+      return {
+        subject: "Deine Lektion ist vorverschoben",
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           <p>Danke fürs Vorrücken! Deine Lektion findet neu statt am:</p>
+
+           <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0;color:#065f46;font-size:16px;font-weight:700;">
+               ${payload.neuer_beginn ? fmtDateTime(String(payload.neuer_beginn)) : ""}
+             </p>
+             <p style="margin:6px 0 0;color:#065f46;font-size:13px;">
+               statt ${payload.alter_beginn ? fmtDateTime(String(payload.alter_beginn)) : ""}
+             </p>
+           </div>
+
+           <p>Der Termin ist in deinem Kalender im Portal bereits angepasst.</p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "vorrueck_admin": {
+      return {
+        subject: `Vorgerückt: ${payload.student_name ?? "Ein Schüler"} kommt früher`,
+        html: baseWrapper(
+          `<p>Hallo David</p>
+           <p><strong>${payload.student_name ?? "Ein Schüler"}</strong> hat das
+              Vorrück-Angebot angenommen:</p>
+
+           <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0;color:#3730a3;font-size:15px;font-weight:700;">
+               Neu: ${payload.neuer_beginn ? fmtDateTime(String(payload.neuer_beginn)) : ""}
+             </p>
+             <p style="margin:6px 0 0;color:#3730a3;font-size:13px;">
+               vorher ${payload.alter_beginn ? fmtDateTime(String(payload.alter_beginn)) : ""}
+             </p>
+           </div>
+
+           <p>Kalender und Erinnerungen sind schon angepasst.</p>`
+        ),
+      };
+    }
+
     case "ausfall_kurzfristig": {
       return {
         subject: `Absage erhalten: ${payload.original_datum ? fmtDate(String(payload.original_datum)) : ""}`,

@@ -31,9 +31,11 @@ import {
 import Gruppenkurse from "./_components/Gruppenkurse";
 import {
   getGroupCourses,
+  meineVorrueckAngebote,
   offeneAusfaelle,
   offeneVerfuegbarkeitsabfrage,
 } from "./actions";
+import VorrueckBanner from "./_components/VorrueckBanner";
 
 export default async function SchuelerPortalPage() {
   const supabase = await createClient();
@@ -216,6 +218,9 @@ export default async function SchuelerPortalPage() {
   // Ausgefallene Lektionen, für die noch kein Ersatz gewählt wurde.
   const { ausfaelle } = await offeneAusfaelle();
 
+  // Offene „Möchtest du früher kommen?"-Angebote.
+  const { angebote: vorrueckAngebote } = await meineVorrueckAngebote();
+
   // Laufende Verfügbarkeitsabfrage, falls eine offen ist.
   const abfrage = await offeneVerfuegbarkeitsabfrage();
 
@@ -337,6 +342,7 @@ export default async function SchuelerPortalPage() {
           aboRhythmusVorhanden={abfrage.aboRhythmus}
         />
       )}
+      <VorrueckBanner angebote={vorrueckAngebote} />
       <AusweichTermine ausfaelle={ausfaelle} />
       <ProposalCard proposals={offeneProposals ?? []} />
       <NaechsteTermine

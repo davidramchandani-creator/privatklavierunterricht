@@ -34,6 +34,7 @@ import {
 import { describeFixplatz } from "@/lib/fixplatz";
 import { bookFixplatzSeries } from "@/lib/fixplatz-server";
 import { meldeAusfall, schliesseOffeneAusfaelle } from "@/lib/ausfall";
+import { bieteFrueherenSlotAn } from "@/lib/vorrueck-server";
 import { geocode } from "@/lib/geocoding";
 import {
   beendeVereinbarung,
@@ -1894,6 +1895,19 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
     });
     if ("error" in ausfall) {
       console.error("[ausfall] Kaskade fehlgeschlagen:", id, ausfall.error);
+    }
+
+    // Die Lücke weitergeben: den nächsten Schüler desselben Tages fragen,
+    // ob er vorrücken mag. Auch bei Absagen durch David selbst — die Lücke
+    // ist dieselbe.
+    try {
+      await bieteFrueherenSlotAn(admin, {
+        id,
+        start_at: appt.start_at,
+        student_id: appt.student_id,
+      });
+    } catch (e) {
+      console.error("[vorrueck] Angebot fehlgeschlagen:", id, e);
     }
   }
 

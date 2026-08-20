@@ -36,6 +36,9 @@ export const ADMIN_RECIPIENT_TYPES = [
   // Abo-Modell
   "abo_gestartet_admin",
   "abo_verlaengert_admin",
+  // Ein Schüler ist in eine freigewordene Lücke vorgerückt — Davids Abend
+  // sieht jetzt anders aus, das muss er sofort wissen.
+  "vorrueck_admin",
 ];
 
 export const STUDENT_PAYLOAD_TO_TYPES = [
@@ -93,6 +96,9 @@ export const STUDENT_LOOKUP_TYPES = [
   "umstellung_info",
   "umstellung_erinnerung",
   "umstellung_bestaetigung",
+  // Vorrücken in eine freigewordene Lücke
+  "vorrueck_angebot",
+  "vorrueck_bestaetigt",
 ];
 
 async function getDisabledEmailTypes(admin: SupabaseClient): Promise<string[]> {

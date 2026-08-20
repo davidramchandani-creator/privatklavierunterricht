@@ -61,6 +61,12 @@ import {
 } from "@/lib/instalment-view";
 import { deleteCalendarEvent, syncAppointmentToCalendar } from "@/lib/google-calendar";
 import { cancelLessonReminders, scheduleLessonReminders } from "@/lib/reminders";
+import {
+  beantworteVorrueck,
+  bieteFrueherenSlotAn,
+  offeneVorrueckAngebote,
+  type VorrueckAngebot,
+} from "@/lib/vorrueck-server";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   joinGroupSession,
@@ -428,6 +434,19 @@ export async function cancelAppointment(appointmentId: string) {
       appointment_id: appointmentId,
       start_at: appt.start_at,
     });
+  }
+
+  // Die Lücke weitergeben: den nächsten Schüler desselben Tages fragen, ob
+  // er vorrücken mag. Scheitert das, ist nichts verloren — die Absage
+  // selbst ist längst durch.
+  try {
+    await bieteFrueherenSlotAn(admin, {
+      id: appointmentId,
+      start_at: appt.start_at,
+      student_id: user.id,
+    });
+  } catch (e) {
+    console.error("[vorrueck] Angebot fehlgeschlagen:", appointmentId, e);
   }
 
   revalidatePath("/schueler/portal");
@@ -1751,4 +1770,46 @@ export async function leaveGroupSessionAction(sessionId: string) {
 
   revalidatePath("/schueler/portal");
   return { success: true, error: undefined };
+}
+
+// ── Vorrück-Angebote ────────────────────────────────────────
+
+/** Offene „Möchtest du früher kommen?"-Angebote fürs Portal-Banner. */
+export async function meineVorrueckAngebote(): Promise<{
+  angebote: VorrueckAngebot[];
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { angebote: [] };
+
+  const admin = await createAdminClient();
+  return { angebote: await offeneVorrueckAngebote(admin, user.id) };
+}
+
+/**
+ * Antwort auf ein Vorrück-Angebot. Annehmen verschiebt den Termin sofort;
+ * ablehnen lässt alles wie es ist. Beides ist endgültig — ein zweites
+ * Angebot entsteht nur, wenn wieder jemand absagt.
+ */
+export async function vorrueckAntworten(
+  angebotId: string,
+  annehmen: boolean
+): Promise<{ verschoben: boolean; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { verschoben: false, error: "Nicht angemeldet." };
+
+  const admin = await createAdminClient();
+  const result = await beantworteVorrueck(admin, {
+    angebotId,
+    studentId: user.id,
+    annehmen,
+  });
+
+  revalidatePath("/schueler/portal");
+  return result;
 }
