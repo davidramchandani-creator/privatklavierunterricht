@@ -1,8 +1,11 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Users, Plus } from "lucide-react";
-import { formatDate } from "@/lib/utils";
 import { computePackageState, paketBezeichnung, type Package } from "@/lib/packages";
+import {
+  ZeitfensterListe,
+  type AngegebenesFenster,
+} from "@/components/ui/zeitfenster-liste";
 
 export default async function AdminSchuelerPage() {
   const admin = await createAdminClient();
@@ -28,6 +31,61 @@ export default async function AdminSchuelerPage() {
     if (!packageByStudent[pkg.student_id]) {
       packageByStudent[pkg.student_id] = pkg as Package;
     }
+  }
+
+  // Angegebene Zeiten für die Übersicht. Sie beantworten die Frage, die man
+  // beim Planen tatsächlich hat — „wer kann montags?" —, und zwar ohne jeden
+  // Schüler einzeln aufzuklappen.
+  const { data: zeitRows } = studentIds.length
+    ? await admin
+        .from("student_verfuegbarkeit")
+        .select("student_id, wochentag, fruehestens, spaetestens, praeferenz, runde_id, erstellt_am")
+        .in("student_id", studentIds)
+        .order("erstellt_am", { ascending: false })
+    : { data: [] };
+
+  type ZeitRow = {
+    student_id: string;
+    wochentag: number;
+    fruehestens: string | null;
+    spaetestens: string | null;
+    praeferenz: number | null;
+    runde_id: string | null;
+  };
+
+  const alsFenster = (r: ZeitRow): AngegebenesFenster => ({
+    wochentag: Number(r.wochentag),
+    von: String(r.fruehestens ?? "16:30").slice(0, 5),
+    bis: String(r.spaetestens ?? "20:30").slice(0, 5),
+    praeferenz: Number(r.praeferenz ?? 2),
+  });
+
+  // Nur der jeweils aktuellste Stand pro Schüler: die Dauerangabe, sonst die
+  // Zeiten der zuletzt beantworteten Runde. Alle Angaben nebeneinander wären
+  // in einer Tabellenzelle nicht lesbar und widersprächen sich womöglich.
+  //
+  // Zwei Durchgänge, weil die Dauerangabe immer gewinnt, in der nach Datum
+  // sortierten Liste aber irgendwo stehen kann.
+  const dauerVon: Record<string, AngegebenesFenster[]> = {};
+  const rundeVon: Record<string, { runde: string; fenster: AngegebenesFenster[] }> = {};
+  for (const r of (zeitRows ?? []) as unknown as ZeitRow[]) {
+    if (r.runde_id === null) {
+      (dauerVon[r.student_id] ??= []).push(alsFenster(r));
+      continue;
+    }
+    // Sortierung ist erstellt_am absteigend, die erste Runde je Schüler ist
+    // also die neueste. Weitere Zeilen nur noch aus genau dieser Runde.
+    const bisher = rundeVon[r.student_id];
+    if (!bisher) {
+      rundeVon[r.student_id] = { runde: r.runde_id, fenster: [alsFenster(r)] };
+    } else if (bisher.runde === r.runde_id) {
+      bisher.fenster.push(alsFenster(r));
+    }
+  }
+
+  const zeitenVon: Record<string, AngegebenesFenster[]> = {};
+  for (const id of studentIds) {
+    zeitenVon[id] = dauerVon[id] ?? rundeVon[id]?.fenster ?? [];
   }
 
   return (
@@ -75,8 +133,11 @@ export default async function AdminSchuelerPage() {
                   <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide px-5 py-3 hidden md:table-cell">
                     Verbleibend
                   </th>
+                  {/* Statt des Anmeldedatums: Beim Planen will man wissen,
+                      wer wann kann. Das Datum steht weiterhin in den
+                      Details. */}
                   <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide px-5 py-3 hidden lg:table-cell">
-                    Seit
+                    Kann
                   </th>
                   <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide px-5 py-3">
                     Status
@@ -127,8 +188,14 @@ export default async function AdminSchuelerPage() {
                           <span className="text-gray-400">—</span>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-gray-500 hidden lg:table-cell">
-                        {s.erstellt_am ? formatDate(s.erstellt_am) : "—"}
+                      <td className="px-5 py-3.5 hidden lg:table-cell">
+                        {(zeitenVon[s.id] ?? []).length > 0 ? (
+                          <ZeitfensterListe fenster={zeitenVon[s.id]} klein />
+                        ) : (
+                          <span className="text-sm text-gray-400">
+                            keine Angabe
+                          </span>
+                        )}
                       </td>
                       <td className="px-5 py-3.5">
                         <span

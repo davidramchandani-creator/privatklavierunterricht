@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { formatDauer } from "@/lib/geo";
 import { WEEKDAY_LABELS } from "@/lib/fixplatz";
+import { ZeitfensterListe } from "@/components/ui/zeitfenster-liste";
 import {
   erinnern,
   rundeSchliessen,
@@ -451,35 +452,11 @@ export default function PlanungBoard({
                   )}
                 </div>
 
-                {/* Die konkreten Zeiten, mit Präferenz. Der Stern ist die
-                    Wunschzeit, ausgegraut heisst „nur zur Not" — dieselbe
-                    Sprache wie im Formular des Schülers. */}
+                {/* Die konkreten Zeiten, mit Präferenz. Geteilte Komponente,
+                    damit Stern und Graustufe überall dasselbe bedeuten. */}
                 {s.fenster.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {s.fenster.map((f, i) => (
-                      <span
-                        key={i}
-                        title={
-                          f.praeferenz === 3
-                            ? "Wunschzeit"
-                            : f.praeferenz === 1
-                              ? "nur zur Not"
-                              : "passt gut"
-                        }
-                        className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg border ${
-                          f.praeferenz === 3
-                            ? "border-[#1C244B]/30 bg-[#1C244B]/[0.05] text-[#1C244B] font-600"
-                            : f.praeferenz === 1
-                              ? "border-gray-200 text-gray-400"
-                              : "border-gray-200 text-gray-600"
-                        }`}
-                      >
-                        {f.praeferenz === 3 && <Star className="w-3 h-3" />}
-                        {WEEKDAY_LABELS[f.wochentag]?.slice(0, 2) ?? f.wochentag}{" "}
-                        {f.von}–{f.bis}
-                        {f.praeferenz === 1 && " (zur Not)"}
-                      </span>
-                    ))}
+                  <div className="mt-1.5">
+                    <ZeitfensterListe fenster={s.fenster} />
                   </div>
                 )}
               </li>

@@ -18,6 +18,10 @@ import RatenplanPanel from "./_components/RatenplanPanel";
 import PaketAufraeumen from "./_components/PaketAufraeumen";
 import TestschuelerSchalter from "./_components/TestschuelerSchalter";
 import { buildPlanSummary, type InstalmentRow } from "@/lib/instalment-view";
+import {
+  ZeitfensterListe,
+  type AngegebenesFenster,
+} from "@/components/ui/zeitfenster-liste";
 import { todayInZurich } from "@/lib/subscription";
 
 export default async function SchuelerDetailPage({
@@ -69,6 +73,59 @@ export default async function SchuelerDetailPage({
   ]);
 
   if (!profile || profile.role === "admin") notFound();
+
+  // Angegebene Zeiten. Ohne sie lässt sich hier nicht beurteilen, ob ein
+  // Termin dem Schüler passt oder nur David — und beim Testschüler sah es
+  // aus, als hätte er nie etwas angegeben, weil seine Angabe als Dauerwert
+  // (ohne Runde) gespeichert ist und darum in keiner Runde auftauchte.
+  const { data: zeitRows } = await admin
+    .from("student_verfuegbarkeit")
+    .select(
+      "wochentag, fruehestens, spaetestens, praeferenz, runde_id, erstellt_am, planungsrunden(titel, periode_start)"
+    )
+    .eq("student_id", id)
+    .order("wochentag", { ascending: true });
+
+  type ZeitRow = {
+    wochentag: number;
+    fruehestens: string | null;
+    spaetestens: string | null;
+    praeferenz: number | null;
+    runde_id: string | null;
+    erstellt_am: string | null;
+    planungsrunden?: { titel?: string | null; periode_start?: string | null } | null;
+  };
+
+  // Nach Herkunft gruppieren: die Dauerangabe zuerst, dann je Runde. Beides
+  // zu vermischen wäre irreführend, weil eine alte Rundenangabe längst
+  // überholt sein kann, die Dauerangabe aber weiterhin gilt.
+  const dauerZeiten: AngegebenesFenster[] = [];
+  const rundenZeiten = new Map<
+    string,
+    { titel: string; start: string | null; fenster: AngegebenesFenster[] }
+  >();
+  for (const r of (zeitRows ?? []) as unknown as ZeitRow[]) {
+    const f: AngegebenesFenster = {
+      wochentag: Number(r.wochentag),
+      von: String(r.fruehestens ?? "16:30").slice(0, 5),
+      bis: String(r.spaetestens ?? "20:30").slice(0, 5),
+      praeferenz: Number(r.praeferenz ?? 2),
+    };
+    if (!r.runde_id) {
+      dauerZeiten.push(f);
+      continue;
+    }
+    const eintrag = rundenZeiten.get(r.runde_id) ?? {
+      titel: r.planungsrunden?.titel ?? "Planungsrunde",
+      start: r.planungsrunden?.periode_start ?? null,
+      fenster: [],
+    };
+    eintrag.fenster.push(f);
+    rundenZeiten.set(r.runde_id, eintrag);
+  }
+  const rundenListe = [...rundenZeiten.values()].sort((a, b) =>
+    (b.start ?? "").localeCompare(a.start ?? "")
+  );
 
   // Ratenpläne aller Pakete dieses Schülers.
   const { data: instalmentRows } = await admin
@@ -214,6 +271,49 @@ export default async function SchuelerDetailPage({
             istTest={profile.ist_test === true}
           />
         </div>
+      </div>
+
+      {/* Angegebene Zeiten */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+        <h2 className="text-lg font-700 text-[#1C244B] mb-1">
+          Wann {profile.vorname} kann
+        </h2>
+        <p className="text-sm text-gray-500 mb-4 leading-snug">
+          Stern heisst Wunschzeit, ausgegraut heisst nur zur Not. Die Zuteilung
+          bevorzugt Wunschzeiten, nimmt aber eine Notlösung, wenn sonst gar
+          nichts geht.
+        </p>
+
+        {dauerZeiten.length === 0 && rundenListe.length === 0 ? (
+          <p className="text-sm text-gray-400">
+            Noch nichts angegeben. {profile.vorname} kann die Zeiten im Portal
+            eintragen, oder du fragst nach und trägst sie über eine
+            Planungsrunde ein.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {dauerZeiten.length > 0 && (
+              <div>
+                <p className="text-gray-400 text-xs font-600 uppercase tracking-wide mb-2">
+                  Dauerhaft hinterlegt
+                </p>
+                <ZeitfensterListe fenster={dauerZeiten} />
+              </div>
+            )}
+
+            {/* Rundenangaben getrennt und datiert: Eine Angabe vom letzten
+                Herbst ist kein Beleg dafür, dass es heute noch passt. */}
+            {rundenListe.map((r, i) => (
+              <div key={i}>
+                <p className="text-gray-400 text-xs font-600 uppercase tracking-wide mb-2">
+                  {r.titel}
+                  {r.start && ` · ab ${formatDate(r.start)}`}
+                </p>
+                <ZeitfensterListe fenster={r.fenster} />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Preise & Einstellungen */}
