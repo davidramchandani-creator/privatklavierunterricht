@@ -27,6 +27,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ABO_LABELS, type AboVariante } from "./abo";
 import { schliesseOffeneAusfaelle } from "./ausfall";
+import { setzeExternenTermin } from "./externe-server";
 import { todayInZurich } from "./subscription";
 import {
   baueVorschau,
@@ -474,7 +475,36 @@ export async function wendeUmstellungAn(
     tageVon.set(id, [...(tageVon.get(id) ?? []), Number(z.wochentag)]);
   }
 
+  // Wer extern ist, bekommt kein Abo, sondern seinen Termin in die
+  // Vereinbarung geschrieben. Er war in der Zuteilung ein Kandidat wie jeder
+  // andere — nur endet der Weg hier anders: keine Rechnung, keine Raten,
+  // keine Bestätigungsmail, dafür die Terminserie im Kalender.
+  const { data: externeProfile } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("extern", true);
+  const istExtern = new Set(
+    (externeProfile ?? []).map((p) => p.id as string)
+  );
+
   for (const z of params.zuteilungen) {
+    if (istExtern.has(z.schuelerId)) {
+      const ergebnis = await setzeExternenTermin(admin, {
+        studentId: z.schuelerId,
+        wochentag: z.wochentag,
+        beginn: z.beginn,
+        paritaet: z.paritaet,
+        abDatum: params.startDatum,
+      });
+
+      if ("error" in ergebnis) {
+        uebersprungen.push({ name: z.name, grund: ergebnis.error });
+        continue;
+      }
+      angelegt++;
+      continue;
+    }
+
     const wahl = wahlVon.get(z.schuelerId);
 
     // Ohne Wahl kein Abo. Das trifft, wer nicht geantwortet hat und trotzdem

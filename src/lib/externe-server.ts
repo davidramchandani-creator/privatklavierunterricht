@@ -310,6 +310,75 @@ export async function verlaengereExterneSerien(
 }
 
 /**
+ * Trägt den zugeteilten Termin in die Vereinbarung ein und bucht die Serie.
+ *
+ * Der Gegenpart zum Abo-Anlegen: Ein externer Schüler nimmt an der Zuteilung
+ * teil wie jeder andere, bekommt am Ende aber kein Abo, sondern seinen
+ * Termin — keine Rechnung, keine Raten, keine Post, nur der Kalender.
+ *
+ * Vorhandene künftige Termine werden vorher abgesagt. Sonst stünden nach
+ * einer zweiten Zuteilung alter und neuer Platz nebeneinander.
+ */
+export async function setzeExternenTermin(
+  admin: SupabaseClient,
+  params: {
+    studentId: string;
+    wochentag: number;
+    beginn: string;
+    paritaet: 0 | 1 | null;
+    abDatum: string;
+  }
+): Promise<{ termine: number } | { error: string }> {
+  const { data: vereinbarung } = await admin
+    .from("externe_vereinbarungen")
+    .select("*")
+    .eq("student_id", params.studentId)
+    .eq("aktiv", true)
+    .maybeSingle();
+
+  if (!vereinbarung) {
+    return { error: "Keine aktive Vereinbarung gefunden." };
+  }
+
+  await admin
+    .from("appointments")
+    .update({ status: "cancelled" })
+    .eq("externe_vereinbarung_id", vereinbarung.id)
+    .eq("status", "booked")
+    .gte("start_at", `${params.abDatum}T00:00:00.000Z`);
+
+  const { error } = await admin
+    .from("externe_vereinbarungen")
+    .update({
+      wochentag: params.wochentag,
+      zeit: params.beginn,
+      woche_paritaet: params.paritaet,
+      // Ab hier läuft es: Ein Startdatum in der Vergangenheit würde die
+      // Serie rückwirkend beginnen lassen.
+      start_datum:
+        String(vereinbarung.start_datum) > params.abDatum
+          ? vereinbarung.start_datum
+          : params.abDatum,
+      aktualisiert_am: new Date().toISOString(),
+    })
+    .eq("id", vereinbarung.id);
+
+  if (error) return { error: "Der Termin liess sich nicht speichern." };
+
+  const { data: frisch } = await admin
+    .from("externe_vereinbarungen")
+    .select("*")
+    .eq("id", vereinbarung.id)
+    .single();
+
+  const ergebnis = await legeExterneTermineAn(
+    admin,
+    frisch as unknown as ExterneVereinbarung
+  );
+  return { termine: ergebnis.angelegt };
+}
+
+/**
  * Beendet eine Vereinbarung: künftige Termine absagen, nicht mehr nachlegen.
  *
  * Vergangene Termine bleiben stehen. Sie haben stattgefunden, und sie zu

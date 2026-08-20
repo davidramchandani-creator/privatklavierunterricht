@@ -523,8 +523,30 @@ Für Unterricht, der über eine andere Plattform läuft (Matchspace und
 abgerechnet wird dort.
 
 **Anlegen:** Schüler → „Extern". Gefragt wird nach Name, Adresse, Plattform,
-optional Telefon, Notiz und was du dort pro Lektion verdienst. Dann, was
-abgemacht ist: Rhythmus, Wochentag, Uhrzeit, Dauer und Umfang.
+optional Telefon, Notiz und was du dort pro Lektion verdienst. Dann Rhythmus,
+Dauer und Umfang — und wie der Termin zustande kommt.
+
+### Termin planen lassen (der Normalfall)
+
+Du fragst den Schüler, wann er kann, und trägst seine Zeitfenster ein — mit
+derselben Abstufung wie im Portal: *zur Not*, *gut*, *am besten*. Er hat kein
+Portal, in dem er selbst eintragen könnte, also machst du es für ihn.
+
+Danach ist er ein **Kandidat wie jeder andere**: Die Zuteilung sucht ihm
+einen Platz, der in deine Route passt, und beim Anwenden wird der Termin in
+seine Vereinbarung geschrieben und die Serie gebucht. Kein Abo, keine
+Rechnung, keine Rate, keine Mail — nur der Kalender.
+
+Das ist der Grund, warum es die Externen überhaupt gibt: Wer die Zeit vorher
+wissen müsste, könnte den Routenplaner für genau diese Schüler nicht
+benutzen.
+
+### Termin steht schon fest
+
+Wenn über die Plattform bereits ein Termin abgemacht ist, trägst du ihn
+direkt ein. Dann ist der Schüler **kein Kandidat** mehr, sondern belegte
+Zeit: Die Zuteilung darf ihn nicht neu vergeben, muss ihn aber kennen, sonst
+legt sie jemanden auf eine Stunde, in der du längst woanders sitzt.
 
 Beim Umfang zwei Möglichkeiten:
 

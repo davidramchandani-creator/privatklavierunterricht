@@ -3566,10 +3566,51 @@ export async function externenAnlegen(
         "Ohne Adresse kann ich den Schüler nicht in die Route rechnen. Bitte mit Strasse, Nummer, PLZ und Ort angeben.",
     };
   }
-  if (!Number.isInteger(wochentag) || wochentag < 0 || wochentag > 6) {
-    return { error: "Bitte einen Wochentag wählen." };
+  // Der Normalfall ist „planen": David fragt den Schüler, wann er kann, und
+  // die Zuteilung sucht daraus einen Platz. Nur wenn der Termin extern
+  // bereits abgemacht ist, wird er hier direkt gesetzt.
+  const terminGeplant = formData.get("termin_art") !== "fix";
+
+  let zeitfenster: {
+    wochentag: number;
+    fruehestens: string;
+    spaetestens: string;
+    praeferenz: number;
+  }[] = [];
+
+  if (terminGeplant) {
+    try {
+      const roh = JSON.parse(String(formData.get("zeiten") ?? "[]"));
+      zeitfenster = Array.isArray(roh) ? roh : [];
+    } catch {
+      zeitfenster = [];
+    }
+    zeitfenster = zeitfenster.filter(
+      (z) =>
+        Number.isInteger(z.wochentag) &&
+        z.wochentag >= 0 &&
+        z.wochentag <= 6 &&
+        /^\d{2}:\d{2}$/.test(z.fruehestens) &&
+        /^\d{2}:\d{2}$/.test(z.spaetestens) &&
+        z.fruehestens < z.spaetestens &&
+        z.praeferenz >= 1 &&
+        z.praeferenz <= 3
+    );
+    if (zeitfenster.length === 0) {
+      return {
+        error:
+          "Ohne Zeiten kann die Zuteilung keinen Platz suchen. Bitte angeben, wann er kann.",
+      };
+    }
+  } else {
+    if (!Number.isInteger(wochentag) || wochentag < 0 || wochentag > 6) {
+      return { error: "Bitte einen Wochentag wählen." };
+    }
+    if (!/^\d{2}:\d{2}$/.test(zeit)) {
+      return { error: "Bitte eine Uhrzeit angeben." };
+    }
   }
-  if (!/^\d{2}:\d{2}$/.test(zeit)) return { error: "Bitte eine Uhrzeit angeben." };
+
   if (!startDatum) return { error: "Bitte ein Startdatum angeben." };
 
   const anzahl =
@@ -3628,11 +3669,13 @@ export async function externenAnlegen(
     .insert({
       student_id: profil.id,
       rhythmus,
-      wochentag,
-      zeit,
+      // Offen lassen, wenn geplant werden soll: Die Zuteilung trägt den
+      // Termin später ein.
+      wochentag: terminGeplant ? null : wochentag,
+      zeit: terminGeplant ? null : zeit,
       lektion_minuten: Number.isFinite(dauer) ? dauer : 45,
       woche_paritaet:
-        rhythmus === "zweiwoechentlich"
+        !terminGeplant && rhythmus === "zweiwoechentlich"
           ? Number(formData.get("paritaet") ?? 0) === 1
             ? 1
             : 0
@@ -3649,6 +3692,27 @@ export async function externenAnlegen(
     // niemand weiss, warum er im Kalender fehlt.
     await admin.from("profiles").delete().eq("id", profil.id);
     return { error: "Die Vereinbarung konnte nicht angelegt werden." };
+  }
+
+  // Beim Planen entstehen noch keine Termine: Die Verfügbarkeit wird als
+  // Dauerangabe abgelegt (runde_id null, derselbe Weg wie beim Abo-Kauf),
+  // und die Zuteilung sucht den Platz. Erst beim Anwenden wird gebucht.
+  if (terminGeplant) {
+    await admin.from("student_verfuegbarkeit").insert(
+      zeitfenster.map((z) => ({
+        student_id: profil.id,
+        runde_id: null,
+        wochentag: z.wochentag,
+        fruehestens: z.fruehestens,
+        spaetestens: z.spaetestens,
+        praeferenz: z.praeferenz,
+      }))
+    );
+
+    revalidatePath("/admin/schueler");
+    revalidatePath("/admin/planung");
+    revalidatePath("/admin/routenplanung");
+    return { success: true, error: undefined, termine: 0, kollisionen: [] };
   }
 
   const ergebnis = await legeExterneTermineAn(

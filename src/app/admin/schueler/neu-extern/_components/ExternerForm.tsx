@@ -43,6 +43,17 @@ export default function ExternerForm() {
     "woechentlich"
   );
   const [umfang, setUmfang] = useState<"unbefristet" | "anzahl">("unbefristet");
+  const [terminArt, setTerminArt] = useState<"planen" | "fix">("planen");
+  const [zeiten, setZeiten] = useState<
+    Record<number, { aktiv: boolean; von: string; bis: string; praeferenz: number }>
+  >(
+    Object.fromEntries(
+      [1, 2, 3, 4, 5].map((n) => [
+        n,
+        { aktiv: false, von: "16:30", bis: "20:30", praeferenz: 2 },
+      ])
+    )
+  );
   const [fehler, setFehler] = useState<string | null>(null);
   const [kollisionen, setKollisionen] = useState<string[]>([]);
   const [laeuft, starte] = useTransition();
@@ -54,6 +65,21 @@ export default function ExternerForm() {
     const daten = new FormData(e.currentTarget);
     daten.set("rhythmus", rhythmus);
     daten.set("umfang", umfang);
+    daten.set("termin_art", terminArt);
+
+    if (terminArt === "planen") {
+      const gewaehlt = Object.values(zeiten).filter((z) => z.aktiv);
+      if (gewaehlt.length === 0) {
+        setFehler("Bitte mindestens einen Tag angeben, an dem er kann.");
+        return;
+      }
+      for (const z of gewaehlt) {
+        if (z.von >= z.bis) {
+          setFehler("Eine Zeitspanne endet vor ihrem Beginn.");
+          return;
+        }
+      }
+    }
 
     starte(async () => {
       const res = await externenAnlegen(daten);
@@ -183,38 +209,187 @@ export default function ExternerForm() {
           ))}
         </div>
 
-        <div className="grid sm:grid-cols-3 gap-3">
-          <div className="space-y-1">
-            {feld("Wochentag")}
-            <select name="wochentag" required className={`${input} bg-white`}>
-              {TAGE.map((t) => (
-                <option key={t.nr} value={t.nr}>
-                  {t.lang}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            {feld("Uhrzeit")}
-            <input name="zeit" type="time" required className={input} />
-          </div>
-          <div className="space-y-1">
-            {feld("Dauer")}
-            <select name="dauer" defaultValue="45" className={`${input} bg-white`}>
-              <option value="30">30 Minuten</option>
-              <option value="45">45 Minuten</option>
-              <option value="60">60 Minuten</option>
-            </select>
+        <div className="space-y-1">
+          {feld("Dauer")}
+          <select name="dauer" defaultValue="45" className={`${input} bg-white`}>
+            <option value="30">30 Minuten</option>
+            <option value="45">45 Minuten</option>
+            <option value="60">60 Minuten</option>
+          </select>
+        </div>
+
+        {/* Termin: fest oder planen lassen.
+            Der Normalfall ist Planen: Du fragst ihn, wann er kann, und der
+            Planer sucht daraus einen Platz, der in deine Route passt. Eine
+            Zeit vorzugeben hiesse, den Planer für genau den Schüler nicht
+            benutzen zu können, für den du ihn aufgenommen hast. */}
+        <div>
+          <p className="text-xs font-600 text-gray-600 mb-2">Der Termin</p>
+          <div className="grid grid-cols-2 gap-2.5">
+            {(
+              [
+                {
+                  wert: "planen" as const,
+                  titel: "Soll geplant werden",
+                  text: "Du gibst an, wann er kann. Die Zuteilung sucht den Platz.",
+                },
+                {
+                  wert: "fix" as const,
+                  titel: "Steht schon fest",
+                  text: "Extern bereits abgemacht, wird nur eingetragen.",
+                },
+              ]
+            ).map((o) => (
+              <button
+                key={o.wert}
+                type="button"
+                onClick={() => setTerminArt(o.wert)}
+                className={`text-left rounded-xl border p-3.5 transition-colors ${
+                  terminArt === o.wert
+                    ? "border-[#1C244B] bg-[#1C244B]/[0.04]"
+                    : "border-gray-200"
+                }`}
+              >
+                <span className="block font-600 text-sm text-gray-900">
+                  {o.titel}
+                </span>
+                <span className="block text-xs text-gray-500 mt-0.5 leading-snug">
+                  {o.text}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
 
-        {rhythmus === "zweiwoechentlich" && (
-          <div className="space-y-1">
-            {feld("In welchen Wochen?")}
-            <select name="paritaet" defaultValue="0" className={`${input} bg-white`}>
-              <option value="0">Gerade Kalenderwochen</option>
-              <option value="1">Ungerade Kalenderwochen</option>
-            </select>
+        {terminArt === "fix" ? (
+          <>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                {feld("Wochentag")}
+                <select name="wochentag" className={`${input} bg-white`}>
+                  {TAGE.map((t) => (
+                    <option key={t.nr} value={t.nr}>
+                      {t.lang}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                {feld("Uhrzeit")}
+                <input name="zeit" type="time" className={input} />
+              </div>
+            </div>
+
+            {rhythmus === "zweiwoechentlich" && (
+              <div className="space-y-1">
+                {feld("In welchen Wochen?")}
+                <select name="paritaet" defaultValue="0" className={`${input} bg-white`}>
+                  <option value="0">Gerade Kalenderwochen</option>
+                  <option value="1">Ungerade Kalenderwochen</option>
+                </select>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs font-600 text-gray-600">
+              Wann kann er? Mehrere Fenster helfen der Route.
+            </p>
+            {TAGE.filter((t) => t.nr >= 1 && t.nr <= 5).map((t) => {
+              const z = zeiten[t.nr];
+              return (
+                <div
+                  key={t.nr}
+                  className={`rounded-xl border transition-colors ${
+                    z.aktiv ? "border-[#1C244B]/30 bg-[#1C244B]/[0.03]" : "border-gray-200"
+                  }`}
+                >
+                  <label className="flex items-center gap-3 p-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={z.aktiv}
+                      onChange={(e) =>
+                        setZeiten((v) => ({
+                          ...v,
+                          [t.nr]: { ...v[t.nr], aktiv: e.target.checked },
+                        }))
+                      }
+                      className="w-4 h-4 rounded border-gray-300 text-[#1C244B]"
+                    />
+                    <span className="text-sm font-600 text-gray-900 flex-1">
+                      {t.lang}
+                    </span>
+                  </label>
+
+                  {z.aktiv && (
+                    <div className="px-3 pb-3 flex items-center gap-2 flex-wrap">
+                      <input
+                        type="time"
+                        value={z.von}
+                        onChange={(e) =>
+                          setZeiten((v) => ({
+                            ...v,
+                            [t.nr]: { ...v[t.nr], von: e.target.value },
+                          }))
+                        }
+                        className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm"
+                      />
+                      <span className="text-xs text-gray-400">bis</span>
+                      <input
+                        type="time"
+                        value={z.bis}
+                        onChange={(e) =>
+                          setZeiten((v) => ({
+                            ...v,
+                            [t.nr]: { ...v[t.nr], bis: e.target.value },
+                          }))
+                        }
+                        className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm"
+                      />
+                      <div className="flex gap-1 ml-auto">
+                        {[
+                          { w: 1, t: "zur Not" },
+                          { w: 2, t: "gut" },
+                          { w: 3, t: "am besten" },
+                        ].map((p) => (
+                          <button
+                            key={p.w}
+                            type="button"
+                            onClick={() =>
+                              setZeiten((v) => ({
+                                ...v,
+                                [t.nr]: { ...v[t.nr], praeferenz: p.w },
+                              }))
+                            }
+                            className={`text-xs font-600 px-2 py-1.5 rounded-lg border ${
+                              z.praeferenz === p.w
+                                ? "border-[#1C244B] bg-[#1C244B] text-white"
+                                : "border-gray-200 text-gray-500"
+                            }`}
+                          >
+                            {p.t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <input
+              type="hidden"
+              name="zeiten"
+              value={JSON.stringify(
+                Object.entries(zeiten)
+                  .filter(([, z]) => z.aktiv)
+                  .map(([nr, z]) => ({
+                    wochentag: Number(nr),
+                    fruehestens: z.von,
+                    spaetestens: z.bis,
+                    praeferenz: z.praeferenz,
+                  }))
+              )}
+            />
           </div>
         )}
 

@@ -293,6 +293,9 @@ export async function ladeExterneTermine(
       "student_id, wochentag, zeit, lektion_minuten, woche_paritaet, profiles!inner(vorname, nachname, lat, lng, ist_test, aktiv)"
     )
     .eq("aktiv", true)
+    // Nur wer schon einen Termin hat, blockiert Zeit. Wer noch keinen hat,
+    // ist ein Planungsauftrag und wird weiter unten als Kandidat geführt.
+    .not("wochentag", "is", null)
     .eq("profiles.ist_test", istTest(kreis))
     .eq("profiles.aktiv", true);
 
@@ -488,16 +491,33 @@ export async function rechneZuteilung(
   const nurTest = rundeInfo?.nur_test === true;
   const istUmstellung = rundeInfo?.art === "umstellung";
 
-  // Externe werden nicht zugeteilt: Ihr Termin ist über eine andere
-  // Plattform vergeben und steht fest. Ihre Zeit ist trotzdem belegt, dafür
-  // sorgt `vorbelegt` weiter unten.
-  const { data: profile } = await admin
+  // Externe zählen mit, sofern ihr Termin noch offen ist.
+  //
+  // Wer über eine andere Plattform kommt, bekommt seinen Platz genauso aus
+  // dieser Rechnung wie alle anderen — David fragt ihn nach seinen Zeiten,
+  // trägt sie ein und lässt den Planer suchen. Nur wer schon einen festen
+  // Termin hat, ist kein Kandidat mehr; seine Zeit blockiert dann über
+  // `vorbelegt`.
+  const { data: alleProfile } = await admin
     .from("profiles")
-    .select("id, vorname, nachname, lat, lng")
+    .select("id, vorname, nachname, lat, lng, extern")
     .eq("role", "student")
     .eq("aktiv", true)
-    .eq("extern", false)
     .eq("ist_test", nurTest);
+
+  const { data: mitTermin } = await admin
+    .from("externe_vereinbarungen")
+    .select("student_id")
+    .eq("aktiv", true)
+    .not("wochentag", "is", null);
+
+  const schonVergeben = new Set(
+    (mitTermin ?? []).map((v) => v.student_id as string)
+  );
+
+  const profile = (alleProfile ?? []).filter(
+    (p) => !(p.extern === true && schonVergeben.has(p.id as string))
+  );
 
   const ids = (profile ?? []).map((p) => p.id);
   if (ids.length === 0) {
