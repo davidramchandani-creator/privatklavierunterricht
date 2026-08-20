@@ -71,6 +71,19 @@ export type Tagesfenster = {
   beginn: string;
   /** "HH:MM" */
   ende: string;
+  /**
+   * Von wo der Abend startet, falls nicht von zuhause.
+   *
+   * An Tagen mit Hochschule kommt David aus Zürich, nicht aus Neftenbach.
+   * Das ändert die ganze Reihenfolge: Von zuhause aus ist ein Schüler in
+   * Neftenbach der naheliegende erste Halt und einer in Winterthur ein
+   * Umweg — von Zürich HB aus genau umgekehrt.
+   *
+   * Der Heimweg bleibt davon unberührt: Am Ende fährt er nach Hause.
+   */
+  start?: Punkt | null;
+  /** Nur für die Anzeige, z. B. „PHZH Lagerstrasse". */
+  startName?: string | null;
 };
 
 export type PlanEingabe = {
@@ -114,6 +127,11 @@ export type Tagesplan = {
   heimwegSekunden: number;
   /** Wie viel des Fensters genutzt ist, 0–1. */
   auslastung: number;
+  /**
+   * Von wo dieser Abend startet, falls nicht von zuhause. Für die Anzeige:
+   * „Abfahrt ab PHZH Lagerstrasse" statt „Abfahrt zuhause".
+   */
+  startName?: string | null;
   /** Passt alles ins Fenster? */
   passt: boolean;
   /** Auffälligkeiten, die David sehen sollte. Z. B. unrentable Fahrten. */
@@ -473,8 +491,12 @@ function baueTag(
   pufferMinuten: number,
   fahrzeit: Fahrzeitfunktion
 ): TagesErgebnis {
+  // Zwei verschiedene Punkte: von wo es losgeht und wohin es zurückgeht.
+  // An Hochschultagen fallen sie auseinander.
+  const start = fenster.start ?? zuhause;
+
   const orte = positionen.map(positionsOrt);
-  const reihenfolge = ordneRoute(zuhause, orte, fahrzeit);
+  const reihenfolge = ordneRoute(start, orte, fahrzeit);
 
   const beginnMin = minutenVon(fenster.beginn);
   const endeMin = minutenVon(fenster.ende);
@@ -483,7 +505,7 @@ function baueTag(
   const ueberzaehlig: Positionsbelegung[] = [];
 
   let uhr = beginnMin;
-  let vorherigerOrt = zuhause;
+  let vorherigerOrt = start;
   let fahrzeitSumme = 0;
   let leerlaufMin = 0;
 
@@ -493,10 +515,11 @@ function baueTag(
     const anfahrt = fahrzeit(vorherigerOrt, ort);
     const anfahrtMin = anfahrt / 60;
 
-    // Erster Termin: die Anfahrt von zuhause passiert vor Fensterbeginn,
-    // der Unterricht startet also pünktlich zum Fensterbeginn. Danach zählt
-    // Fahrzeit plus Puffer zwischen den Lektionen — angehoben aufs
-    // Viertelstunden-Raster, siehe aufRaster.
+    // Erster Termin: die Anfahrt zum ersten Halt passiert vor Fensterbeginn,
+    // der Unterricht startet also pünktlich zum Fensterbeginn. Das gilt auch
+    // an Hochschultagen — dort ist der Fensterbeginn so gesetzt, dass die
+    // Fahrt von der Schule bereits darin steckt. Danach zählt Fahrzeit plus
+    // Puffer zwischen den Lektionen, angehoben aufs Viertelstunden-Raster.
     const frueheste =
       gebaut.length === 0
         ? beginnMin
@@ -587,6 +610,7 @@ function baueTag(
       fahrzeitSekunden: gesamtFahrzeit,
       heimwegSekunden: heimweg,
       auslastung: endeMin > beginnMin ? genutzt / (endeMin - beginnMin) : 0,
+      startName: fenster.startName ?? null,
       passt: ueberzaehlig.length === 0,
       warnungen,
     },

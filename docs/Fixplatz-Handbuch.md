@@ -313,6 +313,30 @@ Lektionszahl und damit demselben Umsatz. Auf 46 Unterrichtswochen sind das
 Diese Zahlen stammen aus einer Modellrechnung mit erfundenen Adressen. Mit
 deinen echten Schülern sehen sie anders aus — der Planer rechnet sie dir aus.
 
+### Wenn der Abend nicht zuhause beginnt
+
+An Tagen mit Hochschule oder Arbeit anderswo kommst du nicht aus Neftenbach.
+Unter **Verfügbarkeit** lässt sich deshalb pro Wochentag ein **Startpunkt**
+hinterlegen (leer = von zuhause).
+
+Das ist keine Kosmetik: Von Neftenbach aus ist ein Schüler dort der
+naheliegende erste Halt und einer in Winterthur ein Umweg — von Zürich HB
+aus genau umgekehrt. Ohne die Angabe ordnet der Planer den ganzen Abend
+falsch, und zwar plausibel aussehend.
+
+Der **Heimweg bleibt der Heimweg**: Am Ende fährst du nach Hause, nicht
+zurück zur Hochschule.
+
+Zwei Dinge musst du selbst richtig setzen:
+
+- **Die Anfangszeit** dieses Tages so, dass die Fahrt von der Schule schon
+  darin steckt. Endet die Vorlesung um 15:50 und der Zug nach Winterthur
+  braucht mit Fussweg 40 Minuten, ist 16:45 der früheste Beginn.
+- **Die Fahrzeit** der ersten Etappe, falls du mit dem Zug fährst. Der
+  Planer schätzt Autofahrten (Luftlinie × 1.35 bei 45 km/h). Für Zürich HB →
+  Winterthur liegt er damit zufällig etwa richtig, für andere Strecken
+  nicht. Eine von Hand gesetzte Fahrzeit schlägt jede Schätzung.
+
 ### Adressen
 
 Der Planer braucht Koordinaten. Beim ersten Mal drückst du „Adressen auflösen" —

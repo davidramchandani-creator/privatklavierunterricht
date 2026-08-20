@@ -85,7 +85,9 @@ export async function ladeFenster(
 ): Promise<Tagesfenster[]> {
   const { data } = await admin
     .from("admin_verfuegbarkeit")
-    .select("wochentag, beginn_zeit, ende_zeit, aktiv")
+    .select(
+      "wochentag, beginn_zeit, ende_zeit, aktiv, start_adresse, start_lat, start_lng"
+    )
     .eq("aktiv", true)
     .order("wochentag");
 
@@ -94,6 +96,13 @@ export async function ladeFenster(
       wochentag: Number(r.wochentag),
       beginn: String(r.beginn_zeit).slice(0, 5),
       ende: String(r.ende_zeit).slice(0, 5),
+      // Nur wenn beides da ist. Die Datenbank stellt das zwar sicher,
+      // aber der Planer soll hier nicht raten müssen.
+      start:
+        r.start_lat != null && r.start_lng != null
+          ? { lat: Number(r.start_lat), lng: Number(r.start_lng) }
+          : null,
+      startName: (r.start_adresse as string | null) ?? null,
     }));
   }
 

@@ -469,6 +469,28 @@ export async function updateVerfuegbarkeit(slots: VerfuegbarkeitSlot[]) {
     }
   }
 
+  // Startpunkte retten, bevor gelöscht wird.
+  //
+  // Diese Funktion schreibt die Tabelle jedes Mal komplett neu. Das Formular
+  // kennt aber nur Zeiten — der Startpunkt pro Wochentag wird woanders
+  // gesetzt und ginge beim nächsten Speichern der Zeiten verloren. Ohne
+  // Meldung: Die Adresse verschwände, der Planer rechnete wieder ab
+  // zuhause, und die Route sähe weiterhin plausibel aus.
+  const { data: bisher } = await supabase
+    .from("admin_verfuegbarkeit")
+    .select("wochentag, start_adresse, start_lat, start_lng");
+
+  const startVon = new Map(
+    (bisher ?? []).map((r) => [
+      Number(r.wochentag),
+      {
+        start_adresse: r.start_adresse as string | null,
+        start_lat: r.start_lat as number | null,
+        start_lng: r.start_lng as number | null,
+      },
+    ])
+  );
+
   // Delete all existing
   const { error: deleteError } = await supabase
     .from("admin_verfuegbarkeit")
@@ -478,7 +500,12 @@ export async function updateVerfuegbarkeit(slots: VerfuegbarkeitSlot[]) {
   if (deleteError) return { error: deleteError.message };
 
   if (slots.length > 0) {
-    const { error } = await supabase.from("admin_verfuegbarkeit").insert(slots);
+    const { error } = await supabase.from("admin_verfuegbarkeit").insert(
+      slots.map((s) => ({
+        ...s,
+        ...(startVon.get(s.wochentag) ?? {}),
+      }))
+    );
     if (error) return { error: error.message };
   }
 
@@ -3670,4 +3697,69 @@ export async function externenBeenden(
   revalidatePath(`/admin/schueler/${studentId}`);
   revalidatePath("/admin/kalender");
   return { success: true, error: undefined, abgesagt };
+}
+
+/**
+ * Von wo ein Unterrichtstag startet.
+ *
+ * An Tagen mit Hochschule kommt David nicht von zuhause, sondern aus
+ * Zürich. Für die Routenplanung ist das der ganze Unterschied: Von
+ * Neftenbach aus ist ein Schüler dort der naheliegende erste Halt und einer
+ * in Winterthur ein Umweg — von Zürich HB aus genau umgekehrt.
+ *
+ * Leere Adresse setzt zurück auf „von zuhause".
+ */
+export async function startpunktSetzen(
+  wochentag: number,
+  adresse: string
+): Promise<
+  { success: true; error: undefined; adresse: string | null } | { error: string }
+> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  if (!Number.isInteger(wochentag) || wochentag < 0 || wochentag > 6) {
+    return { error: "Ungültiger Wochentag." };
+  }
+
+  const admin = await createAdminClient();
+  const sauber = adresse.trim();
+
+  if (!sauber) {
+    await admin
+      .from("admin_verfuegbarkeit")
+      .update({ start_adresse: null, start_lat: null, start_lng: null })
+      .eq("wochentag", wochentag);
+
+    revalidatePath("/admin/verfuegbarkeit");
+    revalidatePath("/admin/routenplanung");
+    return { success: true, error: undefined, adresse: null };
+  }
+
+  // Ohne Koordinaten wäre die Adresse nur Zierde: Der Planer könnte nichts
+  // damit rechnen und fiele stillschweigend auf zuhause zurück, während in
+  // der Oberfläche eine Adresse stünde. Die Datenbank verbietet diesen
+  // Zustand, hier wird er gar nicht erst erzeugt.
+  const treffer = await geocode(sauber);
+  if (!treffer) {
+    return {
+      error:
+        "Diese Adresse liess sich nicht auflösen. Bitte so schreiben: Strasse Nummer, PLZ Ort.",
+    };
+  }
+
+  const { error } = await admin
+    .from("admin_verfuegbarkeit")
+    .update({
+      start_adresse: sauber,
+      start_lat: treffer.lat,
+      start_lng: treffer.lng,
+    })
+    .eq("wochentag", wochentag);
+
+  if (error) return { error: "Der Startpunkt liess sich nicht speichern." };
+
+  revalidatePath("/admin/verfuegbarkeit");
+  revalidatePath("/admin/routenplanung");
+  return { success: true, error: undefined, adresse: sauber };
 }

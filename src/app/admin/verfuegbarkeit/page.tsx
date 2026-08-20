@@ -5,6 +5,7 @@ import { updateVerfuegbarkeit, type VerfuegbarkeitSlot } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import Startpunkt from "./_components/Startpunkt";
 
 const DAYS = [
   { label: "Montag", wochentag: 1 },
@@ -45,6 +46,9 @@ export default function VerfuegbarkeitPage() {
     Object.fromEntries(DAYS.map((d) => [d.wochentag, { ...DEFAULT_SLOT }]))
   );
   const [config, setConfig] = useState<BlockConfigState>(DEFAULT_CONFIG);
+  // Startpunkt je Wochentag. Getrennt vom Zeiten-Formular, weil er einzeln
+  // gespeichert wird: Die Adresse muss serverseitig geokodiert werden.
+  const [startpunkte, setStartpunkte] = useState<Record<number, string | null>>({});
   const [isPending, startTransition] = useTransition();
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +72,11 @@ export default function VerfuegbarkeitPage() {
             };
           }
           setSlots(map);
+          setStartpunkte(
+            Object.fromEntries(
+              data.map((r) => [r.wochentag, r.start_adresse ?? null])
+            )
+          );
           const erste = data.find((r) => r.aktiv) ?? data[0];
           if (erste) {
             setConfig({
@@ -297,6 +306,20 @@ export default function VerfuegbarkeitPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Startpunkt.
+                    Nur bei aktiven Tagen, und eingeklappt: In der Regel
+                    startet der Abend zuhause, und ein immer sichtbares
+                    Adressfeld pro Tag würde die Liste unlesbar machen. */}
+                {slot.aktiv && (
+                  <Startpunkt
+                    wochentag={wochentag}
+                    adresse={startpunkte[wochentag] ?? null}
+                    onGespeichert={(neu) =>
+                      setStartpunkte((p) => ({ ...p, [wochentag]: neu }))
+                    }
+                  />
+                )}
               </div>
             );
           })}

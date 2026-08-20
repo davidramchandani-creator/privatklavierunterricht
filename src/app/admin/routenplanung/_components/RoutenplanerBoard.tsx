@@ -588,7 +588,11 @@ function Ergebnisansicht({
                   <Home className="w-3 h-3" />
                 </span>
                 <p className="text-xs text-gray-600">
-                  Abfahrt zuhause ca.{" "}
+                  {/* An Hochschultagen startet der Abend woanders. Das muss
+                      hier stehen, sonst rechnet man mit der falschen
+                      Abfahrtszeit — und sie ist der praktische Nutzen
+                      dieser Zeile. */}
+                  Abfahrt {tag.startName ? `ab ${tag.startName}` : "zuhause"} ca.{" "}
                   <strong className="tabular-nums text-[#1C244B]">
                     {minusSekunden(
                       tag.positionen[0].beginn,

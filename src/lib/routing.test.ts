@@ -381,3 +381,104 @@ describe("Wie viele Unterrichtstage lohnen sich", () => {
     expect(empfohleneVariante(zuViele)).toBeNull();
   });
 });
+
+/**
+ * An Hochschultagen beginnt der Abend woanders.
+ *
+ * David hat an manchen Tagen Unterricht an der PHZH in Zürich und fährt von
+ * dort direkt zum ersten Schüler. Der Routenplaner nahm bisher an, jeder
+ * Abend starte zuhause in Neftenbach.
+ *
+ * Der Unterschied ist nicht kosmetisch, sondern dreht die Reihenfolge um:
+ * Von zuhause ist Neftenbach der naheliegende erste Halt und Winterthur ein
+ * Umweg — von Zürich HB aus genau umgekehrt. Ein falsch geordneter Abend
+ * sieht dabei völlig plausibel aus, was ihn gefährlich macht.
+ *
+ * Der Heimweg bleibt der Heimweg: Am Ende fährt er nach Hause, nicht zurück
+ * zur Hochschule.
+ */
+describe("Startpunkt pro Wochentag", () => {
+  const NEFTENBACH = { lat: 47.5266, lng: 8.6706 };
+  const ZUERICH_HB = { lat: 47.3779, lng: 8.5403 };
+
+  // Einer nah bei zuhause, einer auf halbem Weg nach Zürich.
+  const nahZuhause = {
+    id: "nah",
+    name: "Nah",
+    lat: 47.53,
+    lng: 8.67,
+    rhythmus: "woechentlich" as const,
+    lektionMinuten: 45,
+  };
+  const richtungZuerich = {
+    id: "winti",
+    name: "Winterthur",
+    lat: 47.4995,
+    lng: 8.7241,
+    rhythmus: "woechentlich" as const,
+    lektionMinuten: 45,
+  };
+
+  function planeMit(start: { lat: number; lng: number } | null) {
+    return planeRouten({
+      zuhause: NEFTENBACH,
+      schueler: [nahZuhause, richtungZuerich],
+      fenster: [
+        {
+          wochentag: 1,
+          beginn: "16:30",
+          ende: "20:30",
+          start,
+          startName: start ? "PHZH Lagerstrasse" : null,
+        },
+      ],
+      pufferMinuten: 15,
+    });
+  }
+
+  it("ordnet den Abend anders, wenn er woanders beginnt", () => {
+    const vonZuhause = planeMit(null);
+    const vonZuerich = planeMit(ZUERICH_HB);
+
+    const ersterVonZuhause =
+      vonZuhause.tage[0].positionen[0].geradeWoche?.id;
+    const ersterVonZuerich =
+      vonZuerich.tage[0].positionen[0].geradeWoche?.id;
+
+    // Von zuhause zuerst der Nachbar, von Zürich zuerst der auf dem Weg.
+    expect(ersterVonZuhause).toBe("nah");
+    expect(ersterVonZuerich).toBe("winti");
+  });
+
+  it("führt am Ende trotzdem nach Hause", () => {
+    const vonZuerich = planeMit(ZUERICH_HB);
+    // Der Heimweg wird gegen Neftenbach gerechnet, nicht gegen Zürich.
+    // Wäre es Zürich, wäre er von Winterthur aus deutlich länger.
+    expect(vonZuerich.tage[0].heimwegSekunden).toBeGreaterThan(0);
+    const heimwegNachZuerich = planeRouten({
+      zuhause: ZUERICH_HB,
+      schueler: [nahZuhause, richtungZuerich],
+      fenster: [{ wochentag: 1, beginn: "16:30", ende: "20:30" }],
+      pufferMinuten: 15,
+    }).tage[0].heimwegSekunden;
+    expect(vonZuerich.tage[0].heimwegSekunden).not.toBe(heimwegNachZuerich);
+  });
+
+  it("reicht den Namen für die Anzeige durch", () => {
+    // Ohne ihn stünde im Plan „Abfahrt zuhause", und die Abfahrtszeit wäre
+    // für den falschen Ort gerechnet.
+    expect(planeMit(ZUERICH_HB).tage[0].startName).toBe("PHZH Lagerstrasse");
+    expect(planeMit(null).tage[0].startName).toBeNull();
+  });
+
+  it("verhält sich ohne Startpunkt wie bisher", () => {
+    const ohneFeld = planeRouten({
+      zuhause: NEFTENBACH,
+      schueler: [nahZuhause, richtungZuerich],
+      fenster: [{ wochentag: 1, beginn: "16:30", ende: "20:30" }],
+      pufferMinuten: 15,
+    });
+    const mitNull = planeMit(null);
+    expect(mitNull.fahrzeitProWoche).toBe(ohneFeld.fahrzeitProWoche);
+  });
+});
