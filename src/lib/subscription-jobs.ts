@@ -37,6 +37,8 @@ import { bookFixplatzSeries } from "@/lib/fixplatz-server";
 import { aktiviereGeplanteAbos } from "@/lib/umstellung-server";
 import { verlaengereExterneSerien } from "@/lib/externe-server";
 import { erinnereAnAusgaben } from "@/lib/abrechnung-server";
+import { gleicheAppleKalenderAb } from "@/lib/apple-kalender";
+
 import { ABO_LABELS } from "@/lib/abo";
 import { baueVorschau, legeMonatsratenAn } from "@/lib/abo-server";
 
@@ -848,6 +850,23 @@ export async function runSubscriptionJobs(
     }
   } catch (err) {
     console.error("[extern] Verlängerung fehlgeschlagen:", err);
+  }
+
+  // Apple-Kalender einlesen. Was David privat einträgt, soll hier gesperrt
+  // sein, ohne dass er daran denken muss. Ohne hinterlegten Link passiert
+  // nichts, das ist der Normalfall bis er einen einträgt.
+  try {
+    const res = await gleicheAppleKalenderAb(admin);
+    if ("error" in res) {
+      // „Kein Kalender hinterlegt" ist kein Fehler, sondern der Normalfall.
+      if (res.error !== "Kein Kalender hinterlegt.") {
+        console.error("[apple]", res.error);
+      }
+    } else {
+      console.log(`[apple] ${res.termine} Termine, ${res.bloecke} Sperren`);
+    }
+  } catch (err) {
+    console.error("[apple] Abgleich fehlgeschlagen:", err);
   }
 
   // Gegen Monatsende nach den Ausgaben fragen. Die Einnahmen stehen im

@@ -4,6 +4,9 @@ import { CalendarCheck, CalendarX, Mail, BellOff } from "lucide-react";
 import CalendarSettings from "./_components/CalendarSettings";
 import EmailTest from "./_components/EmailTest";
 import EmailSettingsClient from "./_components/EmailSettingsClient";
+import AppleKalender from "./_components/AppleKalender";
+import { ladeAppleEinstellung } from "@/lib/apple-kalender";
+
 
 export const dynamic = "force-dynamic";
 
@@ -34,9 +37,20 @@ export default async function EinstellungenPage() {
     .gte("start_at", new Date().toISOString())
     .not("google_event_id", "is", null);
 
+  const apple = await ladeAppleEinstellung(admin);
+
   return (
     <div className="space-y-6 max-w-2xl">
       <h1 className="text-2xl font-800 text-[#1C244B]">Einstellungen</h1>
+
+      <AppleKalender
+        vorhanden={apple != null}
+        url={apple?.url ?? ""}
+        titelUebernehmen={apple?.titelUebernehmen ?? true}
+        zuletzt={apple?.zuletztAbgerufen ?? null}
+        fehler={apple?.letzterFehler ?? null}
+        anzahl={apple?.anzahl ?? null}
+      />
 
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5">
         <div className="flex items-start gap-3">

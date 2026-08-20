@@ -42,6 +42,11 @@ import { describeFixplatz } from "@/lib/fixplatz";
 import { bookFixplatzSeries } from "@/lib/fixplatz-server";
 import { meldeAusfall, schliesseOffeneAusfaelle } from "@/lib/ausfall";
 import { bieteFrueherenSlotAn } from "@/lib/vorrueck-server";
+import {
+  EINSTELLUNG_APPLE,
+  gleicheAppleKalenderAb,
+  trenneAppleKalender,
+} from "@/lib/apple-kalender";
 import { geocode } from "@/lib/geocoding";
 import {
   beendeVereinbarung,
@@ -3847,6 +3852,88 @@ export async function startpunktSetzen(
   revalidatePath("/admin/verfuegbarkeit");
   revalidatePath("/admin/routenplanung");
   return { success: true, error: undefined, adresse: sauber };
+}
+
+// ── Apple-Kalender ──────────────────────────────────────────
+
+
+/**
+ * iCal-Link hinterlegen und sofort einlesen.
+ *
+ * Nur lesen: Es wird nichts in Apples Kalender geschrieben. Der Link kommt
+ * aus der Kalender-App über „Kalender freigeben" — wer ihn kennt, sieht die
+ * Termine, darum steht in der Oberfläche ein Hinweis dazu.
+ */
+export async function appleKalenderSetzen(
+  url: string,
+  titelUebernehmen: boolean
+): Promise<
+  { success: true; termine: number; bloecke: number; error: undefined } | { error: string }
+> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const sauber = url.trim();
+  if (!sauber) return { error: "Bitte einen Link angeben." };
+
+  const admin = await createAdminClient();
+  await admin.from("app_settings").upsert(
+    {
+      key: EINSTELLUNG_APPLE,
+      value: { url: sauber, titelUebernehmen },
+    },
+    { onConflict: "key" }
+  );
+
+  // Sofort einlesen, damit ein falscher Link auffällt, solange David noch
+  // davorsitzt — und nicht erst beim nächtlichen Cron.
+  const res = await gleicheAppleKalenderAb(admin);
+  if ("error" in res) return res;
+
+  revalidatePath("/admin/einstellungen");
+  revalidatePath("/admin/kalender");
+  return {
+    success: true,
+    termine: res.termine,
+    bloecke: res.bloecke,
+    error: undefined,
+  };
+}
+
+/** Von Hand neu einlesen. */
+export async function appleKalenderAbgleichen(): Promise<
+  { success: true; termine: number; bloecke: number; error: undefined } | { error: string }
+> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+  const res = await gleicheAppleKalenderAb(admin);
+  if ("error" in res) return res;
+
+  revalidatePath("/admin/einstellungen");
+  revalidatePath("/admin/kalender");
+  return {
+    success: true,
+    termine: res.termine,
+    bloecke: res.bloecke,
+    error: undefined,
+  };
+}
+
+/** Kalender abmelden, importierte Sperren entfernen. */
+export async function appleKalenderTrennen(): Promise<
+  { success: true; entfernt: number; error: undefined } | { error: string }
+> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+  const { entfernt } = await trenneAppleKalender(admin);
+
+  revalidatePath("/admin/einstellungen");
+  revalidatePath("/admin/kalender");
+  return { success: true, entfernt, error: undefined };
 }
 
 // ── Günstige freie Termine ──────────────────────────────────

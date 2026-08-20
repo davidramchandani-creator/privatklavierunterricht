@@ -652,6 +652,51 @@ Adresse des Schülers zählt nur die Lage im Tag, das sagt dir ein Hinweis.
 
 ---
 
+## 9h. Abrechnung und privater Kalender
+
+**Monatsabrechnung** (Menü → Abrechnung). Einnahmen kommen automatisch aus
+dem System, gezählt **nach Zahlungseingang** — so wie es auf dem Konto
+stand, nicht nach Lektionsdatum. Eine im Dezember gehaltene, im Januar
+bezahlte Lektion gehört ins neue Jahr.
+
+Einnahmen externer Schüler stehen **getrennt** und sind mit „gerechnet"
+markiert: Sie entstehen aus gehaltenen Lektionen mal hinterlegtem Ertrag,
+nicht aus echten Zahlungen — die kennt nur Matchspace. Gleich mit der
+Plattformabrechnung vergleichen, bevor die Zahl in die Steuererklärung
+geht.
+
+Die Ausgaben trägst du selbst ein: Fahrtkosten, Verpflegung, Material,
+Weiterbildung, Sonstiges. **Fünf Tage vor Monatsende** kommt eine Mail und
+fragt danach — der Grund ist schlicht, dass im Februar niemand mehr weiss,
+wofür die Tankquittung vom 12. war. Mit „Als erledigt markieren" schaltest
+du die Erinnerung für den Monat ab. Unten gibt es die Jahresübersicht und
+einen CSV-Export (Semikolon-getrennt, öffnet sich in Excel direkt).
+
+Das ist eine Aufstellung, keine Steuerberatung. Was abzugsfähig ist, klärst
+du mit dem Treuhänder.
+
+**Apple-Kalender sperren** (Einstellungen). Was du privat einträgst, soll
+hier die Zeit blockieren, ohne dass du es zweimal erfasst. In der
+Kalender-App: rechte Maustaste auf den Kalender → *Kalender freigeben* →
+*Öffentlicher Kalender* → Link kopieren und in den Einstellungen eintragen.
+
+Es wird **nur gelesen**. In deinen Apple-Kalender schreibt das System
+nichts — dafür ist der Google-Sync da.
+
+Die Termine landen als Sperrzeiten in denselben Zeitblöcken, die Buchung,
+Routenplanung und Zuteilung ohnehin lesen; damit greifen sie überall
+gleichzeitig. Deine von Hand angelegten Blöcke bleiben beim Abgleich
+unangetastet. Abgesagte Termine und solche, die du als „frei" markiert
+hast, sperren nichts. Der Abgleich läuft täglich; „Jetzt einlesen" macht es
+sofort.
+
+Zwei Dinge zum Wissen: Wer den Link hat, kann deine Termine lesen — gib ihn
+nicht weiter. Und wenn dir die Titel im System zu privat sind, nimm den
+Haken bei „Termintitel übernehmen" weg; dann heisst jede Sperre nur
+„Privat", blockiert aber genauso.
+
+---
+
 ## 9d. Paket statt Abo
 
 Das Abo ist der Regelfall, aber nicht jeder passt hinein. Wer nur ein paar
