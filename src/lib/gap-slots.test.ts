@@ -144,6 +144,17 @@ describe("Fahrzeit → Puffer", () => {
     expect(travelToBuffer(31)).toBe(45);
     expect(travelToBuffer(45)).toBe(45);
   });
+
+  it("liefert nie NaN, auch bei Raster oder Minimum 0", () => {
+    // 15/0 → Infinity·0 → NaN, und NaN als Puffer hat einmal das ganze
+    // Buchungssystem lahmgelegt (Mindestpuffer 0 wurde als Raster
+    // durchgereicht). Raster 0 fällt aufs Standardraster zurück,
+    // Minimum 0 ist erlaubt und bleibt 0.
+    expect(travelToBuffer(15, 0, 0)).toBe(15);
+    expect(travelToBuffer(0, 0, 0)).toBe(0);
+    expect(travelToBuffer(20, 0, 0)).toBe(30);
+    expect(Number.isNaN(travelToBuffer(15, NaN, NaN))).toBe(false);
+  });
 });
 
 describe("Unterschiedliche Puffer pro Schüler", () => {

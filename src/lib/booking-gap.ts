@@ -30,6 +30,7 @@ import {
 import {
   type BlockConfig,
   type Interval,
+  DEFAULT_GRID_MINUTES,
   validStartTimes,
   isValidStart,
   travelToBuffer,
@@ -72,10 +73,13 @@ export function gapAwareDaySlots(
   const windows = availability[weekdayOf(day)] ?? [];
   if (windows.length === 0) return [];
 
-  // Puffer des anfragenden Schülers (Fahrzeit, aufgerundet aufs Raster).
+  // Puffer des anfragenden Schülers: Fahrzeit, aufgerundet aufs
+  // **Slot-Raster** (15 Min.), mindestens der konfigurierte Mindestpuffer.
+  // Der Mindestpuffer ist NICHT das Raster — er darf 0 sein, ein Raster
+  // von 0 wäre eine Division durch null (siehe travelToBuffer).
   const myBuffer = travelToBuffer(
     ctx.bufferMin ?? settings.minBufferMinutes,
-    settings.minBufferMinutes,
+    DEFAULT_GRID_MINUTES,
     settings.minBufferMinutes
   );
 
@@ -95,7 +99,7 @@ export function gapAwareDaySlots(
       end: minutesOfDay(new Date(a.e), day),
       bufferMinutes: travelToBuffer(
         a.buf ?? settings.minBufferMinutes,
-        settings.minBufferMinutes,
+        DEFAULT_GRID_MINUTES,
         settings.minBufferMinutes
       ),
     }));

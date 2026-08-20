@@ -163,3 +163,40 @@ describe("Integration: gap-aware Slots am realen Tag", () => {
     expect(gapAwareDaySlots(sonntag, ctx(), settings, windows)).toEqual([]);
   });
 });
+
+describe("Mindestpuffer 0 (der echte Produktionsfall vom 20.8.2026)", () => {
+  // David speicherte in der Verfügbarkeit Mindestpuffer 0 mit Packung
+  // „maximal" — eine völlig legitime Einstellung: Der Abstand soll allein
+  // aus der Fahrzeit der Schüler kommen. Danach zeigte das GESAMTE
+  // Buchungssystem in jeder Woche „nichts frei": Der Mindestpuffer wurde
+  // als Rundungs-Raster missbraucht, 15/0 ergab NaN, und mit NaN als
+  // Puffer fiel jede Startzeit durch die Kapazitätsprüfung.
+  const nullPuffer: BlockSettings = {
+    lessonMinutes: 45,
+    minBufferMinutes: 0,
+    packing: "maximal",
+  };
+
+  it("liefert im leeren Block trotzdem Slots", () => {
+    const slots = gapAwareDaySlots(DAY, ctx(), nullPuffer, windows);
+    expect(slots.length).toBeGreaterThan(0);
+  });
+
+  it("die Fahrzeit des Schülers bleibt als Abstand erhalten", () => {
+    // Puffer 0 heisst nicht Lektionen Rücken an Rücken: Flurinas 15
+    // Fahrminuten müssen weiterhin zwischen zwei Terminen liegen.
+    const c = ctx({
+      appointments: [
+        {
+          start_at: at(16, 30).toISOString(),
+          end_at: at(17, 15).toISOString(),
+          bufferMinutes: 15,
+        },
+      ],
+    });
+    const zeiten = times(gapAwareDaySlots(DAY, c, nullPuffer, windows));
+    expect(zeiten.length).toBeGreaterThan(0);
+    expect(zeiten).not.toContain("17:15");
+    expect(zeiten).toContain("17:30");
+  });
+});

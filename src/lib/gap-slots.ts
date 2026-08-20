@@ -86,8 +86,20 @@ export function travelToBuffer(
   gridMinutes = DEFAULT_GRID_MINUTES,
   minimum = DEFAULT_GRID_MINUTES
 ): number {
-  if (!Number.isFinite(travelMinutes) || travelMinutes <= 0) return minimum;
-  return Math.max(minimum, Math.ceil(travelMinutes / gridMinutes) * gridMinutes);
+  // Ein Raster von 0 wäre eine Division durch null — und NaN als Puffer
+  // vergiftet jede weitere Rechnung, bis kein einziger Slot mehr gültig
+  // ist. Genau das ist passiert, als der Mindestpuffer in der
+  // Verfügbarkeit auf 0 stand und als Raster durchgereicht wurde: Das
+  // ganze Buchungssystem zeigte wochenlang „nichts frei".
+  const grid =
+    Number.isFinite(gridMinutes) && gridMinutes > 0
+      ? gridMinutes
+      : DEFAULT_GRID_MINUTES;
+  // Ein Minimum von 0 ist erlaubt (Puffer kommt dann allein aus der
+  // Fahrzeit) — NaN oder negativ nicht.
+  const min = Number.isFinite(minimum) && minimum >= 0 ? minimum : 0;
+  if (!Number.isFinite(travelMinutes) || travelMinutes <= 0) return min;
+  return Math.max(min, Math.ceil(travelMinutes / grid) * grid);
 }
 
 /**
