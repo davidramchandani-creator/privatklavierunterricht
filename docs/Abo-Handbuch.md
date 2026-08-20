@@ -687,8 +687,23 @@ Die Termine landen als Sperrzeiten in denselben Zeitblöcken, die Buchung,
 Routenplanung und Zuteilung ohnehin lesen; damit greifen sie überall
 gleichzeitig. Deine von Hand angelegten Blöcke bleiben beim Abgleich
 unangetastet. Abgesagte Termine und solche, die du als „frei" markiert
-hast, sperren nichts. Der Abgleich läuft täglich; „Jetzt einlesen" macht es
-sofort.
+hast, sperren nichts.
+
+**Wie schnell es greift.** Apple bietet keine Benachrichtigung, wenn du
+etwas einträgst — ein iCal-Abo kann man nur abholen. Darum wird der
+Kalender geholt, *bevor* freie Zeiten berechnet werden, wenn der letzte
+Abruf älter als eine Minute ist. Und vor jeder echten Buchung oder
+Verschiebung wird er **immer** geholt, egal wie frisch. Praktisch heisst
+das: Sobald dein Eintrag bei Apple im veröffentlichten Kalender steht, kann
+niemand mehr auf diese Zeit gebucht werden.
+
+Die Einschränkung liegt bei Apple: Nach dem Eintragen dauert es dort ein
+bis zwei Minuten, bis der veröffentlichte Kalender die Änderung zeigt.
+Schneller geht es mit einem Freigabe-Link nicht. Für einen Termin in zwei
+Minuten trägst du die Sperre besser von Hand ein.
+
+Zusätzlich läuft alle 15 Minuten ein Abgleich im Hintergrund, damit auch
+ohne Seitenaufruf nichts liegen bleibt. „Jetzt einlesen" macht es sofort.
 
 Zwei Dinge zum Wissen: Wer den Link hat, kann deine Termine lesen — gib ihn
 nicht weiter. Und wenn dir die Titel im System zu privat sind, nimm den

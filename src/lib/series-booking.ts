@@ -115,7 +115,8 @@ export async function bookSeriesForStudent(
       desiredStart,
       seriesEnd,
       now,
-      { skipLeadTime: true }
+      // Hier wird wirklich gebucht: Kalender zwingend frisch holen.
+      { skipLeadTime: true, kalenderJetzt: true }
     );
     const validation = validateSeries(desiredStart, lessonsCount, intervalDays, ctx);
     if (!validation.ok) {

@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/send-emails",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/apple-kalender",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

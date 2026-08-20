@@ -205,8 +205,9 @@ export type AbgleichErgebnis = {
  */
 export async function gleicheAppleKalenderAb(
   admin: SupabaseClient,
-  optionen: { fetchImpl?: typeof fetch } = {}
+  optionen: { fetchImpl?: typeof fetch; zeitlimitMs?: number } = {}
 ): Promise<AbgleichErgebnis | { error: string }> {
+  const zeitlimit = optionen.zeitlimitMs ?? 20000;
   const einstellung = await ladeAppleEinstellung(admin);
   if (!einstellung) return { error: "Kein Kalender hinterlegt." };
 
@@ -220,8 +221,10 @@ export async function gleicheAppleKalenderAb(
   try {
     const antwort = await holen(url, {
       headers: { Accept: "text/calendar" },
-      // Ein hängender Abruf darf den Cron nicht aufhalten.
-      signal: AbortSignal.timeout(20000),
+      // Ein hängender Abruf darf weder den Cron aufhalten noch einen
+      // wartenden Menschen. Vor einer Slot-Berechnung gilt ein kürzeres
+      // Limit als im Hintergrundjob.
+      signal: AbortSignal.timeout(zeitlimit),
     });
     if (!antwort.ok) {
       const fehler = `Der Kalender antwortete mit ${antwort.status}.`;
@@ -232,7 +235,7 @@ export async function gleicheAppleKalenderAb(
   } catch (e) {
     const fehler =
       e instanceof Error && e.name === "TimeoutError"
-        ? "Der Kalender antwortete nicht innert 20 Sekunden."
+        ? `Der Kalender antwortete nicht innert ${Math.round(zeitlimit / 1000)} Sekunden.`
         : "Der Kalender liess sich nicht abrufen.";
     await speichereEinstellung(admin, { ...einstellung, letzterFehler: fehler });
     return { error: fehler };
@@ -299,6 +302,76 @@ export async function gleicheAppleKalenderAb(
     bloecke: zuSchreiben.length,
     entfernt: geloescht?.length ?? 0,
   };
+}
+
+// ── Frisch halten, ohne auf den Cron zu warten ──────────────
+
+/**
+ * Wie alt der letzte Abruf höchstens sein darf, bevor vor einer
+ * Slot-Berechnung neu geholt wird.
+ *
+ * 60 Sekunden ist der Kompromiss: Apple selbst braucht nach dem Eintragen
+ * ohnehin ein bis zwei Minuten, bis der veröffentlichte Kalender die
+ * Änderung zeigt. Kürzer zu pollen bringt darum nichts ausser Last.
+ */
+export const FRISCHE_SEKUNDEN = 60;
+
+/**
+ * Vor dem Buchen wird immer neu geholt, egal wie frisch.
+ *
+ * Beim blossen Anschauen von Slots ist eine Minute Verzug egal — beim
+ * tatsächlichen Buchen nicht, denn dort entsteht der Schaden: ein Termin,
+ * der auf Davids privatem Eintrag liegt.
+ */
+export const SOFORT = 0;
+
+/**
+ * Ein laufender Abruf je Serverinstanz. Ohne diese Sperre würde eine
+ * Serienprüfung mit zehn Terminen zehn parallele Abrufe auslösen — alle mit
+ * demselben Ergebnis.
+ */
+let laufenderAbruf: Promise<unknown> | null = null;
+
+/**
+ * Sicherstellen, dass die Sperrzeiten aktuell genug sind.
+ *
+ * Wird vor jeder Verfügbarkeitsberechnung aufgerufen. Schlägt der Abruf
+ * fehl, passiert **nichts weiter**: Es wird mit den zuletzt bekannten
+ * Sperren weitergerechnet. Ein langsamer iCloud-Server darf keine Buchung
+ * verhindern, und die alten Sperren sind besser als gar keine.
+ */
+export async function stelleAppleKalenderSicher(
+  admin: SupabaseClient,
+  maxAlterSekunden: number = FRISCHE_SEKUNDEN
+): Promise<void> {
+  try {
+    const einstellung = await ladeAppleEinstellung(admin);
+    if (!einstellung) return;
+
+    if (maxAlterSekunden > 0 && einstellung.zuletztAbgerufen) {
+      const alter =
+        (Date.now() - new Date(einstellung.zuletztAbgerufen).getTime()) / 1000;
+      if (alter < maxAlterSekunden) return;
+    }
+
+    if (laufenderAbruf) {
+      await laufenderAbruf;
+      return;
+    }
+
+    laufenderAbruf = gleicheAppleKalenderAb(admin, {
+      // Kürzeres Zeitlimit als beim Cron: Hier wartet ein Mensch auf eine
+      // Slot-Liste, nicht ein Hintergrundjob.
+      zeitlimitMs: 6000,
+    }).finally(() => {
+      laufenderAbruf = null;
+    });
+    await laufenderAbruf;
+  } catch {
+    // Bewusst still. Der Aufrufer rechnet mit den vorhandenen Sperren
+    // weiter; ein Fehler steht bereits in der Einstellung und wird in den
+    // Einstellungen angezeigt.
+  }
 }
 
 /** Kalender abmelden: Einstellung und alle importierten Sperren weg. */

@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { normalisiereIcalUrl, parseIcal } from "./ical";
 import { alsBloecke } from "./apple-kalender";
 
@@ -367,5 +369,75 @@ describe("Verdrahtung", () => {
       "utf8"
     );
     expect(jobs).toContain("gleicheAppleKalenderAb(admin)");
+  });
+});
+
+/**
+ * Ein täglicher Abgleich genügt nicht: Wer morgens einen Termin einträgt,
+ * erwartet, dass nachmittags niemand mehr auf diese Zeit gebucht werden
+ * kann. Apple bietet kein Push, also wird vor jeder Berechnung geholt —
+ * kurz gepuffert, damit eine Serienprüfung nicht zehn Abrufe auslöst.
+ */
+describe("Frisch genug beim Buchen", () => {
+  const server = readFileSync(
+    join(process.cwd(), "src", "lib", "apple-kalender.ts"),
+    "utf8"
+  );
+  const booking = readFileSync(
+    join(process.cwd(), "src", "lib", "booking-server.ts"),
+    "utf8"
+  );
+
+  it("holt vor jeder Verfügbarkeitsberechnung", () => {
+    // Die eine Stelle, durch die alle Buchungswege laufen. In die einzelnen
+    // Aufrufer eingebaut wäre es ein Dutzend Stellen, und die eine
+    // vergessene wäre die, die jemanden auf einen privaten Eintrag setzt.
+    const fn = booking.slice(
+      booking.indexOf("export async function loadAvailabilityContext")
+    );
+    const abruf = fn.indexOf("stelleAppleKalenderSicher");
+    const abfrage = fn.indexOf('.from("time_blocks")');
+    expect(abruf).toBeGreaterThan(-1);
+    // Muss vor dem Lesen der Sperrzeiten stehen, sonst wirkt es erst beim
+    // nächsten Mal.
+    expect(abruf).toBeLessThan(abfrage);
+  });
+
+  it("bündelt gleichzeitige Abrufe", () => {
+    // Eine Serienprüfung über zehn Termine darf nicht zehn HTTP-Abrufe
+    // auslösen, die alle dasselbe holen.
+    expect(server).toContain("laufenderAbruf");
+  });
+
+  it("lässt eine Buchung nicht an iCloud scheitern", () => {
+    // Ist der Kalender langsam oder weg, wird mit den bekannten Sperren
+    // weitergerechnet. Alles andere hiesse: Apple hat eine Störung, also
+    // kann niemand mehr buchen.
+    const fn = server.slice(
+      server.indexOf("export async function stelleAppleKalenderSicher")
+    );
+    expect(fn).toContain("catch");
+    expect(fn).toContain("zeitlimitMs");
+  });
+
+  it("holt vor dem echten Buchen zwingend neu", () => {
+    // Beim Anschauen einer Slot-Liste ist eine Minute Verzug egal, beim
+    // Buchen entsteht der Schaden. Darum dort ohne Puffer.
+    expect(server).toContain("export const SOFORT = 0");
+    const serien = readFileSync(
+      join(process.cwd(), "src", "lib", "series-booking.ts"),
+      "utf8"
+    );
+    expect(serien).toContain("kalenderJetzt: true");
+  });
+
+  it("läuft zusätzlich als eigener, häufiger Cron", () => {
+    const vercel = JSON.parse(
+      readFileSync(join(process.cwd(), "vercel.json"), "utf8")
+    ) as { crons: { path: string; schedule: string }[] };
+    const job = vercel.crons.find((c) => c.path.includes("apple-kalender"));
+    expect(job).toBeDefined();
+    // Deutlich häufiger als der tägliche Mail-Lauf.
+    expect(job!.schedule).not.toMatch(/^\d+ \d+ \* \* \*$/);
   });
 });

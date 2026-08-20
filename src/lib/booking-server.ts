@@ -10,6 +10,11 @@ import {
   type TimeBlockRule,
   DEFAULT_BUFFER_MIN,
 } from "./booking";
+import {
+  FRISCHE_SEKUNDEN,
+  SOFORT,
+  stelleAppleKalenderSicher,
+} from "./apple-kalender";
 
 /**
  * Lädt alle für die Slot-Berechnung nötigen Daten (Termine, Abwesenheiten,
@@ -36,8 +41,30 @@ export async function loadAvailabilityContext(
     skipLeadTime?: boolean;
     excludeAppointmentId?: string;
     excludeAppointmentIds?: string[];
+    /**
+     * Apple-Kalender **zwingend** neu holen, statt auf die Frist zu bauen.
+     * Vor jeder echten Buchung gesetzt: Beim Anschauen einer Slot-Liste ist
+     * eine Minute Verzug egal, beim Buchen entsteht der Schaden.
+     */
+    kalenderJetzt?: boolean;
   } = {}
 ): Promise<AvailabilityContext> {
+  // Apple-Kalender frisch halten, bevor irgendetwas gerechnet wird.
+  //
+  // Diese eine Stelle deckt alles ab: Slot-Listen, Serienprüfung,
+  // Verschiebungen, Vorrücken, Probelektionen. Jeder dieser Wege lädt hier
+  // seinen Kontext. In die einzelnen Aufrufer eingebaut wäre es ein Dutzend
+  // Stellen, und die eine vergessene wäre die, die jemanden auf Davids
+  // privaten Eintrag setzt.
+  //
+  // Schlägt der Abruf fehl oder dauert er zu lange, wird mit den zuletzt
+  // bekannten Sperren weitergerechnet — eine langsame Antwort von iCloud
+  // darf keine Buchung blockieren.
+  await stelleAppleKalenderSicher(
+    admin,
+    opts.kalenderJetzt ? SOFORT : FRISCHE_SEKUNDEN
+  );
+
   // Termine etwas grosszügiger laden, damit Puffer an den Rändern greifen.
   const apptFrom = new Date(fromInstant.getTime() - 86400000).toISOString();
   const apptTo = new Date(toInstant.getTime() + 86400000).toISOString();

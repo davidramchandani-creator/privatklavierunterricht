@@ -744,7 +744,12 @@ export async function acceptReschedule(rescheduleId: string) {
     newStart,
     slotEnd,
     now,
-    { skipLeadTime: true, excludeAppointmentId: rr.appointment_id }
+    // Der Termin wird gleich verschoben: Kalender zwingend frisch holen.
+    {
+      skipLeadTime: true,
+      excludeAppointmentId: rr.appointment_id,
+      kalenderJetzt: true,
+    }
   );
   const validation = validateSeries(newStart, 1, 7, ctx);
   if (!validation.ok) {

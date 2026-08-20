@@ -210,7 +210,8 @@ export async function beantworteVorrueck(
     neuerStart,
     slotEnde,
     jetzt,
-    { excludeAppointmentId: angebot.appointment_id }
+    // Der Termin wird gleich verschoben: Kalender zwingend frisch holen.
+    { excludeAppointmentId: angebot.appointment_id, kalenderJetzt: true }
   );
   const pruefung = validateSeries(neuerStart, 1, 7, ctx);
   if (!pruefung.ok) {
