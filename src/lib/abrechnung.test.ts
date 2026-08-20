@@ -179,6 +179,31 @@ describe("Verdrahtung", () => {
     expect(server).toContain("monatsabschluss");
   });
 
+  it("frischt die Abrechnung auf, wenn eine Zahlung bestätigt wird", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const actions = readFileSync(
+      join(process.cwd(), "src", "app", "admin", "actions.ts"),
+      "utf8"
+    );
+
+    // Jede Stelle, die `paid_at` setzt, verändert die Abrechnung — und muss
+    // ihre Seite darum ungültig machen. Fehlt das, zeigt die Abrechnung
+    // eine gerade bestätigte Zahlung nicht, und man sucht den Fehler in der
+    // Berechnung statt im Zwischenspeicher. Genau das ist einmal passiert.
+    const stellen = [...actions.matchAll(/paid_at: new Date\(\)/g)];
+    expect(stellen.length).toBeGreaterThan(0);
+
+    for (const treffer of stellen) {
+      // Bis zum Ende der umgebenden Funktion schauen: die schliessende
+      // Klammer am Zeilenanfang.
+      const ab = treffer.index ?? 0;
+      const ende = actions.indexOf("\n}", ab);
+      const rumpf = actions.slice(ab, ende);
+      expect(rumpf).toContain('revalidatePath("/admin/abrechnung")');
+    }
+  });
+
   it("zählt bei Externen nur, was schon stattgefunden hat", async () => {
     const { readFileSync } = await import("node:fs");
     const { join } = await import("node:path");

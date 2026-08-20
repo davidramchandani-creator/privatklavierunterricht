@@ -392,6 +392,11 @@ export async function updateInvoiceStatus(
 
   revalidatePath("/admin/zahlungen");
   revalidatePath("/admin");
+  // Die Abrechnung zählt nach Zahlungseingang — sie ist nach genau dieser
+  // Aktion veraltet. Ohne diese Zeile zeigt sie eine gerade bestätigte
+  // Zahlung nicht an, und man sucht den Fehler in der Rechnung statt im
+  // Zwischenspeicher.
+  revalidatePath("/admin/abrechnung");
   return { success: true, error: undefined };
 }
 
@@ -2626,6 +2631,10 @@ export async function confirmInvoicePayment(invoiceId: string) {
   }
 
   revalidatePath("/admin/zahlungen");
+  // Setzt `paid_at` — und genau danach rechnet die Abrechnung. Ohne diese
+  // Zeile fehlt eine gerade bestätigte Zahlung dort, bis irgendetwas
+  // anderes die Seite auffrischt.
+  revalidatePath("/admin/abrechnung");
   return { success: true, error: undefined };
 }
 
