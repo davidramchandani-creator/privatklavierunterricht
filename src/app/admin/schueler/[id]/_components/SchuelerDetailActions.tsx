@@ -28,6 +28,7 @@ import {
   fixplaetzeFuerSchueler,
 } from "../../../actions";
 import { Button } from "@/components/ui/button";
+import GuenstigeSlots from "./GuenstigeSlots";
 import { Input } from "@/components/ui/input";
 import { formatCHF } from "@/lib/utils";
 
@@ -1287,6 +1288,9 @@ function DirektBuchung({
   return (
     <form onSubmit={handleSubmit} className="border border-gray-200 rounded-xl p-4 space-y-3 mb-4">
       <h3 className="text-sm font-600 text-gray-900">Direkt buchen</h3>
+      {/* Nicht ins Blaue tippen: Die Engine kennt die freien Slots und die
+          Route kennt ihre Kosten. Ein Klick übernimmt die Zeit ins Feld. */}
+      <GuenstigeSlots studentUserId={student_user_id} onPick={setStart} />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="space-y-1">
           <label className="text-xs font-500 text-gray-600">Start</label>
@@ -1398,6 +1402,7 @@ function ProposalForm({
         Der Schüler erhält eine E-Mail und bestätigt oder lehnt im Portal ab.
         Erst bei Annahme werden die Termine gebucht.
       </p>
+      <GuenstigeSlots studentUserId={student_user_id} onPick={setStart} />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="space-y-1">
           <label className="text-xs font-500 text-gray-600">Start</label>

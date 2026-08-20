@@ -618,6 +618,40 @@ betrifft dich erst ab zehn Lektionen an einem Abend.
 
 ---
 
+## 9g. Drei Werkzeuge gegen verschenkte Zeit
+
+**Optimierungs-Vorschläge im Routenplaner.** Unter dem Tagesvergleich steht
+neu „Was sich an deiner Verfügbarkeit lohnen würde": durchgerechnete
+Änderungen an deinen Fenstern — vorne oder hinten verlängern, einen Tag
+streichen (auch kombiniert mit „dafür woanders länger"), einen neuen Tag
+öffnen. Jeder Vorschlag zeigt vorher/nachher: wie viele Schüler
+untergebracht sind, wie viel Fahrt es kostet, wie viele Tage es braucht.
+Fällt heute jemand aus dem Plan, steht dort, welche Änderung ihn
+hineinholen würde. Nichts wird automatisch übernommen — ändern tust du es
+selbst unter Verfügbarkeit. Vorschläge, die einen heute eingeplanten
+Schüler hinauswerfen würden, erscheinen gar nicht erst.
+
+**Vorrück-Angebot nach einer Absage.** Sagt jemand ab (egal ob Schüler oder
+du), fragt das System den nächsten Schüler desselben Tages per Mail und
+Portal-Banner, ob er in die Lücke vorrücken mag. Annehmen verschiebt den
+Termin sofort (Kalender, Erinnerungen und deine Info-Mail inklusive);
+ablehnen oder schweigen lässt alles wie es war — die Mail sagt das
+ausdrücklich. Nicht gefragt wird bei weniger als 24 Stunden Vorlauf, bei
+Externen und bei Inaktiven. Beim Annehmen wird der Slot noch einmal
+geprüft: Hat ihn inzwischen die Ausfall-Kaskade des Absagenden belegt,
+verfällt das Angebot, und der alte Termin bleibt.
+
+**Günstige statt nur freie Termine.** Bei Direktbuchung und
+Terminvorschlag im Schülerdetail gibt es „Günstige Zeiten anzeigen": die
+freien Slots der Woche, sortiert nach dem, was sie dich an Fahrt kosten.
+„Günstig" grenzt direkt an eine bestehende Lektion (steht dabei, an
+welche), „ok" liegt am selben Tag mit Lücke, „eigener Weg" wäre der
+einzige Termin des Tages. Ein Klick übernimmt die Zeit ins Formular;
+gebucht wird über den normalen Weg mit allen Prüfungen. Ohne aufgelöste
+Adresse des Schülers zählt nur die Lage im Tag, das sagt dir ein Hinweis.
+
+---
+
 ## 9d. Paket statt Abo
 
 Das Abo ist der Regelfall, aber nicht jeder passt hinein. Wer nur ein paar

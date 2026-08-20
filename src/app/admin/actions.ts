@@ -6,11 +6,18 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   DEFAULT_BUFFER_MIN,
   LESSON_DURATION_MIN,
+  addDaysCal,
   generateSeriesStarts,
   slotsFromStarts,
+  utcToZonedDate,
   validateSeries,
+  weekdayOf,
+  zonedToUtc,
+  type CalDate,
 } from "@/lib/booking";
 import { loadAvailabilityContext } from "@/lib/booking-server";
+import { DEFAULT_BLOCK_SETTINGS, gapAwareSlots } from "@/lib/booking-gap";
+import { bewerteSlots, type BewerteterSlot } from "@/lib/slot-bewertung";
 import { enqueueEmail, sendEmailNow } from "@/lib/emails-outbox";
 import {
   createInstalmentSchedule,
@@ -54,7 +61,7 @@ import {
   naechsterPeriodenstart,
   type AboVorschau,
 } from "@/lib/abo-server";
-import { ladeFenster } from "@/lib/routing-server";
+import { ladeFenster, ladeZuhause } from "@/lib/routing-server";
 import { bookSeriesForStudent } from "@/lib/series-booking";
 import {
   type Package as Paket,
@@ -3840,4 +3847,107 @@ export async function startpunktSetzen(
   revalidatePath("/admin/verfuegbarkeit");
   revalidatePath("/admin/routenplanung");
   return { success: true, error: undefined, adresse: sauber };
+}
+
+// ── Günstige freie Termine ──────────────────────────────────
+
+/**
+ * Freie Slots einer Woche für einen Schüler, bewertet nach Routenkosten.
+ *
+ * „Frei" allein sagt nichts: Ein Slot direkt nach einer bestehenden Lektion
+ * im Nachbardorf kostet fast nichts, derselbe freie Slot an einem leeren
+ * Tag einen ganzen Hin- und Rückweg. Diese Action liefert die Slots aus
+ * derselben Buchungs-Engine wie überall, aber sortiert nach dem, was sie
+ * David tatsächlich kosten — für Direktbuchung und Terminvorschlag.
+ */
+export async function guenstigeSlots(
+  studentUserId: string,
+  weekOffset: number
+): Promise<{ slots: BewerteterSlot[]; hinweis: string | null } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+
+  const { data: profil } = await admin
+    .from("profiles")
+    .select("buffer_time_minutes, lat, lng, ist_test")
+    .eq("id", studentUserId)
+    .maybeSingle();
+  if (!profil) return { error: "Schüler nicht gefunden." };
+  const bufferMin = profil.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
+
+  const now = new Date();
+  const todayCal = utcToZonedDate(now);
+  const w = weekdayOf(todayCal);
+  const mondayOffset = w === 0 ? -6 : 1 - w;
+  const fromCal: CalDate = addDaysCal(todayCal, mondayOffset + weekOffset * 7);
+  const fromInstant = zonedToUtc(fromCal.y, fromCal.m, fromCal.d, 0, 0);
+  const toInstant = new Date(fromInstant.getTime() + 7 * 86400000);
+
+  const ctx = await loadAvailabilityContext(
+    admin,
+    studentUserId,
+    bufferMin,
+    fromInstant,
+    toInstant,
+    now
+  );
+  const settings =
+    (ctx as { blockSettings?: typeof DEFAULT_BLOCK_SETTINGS }).blockSettings ??
+    DEFAULT_BLOCK_SETTINGS;
+  const frei = gapAwareSlots(fromCal, 7, ctx, settings).map((s) => ({
+    beginn: s.start.toISOString(),
+    ende: s.end.toISOString(),
+  }));
+
+  // Gebuchte Termine der Woche mit Koordinaten, für die Routenkosten. Im
+  // selben Kreis wie der Schüler: Testschüler-Termine dürfen echte
+  // Bewertungen nicht verzerren und umgekehrt.
+  const { data: termine } = await admin
+    .from("appointments")
+    .select("start_at, end_at, student_id, profiles!inner(vorname, lat, lng, ist_test)")
+    .eq("status", "booked")
+    .eq("profiles.ist_test", profil.ist_test === true)
+    .gte("start_at", fromInstant.toISOString())
+    .lt("start_at", toInstant.toISOString());
+
+  type TerminRow = {
+    start_at: string;
+    end_at: string;
+    student_id: string;
+    profiles: { vorname: string | null; lat: number | null; lng: number | null };
+  };
+  const nachbarn = ((termine ?? []) as unknown as TerminRow[])
+    .filter(
+      (t) =>
+        t.student_id !== studentUserId &&
+        Number.isFinite(Number(t.profiles?.lat)) &&
+        Number.isFinite(Number(t.profiles?.lng))
+    )
+    .map((t) => ({
+      start_at: t.start_at,
+      end_at: t.end_at,
+      lat: Number(t.profiles.lat),
+      lng: Number(t.profiles.lng),
+      name: t.profiles.vorname ?? "einer Lektion",
+    }));
+
+  const zuhause = await ladeZuhause(admin);
+  const schueler =
+    Number.isFinite(Number(profil.lat)) && Number.isFinite(Number(profil.lng))
+      ? { lat: Number(profil.lat), lng: Number(profil.lng) }
+      : null;
+
+  return {
+    slots: bewerteSlots({
+      slots: frei,
+      termine: nachbarn,
+      schueler,
+      zuhause: { lat: zuhause.lat, lng: zuhause.lng },
+    }),
+    hinweis: schueler
+      ? null
+      : "Ohne aufgelöste Adresse des Schülers zählt nur die Lage im Tagesablauf, nicht die Fahrzeit.",
+  };
 }
