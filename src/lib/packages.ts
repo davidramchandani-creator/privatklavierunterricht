@@ -33,6 +33,8 @@ export type Package = {
   periode_ende?: string | null;
   rhythmus?: string | null;
   booking_mode?: string | null;
+  /** einmalig, raten oder pro_lektion. Bestimmt die Zahlungsweise-Anzeige. */
+  billing_mode?: string | null;
   auto_renew?: boolean | null;
   fixplatz_weekday?: number | null;
   fixplatz_time?: string | null;

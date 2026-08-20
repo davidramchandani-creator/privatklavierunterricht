@@ -6,7 +6,6 @@ import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
 import {
   computePackageState,
   canCancelPackage,
-  istAbo,
   paketBezeichnung,
   type Package,
 } from "@/lib/packages";
@@ -260,22 +259,21 @@ export default async function SchuelerDetailPage({
               {sichtbarePakete.map((pkg) => {
                 const usedCount = lessonsUsedByPackage.get(pkg.id) ?? pkg.lessons_used ?? 0;
                 const state = computePackageState(pkg, usedCount);
-                // Halbjahr/Jahr, Rhythmus und Fix/Flex stehen sonst nirgends im
-                // Admin, ohne diese Zeile sieht ein Abo aus wie jedes andere
-                // Paket, und man weiss nicht, was man vor sich hat.
+                // Die Bezeichnung steht in der Überschrift (paketBezeichnung).
+                // Hier bleibt, was sie nicht hergibt: wie bezahlt wird und in
+                // welchem Takt.
                 //
-                // Abo und Paket haben denselben Typ in der Datenbank (10er
-                // bzw. 20er), erst abo_variante unterscheidet sie. Ohne
-                // diese Zeile sähe ein Jahresabo genau aus wie ein
-                // 20er-Paket, obwohl das eine über Monatsraten läuft und
-                // sich verlängert und das andere einmal bezahlt wird und
-                // endet.
-                // Die Bezeichnung steht neu in der Überschrift (siehe
-                // paketBezeichnung). Hier bleibt nur, was sie nicht hergibt:
-                // wie bezahlt wird und in welchem Takt.
-                const varianteText = istAbo(pkg)
-                  ? "Monatsraten"
-                  : "einmalig bezahlt";
+                // Die Zahlungsweise kommt aus billing_mode, nicht aus einer
+                // Abo-oder-nicht-Raterei. „Abo = Raten, Paket = einmalig" war
+                // die alte Abkürzung, und sie war falsch: Ein Paket kann auch
+                // pro Lektion abgerechnet werden, und genau dort stand dann
+                // „einmalig bezahlt", obwohl nie ein Gesamtbetrag floss.
+                const varianteText =
+                  pkg.billing_mode === "raten"
+                    ? "Monatsraten"
+                    : pkg.billing_mode === "pro_lektion"
+                      ? "pro Lektion abgerechnet"
+                      : "einmalig bezahlt";
                 const rhythmusText =
                   pkg.rhythmus === "zweiwoechentlich"
                     ? "alle zwei Wochen"
