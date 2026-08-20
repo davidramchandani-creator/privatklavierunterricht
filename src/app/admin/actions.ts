@@ -1839,6 +1839,102 @@ export async function markAppointmentNoShow(id: string, schuelerId: string) {
   return { success: true, error: undefined };
 }
 
+/**
+ * Termin direkt verschieben (Admin).
+ *
+ * Der dritte Verschiebeweg neben Schüler-Anfrage und Vorrück-Angebot: David
+ * hat mit dem Schüler telefoniert und will den Termin einfach umhängen,
+ * ohne Anfrage-Pingpong. Der neue Slot wird gegen die volle Engine geprüft
+ * (Kollisionen, Fenster, Sperren, frischer Apple-Kalender); die
+ * 24h-Vorlaufregel ist übersprungen, denn hier sitzt ein Mensch, der die
+ * Absprache gerade selbst getroffen hat.
+ */
+export async function moveAppointment(
+  id: string,
+  schuelerId: string,
+  newStartIso: string
+) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const newStart = new Date(newStartIso);
+  if (Number.isNaN(newStart.getTime())) {
+    return { error: "Ungültiger Zeitpunkt." };
+  }
+  if (newStart <= new Date()) {
+    return { error: "Der neue Zeitpunkt liegt in der Vergangenheit." };
+  }
+
+  const admin = await createAdminClient();
+
+  const { data: appt } = await admin
+    .from("appointments")
+    .select("id, status, start_at, student_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!appt) return { error: "Termin nicht gefunden." };
+  if (appt.status !== "booked") {
+    return { error: "Nur gebuchte Termine lassen sich verschieben." };
+  }
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("buffer_time_minutes, extern")
+    .eq("id", appt.student_id)
+    .maybeSingle();
+  const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
+
+  const now = new Date();
+  const slotEnd = new Date(newStart.getTime() + LESSON_DURATION_MIN * 60000);
+  const ctx = await loadAvailabilityContext(
+    admin,
+    appt.student_id,
+    bufferMin,
+    newStart,
+    slotEnd,
+    now,
+    { skipLeadTime: true, excludeAppointmentId: id, kalenderJetzt: true }
+  );
+  const validation = validateSeries(newStart, 1, 7, ctx);
+  if (!validation.ok) {
+    return {
+      error:
+        "Dieser Zeitpunkt ist nicht frei (Kollision, Sperre oder ausserhalb der Fenster).",
+    };
+  }
+
+  const newEnd = slotsFromStarts([newStart])[0].end;
+  const { error: updateError } = await admin
+    .from("appointments")
+    .update({
+      start_at: newStart.toISOString(),
+      end_at: newEnd.toISOString(),
+    })
+    .eq("id", id);
+  if (updateError) return { error: "Der Termin liess sich nicht verschieben." };
+
+  await syncAppointmentToCalendar(admin, id);
+  await cancelLessonReminders(admin, id);
+  await scheduleLessonReminders(admin, {
+    id,
+    student_id: appt.student_id,
+    start_at: newStart.toISOString(),
+  });
+
+  // Der Schüler muss es erfahren — ausser er ist extern, dann fängt die
+  // zentrale Sperre in dispatchEmail die Mail ohnehin ab.
+  await sendEmailNow(admin, "reschedule_confirmed", {
+    student_id: appt.student_id,
+    original_start: appt.start_at,
+    proposed_start: newStart.toISOString(),
+  });
+
+  revalidatePath(`/admin/schueler/${schuelerId}`);
+  revalidatePath("/admin/kalender");
+  revalidatePath("/admin");
+  return { success: true, error: undefined };
+}
+
 /** Termin stornieren (neues Schema). Gibt die Lektion wieder frei. */
 export async function cancelAppointmentNew(id: string, schuelerId: string) {
   const verboten = await assertAdmin();

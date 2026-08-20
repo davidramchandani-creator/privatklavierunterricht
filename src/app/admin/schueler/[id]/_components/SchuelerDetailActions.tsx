@@ -19,6 +19,7 @@ import {
   withdrawProposal,
   markAppointmentNoShow,
   cancelAppointmentNew,
+  moveAppointment,
   pausePackage,
   resumePackage,
   extendPackage,
@@ -58,6 +59,7 @@ import {
   Trash2,
   UserX,
   XCircle,
+  CalendarClock,
 } from "lucide-react";
 
 type Profile = {
@@ -1490,11 +1492,101 @@ function AppointmentActions({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [verschiebenOffen, setVerschiebenOffen] = useState(false);
+  const [neuerStart, setNeuerStart] = useState("");
+  const [fehler, setFehler] = useState<string | null>(null);
 
   if (status === "cancelled" || status === "completed" || status === "no_show") return null;
 
+  function verschieben() {
+    if (!neuerStart) {
+      setFehler("Bitte Datum und Zeit wählen.");
+      return;
+    }
+    setFehler(null);
+    startTransition(async () => {
+      const res = await moveAppointment(
+        appointmentId,
+        schuelerId,
+        new Date(neuerStart).toISOString()
+      );
+      if (res && "error" in res && res.error) {
+        setFehler(res.error);
+        return;
+      }
+      setVerschiebenOffen(false);
+      setNeuerStart("");
+      router.refresh();
+    });
+  }
+
   return (
     <div className="flex gap-1.5">
+      <button
+        disabled={isPending}
+        onClick={() => setVerschiebenOffen(true)}
+        className="p-1.5 rounded-lg hover:bg-[#1C244B]/5 text-gray-400 hover:text-[#1C244B] transition-colors"
+        title="Verschieben"
+      >
+        <CalendarClock className="w-3.5 h-3.5" />
+      </button>
+
+      {/* Als Overlay statt in der Tabellenzeile: Das Formular braucht
+          Platz für die günstigen Zeiten, und eine aufklappende Zeile würde
+          die ganze Tabelle zerreissen. */}
+      {verschiebenOffen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4"
+          onClick={() => setVerschiebenOffen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-3 max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-600 text-gray-900">Termin verschieben</h3>
+            <p className="text-xs text-gray-500 leading-snug">
+              Der Schüler bekommt eine Mail mit dem neuen Termin. Geprüft wird
+              wie bei jeder Buchung — auch gegen deinen Apple-Kalender.
+            </p>
+            <GuenstigeSlots
+              studentUserId={schuelerId}
+              onPick={setNeuerStart}
+            />
+            <div className="space-y-1">
+              <label className="text-xs font-500 text-gray-600">
+                Neuer Zeitpunkt
+              </label>
+              <Input
+                type="datetime-local"
+                value={neuerStart}
+                onChange={(e) => setNeuerStart(e.target.value)}
+              />
+            </div>
+            {fehler && (
+              <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
+                {fehler}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <Button size="sm" onClick={verschieben} disabled={isPending}>
+                {isPending ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  "Verschieben"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setVerschiebenOffen(false)}
+              >
+                Abbrechen
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <button
         disabled={isPending}
         onClick={() => {
