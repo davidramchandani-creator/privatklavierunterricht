@@ -152,7 +152,11 @@ export default async function AdminSchuelerPage() {
                   return (
                     <tr key={s.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-5 py-3.5">
+                        {/* Ohne prefetch={false} rendert Next beim blossen
+                            Anzeigen der Liste bis zu acht Detailseiten im
+                            Hintergrund vor — jede mit eigenen Abfragen. */}
                         <Link
+                          prefetch={false}
                           href={`/admin/schueler/${s.id}`}
                           className="font-600 text-gray-900 hover:text-[#1C244B] transition-colors text-sm"
                         >

@@ -21,6 +21,7 @@ import AdminPageTransition from "./_components/AdminPageTransition";
 import PullToRefresh from "@/components/PullToRefresh";
 import RealtimeRefresh from "@/components/RealtimeRefresh";
 import SystemBanner from "./_components/SystemBanner";
+import { Suspense } from "react";
 
 export default async function AdminLayout({
   children,
@@ -47,7 +48,12 @@ export default async function AdminLayout({
     <PwaInit />
     <RealtimeRefresh />
     <div className="min-h-screen bg-gray-50 flex flex-col">
-    <SystemBanner />
+    {/* Der Banner macht zwei Zählabfragen. Ohne Suspense wartet jede
+        Admin-Seite darauf, obwohl er nur ein Hinweisstreifen ganz oben
+        ist — und meistens gar nichts anzuzeigen hat. */}
+    <Suspense fallback={null}>
+      <SystemBanner />
+    </Suspense>
     <div className="flex-1 flex">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-60 bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-30">

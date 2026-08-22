@@ -6,18 +6,26 @@ export async function middleware(request: NextRequest) {
 }
 
 /**
- * Statische Dateien laufen gar nicht erst durch die Middleware.
+ * Nur geschützte Bereiche laufen durch die Middleware.
  *
- * Nicht nur der Ordnung halber: Die Middleware fragt bei jedem Durchlauf die
- * Supabase-Sitzung ab. Beim Vorspulen in einem Video schickt der Browser
- * Dutzende Teilanfragen, das wären Dutzende Auth-Abfragen für eine einzige
- * Aufnahme, die ohnehin öffentlich ist.
+ * Die Middleware fragt bei jedem Durchlauf die Supabase-Sitzung ab — ein
+ * Netzwerk-Roundtrip vor dem ersten Byte. Für die Startseite, die Preise
+ * oder die AGB ist das reine Wartezeit: Dort gibt es nichts zu schützen.
  *
- * Die Liste deckt ab, was tatsächlich unter public/ liegt. Kommt ein neues
- * Format dazu, gehört es hier ergänzt.
+ * Vorher war es umgekehrt gelöst — alles lief durch, ausgenommen eine lange
+ * Liste von Dateiendungen. Das war fehleranfällig (jedes neue Format musste
+ * nachgetragen werden, sonst wurde ein Video auf die Loginseite umgeleitet)
+ * und langsam, weil jede öffentliche Seite den Auth-Roundtrip zahlte.
+ *
+ * Jetzt zählt die Liste auf, was tatsächlich eine Anmeldung braucht. Kommt
+ * ein neuer geschützter Bereich dazu, gehört er hier ergänzt — das ist die
+ * Kehrseite und der Grund für den Test in pfad.test.ts.
  */
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|mp4|webm|mov|mp3|m4a|ogg|wav|pdf|woff|woff2|ttf|txt|xml|webmanifest)$).*)",
+    "/admin/:path*",
+    "/schueler/:path*",
+    "/auth/login",
+    "/benachrichtigungen",
   ],
 };

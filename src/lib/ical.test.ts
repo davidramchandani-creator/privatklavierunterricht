@@ -375,10 +375,21 @@ describe("Verdrahtung", () => {
 /**
  * Ein täglicher Abgleich genügt nicht: Wer morgens einen Termin einträgt,
  * erwartet, dass nachmittags niemand mehr auf diese Zeit gebucht werden
- * kann. Apple bietet kein Push, also wird vor jeder Berechnung geholt —
- * kurz gepuffert, damit eine Serienprüfung nicht zehn Abrufe auslöst.
+ * kann. Apple bietet kein Push, es muss also geholt werden.
+ *
+ * Seit dem Performance-Audit aber nicht mehr überall gleich. Der Abruf
+ * hing im Ladepfad jeder Seite, die freie Zeiten zeigt — bei wenig Verkehr
+ * praktisch bei jedem Aufruf, mit bis zu sechs Sekunden vor dem ersten
+ * Byte. Jetzt:
+ *
+ *   Buchen     → wird gewartet. Hier entsteht der Schaden.
+ *   Anschauen  → nach der Antwort nachladen, der nächste Aufruf ist frisch.
+ *
+ * Die Trennung ist der Kern und darum hier festgenagelt: Wer sie
+ * versehentlich aufhebt, macht entweder die Startseite wieder langsam
+ * oder das Buchen unsicher.
  */
-describe("Frisch genug beim Buchen", () => {
+describe("Frisch genug beim Buchen, schnell genug beim Anschauen", () => {
   const server = readFileSync(
     join(process.cwd(), "src", "lib", "apple-kalender.ts"),
     "utf8"
@@ -387,20 +398,46 @@ describe("Frisch genug beim Buchen", () => {
     join(process.cwd(), "src", "lib", "booking-server.ts"),
     "utf8"
   );
+  const fn = booking.slice(
+    booking.indexOf("export async function loadAvailabilityContext")
+  );
 
-  it("holt vor jeder Verfügbarkeitsberechnung", () => {
+  it("wartet beim echten Buchen auf den Abruf", () => {
     // Die eine Stelle, durch die alle Buchungswege laufen. In die einzelnen
     // Aufrufer eingebaut wäre es ein Dutzend Stellen, und die eine
     // vergessene wäre die, die jemanden auf einen privaten Eintrag setzt.
-    const fn = booking.slice(
-      booking.indexOf("export async function loadAvailabilityContext")
-    );
-    const abruf = fn.indexOf("stelleAppleKalenderSicher");
+    expect(fn).toContain("await stelleAppleKalenderSicher(admin, SOFORT)");
+    // Und zwar bevor die Sperrzeiten gelesen werden, sonst wirkt es erst
+    // beim nächsten Mal.
+    const abruf = fn.indexOf("await stelleAppleKalenderSicher");
     const abfrage = fn.indexOf('.from("time_blocks")');
     expect(abruf).toBeGreaterThan(-1);
-    // Muss vor dem Lesen der Sperrzeiten stehen, sonst wirkt es erst beim
-    // nächsten Mal.
     expect(abruf).toBeLessThan(abfrage);
+  });
+
+  it("blockiert den Lesepfad nicht", () => {
+    // Der Abruf im Nicht-Buchen-Zweig darf nicht erwartet werden.
+    const leseZweig = fn.slice(fn.indexOf("} else if"), fn.indexOf('.from("time_blocks")'));
+    expect(leseZweig).toContain("after(");
+    expect(leseZweig).not.toContain("await stelleAppleKalenderSicher");
+  });
+
+  it("prüft die Frische, ohne dafür abzurufen", () => {
+    // Sonst wäre nichts gewonnen: Die Prüfung selbst dürfte nicht schon
+    // den langsamen Weg gehen.
+    expect(server).toContain("export async function appleKalenderVeraltet");
+    const pruef = server.slice(
+      server.indexOf("export async function appleKalenderVeraltet"),
+      server.indexOf("export async function stelleAppleKalenderSicher")
+    );
+    expect(pruef).not.toContain("gleicheAppleKalenderAb");
+  });
+
+  it("lässt einen fehlenden Request-Kontext nicht durchschlagen", () => {
+    // `after` wirft ausserhalb einer Anfrage (Cron, Skript). Das darf die
+    // Slot-Berechnung nicht mitreissen.
+    const leseZweig = fn.slice(fn.indexOf("} else if"), fn.indexOf('.from("time_blocks")'));
+    expect(leseZweig).toContain("catch");
   });
 
   it("bündelt gleichzeitige Abrufe", () => {
