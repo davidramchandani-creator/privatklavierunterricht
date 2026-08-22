@@ -1,15 +1,19 @@
 // ============================================================
 // Monatsabrechnung: Daten holen
 //
-// Einnahmen kommen aus zwei Quellen, die bewusst getrennt bleiben:
+// Einnahmen kommen aus drei Quellen:
 //   1. Bezahlte Rechnungen — echte Zahlungen mit Datum
-//   2. Externe Schüler — hochgerechnet aus gehaltenen Lektionen mal
-//      hinterlegtem Ertrag, weil diese Zahlungen über die Plattform laufen
-//      und hier nie auftauchen
+//   2. Bestätigte externe Zahlungen — David hat den Eingang von der
+//      Plattform selbst erfasst, ebenso belegt wie eine Rechnung
+//   3. Noch nicht bestätigte externe Lektionen — hochgerechnet aus
+//      gehaltenen Lektionen mal hinterlegtem Ertrag
 //
-// Die zweite Zahl ist eine Schätzung und wird auch so ausgewiesen. Sie
-// einfach in die Summe zu werfen wäre bequem und falsch: David muss beim
+// Die dritte Zahl ist eine Schätzung, bleibt getrennt und geht nicht ins
+// Total. Sie einfach mitzuaddieren wäre bequem und falsch: David muss beim
 // Ausfüllen der Steuererklärung wissen, welche Zahl belegt ist.
+//
+// Testschüler bleiben überall draussen. Ein Probelauf darf die Zahlen für
+// die Steuererklärung nicht anfassen.
 // ============================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -39,30 +43,50 @@ export async function ladeAbrechnung(
 ): Promise<Monatsabrechnung> {
   const { von, bis } = monatsGrenzen(monat);
 
-  const [{ data: rechnungen }, { data: ausgabenRows }, { data: externeTermine }] =
-    await Promise.all([
-      admin
-        .from("invoices")
-        .select("amount, paid_at, invoice_number, description, profiles(vorname, nachname)")
-        .not("paid_at", "is", null)
-        .gte("paid_at", von.toISOString())
-        .lt("paid_at", bis.toISOString()),
-      admin
-        .from("betriebsausgaben")
-        .select("id, datum, kategorie, betrag, notiz")
-        .gte("datum", von.toISOString().slice(0, 10))
-        .lte("datum", bis.toISOString().slice(0, 10)),
-      // Gehaltene Lektionen externer Schüler. `booked` zählt mit, sobald
-      // der Termin vorbei ist — bei Externen wird selten nachgepflegt, und
-      // eine gehaltene Lektion ist auch ohne Statuswechsel Einkommen.
-      admin
-        .from("appointments")
-        .select("start_at, status, profiles!inner(vorname, nachname, extern, plattform, externer_ertrag)")
-        .eq("profiles.extern", true)
-        .in("status", ["booked", "completed"])
-        .gte("start_at", von.toISOString())
-        .lt("start_at", bis.toISOString()),
-    ]);
+  const [
+    { data: rechnungen },
+    { data: ausgabenRows },
+    { data: externeTermine },
+    { data: externeZahlungen },
+  ] = await Promise.all([
+    admin
+      .from("invoices")
+      .select(
+        "amount, paid_at, invoice_number, description, profiles!inner(vorname, nachname, ist_test)"
+      )
+      .not("paid_at", "is", null)
+      .eq("profiles.ist_test", false)
+      .gte("paid_at", von.toISOString())
+      .lt("paid_at", bis.toISOString()),
+    admin
+      .from("betriebsausgaben")
+      .select("id, datum, kategorie, betrag, notiz")
+      .gte("datum", von.toISOString().slice(0, 10))
+      .lte("datum", bis.toISOString().slice(0, 10)),
+    // Gehaltene Lektionen externer Schüler. `booked` zählt mit, sobald
+    // der Termin vorbei ist — bei Externen wird selten nachgepflegt, und
+    // eine gehaltene Lektion ist auch ohne Statuswechsel Einkommen.
+    admin
+      .from("appointments")
+      .select(
+        "id, start_at, status, profiles!inner(vorname, nachname, extern, ist_test, plattform, externer_ertrag)"
+      )
+      .eq("profiles.extern", true)
+      .eq("profiles.ist_test", false)
+      .in("status", ["booked", "completed"])
+      .gte("start_at", von.toISOString())
+      .lt("start_at", bis.toISOString()),
+    // Bestätigte Eingänge. Nach Zahlungsdatum gefiltert wie die
+    // Rechnungen — die Lektion kann in einem anderen Monat liegen.
+    admin
+      .from("externe_zahlungen")
+      .select(
+        "appointment_id, betrag, bezahlt_am, profiles!inner(vorname, nachname, plattform, ist_test)"
+      )
+      .eq("profiles.ist_test", false)
+      .gte("bezahlt_am", von.toISOString())
+      .lt("bezahlt_am", bis.toISOString()),
+  ]);
 
   type RechnungRow = {
     amount: number | string;
@@ -72,6 +96,7 @@ export async function ladeAbrechnung(
     profiles?: { vorname?: string | null; nachname?: string | null } | null;
   };
   type ExternRow = {
+    id: string;
     start_at: string;
     profiles: {
       vorname?: string | null;
@@ -80,21 +105,49 @@ export async function ladeAbrechnung(
       externer_ertrag?: number | string | null;
     };
   };
+  type ZahlungRow = {
+    appointment_id: string;
+    betrag: number | string;
+    bezahlt_am: string;
+    profiles?: {
+      vorname?: string | null;
+      nachname?: string | null;
+      plattform?: string | null;
+    } | null;
+  };
 
   const jetzt = new Date();
+  const zahlungen = (externeZahlungen ?? []) as unknown as ZahlungRow[];
+  // Welche Lektionen bereits bestätigt sind. Ohne diese Sperre stünde eine
+  // bestätigte Lektion zweimal da: einmal als echte Zahlung, einmal als
+  // Schätzung derselben Lektion.
+  const bestaetigt = new Set(zahlungen.map((z) => z.appointment_id));
 
   const einnahmen: Einnahme[] = [
     ...((rechnungen ?? []) as unknown as RechnungRow[]).map((r) => ({
       datum: r.paid_at,
       betrag: Number(r.amount ?? 0),
       quelle: "rechnung" as const,
+      belegt: true,
       bezeichnung:
         `${r.profiles?.vorname ?? ""} ${r.profiles?.nachname ?? ""}`.trim() ||
         r.description ||
         r.invoice_number ||
         "Rechnung",
     })),
+    ...zahlungen.map((z) => ({
+      // Nach Zahlungseingang, nicht nach Lektionsdatum — dieselbe Regel wie
+      // bei den Rechnungen.
+      datum: z.bezahlt_am,
+      betrag: Number(z.betrag ?? 0),
+      quelle: "extern" as const,
+      belegt: true,
+      bezeichnung:
+        `${z.profiles?.vorname ?? ""} ${z.profiles?.nachname ?? ""}`.trim() +
+        (z.profiles?.plattform ? ` (${z.profiles.plattform})` : ""),
+    })),
     ...((externeTermine ?? []) as unknown as ExternRow[])
+      .filter((t) => !bestaetigt.has(t.id))
       // Nur was schon stattgefunden hat. Ein Termin nächste Woche ist noch
       // kein Einkommen, auch wenn er im selben Monat liegt.
       .filter((t) => new Date(t.start_at) <= jetzt)
@@ -103,6 +156,7 @@ export async function ladeAbrechnung(
         datum: t.start_at,
         betrag: Number(t.profiles.externer_ertrag),
         quelle: "extern" as const,
+        belegt: false,
         bezeichnung: `${t.profiles.vorname ?? ""} ${t.profiles.nachname ?? ""}`.trim() +
           (t.profiles.plattform ? ` (${t.profiles.plattform})` : ""),
       })),

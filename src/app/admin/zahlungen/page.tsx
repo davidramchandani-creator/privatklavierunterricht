@@ -3,6 +3,8 @@ import PaymentsBoard from "./_components/PaymentsBoard";
 import RatenBoard, { type RatenZeile } from "./_components/RatenBoard";
 import ZahlungenTabs from "./_components/ZahlungenTabs";
 import LektionenBoard, { type OffeneLektion } from "./_components/LektionenBoard";
+import ExternBoard from "./_components/ExternBoard";
+import { ladeExterneLektionen } from "@/lib/externe-zahlungen";
 import { zahlungsartFuer } from "@/lib/zahlungsart";
 import type { Invoice } from "./_components/PaymentCard";
 import { buildPlanSummary, type InstalmentRow } from "@/lib/instalment-view";
@@ -179,13 +181,23 @@ export default async function ZahlungenPage() {
   }
   const anzahlGehalten = offeneLektionen.filter((l) => l.gehalten).length;
 
+  // Externe laufen bewusst an der Rechnungslogik vorbei: kein Paket, keine
+  // Rechnung, keine Mail. Sie fielen darum aus der Liste oben heraus und
+  // bekommen einen eigenen Reiter.
+  const externeLektionen = await ladeExterneLektionen(admin);
+  const externOffen = externeLektionen.filter(
+    (l) => l.gehalten && !l.bezahlt
+  ).length;
+
   return (
     <ZahlungenTabs
       ratenBadge={zuErledigen}
       lektionenBadge={anzahlGehalten}
+      externBadge={externOffen}
       lektionen={<LektionenBoard lektionen={offeneLektionen} />}
       rechnungen={<PaymentsBoard invoices={invoices} />}
       raten={<RatenBoard zeilen={zeilen} />}
+      extern={<ExternBoard lektionen={externeLektionen} />}
     />
   );
 }

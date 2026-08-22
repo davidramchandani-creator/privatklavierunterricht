@@ -3,6 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { ladeAbrechnung, ladeJahr } from "@/lib/abrechnung-server";
+import { ladePrognose } from "@/lib/prognose-server";
+import type { Monatsprognose } from "@/lib/prognose";
+import {
+  markiereExternBezahlt,
+  widerrufeExterneZahlung,
+} from "@/lib/externe-zahlungen";
 import {
   alsCsv,
   AUSGABE_KATEGORIEN,
@@ -29,12 +35,18 @@ async function assertAdmin(): Promise<{ error: string } | null> {
 
 export async function abrechnungHolen(
   monat: string
-): Promise<Monatsabrechnung | { error: string }> {
+): Promise<
+  { abrechnung: Monatsabrechnung; prognose: Monatsprognose } | { error: string }
+> {
   const verboten = await assertAdmin();
   if (verboten) return verboten;
 
   const admin = await createAdminClient();
-  return ladeAbrechnung(admin, monat);
+  const abrechnung = await ladeAbrechnung(admin, monat);
+  // Die Prognose baut auf der Abrechnung auf: Der belegte Topf ist genau
+  // deren Total, doppelt laden wäre unnötig.
+  const prognose = await ladePrognose(admin, monat, abrechnung);
+  return { abrechnung, prognose };
 }
 
 export async function ausgabeErfassen(formData: FormData): Promise<
@@ -115,6 +127,47 @@ export async function monatAbschliessen(
   if (error) return { error: "Der Status liess sich nicht speichern." };
 
   revalidatePath("/admin/abrechnung");
+  return { success: true, error: undefined };
+}
+
+/**
+ * Externe Lektion als bezahlt erfassen.
+ *
+ * Der Gegenpart zu „Zahlung bestätigen" bei den eigenen Rechnungen — nur
+ * ohne Rechnung und ohne Mail. Externe Schüler bekommen nie Post; hier
+ * wird nur festgehalten, was von der Plattform angekommen ist.
+ */
+export async function externBezahlt(
+  appointmentId: string,
+  betrag?: number
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+  const res = await markiereExternBezahlt(admin, { appointmentId, betrag });
+  if ("error" in res) return { error: res.error };
+
+  revalidatePath("/admin/zahlungen");
+  revalidatePath("/admin/abrechnung");
+  revalidatePath("/admin");
+  return { success: true, error: undefined };
+}
+
+/** Bestätigung zurücknehmen. */
+export async function externZahlungWiderrufen(
+  appointmentId: string
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+  const res = await widerrufeExterneZahlung(admin, appointmentId);
+  if ("error" in res) return { error: res.error };
+
+  revalidatePath("/admin/zahlungen");
+  revalidatePath("/admin/abrechnung");
+  revalidatePath("/admin");
   return { success: true, error: undefined };
 }
 

@@ -659,11 +659,37 @@ dem System, gezählt **nach Zahlungseingang** — so wie es auf dem Konto
 stand, nicht nach Lektionsdatum. Eine im Dezember gehaltene, im Januar
 bezahlte Lektion gehört ins neue Jahr.
 
-Einnahmen externer Schüler stehen **getrennt** und sind mit „gerechnet"
-markiert: Sie entstehen aus gehaltenen Lektionen mal hinterlegtem Ertrag,
-nicht aus echten Zahlungen — die kennt nur Matchspace. Gleich mit der
-Plattformabrechnung vergleichen, bevor die Zahl in die Steuererklärung
-geht.
+**Externe Schüler abhaken** (Zahlungen → Extern). Matchspace zahlt pro
+Lektion, und das System sieht davon nichts. Unter *Extern* stehen alle
+gehaltenen externen Lektionen mit dem hinterlegten Ertrag; ein Klick auf
+**Bezahlt** hält fest, dass das Geld da war. Es wird dabei keine Rechnung
+erstellt und keine Mail verschickt — externe Schüler bekommen aus diesem
+System grundsätzlich keine Post. Verklickt? Der Pfeil daneben nimmt es
+zurück.
+
+Was du abgehakt hast, zählt in der Abrechnung als **belegte** Einnahme, wie
+eine bezahlte Rechnung. Was noch offen ist, erscheint separat in Amber:
+„extern noch nicht bestätigt — nicht mitgezählt". Das ist Absicht. Diese
+Zahl ist aus Lektionen mal Ertrag geraten, und eine Schätzung hat in einer
+Steuererklärung nichts verloren. Im CSV steht sie ganz rechts in einer
+eigenen Spalte, in keiner Summe.
+
+**Voraussichtlich diesen Monat.** Der Balken unter den Kennzahlen zeigt, was
+der Monat noch bringt, in drei Teilen:
+
+- **Bezahlt** (grün) — Geld ist da. Nur diese Zahl geht in die Steuer.
+- **Gestellt** (dunkelblau) — Rechnung ist raus, Geld fehlt noch.
+- **Erwartet** (grau) — Lektion steht im Kalender oder eine Rate wird
+  fällig, eine Rechnung gibt es noch nicht.
+
+Wichtig für das Verständnis: „Erwartet" heisst **nicht** Lektionen mal
+Preis. Das gilt nur für Pakete, die *pro Lektion* abgerechnet werden. Ein
+einmalig bezahltes Paket taucht hier nie auf — sein Geld kam beim Kauf, und
+die Lektionen nochmals zu zählen hiesse, dasselbe Geld zweimal zu erwarten.
+Bei Abos und Ratenpaketen zählt die Monatsrate am Stichtag, nicht die
+einzelne Lektion.
+
+Testschüler bleiben aus Abrechnung und Prognose komplett draussen.
 
 Die Ausgaben trägst du selbst ein: Fahrtkosten, Verpflegung, Material,
 Weiterbildung, Sonstiges. **Fünf Tage vor Monatsende** kommt eine Mail und

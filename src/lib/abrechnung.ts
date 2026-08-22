@@ -41,6 +41,14 @@ export type Einnahme = {
   betrag: number;
   quelle: "rechnung" | "extern";
   bezeichnung: string;
+  /**
+   * Ist der Eingang bestätigt?
+   *
+   * Bei Rechnungen immer: sie stehen nur mit `paid_at` in dieser Liste. Bei
+   * externen Lektionen erst, wenn David die Zahlung erfasst hat — vorher
+   * ist der Betrag aus dem hinterlegten Ertrag hochgerechnet.
+   */
+  belegt: boolean;
 };
 
 export type Monatsabrechnung = {
@@ -48,12 +56,22 @@ export type Monatsabrechnung = {
   monat: string;
   einnahmenSystem: number;
   /**
-   * Was über andere Plattformen läuft. Aus gehaltenen Lektionen mal
-   * hinterlegtem Ertrag **hochgerechnet**, nicht aus echten Zahlungen —
-   * diese Beträge kennt nur die Plattform. Getrennt ausgewiesen, damit
-   * niemand eine Schätzung für eine Buchung hält.
+   * Bestätigte Einnahmen von externen Plattformen. Zählt voll mit: David
+   * hat den Eingang selbst erfasst, das ist so belegt wie eine bezahlte
+   * Rechnung.
    */
   einnahmenExtern: number;
+  /**
+   * Externe Lektionen, deren Zahlung noch nicht bestätigt ist —
+   * hochgerechnet aus Lektionen mal hinterlegtem Ertrag.
+   *
+   * **Nicht** im Total enthalten. Eine Schätzung gehört nicht in eine
+   * Steuererklärung, und sie hier stillschweigend mitzuaddieren wäre der
+   * bequemste Weg, genau das zu tun. Sichtbar bleibt sie trotzdem: Sie ist
+   * Davids Merkzettel, was er bei der Plattform noch abgleichen muss.
+   */
+  einnahmenGeschaetzt: number;
+  /** Belegte Einnahmen: System plus bestätigte externe. */
   einnahmenTotal: number;
   ausgabenNachKategorie: Record<AusgabeKategorie, number>;
   ausgabenTotal: number;
@@ -105,7 +123,12 @@ export function baueAbrechnung(params: {
   );
   const einnahmenExtern = rappen(
     einnahmen
-      .filter((e) => e.quelle === "extern")
+      .filter((e) => e.quelle === "extern" && e.belegt)
+      .reduce((s, e) => s + e.betrag, 0)
+  );
+  const einnahmenGeschaetzt = rappen(
+    einnahmen
+      .filter((e) => e.quelle === "extern" && !e.belegt)
       .reduce((s, e) => s + e.betrag, 0)
   );
 
@@ -125,6 +148,7 @@ export function baueAbrechnung(params: {
     monat: params.monat,
     einnahmenSystem,
     einnahmenExtern,
+    einnahmenGeschaetzt,
     einnahmenTotal,
     ausgabenNachKategorie,
     ausgabenTotal,
@@ -189,11 +213,15 @@ export function alsCsv(abrechnungen: Monatsabrechnung[]): string {
     [
       "Monat",
       "Einnahmen System",
-      "Einnahmen extern",
-      "Einnahmen total",
+      "Einnahmen extern (bestätigt)",
+      "Einnahmen total (belegt)",
       ...AUSGABE_KATEGORIEN.map((k) => KATEGORIE_LABELS[k]),
       "Ausgaben total",
       "Ergebnis",
+      // Ganz rechts und ausdrücklich benannt: Wer die Datei dem Treuhänder
+      // gibt, soll die Schätzung sehen, aber nie mit den belegten Zahlen
+      // verwechseln. Sie steht in keiner Summe links davon.
+      "Extern noch nicht bestätigt (Schätzung)",
     ]
       .map(csvFeld)
       .join(";")
@@ -209,6 +237,7 @@ export function alsCsv(abrechnungen: Monatsabrechnung[]): string {
         ...AUSGABE_KATEGORIEN.map((k) => a.ausgabenNachKategorie[k].toFixed(2)),
         a.ausgabenTotal.toFixed(2),
         a.ergebnis.toFixed(2),
+        a.einnahmenGeschaetzt.toFixed(2),
       ]
         .map(csvFeld)
         .join(";")
@@ -231,6 +260,7 @@ export function alsCsv(abrechnungen: Monatsabrechnung[]): string {
         ),
         summe((a) => a.ausgabenTotal),
         summe((a) => a.ergebnis),
+        summe((a) => a.einnahmenGeschaetzt),
       ]
         .map(csvFeld)
         .join(";")

@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { ladeAbrechnung, ladeJahr } from "@/lib/abrechnung-server";
+import { ladePrognose } from "@/lib/prognose-server";
 import { monatsSchluessel } from "@/lib/abrechnung";
 import AbrechnungBoard from "./_components/AbrechnungBoard";
 
@@ -36,11 +37,16 @@ export default async function AbrechnungPage({
       .maybeSingle(),
   ]);
 
+  // Erst danach: Die Prognose braucht den belegten Teil der Abrechnung und
+  // würde ihn sonst ein zweites Mal laden.
+  const prognose = await ladePrognose(admin, monat, abrechnung);
+
   return (
     <AbrechnungBoard
       monat={monat}
       jahr={jahr}
       abrechnung={abrechnung}
+      prognose={prognose}
       jahresMonate={jahresMonate}
       erfasst={abschluss?.ausgaben_erfasst === true}
     />

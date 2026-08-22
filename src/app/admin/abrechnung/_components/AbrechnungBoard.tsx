@@ -20,6 +20,7 @@ import {
   type AusgabeKategorie,
   type Monatsabrechnung,
 } from "@/lib/abrechnung";
+import type { Monatsprognose } from "@/lib/prognose";
 import {
   ausgabeErfassen,
   ausgabeLoeschen,
@@ -42,6 +43,117 @@ function tag(iso: string): string {
   });
 }
 
+const QUELLE_LABEL: Record<string, string> = {
+  lektion: "Lektion",
+  rate: "Rate",
+  extern: "Extern",
+};
+
+/**
+ * Was der Monat voraussichtlich bringt.
+ *
+ * Drei Töpfe statt einer Zahl. Die Trennung ist der ganze Sinn: Nur
+ * „bezahlt" ist belegt und gehört in die Steuererklärung, der Rest ist
+ * Planung. Zusammengezählt wäre die Summe grösser und unbrauchbar.
+ */
+function PrognoseKarte({ prognose }: { prognose: Monatsprognose }) {
+  const [offen, setOffen] = useState(false);
+
+  if (prognose.total <= 0) return null;
+
+  const teile = [
+    { label: "bezahlt", wert: prognose.bezahlt, farbe: "bg-emerald-500" },
+    { label: "gestellt", wert: prognose.gestellt, farbe: "bg-[#1C244B]" },
+    { label: "erwartet", wert: prognose.erwartet, farbe: "bg-gray-300" },
+  ].filter((t) => t.wert > 0);
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
+      <div className="flex items-baseline justify-between gap-3 flex-wrap">
+        <h2 className="text-lg font-700 text-[#1C244B]">
+          Voraussichtlich diesen Monat
+        </h2>
+        <p className="text-xl font-800 text-[#1C244B] tabular-nums">
+          {chf(prognose.total)}
+        </p>
+      </div>
+
+      {/* Ein Balken sagt schneller als drei Zahlen, wie viel schon sicher ist. */}
+      <div className="flex h-2 rounded-full overflow-hidden bg-gray-100">
+        {teile.map((t) => (
+          <div
+            key={t.label}
+            className={t.farbe}
+            style={{ width: `${(t.wert / prognose.total) * 100}%` }}
+            title={`${t.label}: ${chf(t.wert)}`}
+          />
+        ))}
+      </div>
+
+      <div className="flex gap-4 flex-wrap text-xs">
+        <span className="inline-flex items-center gap-1.5 text-gray-600">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          Bezahlt {chf(prognose.bezahlt)}
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-gray-600">
+          <span className="w-2 h-2 rounded-full bg-[#1C244B]" />
+          Gestellt {chf(prognose.gestellt)}
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-gray-600">
+          <span className="w-2 h-2 rounded-full bg-gray-300" />
+          Erwartet {chf(prognose.erwartet)}
+        </span>
+      </div>
+
+      <p className="text-xs text-gray-400 leading-relaxed">
+        „Erwartet“ sind Lektionen und Raten, für die noch keine Rechnung
+        existiert. Pakete, die einmalig bezahlt wurden, tauchen hier nicht
+        auf — ihr Geld kam beim Kauf.
+      </p>
+
+      {prognose.posten.length > 0 && (
+        <>
+          <button
+            onClick={() => setOffen((o) => !o)}
+            className="text-xs font-600 text-[#1C244B] hover:underline"
+          >
+            {offen
+              ? "Einklappen"
+              : `${prognose.posten.length} erwartete Posten anzeigen`}
+          </button>
+          {offen && (
+            <ul className="space-y-1 pt-1">
+              {prognose.posten.map((p, i) => (
+                <li
+                  key={`${p.datum}-${i}`}
+                  className="flex items-center justify-between gap-3 text-sm border-t border-gray-100 pt-1.5"
+                >
+                  <span className="text-gray-700 truncate">
+                    <span className="text-gray-400 tabular-nums mr-2">
+                      {new Date(p.datum).toLocaleDateString("de-CH", {
+                        timeZone: "Europe/Zurich",
+                        day: "2-digit",
+                        month: "2-digit",
+                      })}
+                    </span>
+                    {p.bezeichnung}
+                    <span className="ml-1.5 text-[11px] font-600 px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
+                      {QUELLE_LABEL[p.quelle] ?? p.quelle}
+                    </span>
+                  </span>
+                  <span className="text-sm font-600 text-gray-500 tabular-nums flex-shrink-0">
+                    {chf(p.betrag)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 /** Monat verschieben, "2026-08" + 1 → "2026-09". */
 function verschiebe(monat: string, delta: number): string {
   const [j, m] = monat.split("-").map(Number);
@@ -53,12 +165,14 @@ export default function AbrechnungBoard({
   monat,
   jahr,
   abrechnung,
+  prognose,
   jahresMonate,
   erfasst,
 }: {
   monat: string;
   jahr: number;
   abrechnung: Monatsabrechnung;
+  prognose: Monatsprognose;
   jahresMonate: Monatsabrechnung[];
   erfasst: boolean;
 }) {
@@ -177,8 +291,14 @@ export default function AbrechnungBoard({
           </p>
           {abrechnung.einnahmenExtern > 0 && (
             <p className="text-xs text-gray-500 mt-1 leading-snug">
-              davon {chf(abrechnung.einnahmenExtern)} extern — aus gehaltenen
-              Lektionen gerechnet, bitte mit der Plattform abgleichen
+              davon {chf(abrechnung.einnahmenExtern)} von externen Plattformen
+            </p>
+          )}
+          {abrechnung.einnahmenGeschaetzt > 0 && (
+            <p className="text-xs text-amber-700 mt-1 leading-snug">
+              + {chf(abrechnung.einnahmenGeschaetzt)} extern noch nicht
+              bestätigt — nicht mitgezählt. Unter Zahlungen → Extern
+              abhaken, sobald das Geld da ist.
             </p>
           )}
         </div>
@@ -207,6 +327,9 @@ export default function AbrechnungBoard({
           </p>
         </div>
       </div>
+
+      {/* Prognose */}
+      <PrognoseKarte prognose={prognose} />
 
       {/* Ausgaben */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">

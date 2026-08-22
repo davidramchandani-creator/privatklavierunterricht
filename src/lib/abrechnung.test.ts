@@ -23,8 +23,11 @@ import {
 const ein = (
   datum: string,
   betrag: number,
-  quelle: Einnahme["quelle"] = "rechnung"
-): Einnahme => ({ datum, betrag, quelle, bezeichnung: "Test" });
+  quelle: Einnahme["quelle"] = "rechnung",
+  // Rechnungen stehen nur mit Zahlungsdatum in der Liste, sind also immer
+  // belegt. Externe erst, wenn David den Eingang bestätigt hat.
+  belegt = quelle === "rechnung"
+): Einnahme => ({ datum, betrag, quelle, bezeichnung: "Test", belegt });
 
 describe("Monatsabgrenzung", () => {
   it("rechnet Zürcher Ortszeit, nicht UTC", () => {
@@ -51,18 +54,38 @@ describe("Monatsabgrenzung", () => {
 
 describe("Belegt und geschätzt bleiben getrennt", () => {
   it("weist externe Einnahmen einzeln aus", () => {
+    // Seit David externe Zahlungen bestätigen kann, zerfällt „extern" in
+    // zwei Zahlen: bestätigt zählt voll mit, hochgerechnet nicht.
     const a = baueAbrechnung({
       monat: "2026-08",
       einnahmen: [
         ein("2026-08-05T10:00:00.000Z", 70),
-        ein("2026-08-12T10:00:00.000Z", 68, "extern"),
-        ein("2026-08-19T10:00:00.000Z", 68, "extern"),
+        ein("2026-08-12T10:00:00.000Z", 68, "extern", true),
+        ein("2026-08-19T10:00:00.000Z", 68, "extern", true),
       ],
       ausgaben: [],
     });
     expect(a.einnahmenSystem).toBe(70);
     expect(a.einnahmenExtern).toBe(136);
     expect(a.einnahmenTotal).toBe(206);
+  });
+
+  it("hält eine unbestätigte externe Lektion aus dem Total heraus", () => {
+    // Vor der Bestätigung ist der Betrag geraten: Lektion mal hinterlegtem
+    // Ertrag. So etwas darf nicht in einer Steuererklärung landen, nur
+    // weil es bequem in derselben Spalte steht.
+    const a = baueAbrechnung({
+      monat: "2026-08",
+      einnahmen: [
+        ein("2026-08-05T10:00:00.000Z", 70),
+        ein("2026-08-19T10:00:00.000Z", 68, "extern", false),
+      ],
+      ausgaben: [],
+    });
+    expect(a.einnahmenGeschaetzt).toBe(68);
+    expect(a.einnahmenExtern).toBe(0);
+    expect(a.einnahmenTotal).toBe(70);
+    expect(a.ergebnis).toBe(70);
   });
 });
 
