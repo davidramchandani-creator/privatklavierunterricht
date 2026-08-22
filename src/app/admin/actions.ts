@@ -1784,10 +1784,20 @@ export async function createProposal(formData: FormData) {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("buffer_time_minutes, email, vorname, nachname")
+    .select("buffer_time_minutes, email, vorname, nachname, extern")
     .eq("id", studentId)
     .maybeSingle();
   const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
+
+  // Ein Vorschlag wartet darauf, dass der Schüler ihn im Portal bestätigt.
+  // Externe haben kein Portal und bekommen keine Mail — der Vorschlag läge
+  // für immer offen da. Für sie ist die Direktbuchung der richtige Weg.
+  if (profile?.extern === true) {
+    return {
+      error:
+        "Externe Schüler können nichts bestätigen — bitte direkt buchen statt vorschlagen.",
+    };
+  }
 
   // Slots gegen die Engine prüfen (Admin → kein 24h-Vorlauf).
   const desiredStart = new Date(startIso);

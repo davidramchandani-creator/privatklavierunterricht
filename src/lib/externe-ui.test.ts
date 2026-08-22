@@ -78,6 +78,57 @@ describe("Die Schülerseite zeigt Externen das Richtige", () => {
   });
 });
 
+describe("Einen einzelnen Termin für einen Externen buchen", () => {
+  const serie = readFileSync(
+    join(process.cwd(), "src", "lib", "series-booking.ts"),
+    "utf8"
+  );
+
+  it("verlangt für Externe kein Paket", () => {
+    // Die Sackgasse: Buchen scheiterte an „kein aktives Paket", und das
+    // einzige Mittel dagegen — ein Paket anlegen — ist für Externe zu
+    // Recht gesperrt. Damit liess sich einem externen Schüler überhaupt
+    // kein Termin eintragen.
+    const pruefung = serie.indexOf('"Der Schüler hat kein aktives Paket."');
+    const zweig = serie.indexOf("if (!istExtern) {");
+    expect(pruefung).toBeGreaterThan(-1);
+    expect(zweig).toBeGreaterThan(-1);
+    // Die Paketprüfung steht innerhalb des Nicht-extern-Zweigs.
+    expect(zweig).toBeLessThan(pruefung);
+  });
+
+  it("hängt den Termin an die Vereinbarung statt an ein Paket", () => {
+    expect(serie).toContain("externe_vereinbarung_id: externeVereinbarungId");
+    expect(serie).toContain("package_id: pkg?.id ?? null");
+  });
+
+  it("verlangt eine aktive Vereinbarung", () => {
+    // Ohne sie hinge der Termin an gar nichts und wäre in keiner
+    // Abrechnung auffindbar.
+    expect(serie).toContain("keine aktive Vereinbarung");
+  });
+
+  it("plant für Externe keine Erinnerungen ein", () => {
+    // Sie haben keine Mailadresse; die Nachrichten blieben in der
+    // Warteschlange liegen und gingen nie raus.
+    // Der Aufruf, nicht der Import ganz oben.
+    const erinnerung = serie.indexOf("await scheduleLessonReminders(");
+    expect(erinnerung).toBeGreaterThan(-1);
+    const wache = serie.lastIndexOf("if (!istExtern) {", erinnerung);
+    expect(wache).toBeGreaterThan(-1);
+    // Und dazwischen darf die Funktion nicht schon wieder zu Ende sein.
+    expect(serie.slice(wache, erinnerung)).not.toContain("return {");
+  });
+
+  it("kein Terminvorschlag für Externe", () => {
+    // Ein Vorschlag wartet auf Bestätigung im Portal. Externe haben
+    // keines, der Vorschlag läge für immer offen da.
+    const fn = funktion("createProposal", "withdrawProposal");
+    expect(fn).toContain("Externe Schüler können nichts bestätigen");
+    expect(seite).toContain("{!istExtern && <ProposalForm");
+  });
+});
+
 describe("Vereinbarung ändern", () => {
   const fn = funktion("externeVereinbarungSpeichern", "externenBeenden");
 

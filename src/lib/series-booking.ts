@@ -53,24 +53,53 @@ export async function bookSeriesForStudent(
 ): Promise<{ appointmentIds: string[] } | { error: string }> {
   const { data: profile } = await admin
     .from("profiles")
-    .select("buffer_time_minutes, email, vorname, nachname, adresse, payment_method")
+    .select("buffer_time_minutes, email, vorname, nachname, adresse, payment_method, extern")
     .eq("id", studentUserId)
     .single();
   const bufferMin = profile?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
 
-  const { data: pkgs } = await admin
-    .from("packages")
-    .select("*")
-    .eq("student_id", studentUserId)
-    .eq("status", "active");
-  const pkg = (pkgs as Paket[] | null)?.find((p) => !canBuyNewPackage(p)) ?? null;
-  if (!pkg) return { error: "Der Schüler hat kein aktives Paket." };
+  // ── Externe hängen an einer Vereinbarung, nicht an einem Paket ──
+  //
+  // Für sie gibt es kein Lektionenkonto, das man belasten könnte: Ihr
+  // Unterricht ist über die Plattform vereinbart und wird dort gezählt.
+  // Die Paketprüfung unten wäre für sie eine Sackgasse — sie meldete „kein
+  // aktives Paket", und das einzige Mittel dagegen (ein Paket anlegen) ist
+  // für Externe zu Recht gesperrt. Damit liess sich einem externen Schüler
+  // überhaupt kein einzelner Termin eintragen.
+  const istExtern = profile?.extern === true;
+  let externeVereinbarungId: string | null = null;
+  if (istExtern) {
+    const { data: v } = await admin
+      .from("externe_vereinbarungen")
+      .select("id")
+      .eq("student_id", studentUserId)
+      .eq("aktiv", true)
+      .maybeSingle();
+    if (!v) {
+      return {
+        error:
+          "Der externe Schüler hat keine aktive Vereinbarung. Bitte zuerst auf der Schülerseite anlegen.",
+      };
+    }
+    externeVereinbarungId = v.id as string;
+  }
 
-  const state = computePackageState(pkg);
-  if (state.lessonsRemaining < lessonsCount) {
-    return {
-      error: `Das Paket hat nur noch ${state.lessonsRemaining} Lektion(en), benötigt werden ${lessonsCount}.`,
-    };
+  let pkg: Paket | null = null;
+  if (!istExtern) {
+    const { data: pkgs } = await admin
+      .from("packages")
+      .select("*")
+      .eq("student_id", studentUserId)
+      .eq("status", "active");
+    pkg = (pkgs as Paket[] | null)?.find((p) => !canBuyNewPackage(p)) ?? null;
+    if (!pkg) return { error: "Der Schüler hat kein aktives Paket." };
+
+    const state = computePackageState(pkg);
+    if (state.lessonsRemaining < lessonsCount) {
+      return {
+        error: `Das Paket hat nur noch ${state.lessonsRemaining} Lektion(en), benötigt werden ${lessonsCount}.`,
+      };
+    }
   }
 
   const desiredStart = new Date(startIso);
@@ -130,7 +159,11 @@ export async function bookSeriesForStudent(
   const seriesId = lessonsCount > 1 ? crypto.randomUUID() : null;
   const rows = slotsFromStarts(starts).map((s) => ({
     student_id: studentUserId,
-    package_id: pkg.id,
+    // Genau eines von beiden ist gesetzt. Daran hängt der ganze Rest: Alle
+    // Abrechnungswege prüfen das Paket des Termins und überspringen einen
+    // externen dadurch von selbst.
+    package_id: pkg?.id ?? null,
+    externe_vereinbarung_id: externeVereinbarungId,
     start_at: s.start.toISOString(),
     end_at: s.end.toISOString(),
     status: "booked",
@@ -148,15 +181,21 @@ export async function bookSeriesForStudent(
   // Die Abrechnung erfolgt im Voraus über den gesamten Paketpreis beim Paketkauf
   // (siehe createPackageInvoice / buyPackage / createPackageAdmin).
 
-  // Termin-Erinnerungen (24h / 2h vorher) einplanen.
-  for (let i = 0; i < created.length; i++) {
-    const row = rows[i];
-    if (!row) continue;
-    await scheduleLessonReminders(admin, {
-      id: created[i].id,
-      student_id: studentUserId,
-      start_at: row.start_at,
-    });
+  // Termin-Erinnerungen (24h / 2h vorher) einplanen. Für Externe nicht:
+  // Sie haben weder Konto noch Mailadresse, die Erinnerung würde ohnehin
+  // an der zentralen Sperre hängenbleiben — dann lieber gar nicht erst
+  // einplanen, statt die Warteschlange mit Nachrichten zu füllen, die nie
+  // rausgehen.
+  if (!istExtern) {
+    for (let i = 0; i < created.length; i++) {
+      const row = rows[i];
+      if (!row) continue;
+      await scheduleLessonReminders(admin, {
+        id: created[i].id,
+        student_id: studentUserId,
+        start_at: row.start_at,
+      });
+    }
   }
 
   // Google Calendar Sync (one-way, fehlertolerant)

@@ -605,7 +605,9 @@ export default async function SchuelerDetailPage({
         </h2>
         <div className="mb-4 flex flex-wrap gap-2">
           <DirektBuchung schueler_id={id} student_user_id={id} />
-          <ProposalForm schueler_id={id} student_user_id={id} />
+          {/* Kein Vorschlag für Externe: Sie haben kein Portal, in dem sie
+              ihn bestätigen könnten, und keine Mail, die sie erreicht. */}
+          {!istExtern && <ProposalForm schueler_id={id} student_user_id={id} />}
         </div>
 
         {openProposals && openProposals.length > 0 && (
