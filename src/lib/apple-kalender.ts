@@ -333,11 +333,39 @@ export const SOFORT = 0;
 let laufenderAbruf: Promise<unknown> | null = null;
 
 /**
+ * Ist der letzte Abruf älter als erlaubt?
+ *
+ * Getrennt von `stelleAppleKalenderSicher`, damit der Lesepfad die Frage
+ * stellen kann, ohne auf die Antwort zu warten.
+ */
+export async function appleKalenderVeraltet(
+  admin: SupabaseClient,
+  maxAlterSekunden: number = FRISCHE_SEKUNDEN
+): Promise<boolean> {
+  try {
+    const einstellung = await ladeAppleEinstellung(admin);
+    if (!einstellung) return false;
+    if (maxAlterSekunden <= 0) return true;
+    if (!einstellung.zuletztAbgerufen) return true;
+    const alter =
+      (Date.now() - new Date(einstellung.zuletztAbgerufen).getTime()) / 1000;
+    return alter >= maxAlterSekunden;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Sicherstellen, dass die Sperrzeiten aktuell genug sind.
  *
- * Wird vor jeder Verfügbarkeitsberechnung aufgerufen. Schlägt der Abruf
- * fehl, passiert **nichts weiter**: Es wird mit den zuletzt bekannten
- * Sperren weitergerechnet. Ein langsamer iCloud-Server darf keine Buchung
+ * Wird vor jeder **echten Buchung** aufgerufen und wartet dort auf das
+ * Ergebnis: Dort entsteht der Schaden, wenn jemand auf Davids privatem
+ * Eintrag landet.
+ *
+ * Im Lesepfad wird dieselbe Funktion über `after()` erst nach der Antwort
+ * gestartet — siehe booking-server.ts. Schlägt der Abruf fehl, passiert
+ * **nichts weiter**: Es wird mit den zuletzt bekannten Sperren
+ * weitergerechnet. Ein langsamer iCloud-Server darf keine Buchung
  * verhindern, und die alten Sperren sind besser als gar keine.
  */
 export async function stelleAppleKalenderSicher(

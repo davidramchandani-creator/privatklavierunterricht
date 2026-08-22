@@ -53,40 +53,50 @@ export async function getPublicSlots(weekOffset: number): Promise<PublicSlot[]> 
   }));
 }
 
-// Nächster freier Termin (für Hero/Marketing). Sucht bis zu 4 Wochen voraus.
+/**
+ * Nächster freier Termin (für Hero/Marketing). Sucht vier Wochen voraus.
+ *
+ * Bewusst **ein** Kontext für den ganzen Zeitraum statt vier für je eine
+ * Woche. Vorher lief die Schleife Woche für Woche und lud jedes Mal alles
+ * neu — Termine, Abwesenheiten, Sperren, Regeln, Verfügbarkeit. Das waren
+ * vier Runden à sieben Abfragen, nur um am Ende meist den ersten Slot der
+ * ersten Woche zurückzugeben. Auf der Startseite lag das komplett vor dem
+ * ersten Byte.
+ */
 export async function getNextPublicSlot(): Promise<PublicSlot | null> {
   const admin = await createAdminClient();
   const now = new Date();
   const todayCal = utcToZonedDate(now);
 
-  for (let weekOffset = 0; weekOffset < 4; weekOffset++) {
-    const w = weekdayOf(todayCal);
-    const mondayOffset = w === 0 ? -6 : 1 - w;
-    const fromCal: CalDate = addDaysCal(todayCal, mondayOffset + weekOffset * 7);
-    const fromInstant = zonedToUtc(fromCal.y, fromCal.m, fromCal.d, 0, 0);
-    const toInstant = new Date(fromInstant.getTime() + 7 * 86400000);
+  const w = weekdayOf(todayCal);
+  const mondayOffset = w === 0 ? -6 : 1 - w;
+  const fromCal: CalDate = addDaysCal(todayCal, mondayOffset);
+  const fromInstant = zonedToUtc(fromCal.y, fromCal.m, fromCal.d, 0, 0);
+  const TAGE = 28;
+  const toInstant = new Date(fromInstant.getTime() + TAGE * 86400000);
 
-    const ctx = await loadAvailabilityContext(
-      admin,
-      "",
-      DEFAULT_BUFFER_MIN,
-      fromInstant,
-      toInstant,
-      now
-    );
+  const ctx = await loadAvailabilityContext(
+    admin,
+    "",
+    DEFAULT_BUFFER_MIN,
+    fromInstant,
+    toInstant,
+    now
+  );
 
-    const settings =
-      (ctx as { blockSettings?: typeof DEFAULT_BLOCK_SETTINGS }).blockSettings ??
-      DEFAULT_BLOCK_SETTINGS;
-    const slots = gapAwareSlots(fromCal, 7, ctx, settings)
-      .filter((s) => s.start.getTime() > now.getTime())
-      .sort((a, b) => a.start.getTime() - b.start.getTime());
+  const settings =
+    (ctx as { blockSettings?: typeof DEFAULT_BLOCK_SETTINGS }).blockSettings ??
+    DEFAULT_BLOCK_SETTINGS;
 
-    if (slots.length > 0) {
-      return { beginn: slots[0].start.toISOString(), ende: slots[0].end.toISOString() };
-    }
-  }
-  return null;
+  const slots = gapAwareSlots(fromCal, TAGE, ctx, settings)
+    .filter((s) => s.start.getTime() > now.getTime())
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
+
+  if (slots.length === 0) return null;
+  return {
+    beginn: slots[0].start.toISOString(),
+    ende: slots[0].end.toISOString(),
+  };
 }
 
 export async function submitAnfrage(formData: FormData) {

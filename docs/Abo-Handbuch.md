@@ -752,11 +752,20 @@ bis zwei Minuten, bis der veröffentlichte Kalender die Änderung zeigt.
 Schneller geht es mit einem Freigabe-Link nicht. Für einen Termin in zwei
 Minuten trägst du die Sperre besser von Hand ein.
 
-Zusätzlich läuft einmal täglich ein Abgleich im Hintergrund, damit der
-erste Seitenaufruf des Tages nicht der langsame ist. Öfter erlaubt der
-Vercel-Hobby-Plan nicht — nötig ist es auch nicht, denn das Holen vor jeder
-Berechnung übernimmt die eigentliche Arbeit. „Jetzt einlesen" in den
-Einstellungen macht es jederzeit sofort.
+Zusätzlich läuft einmal täglich ein Abgleich im Hintergrund. Öfter erlaubt
+der Vercel-Hobby-Plan nicht. „Jetzt einlesen" in den Einstellungen macht es
+jederzeit sofort.
+
+Beim blossen **Anschauen** freier Zeiten wird nicht mehr auf iCloud
+gewartet: Der Abruf startet erst, nachdem die Seite ausgeliefert ist, und
+der nächste Aufruf hat dann frische Daten. Vorher hing dieser Abruf im
+Ladepfad — bei wenig Verkehr also bei praktisch jedem Besucher, mit bis zu
+sechs Sekunden, bevor überhaupt etwas erschien.
+
+Der Preis dafür ist klein und benannt: Eine Sperre, die du gerade eben
+eingetragen hast, kann in einer bereits angezeigten Liste noch fehlen. Wer
+diesen Termin dann anklickt, wird beim Buchen abgewiesen — falsch gebucht
+wird nie.
 
 Zwei Dinge zum Wissen: Wer den Link hat, kann deine Termine lesen — gib ihn
 nicht weiter. Und wenn dir die Titel im System zu privat sind, nimm den

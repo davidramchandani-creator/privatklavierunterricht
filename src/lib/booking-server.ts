@@ -10,7 +10,9 @@ import {
   type TimeBlockRule,
   DEFAULT_BUFFER_MIN,
 } from "./booking";
+import { after } from "next/server";
 import {
+  appleKalenderVeraltet,
   FRISCHE_SEKUNDEN,
   SOFORT,
   stelleAppleKalenderSicher,
@@ -49,7 +51,7 @@ export async function loadAvailabilityContext(
     kalenderJetzt?: boolean;
   } = {}
 ): Promise<AvailabilityContext> {
-  // Apple-Kalender frisch halten, bevor irgendetwas gerechnet wird.
+  // Apple-Kalender frisch halten — aber nur dort warten, wo es zählt.
   //
   // Diese eine Stelle deckt alles ab: Slot-Listen, Serienprüfung,
   // Verschiebungen, Vorrücken, Probelektionen. Jeder dieser Wege lädt hier
@@ -57,13 +59,30 @@ export async function loadAvailabilityContext(
   // Stellen, und die eine vergessene wäre die, die jemanden auf Davids
   // privaten Eintrag setzt.
   //
-  // Schlägt der Abruf fehl oder dauert er zu lange, wird mit den zuletzt
-  // bekannten Sperren weitergerechnet — eine langsame Antwort von iCloud
-  // darf keine Buchung blockieren.
-  await stelleAppleKalenderSicher(
-    admin,
-    opts.kalenderJetzt ? SOFORT : FRISCHE_SEKUNDEN
-  );
+  // **Buchen** (`kalenderJetzt`): Es wird gewartet. Hier entsteht der
+  // Schaden, wenn jemand auf einem privaten Eintrag landet, also gilt die
+  // Sperre erst als geprüft, wenn der Abruf durch ist.
+  //
+  // **Anschauen** (alles andere): Es wird nicht gewartet. Vorher hing hier
+  // ein fetch zu iCloud im Ladepfad jeder Seite, die freie Zeiten zeigt —
+  // bei wenig Verkehr praktisch bei jedem Aufruf, mit bis zu sechs
+  // Sekunden vor dem ersten Byte. Stattdessen wird nach der Antwort
+  // nachgeladen, sodass der nächste Aufruf frische Daten hat. Der Preis:
+  // Eine gerade eben eingetragene private Sperre kann in einer schon
+  // gerenderten Slot-Liste noch fehlen. Wer den Slot dann anklickt, wird
+  // beim Buchen abgewiesen — unschön, aber nie falsch gebucht.
+  if (opts.kalenderJetzt) {
+    await stelleAppleKalenderSicher(admin, SOFORT);
+  } else if (await appleKalenderVeraltet(admin, FRISCHE_SEKUNDEN)) {
+    // `after` läuft, nachdem die Antwort raus ist. Ausserhalb eines
+    // Request-Kontexts (Cron, Skript) wirft es — dann einfach nichts tun,
+    // dort sorgt der Cron selbst für frische Daten.
+    try {
+      after(() => stelleAppleKalenderSicher(admin, SOFORT));
+    } catch {
+      // Kein Request-Kontext. Bewusst still.
+    }
+  }
 
   // Termine etwas grosszügiger laden, damit Puffer an den Rändern greifen.
   const apptFrom = new Date(fromInstant.getTime() - 86400000).toISOString();
