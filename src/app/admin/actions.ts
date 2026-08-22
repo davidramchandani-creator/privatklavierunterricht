@@ -51,6 +51,7 @@ import { geocode } from "@/lib/geocoding";
 import {
   beendeVereinbarung,
   legeExterneTermineAn,
+  setzeExternenTermin,
   type ExterneVereinbarung,
 } from "@/lib/externe-server";
 import { findeFixplaetze, type FixplatzAngebot } from "@/lib/fixplatz-suche";
@@ -951,9 +952,20 @@ export async function createPackageAdmin(formData: FormData) {
   // Schülerprofil für Zahlungsart + Rechnungsdaten laden.
   const { data: prof } = await admin
     .from("profiles")
-    .select("vorname, nachname, adresse, email, payment_method")
+    .select("vorname, nachname, adresse, email, payment_method, extern")
     .eq("id", userId)
     .maybeSingle();
+
+  // Externe bekommen nie ein Paket. Sie zahlen über ihre Plattform; ein
+  // Paket hier würde Rechnungen erzeugen, QR-PDFs für jemanden ohne
+  // Rechnungsadresse, und die Lektion stünde in zwei Abrechnungen
+  // gleichzeitig. Ihre Termine hängen an der externen Vereinbarung.
+  if (prof?.extern === true) {
+    return {
+      error:
+        "Externe Schüler bekommen kein Paket — ihre Termine laufen über die Vereinbarung.",
+    };
+  }
 
   // Ohne explizite Auswahl die Zahlungsart des Schülers übernehmen.
   if (paymentMethod !== "twint" && paymentMethod !== "qr") {
@@ -1191,6 +1203,24 @@ export async function aboAnlegenAdmin(
   if (!studentId) return { error: "Kein Schüler angegeben." };
   if (variante !== "halbjahr" && variante !== "jahr") {
     return { error: "Ungültige Abo-Variante." };
+  }
+
+  // Dieselbe Sperre wie beim Paket: Ein Abo für einen externen Schüler
+  // würde Monatsraten und Rechnungen erzeugen für Geld, das längst über
+  // die Plattform läuft.
+  {
+    const admin = await createAdminClient();
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("extern")
+      .eq("id", studentId)
+      .maybeSingle();
+    if (prof?.extern === true) {
+      return {
+        error:
+          "Externe Schüler bekommen kein Abo — ihre Termine laufen über die Vereinbarung.",
+      };
+    }
   }
 
   // Beim Fixplatz gibt es zwei Wege, und beide sind gleichwertig:
@@ -3865,6 +3895,118 @@ export async function externenAnlegen(
     termine: ergebnis.angelegt,
     kollisionen: ergebnis.kollisionen,
   };
+}
+
+/**
+ * Die Vereinbarung eines externen Schülers ändern.
+ *
+ * Das Gegenstück zu „Paket anlegen" bei den eigenen Schülern — nur dass
+ * hier nichts abgerechnet wird. Geändert werden können der Ertrag pro
+ * Lektion, der Rhythmus, die Dauer und der feste Termin.
+ *
+ * Wird ein Wochentag samt Uhrzeit gesetzt, laufen künftige Termine neu:
+ * alte absagen, Serie neu anlegen. Ohne Wochentag bleibt der Platz offen
+ * und die Zuteilung sucht ihn.
+ */
+export async function externeVereinbarungSpeichern(
+  formData: FormData
+): Promise<
+  { success: true; error: undefined; termine: number } | { error: string }
+> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const studentId = String(formData.get("student_id") ?? "");
+  if (!studentId) return { error: "Kein Schüler angegeben." };
+
+  const admin = await createAdminClient();
+
+  const { data: profil } = await admin
+    .from("profiles")
+    .select("extern")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (profil?.extern !== true) {
+    return { error: "Das ist kein externer Schüler." };
+  }
+
+  const { data: vereinbarung } = await admin
+    .from("externe_vereinbarungen")
+    .select("*")
+    .eq("student_id", studentId)
+    .eq("aktiv", true)
+    .maybeSingle();
+  if (!vereinbarung) return { error: "Keine aktive Vereinbarung gefunden." };
+
+  const plattform = String(formData.get("plattform") ?? "").trim() || null;
+  const ertragRoh = String(formData.get("externer_ertrag") ?? "").replace(",", ".");
+  const rhythmus: Rhythmus =
+    String(formData.get("rhythmus")) === "zweiwoechentlich"
+      ? "zweiwoechentlich"
+      : "woechentlich";
+  const dauer = Number(formData.get("lektion_minuten") ?? 45);
+  const wochentagRoh = String(formData.get("wochentag") ?? "");
+  const zeit = String(formData.get("zeit") ?? "").trim();
+  const paritaetRoh = String(formData.get("paritaet") ?? "");
+  const abDatum =
+    String(formData.get("ab_datum") ?? "").trim() || todayInZurich();
+
+  const ertrag = ertragRoh === "" ? null : Number(ertragRoh);
+  if (ertrag != null && (!Number.isFinite(ertrag) || ertrag < 0 || ertrag > 1000)) {
+    return { error: "Ungültiger Ertrag pro Lektion." };
+  }
+  if (!Number.isFinite(dauer) || dauer < 15 || dauer > 180) {
+    return { error: "Ungültige Lektionsdauer." };
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(abDatum)) {
+    return { error: "Ungültiges Startdatum." };
+  }
+
+  await admin
+    .from("profiles")
+    .update({ plattform, externer_ertrag: ertrag })
+    .eq("id", studentId);
+
+  await admin
+    .from("externe_vereinbarungen")
+    .update({
+      rhythmus,
+      lektion_minuten: dauer,
+      aktualisiert_am: new Date().toISOString(),
+    })
+    .eq("id", vereinbarung.id);
+
+  let termine = 0;
+
+  // Fester Termin angegeben? Dann Serie neu setzen. Sonst bleibt der Platz
+  // offen — das ist kein Fehler, sondern der Weg über die Zuteilung.
+  if (wochentagRoh !== "" && /^\d{2}:\d{2}$/.test(zeit)) {
+    const wochentag = Number(wochentagRoh);
+    if (!Number.isInteger(wochentag) || wochentag < 0 || wochentag > 6) {
+      return { error: "Ungültiger Wochentag." };
+    }
+    const ergebnis = await setzeExternenTermin(admin, {
+      studentId,
+      wochentag,
+      beginn: zeit,
+      paritaet:
+        rhythmus === "zweiwoechentlich"
+          ? Number(paritaetRoh) === 1
+            ? 1
+            : 0
+          : null,
+      abDatum,
+    });
+    if ("error" in ergebnis) return { error: ergebnis.error };
+    termine = ergebnis.termine;
+  }
+
+  revalidatePath(`/admin/schueler/${studentId}`);
+  revalidatePath("/admin/schueler");
+  revalidatePath("/admin/kalender");
+  revalidatePath("/admin/routenplanung");
+  revalidatePath("/admin/zahlungen");
+  return { success: true, error: undefined, termine };
 }
 
 /**

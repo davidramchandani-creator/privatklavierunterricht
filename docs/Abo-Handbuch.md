@@ -566,14 +566,38 @@ Ferien werden übersprungen, genau wie bei den eigenen Abos.
 | Routenplanung | ja, mit Adresse und Fahrzeit |
 | Zuteilung | als **belegte Zeit**, nicht als Kandidat |
 | Konto, Portal, Login | nein |
+| Abo, Paket, Preise | nein, serverseitig gesperrt |
 | Rechnungen, Raten | nein |
 | E-Mails | nein, hart gesperrt |
 | Planungsrunden | nein |
+| Zahlung abhaken | ja, pro Lektion (Zahlungen → Extern) |
 
 Der Grund für „belegte Zeit, nicht Kandidat": Ihr Termin ist über die andere
 Plattform vergeben, du kannst ihn nicht verschieben. Die Zuteilung darf ihn
 deshalb nicht neu vergeben — muss ihn aber kennen, sonst legt sie jemanden
 auf einen Dienstag um 18:00, an dem du längst woanders sitzt.
+
+### Die Vereinbarung ist ihr Abo
+
+Auf der Schülerseite eines Externen findest du **keine Preise, kein Paket und
+keine Zahlungsart** — stattdessen den Block *Vereinbarung*. Dort stehen
+Plattform, Ertrag pro Lektion, Rhythmus, Dauer und der feste Termin, und über
+*Ändern* passt du alles an.
+
+Setzt du dort Wochentag und Uhrzeit, werden die künftigen Termine neu
+angelegt; bereits gehaltene bleiben stehen. Lässt du den Wochentag auf
+*offen*, sucht die Zuteilung den Platz — dafür braucht der Schüler angegebene
+Zeiten. Steht bei „Im Kalender" *keine kommenden Termine*, ist genau das der
+Grund: Die Vereinbarung hat noch keinen Platz.
+
+Das ersetzt, was bei den eigenen Schülern „Abo anlegen" wäre. Und es ist mehr
+als eine Anzeigefrage: Der Server nimmt für einen Externen weder Paket noch
+Abo an, selbst wenn das Formular auf einem anderen Weg abgeschickt wird. Ein
+Paket hätte hier eine Rechnung samt QR-PDF für jemanden ohne Rechnungsadresse
+erzeugt, und dieselbe Lektion stünde danach in zwei Abrechnungen.
+
+Unter *Zahlungen* zeigt die Schülerseite statt Rechnungen seine Lektionen mit
+dem Ertrag — dort hakst du ab, was von der Plattform angekommen ist.
 
 ### Terminkollisionen
 

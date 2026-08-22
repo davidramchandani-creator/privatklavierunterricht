@@ -16,6 +16,14 @@ import SchuelerDetailActions, { InvoiceAction, PreiseForm, PackageFormNew, Direk
 import { StatusBadge } from "@/components/ui/status-badge";
 import RatenplanPanel from "./_components/RatenplanPanel";
 import PaketAufraeumen from "./_components/PaketAufraeumen";
+import ExterneVereinbarung, {
+  type VereinbarungDaten,
+} from "./_components/ExterneVereinbarung";
+import ExternBoard from "@/app/admin/zahlungen/_components/ExternBoard";
+import {
+  ladeExterneLektionen,
+  type ExterneLektion,
+} from "@/lib/externe-zahlungen";
 import TestschuelerSchalter from "./_components/TestschuelerSchalter";
 import { buildPlanSummary, type InstalmentRow } from "@/lib/instalment-view";
 import {
@@ -42,7 +50,7 @@ export default async function SchuelerDetailPage({
   ] = await Promise.all([
     admin
       .from("profiles")
-      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, ist_test, erstellt_am, price_single, price_halbjahr, price_jahr, price_10er, price_20er, travel_surcharge, buffer_time_minutes, buffer_mode, payment_method")
+      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, ist_test, erstellt_am, price_single, price_halbjahr, price_jahr, price_10er, price_20er, travel_surcharge, buffer_time_minutes, buffer_mode, payment_method, extern, plattform, externer_ertrag")
       .eq("id", id)
       .maybeSingle(),
     admin
@@ -185,6 +193,51 @@ export default async function SchuelerDetailPage({
   };
   const mapsConfigured = !!process.env.GOOGLE_MAPS_API_KEY;
 
+  // ── Externe Schüler ───────────────────────────────────────
+  //
+  // Sie haben kein Paket, keinen Preis und keine Zahlungsart in diesem
+  // System — abgerechnet wird über die Plattform. Die entsprechenden
+  // Abschnitte werden darum durch die Vereinbarung ersetzt. Vorher standen
+  // hier dieselben Knöpfe wie bei allen anderen, und wer „Paket anlegen"
+  // drückte, erzeugte eine Rechnung für jemanden ohne Rechnungsadresse.
+  const istExtern = profile.extern === true;
+  let vereinbarung: VereinbarungDaten | null = null;
+  let externeLektionen: ExterneLektion[] = [];
+  if (istExtern) {
+    externeLektionen = (await ladeExterneLektionen(admin)).filter(
+      (l) => l.studentId === id
+    );
+    const { data: v } = await admin
+      .from("externe_vereinbarungen")
+      .select("rhythmus, wochentag, zeit, lektion_minuten, woche_paritaet, anzahl, start_datum")
+      .eq("student_id", id)
+      .eq("aktiv", true)
+      .maybeSingle();
+
+    const { count: kommende } = await admin
+      .from("appointments")
+      .select("id", { count: "exact", head: true })
+      .eq("student_id", id)
+      .eq("status", "booked")
+      .gte("start_at", nowIso);
+
+    if (v) {
+      vereinbarung = {
+        plattform: (profile.plattform as string | null) ?? null,
+        externerErtrag:
+          profile.externer_ertrag != null ? Number(profile.externer_ertrag) : null,
+        rhythmus: String(v.rhythmus ?? "woechentlich"),
+        wochentag: v.wochentag != null ? Number(v.wochentag) : null,
+        zeit: (v.zeit as string | null) ?? null,
+        lektionMinuten: Number(v.lektion_minuten ?? 45),
+        paritaet: v.woche_paritaet != null ? Number(v.woche_paritaet) : null,
+        anzahl: v.anzahl != null ? Number(v.anzahl) : null,
+        startDatum: String(v.start_datum ?? ""),
+        kommendeTermine: kommende ?? 0,
+      };
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-3">
@@ -316,7 +369,13 @@ export default async function SchuelerDetailPage({
         )}
       </div>
 
+      {/* Vereinbarung statt Preise und Pakete — nur bei Externen. */}
+      {istExtern && vereinbarung && (
+        <ExterneVereinbarung studentId={id} daten={vereinbarung} />
+      )}
+
       {/* Preise & Einstellungen */}
+      {!istExtern && (
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
         <h2 className="text-lg font-700 text-[#1C244B] mb-4">Preise & Einstellungen</h2>
         <PreiseForm
@@ -337,8 +396,10 @@ export default async function SchuelerDetailPage({
           }}
         />
       </div>
+      )}
 
       {/* Pakete */}
+      {!istExtern && (
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
         <h2 className="text-lg font-700 text-[#1C244B] mb-4">Abos und Pakete</h2>
 
@@ -520,6 +581,7 @@ export default async function SchuelerDetailPage({
           student_user_id={id}
         />
       </div>
+      )}
 
       {/* Ratenpläne */}
       {sichtbarePakete
@@ -606,7 +668,11 @@ export default async function SchuelerDetailPage({
       {/* Zahlungen */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
         <h2 className="text-lg font-700 text-[#1C244B] mb-4">Zahlungen</h2>
-        {!invoices || invoices.length === 0 ? (
+        {istExtern ? (
+          // Externe haben keine Rechnungen. Stattdessen die Lektionen mit
+          // dem, was die Plattform dafür zahlt — abhaken geht direkt hier.
+          <ExternBoard lektionen={externeLektionen} />
+        ) : !invoices || invoices.length === 0 ? (
           <p className="text-sm text-gray-400">Keine Zahlungen vorhanden.</p>
         ) : (
           <table className="w-full">
