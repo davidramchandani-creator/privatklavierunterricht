@@ -52,34 +52,61 @@ describe("Wächter: keine Pfadprüfung per startsWith", () => {
 });
 
 /**
- * Alles, was unter public/ liegt, muss an der Middleware vorbeikommen.
- * Sonst passiert wieder genau das: ein Video, das auf die Loginseite
- * umgeleitet wird, und im Browser steht „Video nicht verfügbar".
+ * Wer durch die Middleware läuft und wer nicht.
+ *
+ * Zwei Gründe, das festzuhalten. Der ältere: Alles unter public/ muss
+ * vorbeikommen, sonst wird ein Video auf die Loginseite umgeleitet und im
+ * Browser steht „Video nicht verfügbar". Der neuere: Jeder Durchlauf kostet
+ * eine Supabase-Sitzungsabfrage, also einen Roundtrip vor dem ersten Byte.
+ * Auf der Startseite ist das reine Wartezeit.
+ *
+ * Seit dem Performance-Audit zählt der Matcher darum auf, was geschützt ist,
+ * statt auszuschliessen, was es nicht ist. Die Kehrseite: Ein neuer
+ * geschützter Bereich muss dort ergänzt werden — sonst ist er offen. Genau
+ * dafür ist die Gegenprobe unten da.
  */
-describe("Middleware lässt statische Dateien durch", () => {
-  // Den Matcher importieren, nicht aus der Datei lesen: Als Text kommen die
-  // Escape-Zeichen doppelt an (`\\.` statt `\.`), und der Test prüft dann ein
-  // anderes Muster als das, was Next.js tatsächlich verwendet.
-  const matcher = config.matcher[0];
+describe("Middleware greift nur bei geschützten Bereichen", () => {
+  // Den Matcher importieren statt die Datei als Text zu lesen: So prüft der
+  // Test genau das Muster, das Next.js tatsächlich verwendet.
+  //
+  // `/admin/:path*` trifft in Next-Syntax sowohl /admin als auch alles
+  // darunter; das bildet die Umschreibung unten nach.
+  const trifft = (pfad: string) =>
+    config.matcher.some((muster) => {
+      const re = new RegExp("^" + muster.replace(/\/:path\*$/, "(?:/.*)?") + "$");
+      return re.test(pfad);
+    });
 
-  const beispiele = [
+  const frei = [
+    "/",
+    "/preise",
+    "/agb",
+    "/probelektion",
     "/schuelervideos/phia-another-love.mp4",
     "/schuelervideos/phia-another-love.jpg",
     "/hoerproben/another-love.mp3",
     "/favicon.ico",
   ];
 
-  for (const pfad of beispiele) {
+  for (const pfad of frei) {
     it(`${pfad} wird nicht abgefangen`, () => {
-      expect(new RegExp(`^${matcher}$`).test(pfad), pfad).toBe(false);
+      expect(trifft(pfad), pfad).toBe(false);
     });
   }
 
-  // Gegenprobe: Der Matcher darf nicht so weit gefasst sein, dass er nichts
-  // mehr trifft, sonst wäre die Anmeldung wirkungslos und der Test grün.
-  for (const pfad of ["/admin", "/schueler/portal", "/auth/login"]) {
+  // Gegenprobe: Der Matcher darf nicht so eng werden, dass die Anmeldung
+  // wirkungslos ist und der Test trotzdem grün bleibt.
+  const geschuetzt = [
+    "/admin",
+    "/admin/schueler/abc",
+    "/schueler/portal",
+    "/auth/login",
+    "/benachrichtigungen",
+  ];
+
+  for (const pfad of geschuetzt) {
     it(`${pfad} läuft weiterhin durch die Middleware`, () => {
-      expect(new RegExp(`^${matcher}$`).test(pfad), pfad).toBe(true);
+      expect(trifft(pfad), pfad).toBe(true);
     });
   }
 });

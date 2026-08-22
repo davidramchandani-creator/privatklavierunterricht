@@ -125,7 +125,11 @@ export default async function AdminKalenderPage({
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-800 text-[#1C244B]">Kalender</h1>
         <div className="flex items-center gap-1.5">
+          {/* Kein Prefetch: Beide Pfeile würden sonst je einen ganzen
+              Monat samt Terminen im Voraus rendern, nur weil sie sichtbar
+              sind. */}
           <Link
+            prefetch={false}
             href={`/admin/kalender?month=${monthOffset - 1}`}
             className="press p-2 rounded-xl hover:bg-gray-100 transition-colors border border-gray-200 bg-white"
             aria-label="Vorheriger Monat"
@@ -136,6 +140,7 @@ export default async function AdminKalenderPage({
             {monthLabel}
           </span>
           <Link
+            prefetch={false}
             href={`/admin/kalender?month=${monthOffset + 1}`}
             className="press p-2 rounded-xl hover:bg-gray-100 transition-colors border border-gray-200 bg-white"
             aria-label="Nächster Monat"

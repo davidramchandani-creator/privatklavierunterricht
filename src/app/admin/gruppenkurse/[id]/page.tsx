@@ -36,7 +36,7 @@ export default async function GruppenkurseDetailPage({
     .limit(50);
 
   const sessionIds = (sessions ?? []).map((s) => s.id);
-  let apptsBySession = new Map<string, { id: string; student_id: string; vorname: string; nachname: string }[]>();
+  const apptsBySession = new Map<string, { id: string; student_id: string; vorname: string; nachname: string }[]>();
 
   if (sessionIds.length) {
     const { data: appts } = await admin
@@ -192,6 +192,7 @@ export default async function GruppenkurseDetailPage({
                           <div className="flex items-center gap-2">
                             <Users className="w-3 h-3 text-gray-400" />
                             <Link
+                              prefetch={false}
                               href={`/admin/schueler/${p.student_id}`}
                               className="text-xs text-[#1C244B] hover:underline font-500"
                             >

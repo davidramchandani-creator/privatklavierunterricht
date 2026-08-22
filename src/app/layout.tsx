@@ -7,7 +7,9 @@ import { Analytics } from "@vercel/analytics/next";
 
 const jakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["200", "300", "400", "500", "600", "700", "800"],
+  // 200 und 300 werden nirgends benutzt; jedes Gewicht ist eine eigene
+  // Schriftdatei, die sonst mitgeladen wird.
+  weight: ["400", "500", "600", "700", "800"],
   variable: "--font-jakarta",
   display: "swap",
 });

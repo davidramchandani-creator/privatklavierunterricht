@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -35,7 +34,10 @@
 @theme inline {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
-  --font-sans: "Plus Jakarta Sans", sans-serif;
+  /* next/font stellt die Schrift über diese Variable bereit und lädt sie
+     selbst gehostet. Der frühere @import von fonts.googleapis.com lud
+     dieselbe Schrift ein zweites Mal und blockierte dabei das Rendern. */
+  --font-sans: var(--font-jakarta), "Plus Jakarta Sans", sans-serif;
 }
 
 /* ── Design-System: Markenpalette & Status-Farben (Spec §1) ───────────────── */
@@ -90,13 +92,13 @@
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: "Plus Jakarta Sans", sans-serif;
+  font-family: var(--font-jakarta), "Plus Jakarta Sans", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: "Plus Jakarta Sans", sans-serif;
+  font-family: var(--font-jakarta), "Plus Jakarta Sans", sans-serif;
   font-weight: 700;
 }
 

@@ -218,6 +218,7 @@ export default function RatenBoard({ zeilen }: { zeilen: RatenZeile[] }) {
 
                 <div className="flex-1 min-w-0">
                   <Link
+                    prefetch={false}
                     href={`/admin/schueler/${z.studentId}`}
                     className="text-sm font-600 text-gray-900 hover:underline block truncate"
                   >

@@ -1,4 +1,16 @@
-import { getNextPublicSlot } from "@/app/probelektion/actions";
+import { cache } from "react";
+import { getNextPublicSlot as _getNextPublicSlot } from "@/app/probelektion/actions";
+
+/**
+ * Ein Aufruf pro Anfrage, nicht zwei.
+ *
+ * Der Hero und die mitlaufende Buchungsleiste fragen beide nach dem
+ * nächsten freien Termin. Ohne `cache()` lief die ganze
+ * Verfügbarkeitsberechnung — vier Wochen Slots, Termine, Sperren — pro
+ * Seitenaufruf zweimal. React entsorgt den Eintrag am Ende der Anfrage,
+ * es bleibt also nichts über den Request hinaus hängen.
+ */
+const getNextPublicSlot = cache(_getNextPublicSlot);
 
 /**
  * Nächsten freien Termin als lesbaren Text.
