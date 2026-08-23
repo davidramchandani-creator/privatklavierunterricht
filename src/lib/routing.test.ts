@@ -150,6 +150,46 @@ describe("Paarung zweiwöchentlicher Schüler", () => {
     expect(p.every((x) => x.ungerade === null)).toBe(true);
   });
 
+  it("paart niemanden, der nie am selben Tag kann", () => {
+    // Ein Paar teilt sich **einen** Termin — es braucht also einen Tag, an
+    // dem beide können. Nach Nähe allein zu paaren war fatal: Das Paar
+    // hatte danach keinen einzigen möglichen Tag, fiel durch jede Prüfung,
+    // und **beide** standen unter „nicht eingeplant". Einzeln hätte jeder
+    // von beiden einen Platz gefunden.
+    //
+    // Der echte Fall: Marina konnte nur montags, Justine montags nicht
+    // (ihr Fenster begann nach dem Ende des Unterrichtstags). Drei
+    // Kilometer auseinander, also nach Distanz ein perfektes Paar — und
+    // beide flogen aus dem Plan.
+    const getrennt: PlanSchueler[] = [
+      { ...nah[0], moeglicheTage: [1] },
+      { ...nah[1], moeglicheTage: [4] },
+    ];
+    expect(haversineMeter(getrennt[0], getrennt[1])).toBeLessThan(
+      MAX_PAAR_DISTANZ_M
+    );
+    const p = paareZweiwoechentliche(getrennt);
+    expect(p).toHaveLength(2);
+    expect(p.every((x) => x.ungerade === null)).toBe(true);
+  });
+
+  it("paart weiterhin, wenn es einen gemeinsamen Tag gibt", () => {
+    // Gegenprobe: Die Prüfung darf das Paaren nicht generell verhindern —
+    // der geteilte Platz ist der Kapazitätsgewinn.
+    const zusammen: PlanSchueler[] = [
+      { ...nah[0], moeglicheTage: [1, 4] },
+      { ...nah[1], moeglicheTage: [4] },
+    ];
+    const p = paareZweiwoechentliche(zusammen);
+    expect(p).toHaveLength(1);
+  });
+
+  it("paart auch ohne Tagesangabe", () => {
+    // Keine Angabe heisst „kann an jedem Tag", nicht „kann an keinem".
+    const ohne: PlanSchueler[] = [{ ...nah[0] }, { ...nah[1] }];
+    expect(paareZweiwoechentliche(ohne)).toHaveLength(1);
+  });
+
   it("gibt wöchentlichen Schülern beide Wochen", () => {
     const w: PlanSchueler[] = [
       { ...nah[0], rhythmus: "woechentlich" },
@@ -329,6 +369,74 @@ describe("Vergleich mit ungeplanter Verteilung", () => {
     const e = eingabe({ schueler: [] });
     const v = vergleicheMitUnsortiert(planeRouten(e), e);
     expect(v.ersparnisProWoche).toBe(0);
+  });
+});
+
+describe("Lieber ein voller Abend als zwei halbe", () => {
+  it("legt zwei Schüler auf denselben Tag, wenn beide dort können", () => {
+    // Vorher suchte die Tagesvergabe ausdrücklich einen **unbenutzten**
+    // Tag. Zwei Schüler, die zusammen an einen Abend gepasst hätten,
+    // bekamen so je einen eigenen — mit eigener Anfahrt, eigenem Heimweg
+    // und einem Abend, der sonst frei geblieben wäre.
+    const zwei: PlanSchueler[] = [
+      {
+        id: "a",
+        name: "A",
+        lat: 47.5266,
+        lng: 8.6706,
+        rhythmus: "woechentlich",
+        lektionMinuten: 45,
+        moeglicheTage: [4],
+      },
+      {
+        id: "b",
+        name: "B",
+        lat: 47.5471,
+        lng: 8.7053,
+        rhythmus: "woechentlich",
+        lektionMinuten: 45,
+        // Kann an beiden Tagen — der Planer hat also die Wahl.
+        moeglicheTage: [3, 4],
+      },
+    ];
+    const plan = planeRouten(
+      eingabe({
+        schueler: zwei,
+        fenster: [
+          { wochentag: 3, beginn: "16:30", ende: "20:30" },
+          { wochentag: 4, beginn: "16:30", ende: "20:30" },
+        ],
+      })
+    );
+    const mitLektionen = plan.tage.filter((t) => t.positionen.length > 0);
+    expect(mitLektionen).toHaveLength(1);
+    expect(plan.nichtEingeplant).toHaveLength(0);
+  });
+
+  it("öffnet trotzdem einen zweiten Tag, wenn der erste voll ist", () => {
+    // Stures Bündeln wäre der umgekehrte Fehler: Ein übervoller Tag
+    // drängt am Ende jemanden ganz aus dem Plan.
+    const viele: PlanSchueler[] = ORTE.slice(0, 6).map(
+      ([name, lat, lng], i) => ({
+        id: `v${i}`,
+        name,
+        lat,
+        lng,
+        rhythmus: "woechentlich" as const,
+        lektionMinuten: 45,
+      })
+    );
+    const plan = planeRouten(
+      eingabe({
+        schueler: viele,
+        fenster: [
+          { wochentag: 3, beginn: "16:30", ende: "18:00" },
+          { wochentag: 4, beginn: "16:30", ende: "20:30" },
+        ],
+      })
+    );
+    const mitLektionen = plan.tage.filter((t) => t.positionen.length > 0);
+    expect(mitLektionen.length).toBeGreaterThan(1);
   });
 });
 
