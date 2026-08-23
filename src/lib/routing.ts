@@ -188,13 +188,55 @@ function aufRaster(minuten: number, raster = 15): number {
   return Math.ceil(minuten / raster) * raster;
 }
 
-/** Kann dieser Schüler an diesem Wochentag überhaupt? */
-function tagErlaubt(s: PlanSchueler, wochentag: number): boolean {
-  if (s.fenster && s.fenster.length > 0) {
-    return s.fenster.some((f) => f.wochentag === wochentag);
-  }
-  if (!s.moeglicheTage || s.moeglicheTage.length === 0) return true;
-  return s.moeglicheTage.includes(wochentag);
+/**
+ * Kann dieser Schüler an diesem Unterrichtstag überhaupt unterrichtet
+ * werden — nicht bloss: hat er dort ein Fenster?
+ *
+ * Der Unterschied ist entscheidend. Vorher genügte ein Eintrag am
+ * richtigen Wochentag. Ob sich sein Fenster mit dem Unterrichtsfenster
+ * lange genug überschneidet, wurde erst viel später geprüft, beim Bauen
+ * des Tages.
+ *
+ * Das ging schief, sobald zwei zweiwöchentliche Schüler gepaart wurden:
+ * Justine hatte montags von 17:30 bis 20:30 Zeit, Davids Montag endete um
+ * 18:00 — dreissig Minuten Überschneidung, zu wenig für eine Lektion.
+ * Montag galt trotzdem als möglich, sie wurde mit Marina gepaart (die
+ * *nur* montags kann), und weil das Paar nur gemeinsam auftreten kann,
+ * flogen am Ende **beide** aus dem Plan. Einzeln hätten beide Platz
+ * gehabt.
+ *
+ * Ohne Tagesfenster bleibt es bei der alten, groben Prüfung — dann ist
+ * schlicht nicht bekannt, wie lang der Tag ist.
+ */
+function tagErlaubt(
+  s: PlanSchueler,
+  wochentag: number,
+  tagesfenster?: Tagesfenster
+): boolean {
+  const hatTag = (): boolean => {
+    if (s.fenster && s.fenster.length > 0) {
+      return s.fenster.some((f) => f.wochentag === wochentag);
+    }
+    if (!s.moeglicheTage || s.moeglicheTage.length === 0) return true;
+    return s.moeglicheTage.includes(wochentag);
+  };
+
+  if (!hatTag()) return false;
+  if (!tagesfenster) return true;
+
+  const tagVon = minutenVon(tagesfenster.beginn);
+  const tagBis = minutenVon(tagesfenster.ende);
+
+  // Ohne persönliche Fenster zählt der ganze Unterrichtstag.
+  const eigene = s.fenster?.filter((f) => f.wochentag === wochentag) ?? [];
+  if (eigene.length === 0) return tagBis - tagVon >= s.lektionMinuten;
+
+  // Eines der eigenen Fenster muss lang genug in den Tag hineinragen.
+  return eigene.some((f) => {
+    const von = Math.max(tagVon, minutenVon(f.fruehestens));
+    const bis = Math.min(tagBis, minutenVon(f.spaetestens));
+    return bis - von >= s.lektionMinuten;
+  });
 }
 
 /**
@@ -366,7 +408,14 @@ export const MAX_PAAR_DISTANZ_M = 4000;
  */
 export function paareZweiwoechentliche(
   schueler: PlanSchueler[],
-  maxDistanzM: number = MAX_PAAR_DISTANZ_M
+  maxDistanzM: number = MAX_PAAR_DISTANZ_M,
+  /**
+   * Die Unterrichtstage. Ohne sie kann nur geprüft werden, ob beide am
+   * selben Wochentag *etwas* eingetragen haben — mit ihnen, ob dort auch
+   * wirklich eine Lektion hineinpasst. Das ist der Unterschied zwischen
+   * „hat montags Zeit" und „kann montags unterrichtet werden".
+   */
+  tage?: Tagesfenster[]
 ): Positionsbelegung[] {
   const woechentlich = schueler.filter((s) => s.rhythmus === "woechentlich");
   const zweiwoechentlich = schueler.filter(
@@ -384,6 +433,18 @@ export function paareZweiwoechentliche(
    * Ohne Angabe kann jemand an jedem Tag — dann gibt es immer einen.
    */
   const gemeinsamerTag = (a: PlanSchueler, b: PlanSchueler): boolean => {
+    // Mit Unterrichtstagen die ehrliche Prüfung: Gibt es einen Tag, an dem
+    // für **beide** eine Lektion in ihr Fenster passt?
+    //
+    // Die frühere Fassung verglich nur die Wochentagslisten. Das reichte
+    // nicht: Justine hatte montags einen Eintrag, aber ihr Fenster begann
+    // eine halbe Stunde vor Feierabend. Montag zählte als gemeinsamer Tag,
+    // das Paar war unmöglich, und beide fielen aus dem Plan.
+    if (tage && tage.length > 0) {
+      return tage.some(
+        (t) => tagErlaubt(a, t.wochentag, t) && tagErlaubt(b, t.wochentag, t)
+      );
+    }
     const ta = a.moeglicheTage;
     const tb = b.moeglicheTage;
     if (!ta || ta.length === 0) return true;
@@ -698,7 +759,7 @@ export function planeRouten(eingabe: PlanEingabe): Routenplan {
       });
       continue;
     }
-    const passendeTage = tage.filter((t) => tagErlaubt(s, t.wochentag));
+    const passendeTage = tage.filter((t) => tagErlaubt(s, t.wochentag, t));
     if (passendeTage.length === 0) {
       nichtEingeplant.push({
         schueler: s,
@@ -717,7 +778,11 @@ export function planeRouten(eingabe: PlanEingabe): Routenplan {
   // Tagesgruppen und finden keinen Partner mehr. Genau der Partner ist aber
   // der Kapazitätsgewinn, ohne ihn belegt jeder zweiwöchentliche Schüler
   // eine ganze Position und die halbe Zeit steht der Slot leer.
-  const positionenGesamt = paareZweiwoechentliche(planbar);
+  const positionenGesamt = paareZweiwoechentliche(
+    planbar,
+    MAX_PAAR_DISTANZ_M,
+    tage
+  );
 
   // Schritt 2: die **Positionen** geografisch gruppieren (nicht die Schüler),
   // damit ein Paar zusammenbleibt.
@@ -764,7 +829,7 @@ export function planeRouten(eingabe: PlanEingabe): Routenplan {
       (v) => positionenGesamt[Number(v.id.slice(4))]
     );
     const passendeTage = tage
-      .filter((t) => gruppe.every((v) => tagErlaubt(v, t.wochentag)))
+      .filter((t) => gruppe.every((v) => tagErlaubt(v, t.wochentag, t)))
       .sort((a, b) => fensterLaenge(b) - fensterLaenge(a));
 
     // Lieber einen Abend voll als zwei halb — solange es dort noch passt.
@@ -845,7 +910,7 @@ export function planeRouten(eingabe: PlanEingabe): Routenplan {
     let untergebracht = false;
 
     for (const t of tage) {
-      if (!betroffene.every((s) => tagErlaubt(s, t.wochentag))) continue;
+      if (!betroffene.every((s) => tagErlaubt(s, t.wochentag, t))) continue;
       const plan = tagesplaene.find((p) => p.wochentag === t.wochentag)!;
       const bestehend: Positionsbelegung[] = plan.positionen.map((p) => ({
         gerade: p.geradeWoche,

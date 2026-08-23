@@ -372,6 +372,78 @@ describe("Vergleich mit ungeplanter Verteilung", () => {
   });
 });
 
+describe("Ein Fenster, das nur halb in den Tag ragt, ist kein möglicher Tag", () => {
+  // Der echte Fall vom September-Plan, nachgebaut.
+  //
+  // Justine hatte montags von 17:30 bis 20:30 Zeit — Davids Montag endete
+  // um 18:00. Dreissig Minuten Überschneidung, zu wenig für eine Lektion.
+  // Montag galt trotzdem als „möglicher Tag", weil nur der Wochentag
+  // verglichen wurde, nicht die Uhrzeit.
+  //
+  // Folge: Sie wurde mit Marina gepaart, die *nur* montags kann. Ein Paar
+  // teilt sich einen Termin, das Paar konnte also nur montags — und dort
+  // passte Justine nicht. Beide fielen aus dem Plan, obwohl einzeln beide
+  // problemlos Platz gehabt hätten: Marina montags, Justine donnerstags.
+  const fenster: Tagesfenster[] = [
+    { wochentag: 1, beginn: "16:15", ende: "18:00" },
+    { wochentag: 4, beginn: "13:30", ende: "21:00" },
+  ];
+
+  const marina: PlanSchueler = {
+    id: "m",
+    name: "Marina",
+    lat: 47.5282,
+    lng: 8.6696,
+    rhythmus: "zweiwoechentlich",
+    lektionMinuten: 45,
+    moeglicheTage: [1],
+    fenster: [{ wochentag: 1, fruehestens: "17:15", spaetestens: "18:00" }],
+  };
+  const justine: PlanSchueler = {
+    id: "j",
+    name: "Justine",
+    lat: 47.544,
+    lng: 8.7049,
+    rhythmus: "zweiwoechentlich",
+    lektionMinuten: 45,
+    moeglicheTage: [1, 4],
+    fenster: [
+      // Ragt nur 30 Minuten in den Montag — unmöglich.
+      { wochentag: 1, fruehestens: "17:30", spaetestens: "20:30" },
+      { wochentag: 4, fruehestens: "17:30", spaetestens: "20:30" },
+    ],
+  };
+
+  it("paart die beiden nicht", () => {
+    const p = paareZweiwoechentliche([marina, justine], MAX_PAAR_DISTANZ_M, fenster);
+    expect(p).toHaveLength(2);
+  });
+
+  it("bringt beide unter, jeden an seinem Tag", () => {
+    const plan = planeRouten(
+      eingabe({ schueler: [marina, justine], fenster })
+    );
+    expect(plan.nichtEingeplant).toHaveLength(0);
+    const tagVon = (name: string) =>
+      plan.tage.find((t) =>
+        t.positionen.some(
+          (p) =>
+            p.geradeWoche?.name === name || p.ungeradeWoche?.name === name
+        )
+      )?.wochentag;
+    expect(tagVon("Marina")).toBe(1);
+    expect(tagVon("Justine")).toBe(4);
+  });
+
+  it("ohne Tagesfenster bleibt die grobe Prüfung", () => {
+    // Ohne die Unterrichtstage ist schlicht nicht bekannt, wie lang der Tag
+    // ist. Dann darf weiterhin nach Wochentag gepaart werden — sonst würde
+    // die Rückwärtskompatibilität der Funktion brechen.
+    const p = paareZweiwoechentliche([marina, justine]);
+    expect(p).toHaveLength(1);
+  });
+});
+
 describe("Lieber ein voller Abend als zwei halbe", () => {
   it("legt zwei Schüler auf denselben Tag, wenn beide dort können", () => {
     // Vorher suchte die Tagesvergabe ausdrücklich einen **unbenutzten**
