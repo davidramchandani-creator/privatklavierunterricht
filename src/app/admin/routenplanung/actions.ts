@@ -7,6 +7,7 @@ import {
   planeRouten,
   vergleicheMitUnsortiert,
   vergleicheTagesanzahl,
+  type PlanEingabe,
   type Routenplan,
   type TagesanzahlVariante,
   type Vergleich,
@@ -64,6 +65,17 @@ export type PlanErgebnis = {
    * verbessern? Nur gefüllt, wenn jemand nicht hineinpasst.
    */
   schuelerAnfragen: SchuelerAnfrage[];
+  /**
+   * Serialisierbare Plan-Eingabe für die Was-wäre-wenn-Werkstatt im
+   * Browser. Ohne die Fahrzeit-Funktion — Funktionen überleben die
+   * Server-Grenze nicht, der Client rechnet mit der Schätzung.
+   */
+  werkstatt: {
+    zuhause: { lat: number; lng: number };
+    schueler: PlanEingabe["schueler"];
+    fenster: PlanEingabe["fenster"];
+    pufferMinuten: number;
+  };
   zuhauseAdresse: string;
   ohneKoordinaten: { name: string; adresse: string | null }[];
 };
@@ -143,6 +155,12 @@ export async function berechnePlan(optionen: {
     empfehlung,
     optimierungen,
     schuelerAnfragen,
+    werkstatt: {
+      zuhause: kontext.eingabe.zuhause,
+      schueler: kontext.eingabe.schueler,
+      fenster: kontext.eingabe.fenster,
+      pufferMinuten: kontext.eingabe.pufferMinuten,
+    },
     zuhauseAdresse: kontext.zuhauseAdresse,
     ohneKoordinaten: kontext.ohneKoordinaten.map((s) => ({
       name: s.name,

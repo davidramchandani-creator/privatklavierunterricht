@@ -18,6 +18,7 @@ import {
   MessageCircleQuestion,
 } from "lucide-react";
 import { formatDauer, navigationsLink } from "@/lib/geo";
+import WasWaereWennWerkstatt from "./WasWaereWennWerkstatt";
 import { KREIS_LABEL, type Kreis } from "@/lib/kreis";
 import { WEEKDAY_LABELS, WEEKDAY_SHORT } from "@/lib/fixplatz";
 import {
@@ -656,6 +657,10 @@ function Ergebnisansicht({
           </ul>
         </div>
       )}
+
+      {/* Was-wäre-wenn-Werkstatt: Zeiten probeweise verschieben, der Plan
+          rechnet live im Browser. Nichts wird gespeichert. */}
+      <WasWaereWennWerkstatt eingabe={ergebnis.werkstatt} />
 
       {/* Tagespläne */}
       <div className="space-y-3">

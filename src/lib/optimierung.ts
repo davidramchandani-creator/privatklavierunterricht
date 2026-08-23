@@ -16,11 +16,14 @@
 // ============================================================
 
 import {
+  gemeinsamerSlot,
+  MAX_PAAR_DISTANZ_M,
   planeRouten,
   type PlanEingabe,
   type PlanSchueler,
   type Tagesfenster,
 } from "./routing";
+import { haversineMeter } from "./geo";
 import { WEEKDAY_LABELS } from "./fixplatz";
 
 export type OptimierungsArt =
@@ -34,6 +37,12 @@ export type Kennzahlen = {
   nichtEingeplant: number;
   fahrzeitProWoche: number;
   tage: number;
+  /**
+   * Belegte Plätze im Wochenplan. Weniger Plätze bei gleich vielen
+   * Schülern heisst: Zweiwöchentliche teilen sich einen — und ein Slot
+   * wird frei für den nächsten Schüler.
+   */
+  plaetze: number;
 };
 
 export type Optimierung = {
@@ -85,6 +94,7 @@ function kennzahlen(eingabe: PlanEingabe): {
       nichtEingeplant: plan.nichtEingeplant.length,
       fahrzeitProWoche: plan.fahrzeitProWoche,
       tage: plan.tage.filter((t) => t.positionen.length > 0).length,
+      plaetze: plan.positionen,
     },
     eingeplantIds: ids,
   };
@@ -365,7 +375,6 @@ export function schlageSchuelerAnfragen(
   const basis = kennzahlen(eingabe);
   const plan = planeRouten(eingabe);
   const draussen = new Set(plan.nichtEingeplant.map((n) => n.schueler.id));
-  if (draussen.size === 0) return [];
 
   const nameVon = new Map(eingabe.schueler.map((s) => [s.id, s.name]));
   const ergebnisse: SchuelerAnfrage[] = [];
@@ -421,12 +430,103 @@ export function schlageSchuelerAnfragen(
     }
   }
 
+  // ── Zweite Sorte: Fragen, die einen Platz freimachen ──────
+  //
+  // Auch wenn alle untergebracht sind, kann eine kleine Nachfrage viel
+  // wert sein: Zwei Zweiwöchentliche, die sich um Minuten verpassen,
+  // belegen zwei Plätze statt einen. Der echte Fall: Marina bis 18:00,
+  // Justine ab 17:30 — der geteilte Montagsplatz scheitert um eine
+  // Viertelstunde, und ohne diesen Hinweis sieht David nur das Ergebnis
+  // („zwei getrennte Plätze"), nicht die um 15 Minuten verpasste
+  // Gelegenheit.
+  //
+  // Für jedes solche Beinahe-Paar wird durchgerechnet: Was passiert, wenn
+  // einer von beiden an einem Tag mehr Spielraum hätte? Frei wird ein
+  // Platz nur, wenn der Planer die beiden dann tatsächlich zusammenlegt —
+  // darum zählt die Wirkung über `plaetze`, nicht über die Annahme.
+  const zweiwoechentliche = eingabe.schueler.filter(
+    (s) => s.rhythmus === "zweiwoechentlich"
+  );
+  const teiltSchon = new Set<string>();
+  for (const t of plan.tage) {
+    for (const p of t.positionen) {
+      if (
+        p.geradeWoche &&
+        p.ungeradeWoche &&
+        p.geradeWoche.id !== p.ungeradeWoche.id
+      ) {
+        teiltSchon.add(p.geradeWoche.id);
+        teiltSchon.add(p.ungeradeWoche.id);
+      }
+    }
+  }
+
+  for (let i = 0; i < zweiwoechentliche.length; i++) {
+    for (let j = i + 1; j < zweiwoechentliche.length; j++) {
+      const a = zweiwoechentliche[i];
+      const b = zweiwoechentliche[j];
+      if (teiltSchon.has(a.id) || teiltSchon.has(b.id)) continue;
+      if (draussen.has(a.id) || draussen.has(b.id)) continue;
+      if (haversineMeter(a, b) > MAX_PAAR_DISTANZ_M) continue;
+      // Geht es schon heute zusammen, ist es kein Frage-Thema — dann hat
+      // der Planer anders entschieden, vermutlich wegen der Fahrzeit.
+      if (eingabe.fenster.some((t) => gemeinsamerSlot(a, b, t))) continue;
+
+      for (const t of eingabe.fenster) {
+        for (const [wer, anderer] of [
+          [a, b],
+          [b, a],
+        ] as const) {
+          const geaendert: PlanSchueler = {
+            ...wer,
+            moeglicheTage: [
+              ...new Set([...(wer.moeglicheTage ?? []), t.wochentag]),
+            ],
+            fenster: [
+              ...(wer.fenster ?? []).filter((f) => f.wochentag !== t.wochentag),
+              { wochentag: t.wochentag, fruehestens: t.beginn, spaetestens: t.ende },
+            ],
+          };
+          // Die Frage lohnt nur, wenn sie das Paar überhaupt möglich macht.
+          if (!gemeinsamerSlot(geaendert, anderer, t)) continue;
+
+          const nach = kennzahlen({
+            ...eingabe,
+            schueler: eingabe.schueler.map((x) =>
+              x.id === wer.id ? geaendert : x
+            ),
+          });
+          if (nach.zahlen.eingeplant < basis.zahlen.eingeplant) continue;
+          const frei = basis.zahlen.plaetze - nach.zahlen.plaetze;
+          if (frei <= 0) continue;
+
+          const tag = WEEKDAY_LABELS[t.wochentag] ?? String(t.wochentag);
+          ergebnisse.push({
+            schuelerId: wer.id,
+            name: wer.name,
+            wochentag: t.wochentag,
+            frage: `Frag ${wer.name}, ob es am ${tag} zwischen ${t.beginn} und ${t.ende} ginge.`,
+            wirkung: `Dann teilen sich ${a.name} und ${b.name} einen Platz im Wechsel — ${
+              frei === 1 ? "ein Slot wird frei" : `${frei} Slots werden frei`
+            }.`,
+            vorher: basis.zahlen,
+            nachher: nach.zahlen,
+            neuEingeplant: [],
+          });
+        }
+      }
+    }
+  }
+
   // Beste zuerst: mehr Untergebrachte, dann weniger Fahrzeit. Pro Schüler
   // höchstens zwei Tage — die Frage „kannst du irgendwann irgendwo?" stellt
   // David besser selbst.
   ergebnisse.sort((a, b) => {
     if (a.nachher.eingeplant !== b.nachher.eingeplant) {
       return b.nachher.eingeplant - a.nachher.eingeplant;
+    }
+    if (a.nachher.plaetze !== b.nachher.plaetze) {
+      return a.nachher.plaetze - b.nachher.plaetze;
     }
     return a.nachher.fahrzeitProWoche - b.nachher.fahrzeitProWoche;
   });

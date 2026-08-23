@@ -700,6 +700,26 @@ Karte „Eine Frage an den Schüler würde helfen" formuliert die Nachfrage
 an **ihn**, samt Wirkung, wenn er Ja sagt. Antwortet er mit Ja, trägst du
 die neuen Zeiten auf seiner Schülerseite ein und rechnest neu.
 
+Die Frage-Karte kennt auch **Beinahe-Paare**: Verpassen sich zwei
+Zweiwöchentliche um eine Viertelstunde (der eine kann bis 18:00, die
+andere erst ab 17:30), belegen sie zwei Plätze, wo einer reichte. Der
+Planer sagt dir dann, welche kleine Nachfrage den geteilten Platz im
+Wechsel möglich macht — und dass dabei ein Slot frei wird.
+
+### Die Was-wäre-wenn-Werkstatt
+
+Unter den Karten sitzt die Werkstatt: eine Tabelle mit allen Schülern und
+Unterrichtstagen, in der du Zeiten **probeweise** verschiebst — „was, wenn
+Justine montags schon um 17:15 könnte?" — und der Plan sich in derselben
+Sekunde neu rechnet, direkt im Browser. Dazu die Abweichung zum heutigen
+Stand: mehr oder weniger Fahrt, Slots frei, jemand neu drin oder draussen.
+Das Zeichen ⇄ markiert einen geteilten Platz im Wechsel.
+
+Zwei Dinge dazu: Die Vorschau rechnet mit **geschätzter** Fahrzeit
+(Luftlinie), die Minuten können vom grossen Plan leicht abweichen. Und
+gespeichert wird nichts — was dir gefällt, trägst du dort ein, wo es
+wirklich gilt, und rechnest den echten Plan neu.
+
 ## 9g. Drei Werkzeuge gegen verschenkte Zeit
 
 **Optimierungs-Vorschläge im Routenplaner.** Unter dem Tagesvergleich steht
