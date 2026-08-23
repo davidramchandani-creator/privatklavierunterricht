@@ -754,6 +754,43 @@ Adresse des Schülers zählt nur die Lage im Tag, das sagt dir ein Hinweis.
 
 ---
 
+## 9j. Zwei Briefings und der Vertrag
+
+**Montag früh** kommt das Wochenbriefing — aber **nur, wenn etwas
+anliegt**. Offene Rechnungen, gemeldete Zahlungen ohne deine Bestätigung,
+unbeantwortete Anfragen, auslaufende Abos, und wer seit über vier Wochen
+keine Lektion mehr gebucht hat. Keine Mail heisst: nichts liegt quer.
+
+Das ist Absicht und der wichtigste Teil daran. Eine Mail, die jeden Montag
+„alles in Ordnung" meldet, gewöhnt einen daran, sie ungelesen zu löschen —
+und dann fehlt sie in der Woche, in der etwas drinsteht. Dieselben Punkte
+stehen auch als Karte oben im Dashboard, falls du die Mail abschaltest.
+
+Der Punkt „seit über vier Wochen keine Lektion" ist der wertvollste: Wer
+aufhört, ohne es zu sagen, kostet nicht eine Lektion, sondern alle
+künftigen. Gerechnet wird über die tatsächlichen Termine, nicht über das
+Abo — ein laufendes Abo sagt nichts darüber, ob jemand noch kommt.
+
+**Am Monatsersten** kommt das Monatsbriefing: Einnahmen, Ausgaben,
+Ergebnis und Lektionen des abgeschlossenen Monats, dazu der Vergleich zum
+Vormonat und was noch offen ist. Gezählt wird nach Zahlungseingang, wie in
+der Abrechnung.
+
+**Der Vertrag.** Jedes Abo bekommt eine Bestätigung als PDF — Variante,
+Rhythmus, fester Termin, Monatsbetrag, Laufzeit, die konkreten Termine und
+die Ferienausfälle. Der Schüler bekommt den Link in der Bestätigungsmail,
+du findest ihn auf seiner Schülerseite bei jedem Abo unter *Bestätigung
+(PDF)*. Erzeugt wird bei jedem Aufruf frisch aus den aktuellen Daten,
+nicht als Datei abgelegt: Eine gespeicherte Bestätigung wäre am Tag nach
+der ersten Terminverschiebung falsch, ohne dass es jemandem auffiele.
+
+Ein Unterschriftsfeld gibt es bewusst nicht — bestätigt wurde beim
+Absenden des Formulars, mit Zeitstempel in der Datenbank. Ein Blatt, das
+zurückgeschickt werden müsste, bekäme man von der Hälfte nie zurück, und
+dann stünde die Frage im Raum, ob die andere Hälfte überhaupt gilt.
+
+---
+
 ## 9i. Wenn eine Rechnung liegen bleibt
 
 Zwei Arten von Stillstand, und sie brauchen entgegengesetzte Antworten.

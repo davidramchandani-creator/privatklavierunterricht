@@ -1424,6 +1424,10 @@ export async function aboAnlegenAdmin(
     termine: vorschau.termine,
     ferientage: vorschau.ferientage,
     auto_renew: autoRenew,
+    // Die Bestätigung zum Ablegen. Gab es bisher nur bei Abos aus einer
+    // Umstellungsrunde — wer sein Abo einzeln abschloss, bekam nichts
+    // Schriftliches, obwohl dieselbe Bestätigung längst erzeugbar war.
+    pdf_url: `${BASIS_URL}/api/abo/${pkg.id}/bestaetigung`,
   });
 
   revalidatePath(`/admin/schueler/${schuelerId}`);

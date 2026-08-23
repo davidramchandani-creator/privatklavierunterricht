@@ -1740,6 +1740,109 @@ export function renderEmail(
       };
     }
 
+    case "wochenbriefing": {
+      // Kommt nur, wenn etwas drinsteht. Eine Mail, die jeden Montag
+      // „alles in Ordnung" meldet, trainiert einen darauf, sie ungelesen
+      // zu löschen — und dann fehlt sie in der Woche, in der etwas ist.
+      const punkte = Array.isArray(payload.punkte)
+        ? (payload.punkte as string[])
+        : [];
+      return {
+        subject: `Diese Woche: ${payload.lektionen ?? 0} Lektionen, ${Math.max(punkte.length - 1, 0)} zu erledigen`,
+        html: baseWrapper(
+          `<p>Hallo David</p>
+           <p>Kurz, was diese Woche liegt:</p>
+
+           <ul style="margin:0 0 24px;padding-left:20px;color:#334155;font-size:15px;line-height:1.9;">
+             ${punkte.map((p) => `<li>${p}</li>`).join("")}
+           </ul>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Admin</a>
+           </p>
+
+           <p style="color:#64748b;font-size:14px;">
+             Diese Mail kommt nur, wenn es etwas zu sagen gibt. Keine Mail
+             heisst: nichts liegt quer.
+           </p>`
+        ),
+      };
+    }
+
+    case "monatsbriefing": {
+      const monatText = payload.monat
+        ? new Date(`${payload.monat}-01T12:00:00Z`).toLocaleDateString("de-CH", {
+            timeZone: "UTC",
+            month: "long",
+            year: "numeric",
+          })
+        : "der letzte Monat";
+      const chf = (n: unknown) =>
+        Number(n ?? 0).toLocaleString("de-CH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      const diff = Number(payload.gegen_vormonat ?? 0);
+      const prozent = payload.prozent as number | null | undefined;
+      const ergebnis = Number(payload.ergebnis ?? 0);
+      return {
+        subject: `${monatText}: CHF ${chf(payload.einnahmen)} eingenommen`,
+        html: baseWrapper(
+          `<p>Hallo David</p>
+           <p>${monatText} ist abgeschlossen. Die Zahlen:</p>
+
+           <div style="background:#F3F5F8;border:1px solid #E3E7EE;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0 0 6px;color:#1C244B;font-size:14px;">
+               Einnahmen: <strong>CHF ${chf(payload.einnahmen)}</strong>
+               ${
+                 diff !== 0
+                   ? ` <span style="color:${diff > 0 ? "#047857" : "#b45309"};">
+                        (${diff > 0 ? "+" : "−"}CHF ${chf(Math.abs(diff))}${
+                          prozent != null ? `, ${prozent > 0 ? "+" : ""}${prozent} %` : ""
+                        } gegenüber dem Vormonat)
+                      </span>`
+                   : ""
+               }
+             </p>
+             <p style="margin:0 0 6px;color:#1C244B;font-size:14px;">
+               Ausgaben: <strong>CHF ${chf(payload.ausgaben)}</strong>
+             </p>
+             <p style="margin:0;color:#1C244B;font-size:15px;">
+               Ergebnis:
+               <strong style="color:${ergebnis >= 0 ? "#047857" : "#dc2626"};">CHF ${chf(ergebnis)}</strong>
+               · ${payload.lektionen ?? 0} Lektionen
+             </p>
+           </div>
+
+           ${
+             Number(payload.offen_anzahl ?? 0) > 0
+               ? `<p style="color:#b45309;font-size:14px;">
+                    Noch offen: ${payload.offen_anzahl} Rechnung(en) über
+                    CHF ${chf(payload.offen_betrag)}.
+                  </p>`
+               : ""
+           }
+           ${
+             Number(payload.geschaetzt ?? 0) > 0
+               ? `<p style="color:#64748b;font-size:14px;">
+                    Dazu CHF ${chf(payload.geschaetzt)} von externen Plattformen,
+                    die du noch nicht bestätigt hast — die zählen oben nicht mit.
+                  </p>`
+               : ""
+           }
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/abrechnung" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zur Abrechnung</a>
+           </p>
+
+           <p style="color:#64748b;font-size:14px;">
+             Gezählt wird nach Zahlungseingang, nicht nach Lektionsdatum —
+             dieselbe Abgrenzung wie in der Steuererklärung.
+           </p>`
+        ),
+      };
+    }
+
     case "zahlung_erinnerung": {
       // Ton: Erinnerung, keine Mahnung.
       //
@@ -2181,7 +2284,10 @@ export function renderEmail(
            </p>
 
            ${
-             vertrag && payload.pdf_url
+             // Nicht mehr nur beim Umstellungs-Abo: Wer sein Abo einzeln
+             // abschliesst, bekommt dieselbe Bestätigung. Ob sie kommt,
+             // hängt jetzt allein daran, dass eine URL mitgegeben wurde.
+             payload.pdf_url
                ? `<p style="text-align:center;margin:0 0 24px;">
                     <a href="${payload.pdf_url}" style="color:#1C244B;font-size:14px;font-weight:600;">Bestätigung als PDF herunterladen</a>
                   </p>

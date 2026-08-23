@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server";
+import { ladeWochenbriefing } from "@/lib/briefing-server";
 import { Users, Calendar, CreditCard, Inbox } from "lucide-react";
 import { formatCHF, formatDateTime } from "@/lib/utils";
 import Link from "next/link";
@@ -20,6 +21,7 @@ export default async function AdminDashboardPage() {
     { data: openPayments },
     { count: openBookingRequests },
     { data: nextLessons },
+    briefing,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -50,6 +52,7 @@ export default async function AdminDashboardPage() {
       .gte("start_at", now.toISOString())
       .order("start_at", { ascending: true })
       .limit(10),
+    ladeWochenbriefing(supabase, now),
   ]);
 
   const openPaymentsTotal = openPayments?.reduce(
@@ -121,6 +124,29 @@ export default async function AdminDashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* Was diese Woche liegt.
+          Dieselben Punkte wie im Montags-Briefing, nur immer sichtbar —
+          wer die Mail überliest oder abgeschaltet hat, findet es hier.
+          Ohne Auffälligkeiten wird gar nichts angezeigt: Eine Karte, die
+          meistens „alles gut" sagt, liest nach drei Wochen niemand mehr. */}
+      {briefing.punkte.filter((p) => p.gewicht > 0).length > 0 && (
+        <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5">
+          <h2 className="text-lg font-700 text-[#1C244B] mb-3">
+            Diese Woche liegt
+          </h2>
+          <ul className="space-y-1.5">
+            {briefing.punkte
+              .filter((p) => p.gewicht > 0)
+              .map((p, i) => (
+                <li key={i} className="text-sm text-gray-800 flex gap-2">
+                  <span className="text-amber-500 flex-shrink-0">•</span>
+                  {p.text}
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
 
       {/* Upcoming lessons */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">

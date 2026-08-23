@@ -124,6 +124,8 @@ const GROUPS: { label: string; types: EmailType[] }[] = [
       { id: "payment_reported_admin", label: "Zahlung gemeldet (an mich)" },
       { id: "proposal_accepted_admin", label: "Vorschlag angenommen (an mich)" },
       { id: "ausgaben_erinnerung", label: "Ausgaben eintragen (Monatsende)" },
+      { id: "wochenbriefing", label: "Wochenbriefing (Montag)" },
+      { id: "monatsbriefing", label: "Monatsbriefing (Monatsanfang)" },
     ],
   },
 ];

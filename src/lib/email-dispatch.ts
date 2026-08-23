@@ -14,6 +14,8 @@ export const ADMIN_RECIPIENT_TYPES = [
   // steht — sie handeln von einem Schüler, sind aber nicht an ihn.
   "zahlung_ueberfaellig_admin",
   "bestaetigung_offen_admin",
+  "wochenbriefing",
+  "monatsbriefing",
   "booking_request_admin",
   "booking_request_withdrawn",
   "appointment_cancelled_by_student",

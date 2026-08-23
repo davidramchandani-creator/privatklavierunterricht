@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { BASIS_URL } from "@/lib/seo";
 import {
   type Package as Paket,
   PACKAGE_LABELS,
@@ -1540,6 +1541,10 @@ export async function aboAbschliessen(params: {
     termine: [],
     ferientage: vorschau.ferientage,
     auto_renew: params.autoRenew,
+    // Dieselbe Bestätigung wie bei einem Abo aus der Umstellungsrunde.
+    // Sie fehlte hier, obwohl sie sich aus dem angelegten Abo jederzeit
+    // erzeugen lässt.
+    pdf_url: `${BASIS_URL}/api/abo/${pkg.id}/bestaetigung`,
   });
 
   await sendEmailNow(admin, "abo_gestartet_admin", {

@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
 import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
 import {
   computePackageState,
@@ -467,6 +467,22 @@ export default async function SchuelerDetailPage({
                         <span className="block text-xs font-400 text-gray-500 mt-0.5">
                           {artText}
                         </span>
+                      )}
+                      {/* Die Bestätigung, die der Schüler per Mail bekommen
+                          hat — bei dir abgelegt, damit du sie nachschlagen
+                          oder nachschicken kannst, ohne in seinem Postfach
+                          zu suchen. Wird bei jedem Aufruf frisch aus den
+                          aktuellen Daten erzeugt. */}
+                      {pkg.abo_variante && (
+                        <a
+                          href={`/api/abo/${pkg.id}/bestaetigung`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-600 text-[#1C244B] hover:underline mt-1"
+                        >
+                          <FileText className="w-3 h-3" />
+                          Bestätigung (PDF)
+                        </a>
                       )}
                     </td>
                     <td className="py-3 text-sm text-gray-600">

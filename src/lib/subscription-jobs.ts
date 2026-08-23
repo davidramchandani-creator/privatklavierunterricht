@@ -38,6 +38,10 @@ import { aktiviereGeplanteAbos } from "@/lib/umstellung-server";
 import { verlaengereExterneSerien } from "@/lib/externe-server";
 import { erinnereAnAusgaben } from "@/lib/abrechnung-server";
 import { mahneOffeneRechnungen } from "@/lib/mahnung-server";
+import {
+  verschickeMonatsbriefing,
+  verschickeWochenbriefing,
+} from "@/lib/briefing-server";
 import { gleicheAppleKalenderAb } from "@/lib/apple-kalender";
 
 import { ABO_LABELS } from "@/lib/abo";
@@ -879,6 +883,23 @@ export async function runSubscriptionJobs(
     if (gesendet) console.log("[abrechnung] Ausgaben-Erinnerung gesendet");
   } catch (err) {
     console.error("[abrechnung] Erinnerung fehlgeschlagen:", err);
+  }
+
+  // Briefings. Beide prüfen selbst, ob heute ihr Tag ist, ob schon
+  // gesendet wurde und — beim Wochenbriefing — ob es überhaupt etwas zu
+  // sagen gibt.
+  try {
+    const { gesendet } = await verschickeWochenbriefing(admin, now);
+    if (gesendet) console.log("[briefing] Wochenbriefing gesendet");
+  } catch (err) {
+    console.error("[briefing] Wochenbriefing fehlgeschlagen:", err);
+  }
+
+  try {
+    const { gesendet } = await verschickeMonatsbriefing(admin, now);
+    if (gesendet) console.log("[briefing] Monatsbriefing gesendet");
+  } catch (err) {
+    console.error("[briefing] Monatsbriefing fehlgeschlagen:", err);
   }
 
   // Offene Rechnungen nachfassen. Bisher wurde nur bei Raten überfällig
