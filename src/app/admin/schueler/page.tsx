@@ -6,6 +6,7 @@ import {
   ZeitfensterListe,
   type AngegebenesFenster,
 } from "@/components/ui/zeitfenster-liste";
+import SchuelerReiter from "./_components/SchuelerReiter";
 
 export default async function AdminSchuelerPage() {
   const admin = await createAdminClient();
@@ -90,6 +91,13 @@ export default async function AdminSchuelerPage() {
     zeitenVon[id] = dauerVon[id] ?? rundeVon[id]?.fenster ?? [];
   }
 
+  // `aktiv` ist die eine Angabe, die entscheidet, ob jemand noch kommt.
+  // Fehlt sie (null bei sehr alten Einträgen), gilt der Schüler als aktiv —
+  // jemanden versehentlich in „Nicht aktiv" zu schieben wäre schlimmer, als
+  // ihn versehentlich in der Hauptliste zu lassen.
+  const aktive = (profiles ?? []).filter((s) => s.aktiv !== false);
+  const inaktive = (profiles ?? []).filter((s) => s.aktiv === false);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -112,15 +120,51 @@ export default async function AdminSchuelerPage() {
         </div>
       </div>
 
+      {!profiles || profiles.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm text-center py-14 text-gray-400">
+          <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
+          <p className="text-sm">Noch keine Schüler erfasst</p>
+        </div>
+      ) : (
+        <SchuelerReiter
+          anzahlAktiv={aktive.length}
+          anzahlInaktiv={inaktive.length}
+          aktiv={<Liste schueler={aktive} leerText="Kein aktiver Schüler." />}
+          inaktiv={
+            <Liste
+              schueler={inaktive}
+              leerText="Niemand ist auf inaktiv gesetzt."
+            />
+          }
+        />
+      )}
+    </div>
+  );
+
+  /**
+   * Die Tabelle einmal geschrieben, zweimal gefüllt. Zwei Kopien wären zwei
+   * Stellen, an denen eine neue Spalte vergessen werden kann.
+   */
+  function Liste({
+    schueler,
+    leerText,
+  }: {
+    schueler: typeof profiles;
+    leerText: string;
+  }) {
+    if (!schueler || schueler.length === 0) {
+      return (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm text-center py-14 text-gray-400">
+          <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
+          <p className="text-sm">{leerText}</p>
+        </div>
+      );
+    }
+
+    return (
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-        {!profiles || profiles.length === 0 ? (
-          <div className="text-center py-14 text-gray-400">
-            <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">Noch keine Schüler erfasst</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+        <div className="overflow-x-auto">
+          <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100">
                   <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide px-5 py-3">
@@ -147,7 +191,7 @@ export default async function AdminSchuelerPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {profiles.map((s) => {
+                {schueler.map((s) => {
                   const pkg = packageByStudent[s.id] ?? null;
                   const state = pkg ? computePackageState(pkg) : null;
 
@@ -231,10 +275,9 @@ export default async function AdminSchuelerPage() {
                   );
                 })}
               </tbody>
-            </table>
-          </div>
-        )}
+          </table>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 }

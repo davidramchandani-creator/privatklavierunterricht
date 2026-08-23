@@ -8,7 +8,10 @@ import {
   Calendar,
   CalendarCheck,
   CalendarClock,
+  CalendarOff,
+  Clock,
   CreditCard,
+  FlaskConical,
   Inbox,
   LayoutDashboard,
   LogOut,
@@ -18,6 +21,7 @@ import {
   Star,
   Users,
   UsersRound,
+  Wallet,
   X,
 } from "lucide-react";
 import { logout } from "@/app/auth/actions";
@@ -28,16 +32,30 @@ const MAIN_TABS = [
   { href: "/admin/kalender", label: "Kalender", icon: Calendar, exact: false },
 ] as const;
 
+// Alles, was nicht in die vier Zellen unten passt. Reihenfolge wie in der
+// Seitenleiste, damit man am Handy nicht neu suchen muss.
+//
+// Diese Liste muss jeden Eintrag der Seitenleiste enthalten, der nicht schon
+// in MAIN_TABS steht — sonst gibt es Seiten, die am Handy nur noch über die
+// Adresszeile erreichbar sind. Genau das war eine Zeit lang der Fall
+// (Abrechnung, Abwesenheiten, Verfügbarkeit, Schulferien, Testmodus fehlten).
+// `admin-navigation.test.ts` vergleicht beide Listen und schlägt an, sobald
+// in der Seitenleiste etwas Neues auftaucht.
 const MORE_ITEMS = [
   { href: "/admin/terminanfragen", label: "Terminanfragen", icon: CalendarClock },
   { href: "/admin/anfragen", label: "Probelektionen", icon: Inbox },
-  { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
-  { href: "/admin/gruppenkurse", label: "Gruppenkurse", icon: UsersRound },
-  { href: "/admin/bewertungen", label: "Bewertungen", icon: Star },
+  { href: "/admin/abwesenheiten", label: "Abwesenheiten", icon: CalendarOff },
+  { href: "/admin/verfuegbarkeit", label: "Verfügbarkeit", icon: Clock },
+  { href: "/admin/schulferien", label: "Schulferien", icon: CalendarOff },
   { href: "/admin/planung", label: "Terminplanung", icon: CalendarCheck },
   { href: "/admin/routenplanung", label: "Routenplanung", icon: Route },
+  { href: "/admin/gruppenkurse", label: "Gruppenkurse", icon: UsersRound },
+  { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
+  { href: "/admin/abrechnung", label: "Abrechnung", icon: Wallet },
+  { href: "/admin/bewertungen", label: "Bewertungen", icon: Star },
   { href: "/benachrichtigungen", label: "Benachrichtigungen", icon: Bell },
   { href: "/admin/einstellungen", label: "Einstellungen", icon: Settings },
+  { href: "/admin/testmodus", label: "Testmodus", icon: FlaskConical },
 ];
 
 export default function AdminBottomNav() {
@@ -162,7 +180,10 @@ export default function AdminBottomNav() {
               </button>
             </div>
 
-            <div className="px-4 py-3 space-y-1">
+            {/* Scrollbar, weil die Liste auf kleinen Geräten länger ist als
+                das Blatt hoch werden darf. Ohne die Begrenzung würde
+                „Abmelden" unter den unteren Rand rutschen. */}
+            <div className="px-4 py-3 space-y-1 max-h-[calc(100vh-260px)] overflow-y-auto overscroll-contain">
               {MORE_ITEMS.map((item) => {
                 const active = pathname.startsWith(item.href);
                 const Icon = item.icon;
