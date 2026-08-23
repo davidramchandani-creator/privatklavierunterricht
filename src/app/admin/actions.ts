@@ -3908,6 +3908,126 @@ export async function externenAnlegen(
 }
 
 /**
+ * Zeitfenster eines Schülers von Hand erfassen.
+ *
+ * Für alle, die auf die Umfrage nicht geantwortet haben. David weiss ihre
+ * Zeiten oft aus einem Telefonat — bisher gab es aber keinen Ort, sie
+ * einzutragen: Das Formular lag nur im Portal, und der Admin konnte
+ * Verfügbarkeiten ausschliesslich beim Anlegen eines externen Schülers
+ * setzen. Wer nicht antwortete, fiel damit still aus jeder Zuteilung.
+ *
+ * Gespeichert wird als **Dauerangabe** (`runde_id = null`), derselbe Weg
+ * wie beim Abo-Kauf. Sie gilt damit auch für kommende Runden, bis der
+ * Schüler selbst etwas anderes angibt — eine Rundenangabe sticht die
+ * Dauerangabe.
+ */
+export async function zeitenFuerSchuelerSetzen(
+  studentId: string,
+  fenster: {
+    wochentag: number;
+    fruehestens: string;
+    spaetestens: string;
+    praeferenz: number;
+  }[]
+): Promise<{ success: true; error: undefined; anzahl: number } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const sauber = (fenster ?? []).filter(
+    (f) =>
+      Number.isInteger(f.wochentag) &&
+      f.wochentag >= 0 &&
+      f.wochentag <= 6 &&
+      /^\d{2}:\d{2}$/.test(f.fruehestens) &&
+      /^\d{2}:\d{2}$/.test(f.spaetestens) &&
+      f.fruehestens < f.spaetestens &&
+      [1, 2, 3].includes(Number(f.praeferenz))
+  );
+
+  // Ein Fenster, das nach dem Ende beginnt, hiesse „nie" — und der Schüler
+  // verschwände lautlos aus dem Plan mit der Meldung, er könne an keinem
+  // Tag. Lieber hier abweisen als dort suchen.
+  if (fenster.length > 0 && sauber.length !== fenster.length) {
+    return { error: "Mindestens ein Zeitfenster ist unvollständig oder endet vor seinem Beginn." };
+  }
+
+  const admin = await createAdminClient();
+
+  const { data: profil } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (!profil) return { error: "Schüler nicht gefunden." };
+
+  // Erst die alten Dauerangaben weg, dann die neuen rein. Rundenangaben
+  // (runde_id gesetzt) bleiben unangetastet — die hat der Schüler selbst
+  // gemacht, die gehören ihm.
+  await admin
+    .from("student_verfuegbarkeit")
+    .delete()
+    .eq("student_id", studentId)
+    .is("runde_id", null);
+
+  if (sauber.length > 0) {
+    const { error } = await admin.from("student_verfuegbarkeit").insert(
+      sauber.map((f) => ({
+        student_id: studentId,
+        runde_id: null,
+        wochentag: f.wochentag,
+        fruehestens: f.fruehestens,
+        spaetestens: f.spaetestens,
+        praeferenz: f.praeferenz,
+      }))
+    );
+    if (error) return { error: "Die Zeiten liessen sich nicht speichern." };
+  }
+
+  revalidatePath(`/admin/schueler/${studentId}`);
+  revalidatePath("/admin/schueler");
+  revalidatePath("/admin/planung");
+  revalidatePath("/admin/routenplanung");
+  return { success: true, error: undefined, anzahl: sauber.length };
+}
+
+/**
+ * Einen der beiden Planungsschalter setzen.
+ *
+ * `planung_aktiv` — nimmt der Schüler an der Zuteilung teil?
+ * `hausbesuch`    — fährt David hin?
+ *
+ * Bewusst zwei getrennte Felder statt eines Status: Sie beantworten
+ * verschiedene Fragen und kommen in allen vier Kombinationen vor. Wer
+ * pausiert, aber weiter besucht würde, ist etwas anderes als wer regulär
+ * eingeplant wird, aber selbst vorbeikommt.
+ */
+export async function planungSchalterSetzen(
+  studentId: string,
+  feld: "planung_aktiv" | "hausbesuch",
+  wert: boolean
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  if (feld !== "planung_aktiv" && feld !== "hausbesuch") {
+    return { error: "Unbekannter Schalter." };
+  }
+
+  const admin = await createAdminClient();
+  const { error } = await admin
+    .from("profiles")
+    .update({ [feld]: wert })
+    .eq("id", studentId);
+  if (error) return { error: "Die Einstellung liess sich nicht speichern." };
+
+  revalidatePath(`/admin/schueler/${studentId}`);
+  revalidatePath("/admin/schueler");
+  revalidatePath("/admin/planung");
+  revalidatePath("/admin/routenplanung");
+  return { success: true, error: undefined };
+}
+
+/**
  * Die Vereinbarung eines externen Schülers ändern.
  *
  * Das Gegenstück zu „Paket anlegen" bei den eigenen Schülern — nur dass

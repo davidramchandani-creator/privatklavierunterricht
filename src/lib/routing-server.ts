@@ -194,9 +194,15 @@ export async function ladeSchueler(
 ): Promise<SchuelerRohdaten[]> {
   const { data: profile } = await admin
     .from("profiles")
-    .select("id, vorname, nachname, adresse, lat, lng, geocode_adresse, aktiv, role")
+    .select(
+      "id, vorname, nachname, adresse, lat, lng, geocode_adresse, aktiv, role, hausbesuch"
+    )
     .eq("role", "student")
     .eq("aktiv", true)
+    // Aus der Planung genommen: Diesem Schüler wird kein Platz gesucht.
+    // Ein bereits gesetzter fester Termin blockiert weiterhin, der kommt
+    // über `ladeBestehendenPlan` und ist von diesem Schalter unberührt.
+    .eq("planung_aktiv", true)
     // Test und Ernst nie vermischen, sonst rechnet die Route über erfundene
     // und echte Adressen zugleich und stimmt für keinen der beiden Fälle.
     .eq("ist_test", istTest(kreis))
@@ -247,15 +253,25 @@ export async function ladeSchueler(
     verfuegbarVon.set(v.student_id, bisher);
   }
 
+  // Wer zu David kommt, kostet keine Fahrt.
+  //
+  // Rechnerisch sitzt er dafür an Davids Adresse: Die Lektion belegt ihre
+  // Zeit wie jede andere, aber Hin- und Rückweg sind null. Ihn ganz
+  // wegzulassen wäre der naheliegende, aber falsche Weg — dann sähe die
+  // Stunde frei aus und der Planer legte jemanden quer durch den Kanton
+  // darauf.
+  const zuhause = await ladeZuhause(admin);
+
   return (profile ?? []).map((p) => {
     const paket = paketVon.get(p.id);
     const v = verfuegbarVon.get(p.id);
+    const kommtZuDavid = p.hausbesuch === false;
     return {
       id: p.id,
       name: `${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() || "Ohne Namen",
       adresse: p.adresse,
-      lat: p.lat == null ? null : Number(p.lat),
-      lng: p.lng == null ? null : Number(p.lng),
+      lat: kommtZuDavid ? zuhause.lat : p.lat == null ? null : Number(p.lat),
+      lng: kommtZuDavid ? zuhause.lng : p.lng == null ? null : Number(p.lng),
       geocodeAdresse: p.geocode_adresse,
       rhythmus: (paket?.rhythmus === "zweiwoechentlich"
         ? "zweiwoechentlich"

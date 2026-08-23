@@ -50,8 +50,15 @@ describe("Angegebene Zeiten in der Schüleransicht", () => {
   it("trennt Dauerangabe und Rundenangabe", () => {
     // Zusammengeworfen könnte eine überholte Angabe aus einer alten Runde
     // wie der aktuelle Stand aussehen.
+    //
+    // Seit die Dauerangabe im Admin auch bearbeitbar ist, stehen die beiden
+    // in getrennten Karten: `ZeitenErfassen` für die dauerhaften Zeiten,
+    // darunter die Runden zum Nachsehen. Die Trennung ist damit deutlicher
+    // als vorher, nur die Überschrift heisst anders.
     expect(detail).toContain("dauerZeiten");
-    expect(detail).toContain("Dauerhaft hinterlegt");
+    expect(detail).toContain("<ZeitenErfassen");
+    expect(detail).toContain("rundenListe");
+    expect(detail).toContain("in den Runden angegeben");
     expect(liste).toContain("dauerVon");
   });
 

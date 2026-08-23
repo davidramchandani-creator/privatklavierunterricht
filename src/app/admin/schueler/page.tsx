@@ -12,7 +12,9 @@ export default async function AdminSchuelerPage() {
 
   const { data: profiles } = await admin
     .from("profiles")
-    .select("id, vorname, nachname, email, aktiv, erstellt_am, extern, plattform")
+    .select(
+      "id, vorname, nachname, email, aktiv, erstellt_am, extern, plattform, planung_aktiv, hausbesuch"
+    )
     .eq("role", "student")
     .order("erstellt_am", { ascending: false });
 
@@ -168,6 +170,19 @@ export default async function AdminSchuelerPage() {
                         {s.extern && (
                           <span className="ml-2 text-xs font-600 px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
                             {s.plattform || "extern"}
+                          </span>
+                        )}
+                        {/* Wer aus der Planung genommen ist, muss man hier
+                            sehen. Sonst sucht man in der Zuteilung nach
+                            jemandem, der absichtlich fehlt. */}
+                        {s.planung_aktiv === false && (
+                          <span className="ml-2 text-xs font-600 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                            nicht in der Planung
+                          </span>
+                        )}
+                        {s.hausbesuch === false && (
+                          <span className="ml-2 text-xs font-600 px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
+                            kommt zu mir
                           </span>
                         )}
                       </td>
