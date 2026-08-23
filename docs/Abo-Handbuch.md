@@ -266,6 +266,47 @@ und niemand merkt, dass ein Platz jemand anderem viel besser gepasst hätte.
 5. **Anwenden.** Fixplätze werden gesetzt und die Terminserien gebucht. Jeder
    bekommt seinen Termin per Mail.
 
+### Wer mitmacht und wer nicht
+
+Auf jeder Schülerseite stehen unter *Planung* zwei Schalter. Sie beantworten
+verschiedene Fragen, darum sind es zwei:
+
+**Nimmt an der Zuteilung teil.** Aus: Der Planer sucht diesem Schüler keinen
+Platz und mahnt ihn nicht mehr nach seinen Zeiten. Für jemanden, der eine
+Runde aussetzt, dessen Platz feststeht, oder den du bewusst von Hand
+einteilst.
+
+**Ich fahre hin.** Aus: Er kommt zu dir oder es läuft online. Die Fahrzeit
+fällt aus der Route.
+
+Wichtig bei beiden: Sie machen niemanden unsichtbar. **Ein bestehender
+Termin bleibt im Kalender und blockiert weiterhin seine Zeit.** Genau das
+ist der Unterschied zu „inaktiv" — das nahm einen Schüler auch aus
+Zahlungen und Abrechnung. Und es ist kein Detail: Sähe die Stunde frei aus,
+würde der Planer jemand anderen daraufsetzen, und du stündest zur selben
+Zeit vor zwei Türen.
+
+Beim „kommt zu mir" heisst das konkret: Der Schüler sitzt in der Rechnung an
+deiner Adresse. Seine Stunde ist belegt, Hin- und Rückweg sind null.
+
+In der Schülerliste siehst du beides als Kennzeichen — sonst suchst du in
+der Zuteilung nach jemandem, der absichtlich fehlt.
+
+### Zeiten für jemanden eintragen, der nicht antwortet
+
+Ein Teil antwortet nie. Bisher fielen diese Schüler still aus jeder
+Zuteilung: keine Zeiten, kein Kandidat, kein Platz — und das Formular gab es
+nur im Portal.
+
+Auf der Schülerseite gibt es jetzt *Zeiten eintragen*: dieselben Wochentage,
+Zeitspannen und Abstufungen wie im Portal. Du fragst am Telefon nach und
+trägst es für ihn ein.
+
+Das gilt **dauerhaft**, auch für kommende Runden. Gibt der Schüler später
+doch selbst etwas an, sticht seine Rundenangabe deine Eintragung — was er
+über sich sagt, wiegt schwerer. Deshalb überschreibt das Speichern hier auch
+nur deine eigenen dauerhaften Zeiten und lässt seine Rundenangaben in Ruhe.
+
 ### Was die Zuteilung anders macht
 
 Die Verfügbarkeit ist eine **harte Bedingung**. Ein Termin, den jemand nicht

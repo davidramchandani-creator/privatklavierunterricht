@@ -135,6 +135,10 @@ export async function ladeAntwortStand(
     // Externe antworten nie, sie sind gar nicht angeschrieben worden.
     // Ohne diesen Filter stünden sie dauerhaft unter „keine Antwort".
     .eq("extern", false)
+    // Wer aus der Planung genommen wurde, wird auch nicht gemahnt. Sonst
+    // stünde er bis zum Ende der Runde unter „hat nicht geantwortet",
+    // obwohl von ihm gar keine Antwort erwartet wird.
+    .eq("planung_aktiv", true)
     .eq("ist_test", rundeInfo?.nur_test === true)
     .order("nachname");
 
@@ -503,6 +507,10 @@ export async function rechneZuteilung(
     .select("id, vorname, nachname, lat, lng, extern")
     .eq("role", "student")
     .eq("aktiv", true)
+    // Aus der Planung genommen: Diesem Schüler wird kein Platz gesucht.
+    // Sein bestehender fester Termin blockiert trotzdem weiter — der kommt
+    // aus `vorbelegt` und ist von diesem Schalter unberührt.
+    .eq("planung_aktiv", true)
     .eq("ist_test", nurTest);
 
   const { data: mitTermin } = await admin

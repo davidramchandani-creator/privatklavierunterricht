@@ -16,6 +16,8 @@ import SchuelerDetailActions, { InvoiceAction, PreiseForm, PackageFormNew, Direk
 import { StatusBadge } from "@/components/ui/status-badge";
 import RatenplanPanel from "./_components/RatenplanPanel";
 import PaketAufraeumen from "./_components/PaketAufraeumen";
+import PlanungSchalter from "./_components/PlanungSchalter";
+import ZeitenErfassen from "./_components/ZeitenErfassen";
 import ExterneVereinbarung, {
   type VereinbarungDaten,
 } from "./_components/ExterneVereinbarung";
@@ -50,7 +52,7 @@ export default async function SchuelerDetailPage({
   ] = await Promise.all([
     admin
       .from("profiles")
-      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, ist_test, erstellt_am, price_single, price_halbjahr, price_jahr, price_10er, price_20er, travel_surcharge, buffer_time_minutes, buffer_mode, payment_method, extern, plattform, externer_ertrag")
+      .select("id, role, vorname, nachname, email, telefon, adresse, notizen, aktiv, ist_test, erstellt_am, price_single, price_halbjahr, price_jahr, price_10er, price_20er, travel_surcharge, buffer_time_minutes, buffer_mode, payment_method, extern, plattform, externer_ertrag, planung_aktiv, hausbesuch")
       .eq("id", id)
       .maybeSingle(),
     admin
@@ -326,36 +328,32 @@ export default async function SchuelerDetailPage({
         </div>
       </div>
 
-      {/* Angegebene Zeiten */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-700 text-[#1C244B] mb-1">
-          Wann {profile.vorname} kann
-        </h2>
-        <p className="text-sm text-gray-500 mb-4 leading-snug">
-          Stern heisst Wunschzeit, ausgegraut heisst nur zur Not. Die Zuteilung
-          bevorzugt Wunschzeiten, nimmt aber eine Notlösung, wenn sonst gar
-          nichts geht.
-        </p>
+      {/* Planungsschalter */}
+      <PlanungSchalter
+        studentId={id}
+        planungAktiv={profile.planung_aktiv !== false}
+        hausbesuch={profile.hausbesuch !== false}
+      />
 
-        {dauerZeiten.length === 0 && rundenListe.length === 0 ? (
-          <p className="text-sm text-gray-400">
-            Noch nichts angegeben. {profile.vorname} kann die Zeiten im Portal
-            eintragen, oder du fragst nach und trägst sie über eine
-            Planungsrunde ein.
+      {/* Dauerhafte Zeiten — hier auch eintragbar, wenn jemand nicht
+          selbst geantwortet hat. */}
+      <ZeitenErfassen studentId={id} vorhanden={dauerZeiten} />
+
+      {/* Was der Schüler in einzelnen Runden angegeben hat. Nur zum
+          Nachsehen: Das gehört ihm, das überschreibt David nicht.
+
+          Getrennt und datiert, weil eine Angabe vom letzten Herbst kein
+          Beleg dafür ist, dass es heute noch passt. */}
+      {rundenListe.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <h2 className="text-lg font-700 text-[#1C244B] mb-1">
+            Was {profile.vorname} in den Runden angegeben hat
+          </h2>
+          <p className="text-sm text-gray-500 mb-4 leading-snug">
+            Stern heisst Wunschzeit, ausgegraut heisst nur zur Not. Eine
+            Rundenangabe sticht die dauerhaften Zeiten oben.
           </p>
-        ) : (
           <div className="space-y-4">
-            {dauerZeiten.length > 0 && (
-              <div>
-                <p className="text-gray-400 text-xs font-600 uppercase tracking-wide mb-2">
-                  Dauerhaft hinterlegt
-                </p>
-                <ZeitfensterListe fenster={dauerZeiten} />
-              </div>
-            )}
-
-            {/* Rundenangaben getrennt und datiert: Eine Angabe vom letzten
-                Herbst ist kein Beleg dafür, dass es heute noch passt. */}
             {rundenListe.map((r, i) => (
               <div key={i}>
                 <p className="text-gray-400 text-xs font-600 uppercase tracking-wide mb-2">
@@ -366,8 +364,8 @@ export default async function SchuelerDetailPage({
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Vereinbarung statt Preise und Pakete — nur bei Externen. */}
       {istExtern && vereinbarung && (
