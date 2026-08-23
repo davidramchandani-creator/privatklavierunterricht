@@ -211,17 +211,33 @@ export async function ladeSchueler(
   const ids = (profile ?? []).map((p) => p.id);
   if (ids.length === 0) return [];
 
-  const [{ data: pakete }, { data: verfuegbar }] = await Promise.all([
-    admin
-      .from("packages")
-      .select("student_id, rhythmus, booking_mode, status")
-      .in("student_id", ids)
-      .eq("status", "active"),
-    admin
-      .from("student_verfuegbarkeit")
-      .select("student_id, wochentag, fruehestens, spaetestens")
-      .in("student_id", ids),
-  ]);
+  const [{ data: pakete }, { data: verfuegbar }, { data: vereinbarungen }] =
+    await Promise.all([
+      admin
+        .from("packages")
+        .select("student_id, rhythmus, booking_mode, status")
+        .in("student_id", ids)
+        .eq("status", "active"),
+      admin
+        .from("student_verfuegbarkeit")
+        .select("student_id, wochentag, fruehestens, spaetestens")
+        .in("student_id", ids),
+      // Externe haben kein Paket, ihr Rhythmus steht in der Vereinbarung.
+      //
+      // Ohne diese Abfrage galten sie alle als wöchentlich — der Planer
+      // reservierte jede Woche einen Platz für jemanden, der alle zwei
+      // Wochen kommt, und rechnete die Fahrzeit doppelt.
+      admin
+        .from("externe_vereinbarungen")
+        .select("student_id, rhythmus")
+        .eq("aktiv", true)
+        .in("student_id", ids),
+    ]);
+
+  const externerRhythmus = new Map<string, string | null>();
+  for (const v of vereinbarungen ?? []) {
+    externerRhythmus.set(v.student_id as string, v.rhythmus as string | null);
+  }
 
   const paketVon = new Map<string, { rhythmus: string | null; booking_mode: string }>();
   for (const p of pakete ?? []) {
@@ -273,7 +289,11 @@ export async function ladeSchueler(
       lat: kommtZuDavid ? zuhause.lat : p.lat == null ? null : Number(p.lat),
       lng: kommtZuDavid ? zuhause.lng : p.lng == null ? null : Number(p.lng),
       geocodeAdresse: p.geocode_adresse,
-      rhythmus: (paket?.rhythmus === "zweiwoechentlich"
+      // Paket zuerst, dann die externe Vereinbarung. Wer beides nicht hat,
+      // gilt als wöchentlich — das ist die vorsichtigere Annahme, sie
+      // reserviert mehr Platz.
+      rhythmus: ((paket?.rhythmus ?? externerRhythmus.get(p.id)) ===
+      "zweiwoechentlich"
         ? "zweiwoechentlich"
         : "woechentlich") as Rhythmus,
       bookingMode: paket?.booking_mode ?? "flex",
