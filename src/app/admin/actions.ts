@@ -223,20 +223,60 @@ export async function updateSchueler(id: string, formData: FormData) {
 
   const vorname = formData.get("vorname") as string;
   const nachname = formData.get("nachname") as string;
-  const email = formData.get("email") as string;
+  // Leere Mail als null speichern, nicht als leerer String: Externe haben
+  // bewusst keine, und "" würde als hinterlegte Adresse durchgehen.
+  const email = ((formData.get("email") as string) || "").trim() || null;
   const telefon = (formData.get("telefon") as string) || null;
   const adresse = (formData.get("adresse") as string) || null;
   const notizen = (formData.get("notizen") as string) || null;
 
-  const { error } = await adminClient
+  const { data: bisher } = await adminClient
     .from("profiles")
-    .update({ vorname, nachname, email, telefon, adresse, notizen })
-    .eq("id", id);
+    .select("adresse, extern")
+    .eq("id", id)
+    .maybeSingle();
+
+  const felder: Record<string, unknown> = {
+    vorname,
+    nachname,
+    email,
+    telefon,
+    adresse,
+    notizen,
+  };
+
+  // Adresse geändert? Dann neu auflösen.
+  //
+  // Vorher blieben die Koordinaten stehen, wo sie waren. Eine korrigierte
+  // Adresse änderte damit nur den angezeigten Text — Routenplaner und
+  // Zuteilung rechneten weiter mit dem alten Ort. Das ist besonders
+  // tückisch, wenn die erste Auflösung danebenlag: Man korrigiert die
+  // Adresse, sieht sie richtig auf dem Bildschirm, und der Planer fährt
+  // trotzdem weiter ans falsche Ende des Kantons.
+  const adresseNeu = (adresse ?? "").trim();
+  if (adresseNeu && adresseNeu !== (bisher?.adresse ?? "").trim()) {
+    const treffer = await geocode(adresseNeu);
+    if (!treffer) {
+      return {
+        error:
+          "Diese Adresse liess sich nicht auflösen. Bitte so schreiben: Strasse Nummer, PLZ Ort.",
+      };
+    }
+    felder.lat = treffer.lat;
+    felder.lng = treffer.lng;
+    felder.geocoded_am = new Date().toISOString();
+    felder.geocode_quelle = treffer.quelle;
+    felder.geocode_adresse = adresseNeu;
+  }
+
+  const { error } = await adminClient.from("profiles").update(felder).eq("id", id);
 
   if (error) return { error: error.message };
 
   revalidatePath(`/admin/schueler/${id}`);
   revalidatePath("/admin/schueler");
+  revalidatePath("/admin/routenplanung");
+  revalidatePath("/admin/planung");
   return { success: true, error: undefined };
 }
 

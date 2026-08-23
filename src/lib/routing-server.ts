@@ -211,17 +211,62 @@ export async function ladeSchueler(
   const ids = (profile ?? []).map((p) => p.id);
   if (ids.length === 0) return [];
 
-  const [{ data: pakete }, { data: verfuegbar }] = await Promise.all([
-    admin
-      .from("packages")
-      .select("student_id, rhythmus, booking_mode, status")
-      .in("student_id", ids)
-      .eq("status", "active"),
-    admin
-      .from("student_verfuegbarkeit")
-      .select("student_id, wochentag, fruehestens, spaetestens")
-      .in("student_id", ids),
-  ]);
+  const [
+    { data: pakete },
+    { data: verfuegbar },
+    { data: vereinbarungen },
+    { data: wahlen },
+  ] = await Promise.all([
+      admin
+        .from("packages")
+        .select("student_id, rhythmus, booking_mode, status")
+        .in("student_id", ids)
+        .eq("status", "active"),
+      admin
+        .from("student_verfuegbarkeit")
+        .select("student_id, wochentag, fruehestens, spaetestens")
+        .in("student_id", ids),
+      // Externe haben kein Paket, ihr Rhythmus steht in der Vereinbarung.
+      //
+      // Ohne diese Abfrage galten sie alle als wöchentlich — der Planer
+      // reservierte jede Woche einen Platz für jemanden, der alle zwei
+      // Wochen kommt, und rechnete die Fahrzeit doppelt.
+      admin
+        .from("externe_vereinbarungen")
+        .select("student_id, rhythmus")
+        .eq("aktiv", true)
+        .in("student_id", ids),
+      // Was der Schüler in der offenen Runde gewählt hat.
+      //
+      // Der wichtigste der drei: Eine Umstellungsrunde plant die **kommende**
+      // Periode. Das aktive Paket beschreibt die alte und läuft bis zum
+      // Stichtag weiter — es hier zu lesen hiesse, den neuen Plan mit den
+      // alten Rhythmen zu rechnen. Genau das ist passiert: Marina hatte für
+      // ab September zweiwöchentlich gewählt, im Routenplan stand jede
+      // Woche, und der Planer reservierte ihr doppelt so viel Platz wie
+      // nötig.
+      //
+      // Die Zuteilung machte es von Anfang an richtig; hier fehlte es. Zwei
+      // Stellen, dieselbe Frage, verschiedene Antworten.
+      admin
+        .from("planungs_antworten")
+        .select("student_id, abo_rhythmus, planungsrunden!inner(status)")
+        .eq("planungsrunden.status", "offen")
+        .in("student_id", ids),
+    ]);
+
+  const externerRhythmus = new Map<string, string | null>();
+  for (const v of vereinbarungen ?? []) {
+    externerRhythmus.set(v.student_id as string, v.rhythmus as string | null);
+  }
+
+  const gewaehlterRhythmus = new Map<string, string | null>();
+  for (const w of wahlen ?? []) {
+    gewaehlterRhythmus.set(
+      w.student_id as string,
+      w.abo_rhythmus as string | null
+    );
+  }
 
   const paketVon = new Map<string, { rhythmus: string | null; booking_mode: string }>();
   for (const p of pakete ?? []) {
@@ -273,7 +318,13 @@ export async function ladeSchueler(
       lat: kommtZuDavid ? zuhause.lat : p.lat == null ? null : Number(p.lat),
       lng: kommtZuDavid ? zuhause.lng : p.lng == null ? null : Number(p.lng),
       geocodeAdresse: p.geocode_adresse,
-      rhythmus: (paket?.rhythmus === "zweiwoechentlich"
+      // Reihenfolge wie in der Zuteilung: Was der Schüler für die kommende
+      // Periode gewählt hat, sticht sein laufendes Paket. Dann die externe
+      // Vereinbarung. Wer nichts davon hat, gilt als wöchentlich — die
+      // vorsichtigere Annahme, sie reserviert mehr Platz.
+      rhythmus: ((gewaehlterRhythmus.get(p.id) ??
+        paket?.rhythmus ??
+        externerRhythmus.get(p.id)) === "zweiwoechentlich"
         ? "zweiwoechentlich"
         : "woechentlich") as Rhythmus,
       bookingMode: paket?.booking_mode ?? "flex",

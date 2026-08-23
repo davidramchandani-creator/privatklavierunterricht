@@ -66,11 +66,13 @@ type Profile = {
   id: string;
   vorname: string;
   nachname: string;
-  email: string;
+  /** Bei Externen null — sie bekommen nie Post. */
+  email: string | null;
   telefon: string | null;
   adresse: string | null;
   notizen: string | null;
   aktiv: boolean;
+  extern?: boolean | null;
 };
 
 function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
@@ -131,8 +133,15 @@ function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
   }
 
   function handleResendInvite() {
+    // Ohne Mailadresse gibt es nichts zu verschicken — bei Externen ist das
+    // der Normalfall, nicht ein fehlender Eintrag.
+    if (!profile.email) {
+      setError("Für diesen Schüler ist keine E-Mail hinterlegt.");
+      return;
+    }
+    const adresse = profile.email;
     startTransition(async () => {
-      const result = await resendInvite(profile.email);
+      const result = await resendInvite(adresse);
       if (result?.error) setError(result.error ?? null);
       else setInviteSent(true);
     });
@@ -151,8 +160,22 @@ function SchuelerDetailActionsRoot({ profile }: { profile: Profile }) {
             <Input name="nachname" defaultValue={profile.nachname} required />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-500 text-gray-600">E-Mail</label>
-            <Input name="email" type="email" defaultValue={profile.email} required />
+            <label className="text-xs font-500 text-gray-600">
+              E-Mail
+              {profile.extern && (
+                <span className="text-gray-400 font-400"> — bei Externen leer</span>
+              )}
+            </label>
+            {/* Für Externe kein Pflichtfeld: Sie haben bewusst keine
+                Mailadresse, weil sie nie Post bekommen dürfen. Das
+                `required` machte ihr Profil unspeicherbar — man konnte
+                nicht einmal die Adresse korrigieren. */}
+            <Input
+              name="email"
+              type="email"
+              defaultValue={profile.email ?? ""}
+              required={!profile.extern}
+            />
           </div>
           <div className="space-y-1">
             <label className="text-xs font-500 text-gray-600">Telefon</label>
