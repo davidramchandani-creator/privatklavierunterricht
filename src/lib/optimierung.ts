@@ -18,6 +18,7 @@
 import {
   planeRouten,
   type PlanEingabe,
+  type PlanSchueler,
   type Tagesfenster,
 } from "./routing";
 import { WEEKDAY_LABELS } from "./fixplatz";
@@ -320,6 +321,120 @@ export function schlageOptimierungen(eingabe: PlanEingabe): Optimierung[] {
     const key = `${v.art}:${v.wochentag}`;
     if (gesehen.has(key)) return false;
     gesehen.add(key);
+    return true;
+  });
+
+  return gefiltert.slice(0, 6);
+}
+
+// ── Was-wäre-wenn auf Schülerseite ─────────────────────────
+
+export type SchuelerAnfrage = {
+  schuelerId: string;
+  name: string;
+  wochentag: number;
+  /** Die Frage, die David dem Schüler stellen müsste — fertig formuliert. */
+  frage: string;
+  /** Was passiert, wenn die Antwort Ja ist. */
+  wirkung: string;
+  vorher: Kennzahlen;
+  nachher: Kennzahlen;
+  neuEingeplant: string[];
+};
+
+/**
+ * Für jeden Schüler, der nicht in den Plan passt: Welche Frage an ihn
+ * würde das ändern?
+ *
+ * Das Gegenstück zu `schlageOptimierungen`. Dort ändert David seine
+ * eigenen Fenster, hier fragt er einen Schüler nach mehr Spielraum. Beides
+ * kann man von Hand kaum überblicken, weil jede Änderung die ganze Route
+ * umwirft — darum auch hier: stumpf durchrechnen statt klug raten.
+ *
+ * Durchgespielt wird je Unterrichtstag die grosszügigste Annahme — der
+ * Schüler könnte dort das ganze Fenster. Bringt schon das nichts, bringt
+ * auch keine halbe Stunde mehr etwas, und die Frage erübrigt sich. Bringt
+ * es etwas, steht die Wirkung dabei, und David entscheidet, ob ihm das
+ * die Nachfrage wert ist.
+ */
+export function schlageSchuelerAnfragen(
+  eingabe: PlanEingabe
+): SchuelerAnfrage[] {
+  if (eingabe.schueler.length === 0 || eingabe.fenster.length === 0) return [];
+
+  const basis = kennzahlen(eingabe);
+  const plan = planeRouten(eingabe);
+  const draussen = new Set(plan.nichtEingeplant.map((n) => n.schueler.id));
+  if (draussen.size === 0) return [];
+
+  const nameVon = new Map(eingabe.schueler.map((s) => [s.id, s.name]));
+  const ergebnisse: SchuelerAnfrage[] = [];
+
+  for (const s of eingabe.schueler) {
+    if (!draussen.has(s.id)) continue;
+
+    for (const t of eingabe.fenster) {
+      // Annahme: An diesem Tag ginge das ganze Unterrichtsfenster.
+      const geaendert: PlanSchueler = {
+        ...s,
+        moeglicheTage: [
+          ...new Set([...(s.moeglicheTage ?? []), t.wochentag]),
+        ],
+        fenster: [
+          ...(s.fenster ?? []).filter((f) => f.wochentag !== t.wochentag),
+          {
+            wochentag: t.wochentag,
+            fruehestens: t.beginn,
+            spaetestens: t.ende,
+          },
+        ],
+      };
+
+      const nach = kennzahlen({
+        ...eingabe,
+        schueler: eingabe.schueler.map((x) => (x.id === s.id ? geaendert : x)),
+      });
+
+      // Nur vorschlagen, wenn der Gefragte selbst hineinkommt und
+      // niemand anders dafür hinausfällt.
+      if (!nach.eingeplantIds.has(s.id)) continue;
+      if (nach.zahlen.eingeplant <= basis.zahlen.eingeplant) continue;
+
+      const neu = [...nach.eingeplantIds]
+        .filter((id) => !basis.eingeplantIds.has(id))
+        .map((id) => nameVon.get(id) ?? id);
+
+      const tag = WEEKDAY_LABELS[t.wochentag] ?? String(t.wochentag);
+      ergebnisse.push({
+        schuelerId: s.id,
+        name: s.name,
+        wochentag: t.wochentag,
+        frage: `Frag ${s.name}, ob es am ${tag} zwischen ${t.beginn} und ${t.ende} ginge.`,
+        wirkung:
+          neu.length > 1
+            ? `Dann passen ${neu.join(" und ")} in den Plan.`
+            : `Dann passt ${s.name} in den Plan.`,
+        vorher: basis.zahlen,
+        nachher: nach.zahlen,
+        neuEingeplant: neu,
+      });
+    }
+  }
+
+  // Beste zuerst: mehr Untergebrachte, dann weniger Fahrzeit. Pro Schüler
+  // höchstens zwei Tage — die Frage „kannst du irgendwann irgendwo?" stellt
+  // David besser selbst.
+  ergebnisse.sort((a, b) => {
+    if (a.nachher.eingeplant !== b.nachher.eingeplant) {
+      return b.nachher.eingeplant - a.nachher.eingeplant;
+    }
+    return a.nachher.fahrzeitProWoche - b.nachher.fahrzeitProWoche;
+  });
+  const proSchueler = new Map<string, number>();
+  const gefiltert = ergebnisse.filter((e) => {
+    const n = proSchueler.get(e.schuelerId) ?? 0;
+    if (n >= 2) return false;
+    proSchueler.set(e.schuelerId, n + 1);
     return true;
   });
 

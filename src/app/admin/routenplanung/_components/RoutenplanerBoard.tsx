@@ -15,6 +15,7 @@ import {
   Users,
   Navigation,
   Lightbulb,
+  MessageCircleQuestion,
 } from "lucide-react";
 import { formatDauer, navigationsLink } from "@/lib/geo";
 import { KREIS_LABEL, type Kreis } from "@/lib/kreis";
@@ -610,6 +611,45 @@ function Ergebnisansicht({
                   {o.vorher.eingeplant} Schüler,{" "}
                   {formatDauer(o.vorher.fahrzeitProWoche)} auf {o.vorher.tage}{" "}
                   {o.vorher.tage === 1 ? "Tag" : "Tagen"})
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Was-wäre-wenn auf Schülerseite.
+          Das Spiegelbild der Karte darüber: nicht Davids Fenster ändern,
+          sondern einen Schüler fragen. Jede Zeile ist eine fertige Frage
+          samt durchgerechneter Wirkung — David muss nur noch anrufen. */}
+      {ergebnis.schuelerAnfragen.length > 0 && (
+        <div className="bg-white rounded-2xl border border-[#EAECEF] p-4 sm:p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <MessageCircleQuestion className="w-4 h-4 text-sky-600" />
+            <p className="font-600 text-[#1C244B]">
+              Eine Frage an den Schüler würde helfen
+            </p>
+          </div>
+          <p className="text-sm text-gray-500 leading-snug mb-3">
+            Durchgerechnet: Was würde passieren, wenn ein Schüler mehr
+            Spielraum hätte? Antwortet er mit Ja, trägst du die neuen Zeiten
+            auf seiner Schülerseite ein und rechnest neu.
+          </p>
+          <ul className="space-y-2">
+            {ergebnis.schuelerAnfragen.map((a, i) => (
+              <li
+                key={i}
+                className="rounded-xl border border-sky-200 bg-sky-50/60 p-3 text-sm leading-snug text-sky-950"
+              >
+                {a.frage} <span className="font-600">{a.wirkung}</span>
+                <span className="block mt-1 text-xs text-gray-500">
+                  {a.nachher.eingeplant} von{" "}
+                  {a.nachher.eingeplant + a.nachher.nichtEingeplant} Schülern,{" "}
+                  {formatDauer(a.nachher.fahrzeitProWoche)} Fahrt auf{" "}
+                  {a.nachher.tage} {a.nachher.tage === 1 ? "Tag" : "Tagen"}{" "}
+                  (heute: {a.vorher.eingeplant} Schüler,{" "}
+                  {formatDauer(a.vorher.fahrzeitProWoche)} auf {a.vorher.tage}{" "}
+                  {a.vorher.tage === 1 ? "Tag" : "Tagen"})
                 </span>
               </li>
             ))}

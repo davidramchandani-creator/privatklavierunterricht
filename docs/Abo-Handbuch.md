@@ -683,6 +683,23 @@ betrifft dich erst ab zehn Lektionen an einem Abend.
 
 ---
 
+### Wenn jemand nicht hineinpasst
+
+Der Planer gibt niemanden leichtfertig auf. Bevor ein Schüler unter „nicht
+eingeplant" landet, läuft eine ganze Rettungskette: Tag neu bauen, in ein
+freies Loch einschieben, notfalls einen Flexiblen verdrängen (der dann
+selbst woanders unterkommt), und ein Paar, das als Paar nirgends passt,
+wird aufgelöst und einzeln untergebracht. Ein Stresstest mit 400
+durchgerechneten Zufalls-Konstellationen sichert das ab: Wer draussen
+steht, passt wirklich nirgends mehr hinein.
+
+Und wenn doch jemand draussen steht, rechnet der Planer beide Auswege
+durch: Die Karte „Was sich an deiner Verfügbarkeit lohnen würde" zeigt,
+welche Änderung an **deinen** Fenstern ihn hineinholen würde — und die
+Karte „Eine Frage an den Schüler würde helfen" formuliert die Nachfrage
+an **ihn**, samt Wirkung, wenn er Ja sagt. Antwortet er mit Ja, trägst du
+die neuen Zeiten auf seiner Schülerseite ein und rechnest neu.
+
 ## 9g. Drei Werkzeuge gegen verschenkte Zeit
 
 **Optimierungs-Vorschläge im Routenplaner.** Unter dem Tagesvergleich steht

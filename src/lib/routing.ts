@@ -260,9 +260,88 @@ function zeitErlaubt(
     );
   }
 
+  // Wer tagesgenaue Fenster angegeben hat, kann NUR an diesen Tagen.
+  //
+  // Vorher fiel die Prüfung hier auf die pauschalen Grenzen zurück — und
+  // die sind bei tagesgenauen Angaben leer, also galt jede Zeit als
+  // erlaubt. Ein Schüler, der nur donnerstags konnte, liess sich so auf
+  // einen Dienstag setzen, ohne dass irgendeine Prüfung anschlug. Der
+  // Stresstest hat genau diesen Fall ausgegraben: Lektion im Plan, mitten
+  // an einem Tag, den der Schüler nie angegeben hatte.
+  if (s.fenster && s.fenster.length > 0) return false;
+
   if (s.fruehestens && beginnMin < minutenVon(s.fruehestens)) return false;
   if (s.spaetestens && endeMin > minutenVon(s.spaetestens)) return false;
   return true;
+}
+
+/**
+ * Die Zeitabschnitte, in denen ein Schüler an diesem Unterrichtstag eine
+ * ganze Lektion haben könnte — persönliches Fenster mit dem Tagesfenster
+ * verschnitten, zu kurze Reste aussortiert.
+ */
+function nutzbareAbschnitte(
+  s: PlanSchueler,
+  t: Tagesfenster
+): Array<[number, number]> {
+  const tagVon = minutenVon(t.beginn);
+  const tagBis = minutenVon(t.ende);
+  const eigene = s.fenster?.filter((f) => f.wochentag === t.wochentag) ?? [];
+  const roh: Array<[number, number]> =
+    eigene.length > 0
+      ? eigene.map((f) => [
+          minutenVon(f.fruehestens),
+          minutenVon(f.spaetestens),
+        ])
+      : [
+          [
+            s.fruehestens ? minutenVon(s.fruehestens) : tagVon,
+            s.spaetestens ? minutenVon(s.spaetestens) : tagBis,
+          ],
+        ];
+  return roh
+    .map(
+      ([v, b]) => [Math.max(v, tagVon), Math.min(b, tagBis)] as [number, number]
+    )
+    .filter(([v, b]) => b - v >= s.lektionMinuten);
+}
+
+/**
+ * Gibt es an diesem Tag eine Uhrzeit, zu der **beide** eine Lektion haben
+ * könnten?
+ *
+ * Das ist die einzige Frage, die für ein Paar zählt — und sie ist strenger
+ * als „können beide an dem Tag". Ein Paar teilt sich einen einzigen
+ * wiederkehrenden Termin: Es genügt nicht, dass jeder für sich irgendwo im
+ * Tag Platz findet, die Plätze müssen sich überlappen.
+ *
+ * Der Fall, der das erzwungen hat: Montag bis 18:15, Marina 17:15–18:00,
+ * Justine ab 17:30. Jede für sich passte (Marina 17:15, Justine 17:30) —
+ * die Schnittmenge war aber 17:30–18:00, dreissig Minuten, keine Lektion.
+ * Die Paarung sah nur die Einzel-Machbarkeit, baute das Paar, und weil ein
+ * Paar nur gemeinsam auftreten kann, fielen am Ende beide aus dem Plan.
+ *
+ * Geprüft wird auf dem Viertelstunden-Raster, mit dem auch die Uhrzeiten
+ * vergeben werden — eine Schnittmenge, in der keine Rasterzeit liegt, wäre
+ * sonst ein falsches Ja.
+ */
+export function gemeinsamerSlot(
+  a: PlanSchueler,
+  b: PlanSchueler,
+  t: Tagesfenster
+): boolean {
+  if (!tagErlaubt(a, t.wochentag, t) || !tagErlaubt(b, t.wochentag, t)) {
+    return false;
+  }
+  const dauer = Math.max(a.lektionMinuten, b.lektionMinuten);
+  for (const [aVon, aBis] of nutzbareAbschnitte(a, t)) {
+    for (const [bVon, bBis] of nutzbareAbschnitte(b, t)) {
+      const von = Math.max(aVon, bVon);
+      const bis = Math.min(aBis, bBis);
+      if (aufRaster(von) + dauer <= bis) return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -406,16 +485,29 @@ export const MAX_PAAR_DISTANZ_M = 4000;
  * Wochen stabil. Wer keinen nahen Partner hat, bekommt eine Position für
  * sich; die steht dann jede zweite Woche leer, aber der Plan stimmt.
  */
+/** Stabiler Schlüssel eines Paars, für die Sperrliste der Selbstheilung. */
+export function paarSchluessel(aId: string, bId: string): string {
+  return [aId, bId].sort().join("|");
+}
+
 export function paareZweiwoechentliche(
   schueler: PlanSchueler[],
   maxDistanzM: number = MAX_PAAR_DISTANZ_M,
   /**
    * Die Unterrichtstage. Ohne sie kann nur geprüft werden, ob beide am
-   * selben Wochentag *etwas* eingetragen haben — mit ihnen, ob dort auch
-   * wirklich eine Lektion hineinpasst. Das ist der Unterschied zwischen
-   * „hat montags Zeit" und „kann montags unterrichtet werden".
+   * selben Wochentag *etwas* eingetragen haben — mit ihnen, ob es dort
+   * eine Uhrzeit gibt, zu der **beide** eine Lektion haben könnten. Das
+   * ist der Unterschied zwischen „hat montags Zeit" und „kann montags
+   * gemeinsam mit dem Partner unterrichtet werden".
    */
-  tage?: Tagesfenster[]
+  tage?: Tagesfenster[],
+  /**
+   * Paare, die sich in einer früheren Rechnung als unbrauchbar erwiesen
+   * haben (Selbstheilung in `planeRouten`). Die Slot-Prüfung oben fängt
+   * die vorhersehbaren Fälle; diese Liste fängt den Rest — etwa wenn der
+   * gemeinsame Slot zwar existiert, aber von anderen Schülern belegt ist.
+   */
+  verboten?: Set<string>
 ): Positionsbelegung[] {
   const woechentlich = schueler.filter((s) => s.rhythmus === "woechentlich");
   const zweiwoechentlich = schueler.filter(
@@ -427,23 +519,21 @@ export function paareZweiwoechentliche(
     ungerade: s,
   }));
 
-  /**
-   * Haben zwei Schüler überhaupt einen gemeinsamen Wochentag?
-   *
-   * Ohne Angabe kann jemand an jedem Tag — dann gibt es immer einen.
-   */
-  const gemeinsamerTag = (a: PlanSchueler, b: PlanSchueler): boolean => {
-    // Mit Unterrichtstagen die ehrliche Prüfung: Gibt es einen Tag, an dem
-    // für **beide** eine Lektion in ihr Fenster passt?
-    //
-    // Die frühere Fassung verglich nur die Wochentagslisten. Das reichte
-    // nicht: Justine hatte montags einen Eintrag, aber ihr Fenster begann
-    // eine halbe Stunde vor Feierabend. Montag zählte als gemeinsamer Tag,
-    // das Paar war unmöglich, und beide fielen aus dem Plan.
+  /** Können die zwei überhaupt ein Paar bilden? */
+  const paarbar = (a: PlanSchueler, b: PlanSchueler): boolean => {
+    if (verboten?.has(paarSchluessel(a.id, b.id))) return false;
+
+    // Mit Unterrichtstagen die ehrliche Prüfung: Gibt es einen Tag mit
+    // einer Uhrzeit, die für beide zusammen funktioniert? Die Historie
+    // dieser Zeile ist ein dreistufiges Lehrstück: Erst wurde gar nicht
+    // geprüft (Nähe genügte), dann nur der Wochentag (Justines Fenster
+    // ragte bloss 30 Minuten in den Montag), dann jeder für sich (beide
+    // passten einzeln, aber nicht zur selben Zeit). Verlässlich ist erst
+    // die Frage nach dem gemeinsamen Slot — alles andere produziert
+    // Paare, die nie stattfinden können und beide Mitglieder aus dem
+    // Plan werfen.
     if (tage && tage.length > 0) {
-      return tage.some(
-        (t) => tagErlaubt(a, t.wochentag, t) && tagErlaubt(b, t.wochentag, t)
-      );
+      return tage.some((t) => gemeinsamerSlot(a, b, t));
     }
     const ta = a.moeglicheTage;
     const tb = b.moeglicheTage;
@@ -458,16 +548,7 @@ export function paareZweiwoechentliche(
     let besterIndex = -1;
     let besteDistanz = Infinity;
     for (let i = 0; i < offen.length; i++) {
-      // Nähe allein genügt nicht: Ein Paar teilt sich **einen** Termin und
-      // kann darum nur an einem Tag stattfinden, an dem beide können.
-      //
-      // Ohne diese Prüfung wurden zwei Nachbarn gepaart, die sich nie
-      // begegnen können — das Paar hatte danach null mögliche Tage, fiel
-      // durch jede Tagesprüfung und **beide** standen am Ende unter „nicht
-      // eingeplant". Einzeln hätte jeder von beiden problemlos einen Platz
-      // gefunden. Genau so verschwanden Marina und Justine aus dem Plan,
-      // 3 km voneinander entfernt und an keinem Tag zusammen möglich.
-      if (!gemeinsamerTag(a, offen[i])) continue;
+      if (!paarbar(a, offen[i])) continue;
       const d = haversineMeter(a, offen[i]);
       if (d < besteDistanz) {
         besteDistanz = d;
@@ -585,83 +666,132 @@ function baueTag(
   const start = fenster.start ?? zuhause;
 
   const orte = positionen.map(positionsOrt);
-  const reihenfolge = ordneRoute(start, orte, fahrzeit);
 
   const beginnMin = minutenVon(fenster.beginn);
   const endeMin = minutenVon(fenster.ende);
 
-  const gebaut: Position[] = [];
-  const ueberzaehlig: Positionsbelegung[] = [];
+  /**
+   * Vergibt Uhrzeiten in einer gegebenen Reihenfolge — der gierige Kern.
+   *
+   * Er hat eine bekannte Schwäche: Wer früh in der Reihenfolge kommt und
+   * ein grosses Fenster hat, nimmt einem Späteren mit kleinem Fenster den
+   * einzigen möglichen Platz weg. Darum unten die zwei Durchgänge.
+   */
+  const versuche = (reihenfolge: number[]) => {
+    const gebaut: Position[] = [];
+    const ueberzaehlig: Positionsbelegung[] = [];
+    let uhr = beginnMin;
+    let vorherigerOrt = start;
+    let fahrzeitSumme = 0;
+    let leerlaufMin = 0;
 
-  let uhr = beginnMin;
-  let vorherigerOrt = start;
-  let fahrzeitSumme = 0;
-  let leerlaufMin = 0;
+    for (const idx of reihenfolge) {
+      const pos = positionen[idx];
+      const ort = orte[idx];
+      const anfahrt = fahrzeit(vorherigerOrt, ort);
+      const anfahrtMin = anfahrt / 60;
 
-  for (const idx of reihenfolge) {
-    const pos = positionen[idx];
-    const ort = orte[idx];
-    const anfahrt = fahrzeit(vorherigerOrt, ort);
-    const anfahrtMin = anfahrt / 60;
+      // Erster Termin: die Anfahrt zum ersten Halt passiert vor
+      // Fensterbeginn, der Unterricht startet also pünktlich zum
+      // Fensterbeginn. Das gilt auch an Hochschultagen — dort ist der
+      // Fensterbeginn so gesetzt, dass die Fahrt von der Schule bereits
+      // darin steckt. Danach zählt Fahrzeit plus Puffer zwischen den
+      // Lektionen, angehoben aufs Viertelstunden-Raster.
+      const frueheste =
+        gebaut.length === 0
+          ? beginnMin
+          : aufRaster(uhr + Math.ceil(anfahrtMin) + pufferMinuten);
 
-    // Erster Termin: die Anfahrt zum ersten Halt passiert vor Fensterbeginn,
-    // der Unterricht startet also pünktlich zum Fensterbeginn. Das gilt auch
-    // an Hochschultagen — dort ist der Fensterbeginn so gesetzt, dass die
-    // Fahrt von der Schule bereits darin steckt. Danach zählt Fahrzeit plus
-    // Puffer zwischen den Lektionen, angehoben aufs Viertelstunden-Raster.
-    const frueheste =
-      gebaut.length === 0
-        ? beginnMin
-        : aufRaster(uhr + Math.ceil(anfahrtMin) + pufferMinuten);
+      const dauer = Math.max(
+        pos.gerade?.lektionMinuten ?? 45,
+        pos.ungerade?.lektionMinuten ?? 45
+      );
 
-    const dauer = Math.max(
-      pos.gerade?.lektionMinuten ?? 45,
-      pos.ungerade?.lektionMinuten ?? 45
-    );
+      const schuelerHier = [pos.gerade, pos.ungerade].filter(
+        Boolean
+      ) as PlanSchueler[];
 
-    const schuelerHier = [pos.gerade, pos.ungerade].filter(
-      Boolean
-    ) as PlanSchueler[];
+      // Wer erst später kann, wird nicht verworfen, sondern später
+      // angesetzt. Das Warten kostet Leerzeit und steht als Warnung im
+      // Tagesplan; es ist aber allemal besser, als jemanden gar nicht
+      // einzuplanen.
+      const startZeit = aufRaster(
+        spaetesterBeginn(schuelerHier, wochentag, frueheste)
+      );
+      const schluss = startZeit + dauer;
 
-    // Wer erst später kann, wird nicht verworfen, sondern später angesetzt.
-    //
-    // Vorher wurde starr zum frühestmöglichen Zeitpunkt geprüft: Wer ab 18:00
-    // konnte, fiel an einem Abend ab 16:15 durch und landete unter „kein
-    // Platz mehr", obwohl der ganze Abend frei war. Das Warten kostet
-    // Leerzeit, deshalb steht es als Warnung im Tagesplan; es ist aber
-    // allemal besser, als jemanden gar nicht einzuplanen.
-    // Auch nach dem Warten auf ein späteres Schülerfenster aufs Raster:
-    // Die Fenster aus dem Formular liegen zwar selbst auf Viertelstunden,
-    // aber verlassen will sich der Plan darauf nicht.
-    const start = aufRaster(
-      spaetesterBeginn(schuelerHier, wochentag, frueheste)
-    );
-    const schluss = start + dauer;
+      const zeitPasstAllen = schuelerHier.every((s) =>
+        zeitErlaubt(s, wochentag, startZeit, schluss)
+      );
 
-    const zeitPasstAllen = schuelerHier.every((s) =>
-      zeitErlaubt(s, wochentag, start, schluss)
-    );
+      if (schluss > endeMin || !zeitPasstAllen) {
+        ueberzaehlig.push(pos);
+        continue;
+      }
 
-    if (schluss > endeMin || !zeitPasstAllen) {
-      ueberzaehlig.push(pos);
-      continue;
+      // Wartezeit gibt es erst **zwischen** Lektionen. Beginnt die erste
+      // Lektion des Abends später als das Fenster, fährt David einfach
+      // später los — das ist keine verlorene Zeit. Vorher zählte genau das
+      // mit: Ein Donnerstag ab 13:30 mit erster Lektion um 16:00 meldete
+      // „150 Min. Wartezeit", obwohl niemand wartete.
+      if (gebaut.length > 0 && startZeit > frueheste) {
+        leerlaufMin += startZeit - frueheste;
+      }
+
+      gebaut.push({
+        geradeWoche: pos.gerade,
+        ungeradeWoche: pos.ungerade,
+        beginn: alsZeit(startZeit),
+        ende: alsZeit(schluss),
+        anfahrtSekunden: anfahrt,
+        vonKoordinate: { lat: vorherigerOrt.lat, lng: vorherigerOrt.lng },
+        nachKoordinate: { lat: ort.lat, lng: ort.lng },
+      });
+      fahrzeitSumme += anfahrt;
+      uhr = schluss;
+      vorherigerOrt = ort;
     }
 
-    if (start > frueheste) leerlaufMin += start - frueheste;
+    return { gebaut, ueberzaehlig, uhr, vorherigerOrt, fahrzeitSumme, leerlaufMin };
+  };
 
-    gebaut.push({
-      geradeWoche: pos.gerade,
-      ungeradeWoche: pos.ungerade,
-      beginn: alsZeit(start),
-      ende: alsZeit(schluss),
-      anfahrtSekunden: anfahrt,
-      vonKoordinate: { lat: vorherigerOrt.lat, lng: vorherigerOrt.lng },
-      nachKoordinate: { lat: ort.lat, lng: ort.lng },
-    });
-    fahrzeitSumme += anfahrt;
-    uhr = schluss;
-    vorherigerOrt = ort;
+  // Durchgang 1: fahrzeitgünstigste Reihenfolge.
+  let bester = versuche(ordneRoute(start, orte, fahrzeit));
+
+  // Durchgang 2, nur wenn jemand hinausfiel: nach Dringlichkeit.
+  //
+  // Wer zuerst fertig sein muss, kommt zuerst dran — das klassische Mittel
+  // gegen den Fall, dass ein Flexibler den einzigen Slot eines Engen
+  // besetzt. Konkret sass S0 (Fenster bis 20:30) um 18:00, und S2 (Fenster
+  // bis 18:15) fand nichts mehr — andersherum haben beide Platz. Die Route
+  // wird dadurch etwas teurer; genommen wird der Durchgang darum nur, wenn
+  // er tatsächlich mehr Schüler unterbringt.
+  if (bester.ueberzaehlig.length > 0 && positionen.length > 1) {
+    const deadline = (p: Positionsbelegung): number => {
+      const mitglieder = [p.gerade, p.ungerade].filter(
+        Boolean
+      ) as PlanSchueler[];
+      return Math.min(
+        ...mitglieder.map((m) => {
+          const eigene = m.fenster?.filter((f) => f.wochentag === wochentag);
+          if (eigene && eigene.length > 0) {
+            return Math.max(...eigene.map((f) => minutenVon(f.spaetestens)));
+          }
+          return m.spaetestens ? minutenVon(m.spaetestens) : endeMin;
+        })
+      );
+    };
+    const edf = positionen
+      .map((_, i) => i)
+      .sort((a, b) => deadline(positionen[a]) - deadline(positionen[b]));
+    const zweiter = versuche(edf);
+    if (zweiter.ueberzaehlig.length < bester.ueberzaehlig.length) {
+      bester = zweiter;
+    }
   }
+
+  const { gebaut, ueberzaehlig, uhr, vorherigerOrt, fahrzeitSumme, leerlaufMin } =
+    bester;
 
   const heimweg = gebaut.length > 0 ? fahrzeit(vorherigerOrt, zuhause) : 0;
   const genutzt = gebaut.length > 0 ? uhr - beginnMin : 0;
@@ -729,20 +859,92 @@ function lektionenProWocheVon(positionen: Position[]): number {
  * verändert. Erst wenn der Plan überzeugt, werden daraus Fixplätze.
  */
 export function planeRouten(eingabe: PlanEingabe): Routenplan {
+  // ── Selbstheilung ─────────────────────────────────────────
+  //
+  // Der Planer ist eine Kette gieriger Schritte: paaren, gruppieren,
+  // Tagen zuordnen, Uhrzeiten vergeben, nachsetzen. Jeder Schritt trifft
+  // eine früh bindende Entscheidung — und die Geschichte dieses Moduls
+  // zeigt, dass immer wieder eine Konstellation auftaucht, in der eine
+  // dieser frühen Entscheidungen hinten jemanden aus dem Plan wirft.
+  // Dreimal war es die Paarung, dreimal aus einem anderen Grund.
+  //
+  // Statt jede weitere Geometrie einzeln vorherzusehen, prüft der Planer
+  // deshalb sein eigenes Ergebnis: Fällt ein Schüler heraus, der in einem
+  // Paar steckte, wird genau dieses Paar gesperrt und neu gerechnet.
+  // Behalten wird der bessere Plan — zuerst zählt, dass weniger Leute
+  // draussen sind, dann die Fahrzeit. Ein geteilter Platz spart eine
+  // halbe Position; ein Schüler, der deswegen gar nicht stattfindet,
+  // kostet einen ganzen Kunden. Diese Abwägung darf nie andersherum
+  // ausgehen.
+  //
+  // Höchstens so viele Runden, wie es Paare geben kann — in der Praxis
+  // sind es null oder eine.
+  const verboten = new Set<string>();
+  let aktuell = planeEinmal(eingabe, verboten);
+  let best = aktuell;
+
+  // Obergrenze: Jedes Paar kann höchstens einmal gesperrt werden, also ist
+  // nach so vielen Runden zwangsläufig Schluss.
+  const maxRunden = Math.ceil(eingabe.schueler.length / 2) + 1;
+  for (let runde = 0; runde < maxRunden; runde++) {
+    if (aktuell.plan.nichtEingeplant.length === 0) break;
+
+    const draussen = new Set(
+      aktuell.plan.nichtEingeplant.map((n) => n.schueler.id)
+    );
+    let neuGesperrt = false;
+    for (const p of aktuell.paare) {
+      if (!p.gerade || !p.ungerade || p.gerade.id === p.ungerade.id) continue;
+      if (!draussen.has(p.gerade.id) && !draussen.has(p.ungerade.id)) continue;
+      const key = paarSchluessel(p.gerade.id, p.ungerade.id);
+      if (!verboten.has(key)) {
+        verboten.add(key);
+        neuGesperrt = true;
+      }
+    }
+    if (!neuGesperrt) break;
+
+    // Weiterprobieren auch ohne Zwischenerfolg. Ein Schüler kann nach dem
+    // Sperren eines Paars sofort mit dem nächsten Nachbarn gepaart werden,
+    // der genauso wenig funktioniert — erst wenn alle unbrauchbaren
+    // Partner gesperrt sind, steht er allein da und der Lückenfüller kann
+    // ihn unterbringen. Wer hier bei „nicht besser" abbricht, bleibt einen
+    // Nachbarn zu früh stehen; genau so blieb S7 im Stresstest draussen,
+    // obwohl sein Loch frei war.
+    aktuell = planeEinmal(eingabe, verboten);
+    const besser =
+      aktuell.plan.nichtEingeplant.length < best.plan.nichtEingeplant.length ||
+      (aktuell.plan.nichtEingeplant.length ===
+        best.plan.nichtEingeplant.length &&
+        aktuell.plan.fahrzeitProWoche < best.plan.fahrzeitProWoche);
+    if (besser) best = aktuell;
+  }
+
+  return best.plan;
+}
+
+/** Ein einzelner Durchlauf der Planungs-Kette, mit gesperrten Paaren. */
+function planeEinmal(
+  eingabe: PlanEingabe,
+  verbotenePaare: Set<string>
+): { plan: Routenplan; paare: Positionsbelegung[] } {
   const fahrzeit = eingabe.fahrzeit ?? schaetzeFahrzeit;
   const tage = [...eingabe.fenster].sort((a, b) => a.wochentag - b.wochentag);
 
   if (tage.length === 0) {
     return {
-      tage: [],
-      nichtEingeplant: eingabe.schueler.map((s) => ({
-        schueler: s,
-        grund: "Es sind keine Unterrichtszeiten hinterlegt.",
-      })),
-      fahrzeitProWoche: 0,
-      lektionenProWoche: 0,
-      positionen: 0,
-      fahrzeitProLektion: 0,
+      plan: {
+        tage: [],
+        nichtEingeplant: eingabe.schueler.map((s) => ({
+          schueler: s,
+          grund: "Es sind keine Unterrichtszeiten hinterlegt.",
+        })),
+        fahrzeitProWoche: 0,
+        lektionenProWoche: 0,
+        positionen: 0,
+        fahrzeitProLektion: 0,
+      },
+      paare: [],
     };
   }
 
@@ -781,7 +983,8 @@ export function planeRouten(eingabe: PlanEingabe): Routenplan {
   const positionenGesamt = paareZweiwoechentliche(
     planbar,
     MAX_PAAR_DISTANZ_M,
-    tage
+    tage,
+    verbotenePaare
   );
 
   // Schritt 2: die **Positionen** geografisch gruppieren (nicht die Schüler),
@@ -828,8 +1031,20 @@ export function planeRouten(eingabe: PlanEingabe): Routenplan {
     const positionen = gruppe.map(
       (v) => positionenGesamt[Number(v.id.slice(4))]
     );
+    // Über die **Mitglieder** prüfen, nicht über die Stellvertreter. Der
+    // Stellvertreter trägt nur Ort und Wochentagsliste — seine Zeitfenster
+    // hat er verloren. Mit ihm geprüft galt ein Schüler, der montags erst
+    // ab 18:00 kann, an einem Montag bis 16:30 als möglich, die Gruppe
+    // landete dort, und der Schüler begann seine Reise durch die
+    // Rettungsstufen, statt gleich am richtigen Tag zu stehen.
+    const mitgliederVon = (p: Positionsbelegung) =>
+      [p.gerade, p.ungerade].filter(Boolean) as PlanSchueler[];
     const passendeTage = tage
-      .filter((t) => gruppe.every((v) => tagErlaubt(v, t.wochentag, t)))
+      .filter((t) =>
+        positionen.every((p) =>
+          mitgliederVon(p).every((m) => tagErlaubt(m, t.wochentag, t))
+        )
+      )
       .sort((a, b) => fensterLaenge(b) - fensterLaenge(a));
 
     // Lieber einen Abend voll als zwei halb — solange es dort noch passt.
@@ -871,6 +1086,28 @@ export function planeRouten(eingabe: PlanEingabe): Routenplan {
         0
       );
 
+    // Kein Tag, an dem die GANZE Gruppe kann? Dann darf die Gruppe nicht
+    // geschlossen irgendwohin gekippt werden. Genau das passierte vorher
+    // über den letzten Fallback (`?? tage[0]`): Eine geografische Gruppe
+    // aus einem Nur-Dienstag- und einem Nur-Donnerstag-Schüler landete
+    // komplett am Dienstag — der eine passte dort nie hin. Die Gruppe
+    // zerfällt stattdessen, und jede Position geht einzeln an ihren
+    // ersten möglichen Tag; die Feinverteilung übernimmt Schritt 5.
+    if (passendeTage.length === 0) {
+      for (const p of positionen) {
+        const mitglieder = [p.gerade, p.ungerade].filter(
+          Boolean
+        ) as PlanSchueler[];
+        const eigenerTag =
+          tage.find((t) =>
+            mitglieder.every((m) => tagErlaubt(m, t.wochentag, t))
+          ) ?? tage[0];
+        belegteTage.add(eigenerTag.wochentag);
+        zuordnung.get(eigenerTag.wochentag)!.push(p);
+      }
+      continue;
+    }
+
     const ziel =
       passendeTage.find(
         (t) =>
@@ -878,11 +1115,175 @@ export function planeRouten(eingabe: PlanEingabe): Routenplan {
           belegtAn(t.wochentag) + dauerDerGruppe <= fensterLaenge(t)
       ) ??
       passendeTage.find((t) => !belegteTage.has(t.wochentag)) ??
-      passendeTage[0] ??
-      tage[0];
+      passendeTage[0];
     belegteTage.add(ziel.wochentag);
     zuordnung.get(ziel.wochentag)!.push(...positionen);
   }
+
+  // ── Lückenfüller ──────────────────────────────────────────
+  //
+  // Die letzte Rettung, bevor jemand als „nicht eingeplant" endet: eine
+  // Position in einen fertigen Tag **einschieben**, ohne bestehende Zeiten
+  // anzufassen.
+  //
+  // Warum es das braucht: `baueTag` vergibt die Uhrzeiten gierig in
+  // Routenreihenfolge. Das ist fast immer gut — aber es kann eine Position
+  // verwerfen, obwohl im Tag ein passendes Loch klafft, bloss weil die
+  // Reihenfolge ungünstig war. Der Stresstest fand Dutzende solcher Fälle:
+  // „S0 draussen, obwohl Donnerstag 17:45 frei wäre". Genau die Sorte
+  // Fehler, die ein Mensch mit einem Blick auf den Plan sofort sieht — und
+  // die das Vertrauen ins Werkzeug zerstört.
+  //
+  // Geprüft wird alles, was auch sonst gilt: Fenster aller Beteiligten,
+  // Anfahrt vom Vorgänger (aufs Raster), Weiterfahrt zum Nachfolger.
+  // Unter den machbaren Löchern gewinnt das mit der kleinsten Zusatzfahrt.
+  /**
+   * Einen Tagesplan aus einer (geänderten) Positionsliste neu durchrechnen:
+   * chronologisch ordnen, Anfahrten, Heimweg und Auslastung neu bestimmen.
+   * Nach jedem Einschieben oder Entfernen nötig — sonst stimmen die
+   * Fahrzeiten des Tages nicht mehr.
+   */
+  const ketteNeu = (
+    plan: Tagesplan,
+    positionen: Position[],
+    fensterT: Tagesfenster
+  ): Tagesplan => {
+    const tagesStart = fensterT.start ?? eingabe.zuhause;
+    const tagVon = minutenVon(fensterT.beginn);
+    const tagBis = minutenVon(fensterT.ende);
+    const chrono = [...positionen].sort(
+      (a, b) => minutenVon(a.beginn) - minutenVon(b.beginn)
+    );
+    let vorheriger = tagesStart;
+    let summe = 0;
+    const neuBerechnet = chrono.map((p) => {
+      const ziel = { lat: p.nachKoordinate.lat, lng: p.nachKoordinate.lng };
+      const anfahrt = fahrzeit(vorheriger, ziel);
+      summe += anfahrt;
+      const ergebnis: Position = {
+        ...p,
+        anfahrtSekunden: anfahrt,
+        vonKoordinate: { lat: vorheriger.lat, lng: vorheriger.lng },
+        nachKoordinate: ziel,
+      };
+      vorheriger = ziel;
+      return ergebnis;
+    });
+    const heimweg =
+      neuBerechnet.length > 0 ? fahrzeit(vorheriger, eingabe.zuhause) : 0;
+    const letztesEnde =
+      neuBerechnet.length > 0
+        ? Math.max(...neuBerechnet.map((p) => minutenVon(p.ende)))
+        : tagVon;
+    return {
+      ...plan,
+      positionen: neuBerechnet,
+      fahrzeitSekunden: summe + heimweg,
+      heimwegSekunden: heimweg,
+      auslastung:
+        tagBis > tagVon ? (letztesEnde - tagVon) / (tagBis - tagVon) : 0,
+    };
+  };
+
+  const schiebeEin = (
+    pos: Positionsbelegung,
+    plan: Tagesplan,
+    fensterT: Tagesfenster
+  ): { plan: Tagesplan; zusatz: number } | null => {
+    const mitglieder = [pos.gerade, pos.ungerade].filter(
+      Boolean
+    ) as PlanSchueler[];
+    if (
+      !mitglieder.every((m) => tagErlaubt(m, fensterT.wochentag, fensterT))
+    ) {
+      return null;
+    }
+    const dauer = Math.max(...mitglieder.map((m) => m.lektionMinuten));
+    const ort = positionsOrt(pos);
+    const tagesStart = fensterT.start ?? eingabe.zuhause;
+    const tagVon = minutenVon(fensterT.beginn);
+    const tagBis = minutenVon(fensterT.ende);
+
+    // Gemeinsame nutzbare Abschnitte aller Mitglieder (bei Paaren zwei).
+    let abschnitte: Array<[number, number]> | null = null;
+    for (const m of mitglieder) {
+      const eigene = nutzbareAbschnitte(m, fensterT);
+      if (abschnitte === null) {
+        abschnitte = eigene;
+        continue;
+      }
+      const geschnitten: Array<[number, number]> = [];
+      for (const [av, ab] of abschnitte) {
+        for (const [bv, bb] of eigene) {
+          const v = Math.max(av, bv);
+          const b = Math.min(ab, bb);
+          if (b - v >= dauer) geschnitten.push([v, b]);
+        }
+      }
+      abschnitte = geschnitten;
+    }
+    if (!abschnitte || abschnitte.length === 0) return null;
+
+    const belegt = plan.positionen
+      .map((p) => ({
+        von: minutenVon(p.beginn),
+        bis: minutenVon(p.ende),
+        ort: { lat: p.nachKoordinate.lat, lng: p.nachKoordinate.lng },
+      }))
+      .sort((a, b) => a.von - b.von);
+
+    let bester: { start: number; zusatz: number } | null = null;
+    for (const [av, ab] of abschnitte) {
+      const von = Math.max(av, tagVon);
+      const bis = Math.min(ab, tagBis);
+      for (let start = aufRaster(von); start + dauer <= bis; start += 15) {
+        const ende = start + dauer;
+        if (belegt.some((b) => start < b.bis && b.von < ende)) continue;
+
+        const prev = [...belegt].reverse().find((b) => b.bis <= start) ?? null;
+        const next = belegt.find((b) => b.von >= ende) ?? null;
+        const vorOrt = prev ? prev.ort : tagesStart;
+
+        // Vom Vorgänger herkommen — Ankunft plus Puffer, aufs Raster.
+        // Ohne Vorgänger ist es die erste Lektion: Die Anfahrt passiert
+        // vor Fensterbeginn, wie überall im Plan.
+        if (prev) {
+          const anfahrtMin = Math.ceil(fahrzeit(vorOrt, ort) / 60);
+          if (aufRaster(prev.bis + anfahrtMin + eingabe.pufferMinuten) > start) {
+            continue;
+          }
+        }
+        // Und rechtzeitig beim Nachfolger sein.
+        if (next) {
+          const weiterMin = Math.ceil(fahrzeit(ort, next.ort) / 60);
+          if (ende + weiterMin + eingabe.pufferMinuten > next.von) continue;
+        }
+
+        const nachOrt = next ? next.ort : eingabe.zuhause;
+        const bisher =
+          prev || next ? fahrzeit(vorOrt, nachOrt) : 0;
+        const zusatz =
+          fahrzeit(vorOrt, ort) + fahrzeit(ort, nachOrt) - bisher;
+        if (!bester || zusatz < bester.zusatz) bester = { start, zusatz };
+      }
+    }
+    if (!bester) return null;
+
+    const neuePosition: Position = {
+      geradeWoche: pos.gerade,
+      ungeradeWoche: pos.ungerade,
+      beginn: alsZeit(bester.start),
+      ende: alsZeit(bester.start + dauer),
+      anfahrtSekunden: 0,
+      vonKoordinate: { lat: ort.lat, lng: ort.lng },
+      nachKoordinate: { lat: ort.lat, lng: ort.lng },
+    };
+
+    return {
+      plan: ketteNeu(plan, [...plan.positionen, neuePosition], fensterT),
+      zusatz: bester.zusatz,
+    };
+  };
 
   // Schritt 4: je Tag Route ordnen und Uhrzeiten vergeben.
   const tagesplaene: Tagesplan[] = [];
@@ -902,13 +1303,21 @@ export function planeRouten(eingabe: PlanEingabe): Routenplan {
     ueberlauf = ueberlauf.concat(ergebnis.ueberzaehlig);
   }
 
-  // Schritt 5: Übriggebliebene auf Tage mit Luft nachsetzen.
-  for (const pos of ueberlauf) {
-    const betroffene = [pos.gerade, pos.ungerade].filter(
-      Boolean
-    ) as PlanSchueler[];
-    let untergebracht = false;
+  // Schritt 5: Übriggebliebene auf Tage mit Luft nachsetzen — in drei
+  // Stufen, jede eine Antwort auf eine Fehlerklasse aus dem Stresstest.
+  //
+  // 1. Tag neu bauen mit der Position dazu (nutzt die Routenlogik).
+  // 2. In ein Loch einschieben (der Neuaufbau scheitert manchmal an der
+  //    eigenen gierigen Reihenfolge, obwohl sichtbar Platz wäre).
+  // 3. Verdrängen: Jemand mit grossem Spielraum sitzt auf der einzigen
+  //    Zeit, die noch ginge — er weicht, sofern er selbst direkt woanders
+  //    unterkommt. Bewusst nur eine Stufe tief, keine Ketten.
+  const rette = (pos: Positionsbelegung): boolean => {
+    const betroffene = [
+      ...new Set([pos.gerade, pos.ungerade].filter(Boolean)),
+    ] as PlanSchueler[];
 
+    // Stufe 1: Tag mit der Position neu bauen.
     for (const t of tage) {
       if (!betroffene.every((s) => tagErlaubt(s, t.wochentag, t))) continue;
       const plan = tagesplaene.find((p) => p.wochentag === t.wochentag)!;
@@ -927,19 +1336,109 @@ export function planeRouten(eingabe: PlanEingabe): Routenplan {
       if (versuch.ueberzaehlig.length === 0) {
         const index = tagesplaene.findIndex((p) => p.wochentag === t.wochentag);
         tagesplaene[index] = versuch.plan;
-        untergebracht = true;
-        break;
+        return true;
       }
     }
 
-    if (!untergebracht) {
-      for (const s of betroffene) {
-        nichtEingeplant.push({
-          schueler: s,
-          grund:
-            "Kein Platz mehr in den Unterrichtsfenstern, Fenster erweitern oder Schüler auf Flex setzen.",
-        });
+    // Stufe 2: einschieben, kleinste Zusatzfahrt gewinnt.
+    let besteWahl: {
+      index: number;
+      ergebnis: { plan: Tagesplan; zusatz: number };
+    } | null = null;
+    for (const t of tage) {
+      const index = tagesplaene.findIndex((p) => p.wochentag === t.wochentag);
+      if (index < 0) continue;
+      const ergebnis = schiebeEin(pos, tagesplaene[index], t);
+      if (
+        ergebnis &&
+        (!besteWahl || ergebnis.zusatz < besteWahl.ergebnis.zusatz)
+      ) {
+        besteWahl = { index, ergebnis };
       }
+    }
+    if (besteWahl) {
+      tagesplaene[besteWahl.index] = besteWahl.ergebnis.plan;
+      return true;
+    }
+
+    // Stufe 3: verdrängen.
+    for (const t of tage) {
+      const index = tagesplaene.findIndex((p) => p.wochentag === t.wochentag);
+      if (index < 0) continue;
+      const plan = tagesplaene[index];
+      for (const q of plan.positionen) {
+        const ohneQ = ketteNeu(
+          plan,
+          plan.positionen.filter((x) => x !== q),
+          t
+        );
+        const hinein = schiebeEin(pos, ohneQ, t);
+        if (!hinein) continue;
+
+        const qAlsPosition: Positionsbelegung = {
+          gerade: q.geradeWoche,
+          ungerade: q.ungeradeWoche,
+        };
+        for (const t2 of tage) {
+          const index2 = tagesplaene.findIndex(
+            (p) => p.wochentag === t2.wochentag
+          );
+          if (index2 < 0) continue;
+          const basis =
+            t2.wochentag === t.wochentag ? hinein.plan : tagesplaene[index2];
+          const qNeu = schiebeEin(qAlsPosition, basis, t2);
+          if (!qNeu) continue;
+          if (t2.wochentag === t.wochentag) {
+            tagesplaene[index] = qNeu.plan;
+          } else {
+            tagesplaene[index] = hinein.plan;
+            tagesplaene[index2] = qNeu.plan;
+          }
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
+  for (const pos of ueberlauf) {
+    if (rette(pos)) continue;
+
+    // Ein Paar, das als Paar nirgends unterkommt, wird aufgelöst und jedes
+    // Mitglied einzeln gerettet.
+    //
+    // Das ist die Versicherung, die NICHT von der Selbstheilungs-Schleife
+    // abhängt: Die sperrt unbrauchbare Paare und rechnet neu, behält bei
+    // Gleichstand aber den alten Plan — und bei einem Schüler mit zwei
+    // gleich schlechten Paar-Kandidaten blieb so am Ende ein Plan stehen,
+    // in dem er draussen war, obwohl sein Platz frei war. Einzeln gerettet
+    // ist jeder einzelne Durchlauf schon lochfrei, egal was die Schleife
+    // daraus macht.
+    const istEchtesPaar =
+      pos.gerade && pos.ungerade && pos.gerade.id !== pos.ungerade.id;
+    if (istEchtesPaar) {
+      for (const m of [pos.gerade!, pos.ungerade!]) {
+        const einzeln: Positionsbelegung = { gerade: m, ungerade: null };
+        if (!rette(einzeln)) {
+          nichtEingeplant.push({
+            schueler: m,
+            grund:
+              "Kein Platz mehr in den Unterrichtsfenstern, Fenster erweitern oder Schüler auf Flex setzen.",
+          });
+        }
+      }
+      continue;
+    }
+
+    for (const s of [
+      ...new Set([pos.gerade, pos.ungerade].filter(Boolean)),
+    ] as PlanSchueler[]) {
+      nichtEingeplant.push({
+        schueler: s,
+        grund:
+          "Kein Platz mehr in den Unterrichtsfenstern, Fenster erweitern oder Schüler auf Flex setzen.",
+      });
     }
   }
 
@@ -961,13 +1460,18 @@ export function planeRouten(eingabe: PlanEingabe): Routenplan {
   const positionen = tagesplaene.reduce((s, t) => s + t.positionen.length, 0);
 
   return {
-    tage: tagesplaene,
-    nichtEingeplant,
-    fahrzeitProWoche,
-    lektionenProWoche,
-    positionen,
-    fahrzeitProLektion:
-      lektionenProWoche > 0 ? Math.round(fahrzeitProWoche / lektionenProWoche) : 0,
+    plan: {
+      tage: tagesplaene,
+      nichtEingeplant,
+      fahrzeitProWoche,
+      lektionenProWoche,
+      positionen,
+      fahrzeitProLektion:
+        lektionenProWoche > 0
+          ? Math.round(fahrzeitProWoche / lektionenProWoche)
+          : 0,
+    },
+    paare: positionenGesamt,
   };
 }
 

@@ -12,7 +12,12 @@ import {
   type Vergleich,
 } from "@/lib/routing";
 import { standardKreis, type Kreis } from "@/lib/kreis";
-import { schlageOptimierungen, type Optimierung } from "@/lib/optimierung";
+import {
+  schlageOptimierungen,
+  schlageSchuelerAnfragen,
+  type Optimierung,
+  type SchuelerAnfrage,
+} from "@/lib/optimierung";
 import {
   geokodiereOffene,
   ladePlanEingabe,
@@ -54,6 +59,11 @@ export type PlanErgebnis = {
    * sonst würde „Tag streichen" doppelt gemoppelt mit der Empfehlung.
    */
   optimierungen: Optimierung[];
+  /**
+   * Die andere Richtung: Welche Frage an welchen Schüler würde den Plan
+   * verbessern? Nur gefüllt, wenn jemand nicht hineinpasst.
+   */
+  schuelerAnfragen: SchuelerAnfrage[];
   zuhauseAdresse: string;
   ohneKoordinaten: { name: string; adresse: string | null }[];
 };
@@ -124,6 +134,7 @@ export async function berechnePlan(optionen: {
   // Vorschläge sollen Davids tatsächliche Verfügbarkeit verbessern, nicht
   // die bereits gefilterte.
   const optimierungen = schlageOptimierungen(kontext.eingabe);
+  const schuelerAnfragen = schlageSchuelerAnfragen(kontext.eingabe);
 
   return {
     plan,
@@ -131,6 +142,7 @@ export async function berechnePlan(optionen: {
     varianten,
     empfehlung,
     optimierungen,
+    schuelerAnfragen,
     zuhauseAdresse: kontext.zuhauseAdresse,
     ohneKoordinaten: kontext.ohneKoordinaten.map((s) => ({
       name: s.name,
