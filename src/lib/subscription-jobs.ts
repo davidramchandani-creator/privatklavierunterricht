@@ -37,6 +37,7 @@ import { bookFixplatzSeries } from "@/lib/fixplatz-server";
 import { aktiviereGeplanteAbos } from "@/lib/umstellung-server";
 import { verlaengereExterneSerien } from "@/lib/externe-server";
 import { erinnereAnAusgaben } from "@/lib/abrechnung-server";
+import { mahneOffeneRechnungen } from "@/lib/mahnung-server";
 import { gleicheAppleKalenderAb } from "@/lib/apple-kalender";
 
 import { ABO_LABELS } from "@/lib/abo";
@@ -878,6 +879,20 @@ export async function runSubscriptionJobs(
     if (gesendet) console.log("[abrechnung] Ausgaben-Erinnerung gesendet");
   } catch (err) {
     console.error("[abrechnung] Erinnerung fehlgeschlagen:", err);
+  }
+
+  // Offene Rechnungen nachfassen. Bisher wurde nur bei Raten überfällig
+  // markiert — eine einzelne Lektionsrechnung lag still, bis David selbst
+  // nachsah. Die Funktion prüft die Fristen je Rechnung selbst.
+  try {
+    const { erinnert, adminHinweise } = await mahneOffeneRechnungen(admin, now);
+    if (erinnert || adminHinweise) {
+      console.log(
+        `[mahnung] ${erinnert} Erinnerungen, ${adminHinweise} Hinweise an David`
+      );
+    }
+  } catch (err) {
+    console.error("[mahnung] Nachfassen fehlgeschlagen:", err);
   }
 
   try {

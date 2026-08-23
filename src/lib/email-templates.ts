@@ -1740,6 +1740,130 @@ export function renderEmail(
       };
     }
 
+    case "zahlung_erinnerung": {
+      // Ton: Erinnerung, keine Mahnung.
+      //
+      // Diese Leute sitzen jede Woche in Davids Wohnzimmer oder er bei
+      // ihnen. Eine Rechnung geht im Alltag unter, das ist keine
+      // Charakterfrage. Auch die zweite Stufe bleibt darum freundlich und
+      // droht nichts an — sie sagt nur deutlicher, dass es liegen blieb,
+      // und macht das Antworten leicht. Wer nach zwei Mails nicht
+      // reagiert, hat ein Anliegen, das keine dritte Mail löst.
+      const zweite = Number(payload.stufe ?? 1) >= 2;
+      const betrag = Number(payload.betrag ?? 0).toFixed(2);
+      const wofuer = payload.lesson_date
+        ? `die Lektion vom ${fmtDate(String(payload.lesson_date))}`
+        : String(payload.bezeichnung ?? "den Unterricht");
+      return {
+        subject: zweite
+          ? `Erinnerung: CHF ${betrag} für ${payload.lesson_date ? "deine Lektion" : "den Unterricht"}`
+          : `Kleine Erinnerung: CHF ${betrag}`,
+        html: baseWrapper(
+          `<p>Hallo${payload.student_name ? " " + String(payload.student_name).split(" ")[0] : ""}</p>
+           ${
+             zweite
+               ? `<p>Ich melde mich nochmals wegen ${wofuer} — die Zahlung ist
+                    bei mir bisher nicht angekommen.</p>`
+               : `<p>Ganz unaufgeregt: Die Zahlung für ${wofuer} ist noch
+                    offen. Vermutlich ist sie schlicht untergegangen.</p>`
+           }
+
+           <div style="background:#F3F5F8;border:1px solid #E3E7EE;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0 0 6px;color:#1C244B;font-size:14px;">
+               Betrag: <strong>CHF ${betrag}</strong>
+             </p>
+             ${
+               payload.invoice_number
+                 ? `<p style="margin:0 0 6px;color:#1C244B;font-size:14px;">
+                      Rechnung: <strong>${payload.invoice_number}</strong>
+                    </p>`
+                 : ""
+             }
+             ${
+               payload.faellig
+                 ? `<p style="margin:0;color:#64748b;font-size:14px;">
+                      Fällig war sie am ${fmtDate(String(payload.faellig))}.
+                    </p>`
+                 : ""
+             }
+           </div>
+
+           <p>Im Portal siehst du alles und kannst direkt bestätigen, dass
+              du bezahlt hast.</p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zum Portal</a>
+           </p>
+
+           <p style="color:#64748b;font-size:14px;">
+             Schon überwiesen? Dann hat sich das hier überschnitten — melde
+             dich kurz, dann hake ich es ab. Und wenn es gerade schwierig
+             ist, sag es mir einfach, wir finden eine Lösung.
+           </p>`
+        ),
+      };
+    }
+
+    case "zahlung_ueberfaellig_admin": {
+      return {
+        subject: `Offen geblieben: ${payload.student_name} · CHF ${Number(payload.betrag ?? 0).toFixed(2)}`,
+        html: baseWrapper(
+          `<p>Hallo David</p>
+           <p><strong>${payload.student_name}</strong> hat zweimal eine
+              Erinnerung bekommen und nicht bezahlt. Ab hier schickt das
+              System nichts mehr — eine dritte Mail bringt nichts, ein
+              Gespräch schon.</p>
+
+           <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0 0 6px;color:#1C244B;font-size:14px;">
+               Betrag: <strong>CHF ${Number(payload.betrag ?? 0).toFixed(2)}</strong>
+             </p>
+             <p style="margin:0;color:#1C244B;font-size:14px;">
+               ${payload.bezeichnung ?? ""}
+               ${payload.faellig ? ` · fällig am ${fmtDate(String(payload.faellig))}` : ""}
+             </p>
+           </div>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/zahlungen" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zahlungen ansehen</a>
+           </p>`
+        ),
+      };
+    }
+
+    case "bestaetigung_offen_admin": {
+      // Der andere Stillstand: Nicht der Schüler säumt, sondern die
+      // Bestätigung fehlt. Für ihn steht im Portal „in Prüfung", und dort
+      // bleibt es, bis David einen Haken setzt.
+      return {
+        subject: `Bestätigung fehlt: ${payload.student_name} · CHF ${Number(payload.betrag ?? 0).toFixed(2)}`,
+        html: baseWrapper(
+          `<p>Hallo David</p>
+           <p><strong>${payload.student_name}</strong> hat gemeldet, bezahlt
+              zu haben. Im Portal steht seither „in Prüfung" — und dort
+              bleibt es, bis du es bestätigst.</p>
+
+           <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
+             <p style="margin:0 0 6px;color:#1C244B;font-size:14px;">
+               Betrag: <strong>CHF ${Number(payload.betrag ?? 0).toFixed(2)}</strong>
+             </p>
+             <p style="margin:0;color:#1C244B;font-size:14px;">
+               ${payload.bezeichnung ?? ""}
+             </p>
+           </div>
+
+           <p style="color:#64748b;font-size:14px;">
+             Kurz auf dem Konto nachsehen und bestätigen — dann stimmt auch
+             deine Abrechnung wieder.
+           </p>
+
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/admin/zahlungen" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Jetzt bestätigen</a>
+           </p>`
+        ),
+      };
+    }
+
     case "vorrueck_angebot": {
       // Der Ton ist wichtig: Es ist ein Angebot, keine Änderung. Wer nicht
       // antwortet oder ablehnt, behält seinen Termin unverändert — das muss

@@ -10,6 +10,10 @@ import { BASIS_URL } from "@/lib/seo";
 import { zahlungsartFuer } from "@/lib/zahlungsart";
 
 export const ADMIN_RECIPIENT_TYPES = [
+  // Mahnwesen: beide gehen an David, obwohl eine student_id im Payload
+  // steht — sie handeln von einem Schüler, sind aber nicht an ihn.
+  "zahlung_ueberfaellig_admin",
+  "bestaetigung_offen_admin",
   "booking_request_admin",
   "booking_request_withdrawn",
   "appointment_cancelled_by_student",
@@ -60,6 +64,7 @@ export const STUDENT_PAYLOAD_TO_TYPES = [
 ];
 
 export const STUDENT_LOOKUP_TYPES = [
+  "zahlung_erinnerung",
   "lesson_reminder_24h",
   "lesson_reminder_2h",
   "payment_overdue",

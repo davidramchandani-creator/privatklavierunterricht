@@ -58,6 +58,15 @@ const GROUPS: { label: string; types: EmailType[] }[] = [
       { id: "payment_confirmed", label: "Zahlung bestätigt" },
       { id: "payment_rejected", label: "Zahlung abgelehnt" },
       { id: "group_payment_request", label: "Gruppen-Zahlung" },
+      { id: "zahlung_erinnerung", label: "Erinnerung an offene Zahlung" },
+      {
+        id: "zahlung_ueberfaellig_admin",
+        label: "Hinweis an dich: bleibt offen",
+      },
+      {
+        id: "bestaetigung_offen_admin",
+        label: "Hinweis an dich: Bestätigung fehlt",
+      },
     ],
   },
   {

@@ -754,6 +754,38 @@ Adresse des Schülers zählt nur die Lage im Tag, das sagt dir ein Hinweis.
 
 ---
 
+## 9i. Wenn eine Rechnung liegen bleibt
+
+Zwei Arten von Stillstand, und sie brauchen entgegengesetzte Antworten.
+
+**Der Schüler hat nicht bezahlt.** Eine Woche nach Fälligkeit bekommt er
+eine freundliche Erinnerung, zwei Wochen später eine zweite. Danach hört
+das System auf und **du** bekommst den Hinweis. Das ist Absicht: Eine
+dritte, vierte, fünfte automatische Mahnung holt das Geld auch nicht und
+macht die nächste Klavierstunde unangenehm — bei Leuten, die du jede Woche
+im Wohnzimmer triffst, ist ein kurzes Gespräch das bessere Werkzeug.
+
+Der Ton der Mails ist bewusst zurückhaltend: „Vermutlich ist es schlicht
+untergegangen", plus der Satz, dass er sich melden soll, wenn es gerade
+schwierig ist. Niemand wird beschuldigt.
+
+**Du hast eine gemeldete Zahlung nicht bestätigt.** Der andere Fall, und
+er passiert öfter: Der Schüler drückt im Portal auf „Ich habe bezahlt",
+und dort steht dann „in Prüfung" — bis du einen Haken setzt. Nach drei
+Tagen bekommst *du* die Erinnerung, danach höchstens wöchentlich. Eine
+Mahnung an den Schüler wäre hier ein Vorwurf für etwas, das er längst
+erledigt hat, und das System schickt sie darum nie.
+
+Unter Zahlungen siehst du an jeder Rechnung, was schon passiert ist —
+„1× erinnert, zuletzt Di 12. Aug" oder „2× erinnert · jetzt du". Damit
+weisst du, ob gerade eine Erinnerung unterwegs ist oder ob du dran bist.
+
+Testschüler und Externe bleiben aussen vor: Testdaten dürfen niemandem
+schreiben, und Externe bekommen aus diesem System grundsätzlich keine
+Post.
+
+---
+
 ## 9h. Abrechnung und privater Kalender
 
 **Monatsabrechnung** (Menü → Abrechnung). Einnahmen kommen automatisch aus

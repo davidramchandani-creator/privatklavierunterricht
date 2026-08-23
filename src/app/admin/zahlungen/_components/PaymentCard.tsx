@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useSyncExternalStore, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
@@ -35,6 +35,9 @@ export type Invoice = {
   /** z. B. "10er-Paket, Rate 2/4"; bei Lektionsrechnungen leer. */
   description?: string | null;
   due_date?: string | null;
+  /** Wie oft schon erinnert wurde. 2 heisst: Ab hier übernimmt David. */
+  mahnstufe?: number | null;
+  erinnert_am?: string | null;
 };
 
 function fmtCHF(n: number): string {
@@ -73,8 +76,14 @@ type SheetAction = {
 
 export default function PaymentCard({ invoice }: { invoice: Invoice }) {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  // `createPortal` braucht das DOM, auf dem Server gibt es keins. Statt
+  // im Effekt einen Zustand zu setzen (was eine zweite Renderrunde
+  // auslöst) genügt die Frage, ob wir überhaupt im Browser sind.
+  const imBrowser = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
   const [isPending, startTransition] = useTransition();
   const [sheet, setSheet] = useState<null | "more" | "reject">(null);
   const [reason, setReason] = useState("");
@@ -191,10 +200,27 @@ export default function PaymentCard({ invoice }: { invoice: Invoice }) {
               </span>
             </div>
 
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
               <StatusBadge kind="payment" status={status} />
               {status === "paid" && invoice.paid_at && (
                 <span className="text-[11px] text-gray-400">bezahlt {fmtDate(invoice.paid_at)}</span>
+              )}
+              {/* Was das System bereits unternommen hat. Ohne diesen
+                  Hinweis weiss David nicht, ob er selbst nachfassen muss
+                  oder ob gerade eine Erinnerung unterwegs ist. */}
+              {status === "unpaid" && (invoice.mahnstufe ?? 0) > 0 && (
+                <span className="text-[11px] font-600 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                  {invoice.mahnstufe === 1 ? "1× erinnert" : "2× erinnert"}
+                  {invoice.erinnert_am
+                    ? `, zuletzt ${fmtDate(invoice.erinnert_am)}`
+                    : ""}
+                  {(invoice.mahnstufe ?? 0) >= 2 ? " · jetzt du" : ""}
+                </span>
+              )}
+              {status === "pending_confirmation" && (
+                <span className="text-[11px] text-amber-700">
+                  wartet auf deine Bestätigung
+                </span>
               )}
             </div>
           </div>
@@ -263,7 +289,7 @@ export default function PaymentCard({ invoice }: { invoice: Invoice }) {
 
       {/* Bottom sheets, via Portal an document.body, damit sie nicht von
           transformierten/overflow-hidden-Vorfahren zerschossen werden. */}
-      {mounted && sheet && createPortal(
+      {imBrowser && sheet && createPortal(
         <div className="fixed inset-0 z-[100]" onClick={() => setSheet(null)}>
           <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] animate-fade-in" />
           <div
