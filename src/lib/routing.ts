@@ -378,12 +378,35 @@ export function paareZweiwoechentliche(
     ungerade: s,
   }));
 
+  /**
+   * Haben zwei Schüler überhaupt einen gemeinsamen Wochentag?
+   *
+   * Ohne Angabe kann jemand an jedem Tag — dann gibt es immer einen.
+   */
+  const gemeinsamerTag = (a: PlanSchueler, b: PlanSchueler): boolean => {
+    const ta = a.moeglicheTage;
+    const tb = b.moeglicheTage;
+    if (!ta || ta.length === 0) return true;
+    if (!tb || tb.length === 0) return true;
+    return ta.some((d) => tb.includes(d));
+  };
+
   const offen = [...zweiwoechentlich];
   while (offen.length > 0) {
     const a = offen.shift()!;
     let besterIndex = -1;
     let besteDistanz = Infinity;
     for (let i = 0; i < offen.length; i++) {
+      // Nähe allein genügt nicht: Ein Paar teilt sich **einen** Termin und
+      // kann darum nur an einem Tag stattfinden, an dem beide können.
+      //
+      // Ohne diese Prüfung wurden zwei Nachbarn gepaart, die sich nie
+      // begegnen können — das Paar hatte danach null mögliche Tage, fiel
+      // durch jede Tagesprüfung und **beide** standen am Ende unter „nicht
+      // eingeplant". Einzeln hätte jeder von beiden problemlos einen Platz
+      // gefunden. Genau so verschwanden Marina und Justine aus dem Plan,
+      // 3 km voneinander entfernt und an keinem Tag zusammen möglich.
+      if (!gemeinsamerTag(a, offen[i])) continue;
       const d = haversineMeter(a, offen[i]);
       if (d < besteDistanz) {
         besteDistanz = d;
@@ -394,7 +417,9 @@ export function paareZweiwoechentliche(
       const b = offen.splice(besterIndex, 1)[0];
       positionen.push({ gerade: a, ungerade: b });
     } else {
-      // Kein Partner in der Nähe (oder ungerade Anzahl): eigene Position.
+      // Kein passender Partner: eigene Position. Der Slot steht dann jede
+      // zweite Woche leer — immer noch besser, als den Schüler gar nicht
+      // unterzubringen.
       positionen.push({ gerade: a, ungerade: null });
     }
   }
@@ -741,7 +766,52 @@ export function planeRouten(eingabe: PlanEingabe): Routenplan {
     const passendeTage = tage
       .filter((t) => gruppe.every((v) => tagErlaubt(v, t.wochentag)))
       .sort((a, b) => fensterLaenge(b) - fensterLaenge(a));
+
+    // Lieber einen Abend voll als zwei halb — solange es dort noch passt.
+    //
+    // Vorher wurde hier ausdrücklich ein **unbenutzter** Tag gesucht. Das
+    // verteilte die Schüler über die Woche, statt sie zu bündeln: Wer
+    // zusammen an einen Abend gepasst hätte, bekam einen eigenen — mit
+    // eigener Anfahrt, eigenem Heimweg und einem Abend, der sonst frei
+    // gewesen wäre. Ein Schüler landete so auf seiner „zur Not"-Zeit an
+    // einem Extratag, obwohl seine Wunschzeit an einem bereits belegten
+    // Abend frei war.
+    //
+    // Umgekehrt wäre stures Bündeln aber auch falsch: Ein übervoller Tag
+    // drängt am Ende jemanden ganz aus dem Plan. Darum wird nur auf einen
+    // belegten Tag gelegt, wenn die Lektionen dort grob noch hineinpassen.
+    // Die genaue Prüfung macht `baueTag`, und was dann doch nicht passt,
+    // fängt Schritt 5 auf.
+    const dauerDerGruppe = positionen.reduce(
+      (summe, p) =>
+        summe +
+        Math.max(
+          ...([p.gerade, p.ungerade].filter(Boolean) as PlanSchueler[]).map(
+            (s) => s.lektionMinuten
+          )
+        ) +
+        eingabe.pufferMinuten,
+      0
+    );
+    const belegtAn = (wochentag: number) =>
+      (zuordnung.get(wochentag) ?? []).reduce(
+        (summe, p) =>
+          summe +
+          Math.max(
+            ...([p.gerade, p.ungerade].filter(Boolean) as PlanSchueler[]).map(
+              (s) => s.lektionMinuten
+            )
+          ) +
+          eingabe.pufferMinuten,
+        0
+      );
+
     const ziel =
+      passendeTage.find(
+        (t) =>
+          belegteTage.has(t.wochentag) &&
+          belegtAn(t.wochentag) + dauerDerGruppe <= fensterLaenge(t)
+      ) ??
       passendeTage.find((t) => !belegteTage.has(t.wochentag)) ??
       passendeTage[0] ??
       tage[0];
