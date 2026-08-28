@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   LogOut,
   MoreHorizontal,
+  NotebookPen,
   Route,
   Settings,
   Star,
@@ -42,6 +43,7 @@ const MAIN_TABS = [
 // `admin-navigation.test.ts` vergleicht beide Listen und schlägt an, sobald
 // in der Seitenleiste etwas Neues auftaucht.
 const MORE_ITEMS = [
+  { href: "/admin/lektionen", label: "Was lief?", icon: NotebookPen },
   { href: "/admin/terminanfragen", label: "Terminanfragen", icon: CalendarClock },
   { href: "/admin/anfragen", label: "Probelektionen", icon: Inbox },
   { href: "/admin/abwesenheiten", label: "Abwesenheiten", icon: CalendarOff },

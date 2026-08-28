@@ -18,6 +18,8 @@ import RatenplanPanel from "./_components/RatenplanPanel";
 import PaketAufraeumen from "./_components/PaketAufraeumen";
 import PlanungSchalter from "./_components/PlanungSchalter";
 import ZeitenErfassen from "./_components/ZeitenErfassen";
+import NotizVerlauf from "./_components/NotizVerlauf";
+import { ladeVerlauf } from "@/lib/lektionsnotizen-server";
 import ExterneVereinbarung, {
   type VereinbarungDaten,
 } from "./_components/ExterneVereinbarung";
@@ -49,6 +51,7 @@ export default async function SchuelerDetailPage({
     { data: appointments },
     { data: invoices },
     { data: openProposals },
+    notizen,
   ] = await Promise.all([
     admin
       .from("profiles")
@@ -80,6 +83,7 @@ export default async function SchuelerDetailPage({
       .eq("student_id", id)
       .eq("status", "open")
       .order("proposed_start", { ascending: true }),
+    ladeVerlauf(admin, id),
   ]);
 
   if (!profile || profile.role === "admin") notFound();
@@ -611,6 +615,17 @@ export default async function SchuelerDetailPage({
             }
           />
         ))}
+
+      {/* Unterrichtsverlauf.
+          Steht bewusst vor den kommenden Terminen: Wer diese Seite vor einer
+          Lektion öffnet, will wissen, wo man stehengeblieben ist. */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+        <h2 className="text-lg font-700 text-[#1C244B] mb-1">Unterricht</h2>
+        <p className="text-xs text-gray-400 mb-4">
+          Nur für dich. Der Schüler sieht davon nichts.
+        </p>
+        <NotizVerlauf notizen={notizen} />
+      </div>
 
       {/* Bevorstehende Lektionen */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">

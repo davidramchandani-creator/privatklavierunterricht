@@ -1,6 +1,11 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { ladeWochenbriefing } from "@/lib/briefing-server";
-import { Users, Calendar, CreditCard, Inbox } from "lucide-react";
+import {
+  ladeOffeneNotizen,
+  ladeVorschauFuer,
+} from "@/lib/lektionsnotizen-server";
+import { inhaltLabel } from "@/lib/lektionsnotizen";
+import { Users, Calendar, CreditCard, Inbox, NotebookPen } from "lucide-react";
 import { formatCHF, formatDateTime } from "@/lib/utils";
 import Link from "next/link";
 
@@ -47,12 +52,25 @@ export default async function AdminDashboardPage() {
       .eq("status", "open"),
     supabase
       .from("appointments")
-      .select("id, start_at, end_at, status, profiles(vorname, nachname)")
+      .select(
+        "id, student_id, start_at, end_at, status, profiles(vorname, nachname)"
+      )
       .in("status", ["booked", "completed"])
       .gte("start_at", now.toISOString())
       .order("start_at", { ascending: true })
       .limit(10),
     ladeWochenbriefing(supabase, now),
+  ]);
+
+  // Der Stand vor der nächsten Stunde. Ohne ihn steht man vor der Tür und
+  // erinnert sich nicht, was letztes Mal aufgegeben wurde — genau die Lücke,
+  // die diese Vorschau schliesst.
+  const naechsteIds = [
+    ...new Set((nextLessons ?? []).map((t) => t.student_id as string)),
+  ];
+  const [vorschau, offeneNotizen] = await Promise.all([
+    ladeVorschauFuer(supabase, naechsteIds),
+    ladeOffeneNotizen(supabase, now),
   ]);
 
   const openPaymentsTotal = openPayments?.reduce(
@@ -148,6 +166,36 @@ export default async function AdminDashboardPage() {
         </div>
       )}
 
+      {/* Lektionen ohne Eintrag.
+          Nur sichtbar, wenn welche offen sind — eine Karte, die meistens
+          „nichts offen" sagt, liest man nach zwei Wochen nicht mehr. */}
+      {offeneNotizen.length > 0 && (
+        <Link
+          href="/admin/lektionen"
+          className="block bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:border-[#1C244B]/30 hover:-translate-y-1 hover:shadow-md transition-all duration-200"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+              <NotebookPen className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-700 text-[#1C244B]">
+                {offeneNotizen.length === 1
+                  ? "Eine Lektion ohne Eintrag"
+                  : `${offeneNotizen.length} Lektionen ohne Eintrag`}
+              </p>
+              <p className="text-xs text-gray-500 truncate">
+                {offeneNotizen
+                  .slice(0, 3)
+                  .map((l) => l.name)
+                  .join(", ")}
+                {offeneNotizen.length > 3 ? " …" : ""}
+              </p>
+            </div>
+          </div>
+        </Link>
+      )}
+
       {/* Upcoming lessons */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
         <h2 className="text-lg font-700 text-[#1C244B] mb-4">
@@ -160,47 +208,67 @@ export default async function AdminDashboardPage() {
             <p className="text-sm">Keine bevorstehenden Lektionen</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2">
-                    Schüler
-                  </th>
-                  <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2">
-                    Datum & Zeit
-                  </th>
-                  <th className="text-left text-xs font-600 text-gray-400 uppercase tracking-wide pb-2">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {nextLessons.map((t) => {
-                  const s = (t.profiles as unknown) as { vorname: string; nachname: string } | null;
-                  return (
-                    <tr key={t.id}>
-                      <td className="py-3 text-sm font-500 text-gray-900">
+          <ul className="divide-y divide-gray-100">
+            {nextLessons.map((t) => {
+              const s = t.profiles as unknown as {
+                vorname: string;
+                nachname: string;
+              } | null;
+              const v = vorschau[t.student_id as string];
+              return (
+                <li key={t.id} className="py-3 first:pt-0 last:pb-0">
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-600 text-gray-900 truncate">
                         {s ? `${s.vorname} ${s.nachname}` : "—"}
-                      </td>
-                      <td className="py-3 text-sm text-gray-600">
+                      </p>
+                      <p className="text-xs text-gray-500">
                         {formatDateTime(t.start_at)}
-                      </td>
-                      <td className="py-3">
-                        <span
-                          className={`text-xs font-500 px-2.5 py-0.5 rounded-full ${
-                            statusColors[t.status] ?? "bg-gray-100 text-gray-600"
-                          }`}
-                        >
-                          {statusLabels[t.status] ?? t.status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </p>
+                    </div>
+                    <span
+                      className={`text-xs font-500 px-2.5 py-0.5 rounded-full flex-shrink-0 ${
+                        statusColors[t.status] ?? "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {statusLabels[t.status] ?? t.status}
+                    </span>
+                  </div>
+
+                  {/* Der Stand vom letzten Mal. Die Hausaufgabe steht zuoberst
+                      und dunkler als der Rest: Sie ist das Einzige hier, das
+                      man vor dem Klingeln wirklich gelesen haben muss. */}
+                  {v && !v.leer && (
+                    <div className="mt-1.5 pl-0.5 border-l-2 border-gray-100 pl-3 space-y-0.5">
+                      {v.hausaufgabe && (
+                        <p className="text-sm text-gray-800">
+                          <span className="text-gray-400">Aufgabe: </span>
+                          {v.hausaufgabe}
+                        </p>
+                      )}
+                      {v.zuletzt && (
+                        <p className="text-xs text-gray-500">
+                          Zuletzt: {v.zuletzt}
+                        </p>
+                      )}
+                      {v.inhalt.length > 0 && (
+                        <p className="text-xs text-gray-400">
+                          {v.inhalt.map(inhaltLabel).join(" · ")}
+                        </p>
+                      )}
+                      {/* Ab der dritten Lektion in Folge ist es kein Zufall
+                          mehr, sondern ein Hinweis auf die Methode. */}
+                      {v.dranbleibenSeit >= 3 && (
+                        <p className="text-xs font-600 text-amber-700">
+                          Seit {v.dranbleibenSeit} Lektionen &bdquo;dranbleiben&ldquo;
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
     </div>

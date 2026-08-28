@@ -16,6 +16,7 @@ import {
   FlaskConical,
   Inbox,
   LayoutDashboard,
+  NotebookPen,
   Route,
   Settings,
   Star,
@@ -44,6 +45,7 @@ export const navEntries: NavEntry[] = [
   { href: "/admin/terminanfragen", label: "Terminanfragen", icon: CalendarClock },
   { href: "/admin/anfragen", label: "Probelektionen", icon: Inbox },
   { href: "/admin/schueler", label: "Schüler", icon: Users },
+  { href: "/admin/lektionen", label: "Was lief?", icon: NotebookPen },
   {
     group: true,
     label: "Kalender",

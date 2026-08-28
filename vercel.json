@@ -10,6 +10,10 @@
     {
       "path": "/api/cron/apple-kalender",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/lektionsnotizen",
+      "schedule": "0 20 * * *"
     }
   ]
 }
