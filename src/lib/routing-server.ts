@@ -9,6 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { AVAILABILITY, DEFAULT_BUFFER_MIN, LESSON_DURATION_MIN } from "./booking";
 import { fahrzeitMitCache, punktSchluessel, type Punkt } from "./geo";
 import { geocode, geokodierungAktuell } from "./geocoding";
+import { MAX_PAAR_DISTANZ_M } from "./routing";
 import type { PlanEingabe, PlanSchueler, Tagesfenster } from "./routing";
 import type { Rhythmus } from "./rhythmus";
 import { istTest, type Kreis } from "./kreis";
@@ -72,6 +73,49 @@ export async function setzeZuhause(
     .from("app_settings")
     .upsert({ key: EINSTELLUNG_ZUHAUSE, value: wert, updated_at: new Date().toISOString() });
   return { ok: true, treffer: wert };
+}
+
+// ── Paarungsgrenze ─────────────────────────────────────────
+
+const EINSTELLUNG_PAARDISTANZ = "routen_paar_distanz_m";
+
+/**
+ * Wie weit zwei zweiwöchentliche Schüler höchstens auseinander wohnen
+ * dürfen, um sich einen Platz zu teilen.
+ *
+ * Der Wert stand fest im Code, und genau daran scheiterte ein sinnvolles
+ * Paar um 500 Meter: Maurice und Justine sind 4,5 km auseinander, die Grenze
+ * lag bei 4 km. Wo genau sie liegen soll, ist keine Rechenfrage, sondern
+ * Davids Entscheidung — wie viel Umweg ihm ein gesparter Platz wert ist.
+ */
+export async function ladePaarDistanz(admin: SupabaseClient): Promise<number> {
+  const { data } = await admin
+    .from("app_settings")
+    .select("value")
+    .eq("key", EINSTELLUNG_PAARDISTANZ)
+    .maybeSingle();
+
+  const wert = Number((data?.value as { meter?: number } | null)?.meter);
+  // Unsinnige Werte stillschweigend ignorieren statt den Planer damit zu
+  // füttern: Bei 0 fände kein Paar mehr zusammen, und niemand käme auf die
+  // Einstellung als Ursache.
+  if (Number.isFinite(wert) && wert >= 500 && wert <= 20000) return wert;
+  return MAX_PAAR_DISTANZ_M;
+}
+
+export async function setzePaarDistanz(
+  admin: SupabaseClient,
+  meter: number
+): Promise<{ ok: true } | { error: string }> {
+  if (!Number.isFinite(meter) || meter < 500 || meter > 20000) {
+    return { error: "Bitte einen Wert zwischen 500 m und 20 km angeben." };
+  }
+  await admin.from("app_settings").upsert({
+    key: EINSTELLUNG_PAARDISTANZ,
+    value: { meter: Math.round(meter) },
+    updated_at: new Date().toISOString(),
+  });
+  return { ok: true };
 }
 
 // ── Unterrichtsfenster ─────────────────────────────────────
@@ -179,6 +223,8 @@ export type SchuelerRohdaten = {
   moeglicheTage: number[];
   /** Zeiten je Wochentag, der genaue Fall. */
   fenster: { wochentag: number; fruehestens: string; spaetestens: string }[];
+  /** Gewuenschte Kalenderwoche bei zweiwoechentlichem Unterricht. */
+  kwPraeferenz: "gerade" | "ungerade" | null;
 };
 
 /**
@@ -195,7 +241,7 @@ export async function ladeSchueler(
   const { data: profile } = await admin
     .from("profiles")
     .select(
-      "id, vorname, nachname, adresse, lat, lng, geocode_adresse, aktiv, role, hausbesuch"
+      "id, vorname, nachname, adresse, lat, lng, geocode_adresse, aktiv, role, hausbesuch, kw_praeferenz"
     )
     .eq("role", "student")
     .eq("aktiv", true)
@@ -331,6 +377,10 @@ export async function ladeSchueler(
       hatAktivesPaket: paket != null,
       moeglicheTage: [...new Set((v ?? []).map((f) => f.wochentag))],
       fenster: v ?? [],
+      kwPraeferenz:
+        p.kw_praeferenz === "gerade" || p.kw_praeferenz === "ungerade"
+          ? p.kw_praeferenz
+          : null,
     };
   });
 }
@@ -405,12 +455,14 @@ export async function ladePlanEingabe(
   } = {}
 ): Promise<PlanKontext> {
   const kreis = optionen.kreis ?? "echt";
-  const [zuhause, fenster, schuelerRoh, fahrzeitCache] = await Promise.all([
-    ladeZuhause(admin),
-    ladeFenster(admin),
-    ladeSchueler(admin, kreis),
-    ladeFahrzeiten(admin),
-  ]);
+  const [zuhause, fenster, schuelerRoh, fahrzeitCache, maxPaarDistanzM] =
+    await Promise.all([
+      ladeZuhause(admin),
+      ladeFenster(admin),
+      ladeSchueler(admin, kreis),
+      ladeFahrzeiten(admin),
+      ladePaarDistanz(admin),
+    ]);
 
   const gefiltert = optionen.nurFixplatz
     ? schuelerRoh.filter((s) => s.bookingMode === "fix")
@@ -427,6 +479,7 @@ export async function ladePlanEingabe(
     lektionMinuten: LESSON_DURATION_MIN,
     moeglicheTage: s.moeglicheTage,
     fenster: s.fenster,
+    kwPraeferenz: s.kwPraeferenz,
   }));
 
   return {
@@ -436,6 +489,7 @@ export async function ladePlanEingabe(
       fenster,
       pufferMinuten: optionen.pufferMinuten ?? DEFAULT_BUFFER_MIN,
       fahrzeit: fahrzeitMitCache(fahrzeitCache),
+      maxPaarDistanzM,
     },
     zuhauseAdresse: zuhause.adresse,
     ohneKoordinaten,

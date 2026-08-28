@@ -62,6 +62,14 @@ export type PlanSchueler = {
   fruehestens?: string | null;
   /** Spätestes Ende als "HH:MM", falls für alle Tage gleich. */
   spaetestens?: string | null;
+  /**
+   * Bevorzugte Kalenderwoche bei zweiwöchentlichem Unterricht.
+   *
+   * `undefined` heisst „egal": Diese Schüler verteilt der Planer abwechselnd,
+   * damit nicht alle in derselben Woche landen. Ein gesetzter Wert wird
+   * eingehalten — daran hängt der Tauschknopf im Plan.
+   */
+  kwPraeferenz?: "gerade" | "ungerade" | null;
 };
 
 export type Tagesfenster = {
@@ -97,6 +105,12 @@ export type PlanEingabe = {
   /** Mindestpuffer zwischen zwei Lektionen, zusätzlich zur Fahrzeit (Min.). */
   pufferMinuten: number;
   fahrzeit?: Fahrzeitfunktion;
+  /**
+   * Wie weit zwei zweiwöchentliche Schüler höchstens auseinander wohnen
+   * dürfen, um sich einen Platz zu teilen. Fehlt der Wert, gilt
+   * `MAX_PAAR_DISTANZ_M`.
+   */
+  maxPaarDistanzM?: number;
 };
 
 /** Eine Position im Wochenplan: eine wiederkehrende Uhrzeit an einem Tag. */
@@ -542,6 +556,24 @@ export function paareZweiwoechentliche(
     return ta.some((d) => tb.includes(d));
   };
 
+  /**
+   * Zwei Schüler mit **derselben** Wunschwoche können sich keinen Platz
+   * teilen — sie wollen beide dieselbe Hälfte. Ein Paar daraus zu bilden
+   * hiesse, einem von beiden den Wunsch stillschweigend umzudrehen.
+   */
+  const wochePasst = (a: PlanSchueler, b: PlanSchueler): boolean =>
+    !a.kwPraeferenz || !b.kwPraeferenz || a.kwPraeferenz !== b.kwPraeferenz;
+
+  /**
+   * Wechselt bei jedem Alleinstehenden ohne Wunsch die Woche.
+   *
+   * Vorher landete jeder von ihnen auf „gerade". Bei drei zweiwöchentlichen
+   * Schülern stand damit die komplette ungerade Woche leer, während die
+   * gerade voll war — dieselbe Arbeit, nur ungleich verteilt, und in der
+   * leeren Woche fährt David für einen einzigen Termin dieselbe Strecke.
+   */
+  let naechsteFreieWoche: "gerade" | "ungerade" = "gerade";
+
   const offen = [...zweiwoechentlich];
   while (offen.length > 0) {
     const a = offen.shift()!;
@@ -549,6 +581,7 @@ export function paareZweiwoechentliche(
     let besteDistanz = Infinity;
     for (let i = 0; i < offen.length; i++) {
       if (!paarbar(a, offen[i])) continue;
+      if (!wochePasst(a, offen[i])) continue;
       const d = haversineMeter(a, offen[i]);
       if (d < besteDistanz) {
         besteDistanz = d;
@@ -557,12 +590,30 @@ export function paareZweiwoechentliche(
     }
     if (besterIndex >= 0 && besteDistanz <= maxDistanzM) {
       const b = offen.splice(besterIndex, 1)[0];
-      positionen.push({ gerade: a, ungerade: b });
+      // Wer einen Wunsch geäussert hat, bestimmt die Aufteilung; der andere
+      // bekommt die verbleibende Woche. Hat niemand einen Wunsch, bleibt es
+      // bei der bisherigen Reihenfolge.
+      const aWillUngerade = a.kwPraeferenz === "ungerade";
+      const bWillGerade = b.kwPraeferenz === "gerade";
+      if (aWillUngerade || bWillGerade) {
+        positionen.push({ gerade: b, ungerade: a });
+      } else {
+        positionen.push({ gerade: a, ungerade: b });
+      }
     } else {
       // Kein passender Partner: eigene Position. Der Slot steht dann jede
       // zweite Woche leer — immer noch besser, als den Schüler gar nicht
       // unterzubringen.
-      positionen.push({ gerade: a, ungerade: null });
+      const woche = a.kwPraeferenz ?? naechsteFreieWoche;
+      if (!a.kwPraeferenz) {
+        naechsteFreieWoche =
+          naechsteFreieWoche === "gerade" ? "ungerade" : "gerade";
+      }
+      positionen.push(
+        woche === "gerade"
+          ? { gerade: a, ungerade: null }
+          : { gerade: null, ungerade: a }
+      );
     }
   }
   return positionen;
@@ -790,8 +841,65 @@ function baueTag(
     }
   }
 
-  const { gebaut, ueberzaehlig, uhr, vorherigerOrt, fahrzeitSumme, leerlaufMin } =
-    bester;
+  const { gebaut, ueberzaehlig, uhr, vorherigerOrt, fahrzeitSumme } = bester;
+
+  // ── Verdichten: frühe Lektionen so spät wie möglich ──────
+  //
+  // Der Aufbau oben setzt jede Lektion auf die **früheste** machbare Zeit.
+  // Das ist beim Vorwärtsbauen zwingend — aber es lässt Lücken stehen, die
+  // niemand braucht: Simon kann ab 14:00 und stand um 14:00, Angela kann
+  // erst ab 16:00. Dazwischen 60 Minuten Warten im Auto, obwohl Simon
+  // genauso gut um 14:30 hätte beginnen können.
+  //
+  // Darum ein Rückwärtsgang vom Ende her: Jede Lektion (ausser der letzten)
+  // wird so weit nach hinten geschoben, wie ihr eigenes Fenster und die
+  // Anschlussfahrt zur nächsten es erlauben. Der Schluss des Tages bleibt,
+  // die Lücken wandern an den Anfang — und Zeit **vor** der ersten Lektion
+  // ist keine Wartezeit, da fährt David einfach später los.
+  for (let i = gebaut.length - 2; i >= 0; i--) {
+    const naechsteStart = minutenVon(gebaut[i + 1].beginn);
+    const anfahrtWeiter = Math.ceil(gebaut[i + 1].anfahrtSekunden / 60);
+    const dauer = minutenVon(gebaut[i].ende) - minutenVon(gebaut[i].beginn);
+
+    // Aufs Raster **abrunden**: Später als dieser Wert, und die Folgelektion
+    // müsste rutschen — genau das darf der Rückwärtsgang nie.
+    const spaetestensWegenAnschluss =
+      Math.floor((naechsteStart - pufferMinuten - anfahrtWeiter - dauer) / 15) *
+      15;
+
+    const mitglieder = [gebaut[i].geradeWoche, gebaut[i].ungeradeWoche].filter(
+      Boolean
+    ) as PlanSchueler[];
+
+    let neuerStart = Math.min(spaetestensWegenAnschluss, endeMin - dauer);
+    // In 15-Minuten-Schritten zurück, bis die Zeit allen Beteiligten passt.
+    // Nie früher als der bisherige Start — der war bereits geprüft.
+    while (
+      neuerStart > minutenVon(gebaut[i].beginn) &&
+      !mitglieder.every((s) =>
+        zeitErlaubt(s, wochentag, neuerStart, neuerStart + dauer)
+      )
+    ) {
+      neuerStart -= 15;
+    }
+
+    if (neuerStart > minutenVon(gebaut[i].beginn)) {
+      gebaut[i].beginn = alsZeit(neuerStart);
+      gebaut[i].ende = alsZeit(neuerStart + dauer);
+    }
+  }
+
+  // Leerlauf nach dem Verdichten neu zählen — die alte Zahl stammt aus dem
+  // Vorwärtsbau und wäre jetzt zu hoch.
+  let leerlaufMin = 0;
+  for (let i = 1; i < gebaut.length; i++) {
+    const fruehester = aufRaster(
+      minutenVon(gebaut[i - 1].ende) +
+        Math.ceil(gebaut[i].anfahrtSekunden / 60) +
+        pufferMinuten
+    );
+    leerlaufMin += Math.max(0, minutenVon(gebaut[i].beginn) - fruehester);
+  }
 
   const heimweg = gebaut.length > 0 ? fahrzeit(vorherigerOrt, zuhause) : 0;
   const genutzt = gebaut.length > 0 ? uhr - beginnMin : 0;
@@ -809,8 +917,12 @@ function baueTag(
     );
   }
   if (leerlaufMin >= 30) {
+    // Nach dem Verdichten ist diese Lücke echt: Sie liesse sich nur noch
+    // schliessen, wenn ein Schüler seine Zeiten ändert — nicht durch
+    // besseres Planen. Die Formulierung muss das sagen, sonst sucht David
+    // den Fehler im Planer.
     warnungen.push(
-      `${leerlaufMin} Min. Wartezeit, weil einzelne Schüler erst später können. Der Abend liesse sich dichter legen, wenn jemand früher kann.`
+      `${leerlaufMin} Min. Wartezeit — die Zeitfenster der Beteiligten lassen keinen dichteren Abend zu. Enger würde es nur, wenn jemand seine Zeiten anpasst.`
     );
   }
   if (gebaut.length === 1 && gesamtFahrzeit / 60 > 45) {
@@ -982,7 +1094,7 @@ function planeEinmal(
   // eine ganze Position und die halbe Zeit steht der Slot leer.
   const positionenGesamt = paareZweiwoechentliche(
     planbar,
-    MAX_PAAR_DISTANZ_M,
+    eingabe.maxPaarDistanzM ?? MAX_PAAR_DISTANZ_M,
     tage,
     verbotenePaare
   );

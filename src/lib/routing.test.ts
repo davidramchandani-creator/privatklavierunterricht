@@ -147,7 +147,12 @@ describe("Paarung zweiwöchentlicher Schüler", () => {
     expect(haversineMeter(weit[0], weit[1])).toBeGreaterThan(MAX_PAAR_DISTANZ_M);
     const p = paareZweiwoechentliche(weit);
     expect(p).toHaveLength(2);
-    expect(p.every((x) => x.ungerade === null)).toBe(true);
+    // Jeder belegt eine eigene Position, dort aber nur **eine** der beiden
+    // Wochen — die andere Hälfte steht leer, das ist der Preis fürs
+    // Nichtpaaren.
+    expect(p.every((x) => (x.gerade === null) !== (x.ungerade === null))).toBe(
+      true
+    );
   });
 
   it("paart niemanden, der nie am selben Tag kann", () => {
@@ -170,7 +175,122 @@ describe("Paarung zweiwöchentlicher Schüler", () => {
     );
     const p = paareZweiwoechentliche(getrennt);
     expect(p).toHaveLength(2);
-    expect(p.every((x) => x.ungerade === null)).toBe(true);
+    expect(p.every((x) => (x.gerade === null) !== (x.ungerade === null))).toBe(
+      true
+    );
+  });
+
+  it("verteilt Alleinstehende abwechselnd auf beide Wochen", () => {
+    // Vorher landete jeder ohne Partner auf „gerade". Bei drei
+    // zweiwöchentlichen Schülern stand damit die komplette ungerade Woche
+    // leer, während die gerade voll war — dieselbe Arbeit, ungleich
+    // verteilt, und in der leeren Woche fährt David für einen einzigen
+    // Termin dieselbe Strecke.
+    const drei: PlanSchueler[] = [
+      { ...nah[0], id: "a", moeglicheTage: [1] },
+      { ...nah[1], id: "b", moeglicheTage: [2] },
+      { ...nah[0], id: "c", moeglicheTage: [3] },
+    ];
+    const p = paareZweiwoechentliche(drei);
+    expect(p).toHaveLength(3);
+    const gerade = p.filter((x) => x.gerade !== null).length;
+    const ungerade = p.filter((x) => x.ungerade !== null).length;
+    // Drei lassen sich nicht exakt halbieren, aber der Abstand darf nie
+    // grösser als eins sein.
+    expect(Math.abs(gerade - ungerade)).toBeLessThanOrEqual(1);
+  });
+
+  it("hält sich an eine gewünschte Woche", () => {
+    // **Gleicher Tag und nahe beieinander**: Alles andere spricht für ein
+    // Paar, allein der doppelte Wunsch verhindert es. Ohne diesen Aufbau
+    // scheiterte das Paar schon an der Tagesprüfung, und der Test wäre auch
+    // dann grün geblieben, wenn der Wunsch gar nicht beachtet würde — genau
+    // das hat die Gegenprobe gezeigt.
+    const p = paareZweiwoechentliche([
+      { ...nah[0], id: "a", moeglicheTage: [1], kwPraeferenz: "ungerade" },
+      { ...nah[1], id: "b", moeglicheTage: [1], kwPraeferenz: "ungerade" },
+    ]);
+    // Beide wollen ungerade, also kein Paar — sonst müsste einer von beiden
+    // stillschweigend in die gerade Woche.
+    expect(p).toHaveLength(2);
+    expect(p.every((x) => x.gerade === null && x.ungerade !== null)).toBe(true);
+  });
+
+  it("paart die beiden sofort, sobald einer die andere Woche will", () => {
+    // Gegenprobe zum Test darüber: Der Wunsch darf das Paaren nicht
+    // generell verhindern, sondern nur bei zweimal demselben.
+    const p = paareZweiwoechentliche([
+      { ...nah[0], id: "a", moeglicheTage: [1], kwPraeferenz: "ungerade" },
+      { ...nah[1], id: "b", moeglicheTage: [1], kwPraeferenz: "gerade" },
+    ]);
+    expect(p).toHaveLength(1);
+    expect(p[0].ungerade?.id).toBe("a");
+    expect(p[0].gerade?.id).toBe("b");
+  });
+
+  it("dreht ein Paar so, wie der Wunsch es verlangt", () => {
+    const p = paareZweiwoechentliche([
+      { ...nah[0], id: "a", kwPraeferenz: "ungerade" },
+      { ...nah[1], id: "b" },
+    ]);
+    expect(p).toHaveLength(1);
+    expect(p[0].ungerade?.id).toBe("a");
+    expect(p[0].gerade?.id).toBe("b");
+  });
+
+  it("nimmt die eingestellte Distanzgrenze statt der festen", () => {
+    // 4,5 km auseinander: bei 4 km kein Paar, bei 5 km eines. Genau der
+    // Fall Maurice/Justine, der die Einstellung nötig gemacht hat.
+    const knapp: PlanSchueler[] = [
+      { ...nah[0], id: "a", lat: 47.5439949, lng: 8.7049122 },
+      { ...nah[1], id: "b", lat: 47.5763626, lng: 8.6693964 },
+    ];
+    const d = haversineMeter(knapp[0], knapp[1]);
+    expect(d).toBeGreaterThan(4000);
+    expect(d).toBeLessThan(5000);
+    expect(paareZweiwoechentliche(knapp, 4000)).toHaveLength(2);
+    expect(paareZweiwoechentliche(knapp, 5000)).toHaveLength(1);
+  });
+
+  it("reicht die eingestellte Grenze bis in den fertigen Plan durch", () => {
+    // Der Test darüber ruft die Paarung direkt auf und sagt deshalb nichts
+    // darüber, ob `planeRouten` den eingestellten Wert überhaupt benutzt.
+    // Die Gegenprobe hat genau das aufgedeckt: Grenze fest verdrahtet, Test
+    // trotzdem grün. Also hier durch die ganze Kette.
+    const zwei: PlanSchueler[] = [
+      {
+        id: "a",
+        name: "A",
+        lat: 47.5439949,
+        lng: 8.7049122,
+        rhythmus: "zweiwoechentlich",
+        lektionMinuten: 45,
+      },
+      {
+        id: "b",
+        name: "B",
+        lat: 47.5763626,
+        lng: 8.6693964,
+        rhythmus: "zweiwoechentlich",
+        lektionMinuten: 45,
+      },
+    ];
+    const basis = {
+      zuhause: { lat: 47.5282, lng: 8.6696 },
+      schueler: zwei,
+      fenster: [{ wochentag: 4, beginn: "16:00", ende: "20:30" }],
+      pufferMinuten: 15,
+    };
+
+    const eng = planeRouten({ ...basis, maxPaarDistanzM: 4000 });
+    const weit = planeRouten({ ...basis, maxPaarDistanzM: 5000 });
+
+    const stellen = (p: typeof eng) =>
+      p.tage.reduce((n, t) => n + t.positionen.length, 0);
+
+    // Eng: zwei getrennte Plätze. Weit: einer, den sich beide teilen.
+    expect(stellen(eng)).toBe(2);
+    expect(stellen(weit)).toBe(1);
   });
 
   it("paart weiterhin, wenn es einen gemeinsamen Tag gibt", () => {
@@ -233,6 +353,98 @@ describe("Routenreihenfolge", () => {
     const orte = ORTE.map(([, lat, lng]) => ({ lat, lng }));
     const r = ordneRoute(ZUHAUSE, orte, schaetzeFahrzeit);
     expect(new Set(r).size).toBe(orte.length);
+  });
+});
+
+describe("Verdichten: früh Verfügbare rutschen an den nächsten Termin heran", () => {
+  it("setzt den ersten Schüler so spät wie möglich statt so früh wie möglich", () => {
+    // Der echte Fall: Simon kann ab 14:00, Angela erst ab 16:00. Der Planer
+    // setzte Simon stur auf 14:00 — 60 Minuten Warten im Auto, obwohl
+    // Simon genauso gut später hätte beginnen können. Zeit vor der ersten
+    // Lektion ist dagegen frei: David fährt einfach später los.
+    const plan = planeRouten({
+      zuhause: { lat: 47.5282, lng: 8.6696 },
+      schueler: [
+        {
+          id: "simon",
+          name: "Simon",
+          lat: 47.52,
+          lng: 8.72,
+          rhythmus: "woechentlich",
+          lektionMinuten: 45,
+          // Fenster endet vor Angelas Beginn: Simon MUSS der erste Halt
+          // sein, egal wie die Routenoptimierung sortiert.
+          fenster: [{ wochentag: 4, fruehestens: "14:00", spaetestens: "16:00" }],
+        },
+        {
+          id: "angela",
+          name: "Angela",
+          lat: 47.531,
+          lng: 8.6647,
+          rhythmus: "woechentlich",
+          lektionMinuten: 45,
+          // Enges Fenster, damit die Reihenfolge feststeht: Angela passt
+          // nur um 16:00, Simon muss davor — sonst dreht die
+          // Routenoptimierung die beiden und es gibt gar keine Lücke.
+          fenster: [{ wochentag: 4, fruehestens: "16:00", spaetestens: "17:00" }],
+        },
+      ],
+      fenster: [{ wochentag: 4, beginn: "14:00", ende: "20:30" }],
+      pufferMinuten: 15,
+    });
+
+    const tag = plan.tage.find((t) => t.positionen.length === 2);
+    expect(tag).toBeDefined();
+    const [erster, zweiter] = tag!.positionen;
+
+    // Der Erste beginnt **nach** seiner frühesten Zeit — so spät, dass die
+    // Lücke zum Zweiten höchstens dem Raster geschuldet ist.
+    expect(erster.beginn > "14:00").toBe(true);
+
+    const ende1 = Number(erster.ende.slice(0, 2)) * 60 + Number(erster.ende.slice(3));
+    const start2 = Number(zweiter.beginn.slice(0, 2)) * 60 + Number(zweiter.beginn.slice(3));
+    const anfahrt = Math.ceil(zweiter.anfahrtSekunden / 60);
+    // Lücke = Fahrt + Puffer + höchstens ein Rasterschritt Luft.
+    expect(start2 - ende1).toBeLessThanOrEqual(anfahrt + 15 + 15);
+
+    // Und niemals rutscht dabei die zweite Lektion: Angela bleibt bei 16:00.
+    expect(zweiter.beginn).toBe("16:00");
+  });
+
+  it("verschiebt nie jemanden über sein eigenes Fenster hinaus", () => {
+    // Der Rückwärtsgang darf nur so weit schieben, wie das eigene Fenster
+    // reicht — sonst tauscht er Wartezeit gegen einen unmöglichen Termin.
+    const plan = planeRouten({
+      zuhause: { lat: 47.5282, lng: 8.6696 },
+      schueler: [
+        {
+          id: "a",
+          name: "A",
+          lat: 47.52,
+          lng: 8.72,
+          rhythmus: "woechentlich",
+          lektionMinuten: 45,
+          // Kann NUR 14:00–15:00: Verdichten ist hier unmöglich.
+          fenster: [{ wochentag: 4, fruehestens: "14:00", spaetestens: "15:00" }],
+        },
+        {
+          id: "b",
+          name: "B",
+          lat: 47.531,
+          lng: 8.6647,
+          rhythmus: "woechentlich",
+          lektionMinuten: 45,
+          fenster: [{ wochentag: 4, fruehestens: "17:00", spaetestens: "19:00" }],
+        },
+      ],
+      fenster: [{ wochentag: 4, beginn: "14:00", ende: "20:30" }],
+      pufferMinuten: 15,
+    });
+
+    const tag = plan.tage.find((t) => t.positionen.length === 2);
+    expect(tag).toBeDefined();
+    // A endet spätestens 15:00 — das Fenster gilt, die Lücke bleibt.
+    expect(tag!.positionen[0].ende <= "15:00").toBe(true);
   });
 });
 

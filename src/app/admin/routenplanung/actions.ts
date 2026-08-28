@@ -21,8 +21,10 @@ import {
 } from "@/lib/optimierung";
 import {
   geokodiereOffene,
+  ladePaarDistanz,
   ladePlanEingabe,
   setzeFahrzeitManuell,
+  setzePaarDistanz,
   setzeZuhause,
   speicherePlan,
 } from "@/lib/routing-server";
@@ -65,6 +67,8 @@ export type PlanErgebnis = {
    * verbessern? Nur gefüllt, wenn jemand nicht hineinpasst.
    */
   schuelerAnfragen: SchuelerAnfrage[];
+  /** Aktuell eingestellte Paarungsgrenze in Metern, für die Anzeige. */
+  paarDistanzM: number;
   /**
    * Serialisierbare Plan-Eingabe für die Was-wäre-wenn-Werkstatt im
    * Browser. Ohne die Fahrzeit-Funktion — Funktionen überleben die
@@ -155,6 +159,7 @@ export async function berechnePlan(optionen: {
     empfehlung,
     optimierungen,
     schuelerAnfragen,
+    paarDistanzM: await ladePaarDistanz(admin),
     werkstatt: {
       zuhause: kontext.eingabe.zuhause,
       schueler: kontext.eingabe.schueler,
@@ -255,6 +260,85 @@ export async function planSpeichern(
     lektionen: plan.lektionenProWoche,
   });
   if (!id) return { error: "Der Plan konnte nicht gespeichert werden." };
+
+  revalidatePath("/admin/routenplanung");
+  return { success: true, error: undefined };
+}
+
+// ── Gerade und ungerade Woche ──────────────────────────────
+
+/**
+ * Dreht die Wochen einer Position um.
+ *
+ * Der Wunsch wird beim Schüler gespeichert, nicht am Plan: Der Plan wird bei
+ * jedem Klick auf „Plan berechnen" neu gerechnet, und ein Tausch, der das
+ * nicht überlebt, ist keiner. Deshalb bekommen beide Beteiligten einen
+ * ausdrücklichen Wert — auch der, dessen Woche sich rechnerisch von selbst
+ * ergäbe. Sonst könnte der Ausgleich für Wunschlose ihn beim nächsten Lauf
+ * wieder verschieben und den Tausch stillschweigend rückgängig machen.
+ */
+export async function wochenTauschen(
+  geradeId: string | null,
+  ungeradeId: string | null
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  if (!geradeId && !ungeradeId) {
+    return { error: "Diese Position ist leer." };
+  }
+  if (geradeId && geradeId === ungeradeId) {
+    // Wöchentlicher Unterricht: Der Schüler hat beide Wochen, es gibt
+    // nichts zu tauschen.
+    return { error: "Wer jede Woche kommt, hat keine zweite Woche." };
+  }
+
+  const admin = await createAdminClient();
+
+  if (geradeId) {
+    await admin
+      .from("profiles")
+      .update({ kw_praeferenz: "ungerade" })
+      .eq("id", geradeId);
+  }
+  if (ungeradeId) {
+    await admin
+      .from("profiles")
+      .update({ kw_praeferenz: "gerade" })
+      .eq("id", ungeradeId);
+  }
+
+  revalidatePath("/admin/routenplanung");
+  return { success: true, error: undefined };
+}
+
+/** Den gespeicherten Wunsch wieder aufheben — der Planer gleicht dann aus. */
+export async function wochenwunschAufheben(
+  studentIds: string[]
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+  await admin
+    .from("profiles")
+    .update({ kw_praeferenz: null })
+    .in("id", studentIds);
+
+  revalidatePath("/admin/routenplanung");
+  return { success: true, error: undefined };
+}
+
+/** Die Distanz, ab der zwei Zweiwöchentliche keinen Platz mehr teilen. */
+export async function paarDistanzSetzen(
+  meter: number
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const admin = await createAdminClient();
+  const res = await setzePaarDistanz(admin, meter);
+  if ("error" in res) return { error: res.error };
 
   revalidatePath("/admin/routenplanung");
   return { success: true, error: undefined };

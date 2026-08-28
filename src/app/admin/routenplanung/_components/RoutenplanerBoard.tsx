@@ -16,6 +16,7 @@ import {
   Navigation,
   Lightbulb,
   MessageCircleQuestion,
+  ArrowUpDown,
 } from "lucide-react";
 import { formatDauer, navigationsLink } from "@/lib/geo";
 import WasWaereWennWerkstatt from "./WasWaereWennWerkstatt";
@@ -25,10 +26,51 @@ import {
   adressenGeokodieren,
   berechnePlan,
   fahrzeitKorrigieren,
+  paarDistanzSetzen,
   planSpeichern,
+  wochenTauschen,
   zuhauseSetzen,
   type PlanErgebnis,
 } from "../actions";
+
+/**
+ * Gerade und ungerade Woche einer Position vertauschen.
+ *
+ * Sichtbar nur bei zweiwöchentlichen Positionen — wer jede Woche kommt, hat
+ * keine zweite Woche, die man tauschen könnte.
+ */
+function WochenTausch({
+  geradeId,
+  ungeradeId,
+  onFertig,
+}: {
+  geradeId: string | null;
+  ungeradeId: string | null;
+  onFertig: () => void;
+}) {
+  const [laeuft, starte] = useTransition();
+
+  return (
+    <button
+      onClick={() =>
+        starte(async () => {
+          await wochenTauschen(geradeId, ungeradeId);
+          onFertig();
+        })
+      }
+      disabled={laeuft}
+      className="inline-flex items-center gap-1 text-xs font-600 text-gray-400 hover:text-[#1C244B] transition-colors disabled:opacity-40 mt-0.5"
+      title="Gerade und ungerade Woche vertauschen"
+    >
+      {laeuft ? (
+        <Loader2 className="w-3 h-3 animate-spin" />
+      ) : (
+        <ArrowUpDown className="w-3 h-3" />
+      )}
+      Wochen tauschen
+    </button>
+  );
+}
 
 /**
  * Uhrzeit minus Sekunden, als "HH:MM".
@@ -110,6 +152,9 @@ export default function RoutenplanerBoard({
   const [meldung, setMeldung] = useState<string | null>(null);
   const [nurFixplatz, setNurFixplatz] = useState(false);
   const [puffer, setPuffer] = useState(15);
+  // Der gespeicherte Wert kommt erst mit dem ersten Plan zurueck. Bis dahin
+  // steht der Standard da, damit der Regler nicht leer wirkt.
+  const [paarKm, setPaarKm] = useState(4000);
   const [kreis, setKreis] = useState<Kreis>(kreisVorgabe);
   const [adresse, setAdresse] = useState(zuhauseAdresse);
   const [isPending, startTransition] = useTransition();
@@ -130,6 +175,7 @@ export default function RoutenplanerBoard({
         return;
       }
       setErgebnis(res);
+      setPaarKm(res.paarDistanzM);
     });
   }
 
@@ -192,7 +238,10 @@ export default function RoutenplanerBoard({
         <p>
           Zwei Schüler mit zweiwöchentlichem Rhythmus, die nahe beieinander wohnen,
           teilen sich einen Platz: der eine in geraden, der andere in ungeraden
-          Kalenderwochen. So trägt ein Platz zwei Schüler.
+          Kalenderwochen. So trägt ein Platz zwei Schüler. Wer keinen Partner
+          findet, wird abwechselnd auf gerade und ungerade Wochen verteilt,
+          damit nicht alle in derselben Woche landen — und im Plan lässt sich
+          jede Position von Hand tauschen.
         </p>
         <p className="text-gray-500">
           Es wird nichts gebucht und nichts verändert. Das Ergebnis ist ein
@@ -335,6 +384,36 @@ export default function RoutenplanerBoard({
           />
         </div>
 
+        <div>
+          <label className="text-sm font-600 text-gray-900">
+            Geteilter Platz bis: {(paarKm / 1000).toFixed(1)} km
+          </label>
+          <p className="text-xs text-gray-500 leading-snug mt-0.5 mb-2">
+            Wie weit zwei zweiwöchentliche Schüler auseinander wohnen dürfen,
+            um sich einen Platz zu teilen. Höher heisst mehr geteilte Plätze,
+            aber auch mehr Umweg — der Plan rechnet ein Paar mit dem
+            Mittelpunkt beider Adressen, und der stimmt nur, solange die zwei
+            nahe beieinander wohnen.
+          </p>
+          <input
+            type="range"
+            min={1000}
+            max={10000}
+            step={500}
+            value={paarKm}
+            onChange={(e) => setPaarKm(Number(e.target.value))}
+            onPointerUp={() => {
+              // Erst beim Loslassen speichern und rechnen: Beim Ziehen
+              // wären es zwanzig Serveranfragen für einen Wert.
+              startTransition(async () => {
+                await paarDistanzSetzen(paarKm);
+                rechnen();
+              });
+            }}
+            className="w-full accent-[#1C244B]"
+          />
+        </div>
+
         <button
           onClick={rechnen}
           disabled={isPending}
@@ -361,7 +440,13 @@ export default function RoutenplanerBoard({
         </p>
       )}
 
-      {ergebnis && <Ergebnisansicht ergebnis={ergebnis} onSpeichern={speichern} />}
+      {ergebnis && (
+        <Ergebnisansicht
+          ergebnis={ergebnis}
+          onSpeichern={speichern}
+          onNeuRechnen={rechnen}
+        />
+      )}
     </div>
   );
 }
@@ -454,9 +539,12 @@ function Fahrzeit({
 function Ergebnisansicht({
   ergebnis,
   onSpeichern,
+  onNeuRechnen,
 }: {
   ergebnis: PlanErgebnis;
   onSpeichern: () => void;
+  /** Nach einem Wochentausch muss der Plan neu gerechnet werden. */
+  onNeuRechnen: () => void;
 }) {
   const { plan, vergleich, varianten, empfehlung } = ergebnis;
   const genutzteTage = plan.tage.filter((t) => t.positionen.length > 0);
@@ -745,6 +833,14 @@ function Ergebnisansicht({
                               </span>
                               {p.ungeradeWoche?.name ?? "frei"}
                             </p>
+                            {/* Der Tausch wird beim Schüler gespeichert, nicht
+                                am Plan — sonst wäre er beim nächsten
+                                „Plan berechnen" wieder weg. */}
+                            <WochenTausch
+                              geradeId={p.geradeWoche?.id ?? null}
+                              ungeradeId={p.ungeradeWoche?.id ?? null}
+                              onFertig={onNeuRechnen}
+                            />
                           </div>
                         )}
                         <p className="text-xs text-gray-400 mt-0.5">
