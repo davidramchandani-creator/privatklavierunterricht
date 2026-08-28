@@ -3703,11 +3703,22 @@ export async function paketLoeschen(
         .from("invoices")
         .select("id", { count: "exact", head: true })
         .eq("package_id", packageId),
+      // Nur Raten, die den Planungszustand verlassen haben und nicht
+      // storniert wurden. Eine bloss vorgemerkte Rate (`open`) begründet
+      // keinen Anspruch, eine stornierte erst recht nicht.
+      //
+      // Hier stand `.neq("status", "offen")` — ein deutsches Wort, wo die
+      // Tabelle englische Status führt ('open','invoiced',
+      // 'pending_confirmation','paid','overdue','cancelled'). Ungleich
+      // "offen" ist damit **jede** Zeile, also blockierte jeder Ratenplan
+      // das Löschen für immer, auch ein vollständig stornierter, zu dem nie
+      // eine Rechnung existierte. Die Meldung behauptete dann obendrein,
+      // es seien Raten gestellt worden.
       admin
         .from("package_instalments")
         .select("id", { count: "exact", head: true })
         .eq("package_id", packageId)
-        .neq("status", "offen"),
+        .in("status", ["invoiced", "pending_confirmation", "paid", "overdue"]),
       admin
         .from("appointments")
         .select("id", { count: "exact", head: true })
@@ -3722,8 +3733,9 @@ export async function paketLoeschen(
   }
   if ((raten ?? 0) > 0) {
     return {
-      error:
-        "Zu diesem Paket wurden bereits Raten gestellt. Es lässt sich deshalb nur archivieren, nicht löschen.",
+      error: `Zu diesem Paket ${
+        (raten ?? 0) === 1 ? "wurde eine Rate" : `wurden ${raten} Raten`
+      } gestellt. Es lässt sich deshalb nur archivieren, nicht löschen.`,
     };
   }
   if ((termine ?? 0) > 0) {
