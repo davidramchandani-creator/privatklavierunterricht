@@ -13,9 +13,10 @@ interface PaketConfig {
 }
 
 /**
- * Lektionspreise wie auf der Preisseite. Der Wegaufschlag kommt darauf,
- * nicht statt dessen, die Zahlen hier waren früher um CHF 20 höher als die
- * ausgewiesenen Preise und passten damit zu keiner anderen Stelle.
+ * Lektionspreise wie auf der Preisseite. Seit die Anfahrt inbegriffen ist,
+ * sind sie zugleich der Endpreis. Die Zahlen hier waren früher um CHF 20
+ * höher als die ausgewiesenen Preise und passten damit zu keiner anderen
+ * Stelle.
  */
 const PAKETE: Record<PaketOption, PaketConfig> = {
   einzellektion: { label: "Einzellektion", preis: 85 },
@@ -125,29 +126,34 @@ export default function Preisrechner() {
           const km = parseFloat(distText.replace(",", "."));
           const basis = PAKETE[selectedPaket].preis;
 
-          // Wegvergütung (Preise-Seite): innerhalb von 5 km keine Wegkosten,
-          // ab 5 km pro angefangene 5 km zusätzlich CHF 5.–
-          const stufen = Math.max(0, Math.ceil((km - 5) / 5));
-          const aufschlag = stufen * 5;
-
-          if (aufschlag > 25) {
+          // Die Anfahrt ist im Preis inbegriffen, sobald in einer Umgebung
+          // mindestens drei Lektionen stattfinden. Das ist der Normalfall:
+          // Ein Unterrichtsabend besteht aus mehreren Halten auf derselben
+          // Strecke, die Fahrt wird ohnehin gemacht.
+          //
+          // Der Rechner zeigt darum den reinen Lektionspreis. Der Zuschlag
+          // für die einzelne Extrafahrt bleibt in den AGB stehen, wo er
+          // hingehört: Er ist die Ausnahme und wird vorher besprochen, nicht
+          // hier im Voraus ausgerechnet.
+          //
+          // Die Entfernung wird weiterhin geholt, denn sie beantwortet die
+          // eigentliche Frage: Liegt die Adresse überhaupt im Gebiet?
+          if (km > 25) {
             setStatus("error");
             setResult("Die Entfernung ist leider zu weit für Hausunterricht.");
             return;
           }
 
-          const gesamt = basis + aufschlag;
+          const gesamt = basis;
           const paketLabel = PAKETE[selectedPaket].label;
 
           if (km <= 5) {
             setResult(
-              `${paketLabel} · ${km.toFixed(1)} km · CHF ${gesamt.toFixed(2)} (erste 5 km kostenlos)`
+              `${paketLabel} · ${km.toFixed(1)} km · CHF ${gesamt.toFixed(2)} (Anfahrt inbegriffen)`
             );
           } else {
             setResult(
-              `${paketLabel} · ${km.toFixed(1)} km · CHF ${gesamt.toFixed(2)}${
-                aufschlag > 0 ? ` (inkl. ${aufschlag} CHF Wegkosten)` : ""
-              }`
+              `${paketLabel} · ${km.toFixed(1)} km · CHF ${gesamt.toFixed(2)} (Anfahrt inbegriffen)`
             );
           }
           setStatus("success");
@@ -253,8 +259,10 @@ export default function Preisrechner() {
         </div>
 
         <p className="text-xs text-gray-400 mt-4">
-          * Ab 5 km Entfernung von Neftenbach fallen Wegkosten an. Der Preis ist
-          eine Schätzung und kann geringfügig abweichen.
+          * Die Anfahrt ist inbegriffen, solange in deiner Umgebung mindestens
+          drei Lektionen stattfinden. Fahre ich eigens für eine einzelne
+          Lektion raus, kommen ab 5 km CHF 5.– pro angefangene 5 Kilometer
+          dazu. Das bespreche ich vorher mit dir.
         </p>
 
         {/*

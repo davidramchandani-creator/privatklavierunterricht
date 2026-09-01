@@ -166,6 +166,18 @@ describe("Strukturierte Daten", () => {
 
     const behauptungen = new Set<string>();
     for (const f of FAQ) {
+      /*
+        Angaben, die nur David kennt, lassen sich nicht gegen die Seite
+        prüfen. Das Mindestalter etwa steht nirgends, er hat es gesagt.
+        Solche Einträge tragen ausdrücklich „Angabe David" als Quelle und
+        sind damit von dieser Prüfung ausgenommen.
+
+        Die Ausnahme entwertet den Test nicht, sie schärft ihn: Sie zwingt
+        dazu, beim Schreiben zu entscheiden, ob eine Zahl belegt ist oder
+        von David stammt. Was weder das eine noch das andere ist, fällt
+        durch — und genau das war der ursprüngliche Fehler.
+      */
+      if (f.quelle.startsWith("Angabe David")) continue;
       // „88 Tasten", „5 Kilometer", „24 Stunden", „10 Tagen", „CHF 65",
       // „45 Minuten", „6 Monate" …
       // Die Einheiten stehen gebeugt: „5 Kilometern", „6 Monate", „10
@@ -206,13 +218,51 @@ describe("Strukturierte Daten", () => {
     expect(unbelegt).toEqual([]);
   });
 
-  it("verspricht nichts, was die Preisseite widerlegt", () => {
-    // „inklusive Anfahrt" stand in der ersten Fassung und war schlicht
-    // falsch: Ab 5 km fallen Wegkosten an. Genau solche Sätze werden im
-    // Suchergebnis zur Zusage.
-    const text = FAQ.map((f) => f.antwort).join("\n").toLowerCase();
-    expect(text).not.toContain("inklusive anfahrt");
-    expect(text).not.toContain("ohne wegkosten");
+  it("die Anfahrt ist überall gleich beschrieben", () => {
+    /*
+      Die Regel hat sich geändert: Anfahrt inbegriffen, sobald in einer
+      Umgebung mindestens drei Lektionen stattfinden. Der alte Satz (ab 5 km
+      generell Wegkosten) stand an vier Stellen. Bleibt einer davon stehen,
+      widersprechen sich Startseite, Preisseite und FAQ, und der Interessent
+      glaubt die teuerste Aussage.
+    */
+    const oeffentlich = [
+      join(APP, "preise", "page.tsx"),
+      join(WURZEL, "src", "components", "sections", "Pakete.tsx"),
+      join(WURZEL, "src", "components", "sections", "Preisrechner.tsx"),
+    ]
+      .map((p) => readFileSync(p, "utf8"))
+      .join("\n")
+      .replace(/\s+/g, " ");
+
+    // Der alte, generelle Satz darf nirgends mehr stehen.
+    expect(oeffentlich).not.toMatch(/Ab 5 km ab Neftenbach fallen Wegkosten/);
+    expect(oeffentlich).not.toMatch(/Wegkosten ab 5 km ab Neftenbach/);
+    expect(oeffentlich).not.toMatch(/erste 5 km kostenlos/);
+
+    // Und die neue Zusage muss auf der Preisseite ausdrücklich stehen.
+    const preise = readFileSync(join(APP, "preise", "page.tsx"), "utf8").replace(
+      /\s+/g,
+      " "
+    );
+    expect(preise).toContain("Die Anfahrt ist im Preis inbegriffen.");
+    expect(preise).toContain("drei Lektionen");
+
+    // Die FAQ sagt dasselbe und nennt die Ausnahme.
+    const faqText = FAQ.map((f) => f.antwort).join(" ");
+    expect(faqText).toContain("Anfahrt ist im Preis inbegriffen");
+    expect(faqText).toContain("drei Lektionen");
+  });
+
+  it("der Preisrechner schlägt keine Wegkosten mehr auf", () => {
+    // Er rechnete `basis + aufschlag`. Ein Rechner, der mehr zeigt als die
+    // Preisseite verspricht, ist die teuerste Art von Widerspruch.
+    const rechner = readFileSync(
+      join(WURZEL, "src", "components", "sections", "Preisrechner.tsx"),
+      "utf8"
+    );
+    expect(rechner).not.toMatch(/const aufschlag/);
+    expect(rechner).toContain("const gesamt = basis;");
   });
 
   it("beide Listen speisen sich aus derselben Quelle", () => {

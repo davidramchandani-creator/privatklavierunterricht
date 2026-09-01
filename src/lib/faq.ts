@@ -34,13 +34,13 @@ export const FAQ: FrageAntwort[] = [
     frage: "Brauchst du ein eigenes Instrument?",
     quelle: "/preise, Abschnitt Instrument",
     antwort:
-      "Zum Üben zwischen den Lektionen ja, mindestens ein Keyboard. Am besten ein E-Piano oder Klavier mit 88 Tasten und Anschlagdynamik, damit du von Anfang an die richtige Technik lernst statt sie später umzulernen. Noch keins? Ich vermittle ein Mietklavier für CHF 65 im Monat — so musst du nichts kaufen, bevor du weisst, ob dir das Spielen liegt.",
+      "Zum Üben zwischen den Lektionen ja, mindestens ein Keyboard. Am besten ein E-Piano oder Klavier mit 88 Tasten und Anschlagdynamik, damit du von Anfang an die richtige Technik lernst statt sie später umzulernen. Noch keins? Ich vermittle ein Mietklavier für CHF 65 im Monat. So musst du nichts kaufen, bevor du weisst, ob dir das Spielen liegt.",
   },
   {
     frage: "Muss ich Noten lesen können?",
     quelle: "AGB Ziffer 1, /ueber-mich",
     antwort:
-      "Nein. Ich unterrichte praxisorientiert mit Fokus auf Spielen nach Gehör, nach Mustern und nach Auge. Noten kommen dazu, wenn sie dir helfen — sie sind nicht die Voraussetzung.",
+      "Nein. Ich unterrichte praxisorientiert mit Fokus auf Spielen nach Gehör, nach Mustern und nach Auge. Noten kommen dazu, wenn sie dir helfen. Voraussetzung sind sie nicht.",
   },
   {
     frage: "Wie lange dauert eine Lektion?",
@@ -56,9 +56,9 @@ export const FAQ: FrageAntwort[] = [
   },
   {
     frage: "Kommen Wegkosten dazu?",
-    quelle: "/preise, Abschnitt Wegkosten",
+    quelle: "/preise Abschnitt Anfahrt, AGB Ziffer 2",
     antwort:
-      "Innerhalb von 5 Kilometern rund um mein Zuhause nicht. Ab 5 km kommen pro angefangene 5 Kilometer CHF 5.– dazu. So verbringe ich nicht mehr Zeit mit Anfahren als mit Unterrichten.",
+      "In aller Regel nicht. Die Anfahrt ist im Preis inbegriffen, sobald in deiner Umgebung mindestens drei Lektionen stattfinden, und das ist der Normalfall. Ich unterrichte an einem Abend mehrere Leute auf derselben Strecke. Nur wenn ich eigens für eine einzelne Lektion in eine Gegend fahre, in der ich sonst niemanden unterrichte, kommen ab 5 Kilometern CHF 5.– pro angefangene 5 Kilometer dazu. Das bespreche ich vorher mit dir, nie nachträglich.",
   },
   {
     frage: "Ist die Probelektion wirklich kostenlos?",
@@ -82,17 +82,20 @@ export const FAQ: FrageAntwort[] = [
     frage: "Was passiert in den Schulferien?",
     quelle: "Abo-Bestaetigung, lib/abo-pdf",
     antwort:
-      "In den Schulferien findet kein Unterricht statt. Diese Wochen sind in der Lektionszahl deines Abos bereits abgezogen — sie werden weder verrechnet noch nachgeholt.",
+      "In den Schulferien findet kein Unterricht statt. Diese Wochen sind in der Lektionszahl deines Abos bereits abgezogen. Sie werden weder verrechnet noch nachgeholt.",
   },
   {
-    // Zur Altersfrage steht nirgends etwas auf der Seite. Die erste Fassung
-    // behauptete hier „Kinder, Jugendliche und Erwachsene, nach oben keine
-    // Grenze" — frei erfunden. Stattdessen die Aussage, die tatsächlich auf
-    // /ueber-mich steht.
     frage: "Für wen ist der Unterricht?",
     quelle: "/ueber-mich",
     antwort:
       "Für Anfängerinnen und Fortgeschrittene, und ausdrücklich auch für Wiedereinsteiger. Es zählt nicht die Perfektion, sondern dass du spielst, was dich berührt.",
+  },
+  {
+    // Angabe von David selbst, sie steht sonst nirgends auf der Seite.
+    frage: "Ab welchem Alter ist Klavierunterricht sinnvoll?",
+    quelle: "Angabe David",
+    antwort:
+      "In der Regel ab etwa 6 Jahren, das kommt aber auf das Kind an und lässt sich in der Probelektion am besten beurteilen. Nach oben gibt es keine Grenze. Für den Einstieg ist es nie zu spät.",
   },
   {
     frage: "Wo unterrichtest du?",
@@ -110,7 +113,7 @@ export const FAQ: FrageAntwort[] = [
     frage: "Bist du ausgebildeter Musiklehrer?",
     quelle: "AGB Ziffer 1",
     antwort:
-      "Ich habe kein abgeschlossenes Musikpädagogikstudium. Mein Unterricht beruht auf über 14 Jahren Spielerfahrung und langjährigem eigenem Unterricht, und er ist praxisorientiert.",
+      "Ich habe kein abgeschlossenes Musikpädagogikstudium. Mein Unterricht beruht auf über 14 Jahren Spielerfahrung und langjährigem eigenem Unterricht, und er ist praxisorientiert. Wer eine konservatoriumsnahe Ausbildung sucht, ist bei einer Musikschule besser aufgehoben. Wer spielen lernen will, was ihm gefällt, bei mir.",
   },
 ];
 

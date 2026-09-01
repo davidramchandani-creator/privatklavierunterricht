@@ -22,7 +22,7 @@ const pakete = [
       "Gezieltes Arbeiten an einem Thema",
       "Ohne Bindung",
     ],
-    hinweis: "Ab 5 km ab Neftenbach fallen Wegkosten an.",
+    hinweis: "Anfahrt inbegriffen.",
     cta: "Jetzt anfragen",
     href: "/probelektion",
   },
@@ -193,7 +193,7 @@ export default function Pakete() {
           verlangt, bevor überhaupt ein Verhältnis besteht.
         */}
         <p className="text-center text-sm text-gray-500 mt-10">
-          Wegkosten ab 5 km ab Neftenbach.{" "}
+          Anfahrt inbegriffen.{" "}
           <Link
             href="/preise"
             className="text-navy-900 font-600 underline decoration-navy-200 hover:decoration-navy-900 underline-offset-4 transition-colors"

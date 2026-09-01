@@ -216,14 +216,21 @@ export default function PreisePage() {
               <div className="w-9 h-9 rounded-xl bg-navy-50 text-navy-900 flex items-center justify-center">
                 <Car className="w-5 h-5" />
               </div>
-              <h2 className="text-xl font-800 text-navy-900">Wegvergütung</h2>
+              <h2 className="text-xl font-800 text-navy-900">Anfahrt</h2>
             </div>
             <p className="text-gray-600 leading-relaxed text-sm">
-              Weil ich Hausbesuche anbiete, geht einiges an Zeit für den Weg drauf.
-              Innerhalb eines Umkreises von 5 Kilometern rund um mein Zuhause fallen
-              keine Wegkosten an. Ab 5 km berechne ich pro angefangene 5 Kilometer
-              zusätzlich CHF 5.–. So vermeide ich es, mehr Zeit mit Anfahrten zu
-              verbringen als mit dem Unterrichten.
+              <strong className="text-navy-900 font-600">
+                Die Anfahrt ist im Preis inbegriffen.
+              </strong>{" "}
+              Ich unterrichte an einem Abend mehrere Leute in derselben Gegend
+              und fahre die Strecke ohnehin. Ab drei Lektionen in einer
+              Umgebung entstehen dir keine Wegkosten.
+            </p>
+            <p className="text-gray-600 leading-relaxed text-sm">
+              Nur wenn ich für eine einzelne Lektion eigens rausfahre und dort
+              sonst niemanden unterrichte, kommen ab 5 Kilometern CHF 5.– pro
+              angefangene 5 Kilometer dazu. Das sagt sich vorher, nicht
+              nachher.
             </p>
           </div>
 
