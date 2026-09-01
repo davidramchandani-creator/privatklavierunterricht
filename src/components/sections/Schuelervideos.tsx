@@ -27,19 +27,22 @@ export default function Schuelervideos() {
       </p>
       {/*
         Der eigentliche Satz. Ohne ihn sind es Leute, die Klavier spielen,
-        mit ihm ist es der Beweis, dass wenige Wochen reichen.
-        Der Zusatz „eine Lektion pro Woche" ist nicht schmückend: Ohne ihn
-        könnte „nach 5 Wochen" auch einen Intensivkurs meinen, und genau die
-        Vermutung entwertet die Aufnahmen.
+        mit ihm ist es der Beweis, dass es schnell geht.
 
-        Hier stand einmal „Keiner der vier". Sobald ein fünftes Video
-        dazukam, stimmte der Satz nicht mehr, und gemerkt hätte es niemand.
-        Zahlen im Fliesstext, die von einer Liste daneben abhängen, veralten
-        still. Deshalb jetzt ohne.
+        Zweimal musste er schon nachgeben, beide Male aus demselben Grund:
+        Er behauptete etwas über eine Liste, die sich ändert. Erst „Keiner
+        der vier", das mit dem fünften Video falsch wurde. Dann „Eine
+        Lektion pro Woche, mehr nicht", das mit Marina falsch wurde, denn
+        sie kommt alle zwei Wochen und spielt seit einem Jahr.
+
+        Deshalb sagt er jetzt nur noch, was für alle gilt, und verweist für
+        den Rest auf die Zeile über jeder Aufnahme. Was dort steht, pflegt
+        man beim Eintragen des Videos, und man sieht dabei genau die eine
+        Karte vor sich.
       */}
       <p className="text-lg text-gray-500 leading-relaxed max-w-2xl mb-6">
-        Niemand hier hatte vorher je am Klavier gesessen. Eine Lektion pro
-        Woche, mehr nicht.
+        Alle haben bei null angefangen. Über jeder Aufnahme steht, wie weit
+        sie zu diesem Zeitpunkt waren.
       </p>
 
       {/*

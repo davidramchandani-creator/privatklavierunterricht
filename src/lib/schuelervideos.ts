@@ -24,17 +24,22 @@ export type Schuelervideo = {
   /** Wer spielt. */
   name: string;
   /**
-   * In welcher Unterrichtswoche die Aufnahme entstand.
+   * Wie weit die Person war, als die Aufnahme entstand.
    *
-   * Als Zahl, nicht als Satz („nach 5 Wochen"): Der Wert wird gezeichnet,
-   * gross auf dem Standbild und als Punkt auf der Zeitachse. Steckt er in
-   * einem Satz, kann man ihn nur vorlesen.
+   * Früher eine blosse Zahl (`woche: 5`), und über dem Block stand
+   * pauschal „Niemand hier hatte vorher je am Klavier gesessen. Eine
+   * Lektion pro Woche". Das trug genau so lange, wie alle Aufnahmen von
+   * Anfängern im Wochenrhythmus stammten.
    *
-   * Alle nehmen wöchentlich Unterricht, Woche 5 heisst also fünf
-   * Lektionen. Dass sie bei Null angefangen haben, steht einmal über dem
-   * Block, in jeder Zeile wiederholt, hörte man auf, es zu bemerken.
+   * Marina passt da nicht hinein: Sie spielt seit einem Jahr und kommt
+   * alle zwei Wochen. „Woche 9" hätte behauptet, sie könne das nach neun
+   * Lektionen von null weg. Eine Zahl, die etwas Falsches nahelegt, ist
+   * schlimmer als ein Satz, den man lesen muss.
+   *
+   * Darum ein freier, kurzer Text. Er steht als Zeile über dem Titel und
+   * ist das Erste, was man liest.
    */
-  woche: number;
+  stand: string;
   /** Video unter /public/schuelervideos/. */
   datei: string;
   /** Standbild, gleicher Ordner. Ohne bleibt ein schwarzer Kasten stehen. */
@@ -68,7 +73,7 @@ export const SCHUELERVIDEOS: Schuelervideo[] = [
     id: "diego-happy-birthday",
     titel: "Happy Birthday",
     name: "Diego",
-    woche: 5,
+    stand: "Woche 5",
     datei: "/schuelervideos/diego-happy-birthday.mp4",
     poster: "/schuelervideos/diego-happy-birthday.jpg",
     dauer: 21,
@@ -77,7 +82,7 @@ export const SCHUELERVIDEOS: Schuelervideo[] = [
     id: "diego-fuer-elise",
     titel: "Für Elise",
     name: "Diego",
-    woche: 6,
+    stand: "Woche 6",
     datei: "/schuelervideos/diego-fuer-elise.mp4",
     poster: "/schuelervideos/diego-fuer-elise.jpg",
     dauer: 22,
@@ -86,7 +91,7 @@ export const SCHUELERVIDEOS: Schuelervideo[] = [
     id: "diego-pirates-of-the-caribbean",
     titel: "Pirates of the Caribbean",
     name: "Diego",
-    woche: 10,
+    stand: "Woche 10",
     datei: "/schuelervideos/diego-pirates-of-the-caribbean.mp4",
     poster: "/schuelervideos/diego-pirates-of-the-caribbean.jpg",
     dauer: 36,
@@ -95,7 +100,7 @@ export const SCHUELERVIDEOS: Schuelervideo[] = [
     id: "phia-another-love",
     titel: "Another Love",
     name: "Phia",
-    woche: 5,
+    stand: "Woche 5",
     datei: "/schuelervideos/phia-another-love.mp4",
     poster: "/schuelervideos/phia-another-love.jpg",
     dauer: 44,
@@ -104,9 +109,24 @@ export const SCHUELERVIDEOS: Schuelervideo[] = [
     id: "regina-the-cat",
     titel: "The Cat",
     name: "Regina",
-    woche: 4,
+    stand: "Woche 4",
     datei: "/schuelervideos/regina-the-cat.mp4",
     poster: "/schuelervideos/regina-the-cat.jpg",
     dauer: 74,
+  },
+  {
+    /*
+      Marina ist der Grund, warum aus der Wochenzahl ein freier Text wurde.
+      Sie spielt seit rund einem Jahr und kommt alle zwei Wochen. Dieses
+      Stück haben die beiden in etwa vier Monaten aufgebaut, und genau das
+      steht da, nichts Grösseres.
+    */
+    id: "marina-something-strange",
+    titel: "Something Strange",
+    name: "Marina",
+    stand: "In 4 Monaten aufgebaut",
+    datei: "/schuelervideos/marina-something-strange.mp4",
+    poster: "/schuelervideos/marina-something-strange.jpg",
+    dauer: 56,
   },
 ];

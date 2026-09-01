@@ -138,14 +138,14 @@ export default function Schuelervideo({
       </div>
 
       {/*
-        Die Wochenzahl steht als Zeile über dem Titel, nicht auf dem Bild.
-        Sie bleibt damit das Erste, was man in diesem Block liest, denn sie
-        ist der Beweis; „Für Elise" allein ist keiner. Das Standbild bleibt
+        Der Stand steht als Zeile über dem Titel, nicht auf dem Bild. Er
+        bleibt damit das Erste, was man in diesem Block liest, denn er ist
+        der Beweis; „Für Elise" allein ist keiner. Das Standbild bleibt
         dabei unverdeckt.
       */}
       <div className="p-5">
         <p className="text-[11px] font-700 uppercase tracking-[0.18em] text-navy-600">
-          Woche {video.woche}
+          {video.stand}
         </p>
         <p className="font-700 text-navy-900 mt-1.5">{video.titel}</p>
         <p className="text-sm text-gray-400 mt-0.5">
