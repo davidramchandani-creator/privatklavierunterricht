@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ladeBewertungen } from "@/lib/bewertungen";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/ueber-mich" },
   title: "Über mich: David Ramchandani | Privatklavierunterricht",
   description:
     "Erfahre mehr über David Ramchandani, Klavierunterricht in Neftenbach und Umgebung. Ohne Noten, individuell und praxisnah.",

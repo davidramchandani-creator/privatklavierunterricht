@@ -54,6 +54,7 @@ export default function Footer() {
                 { href: "/#angebote", label: "Angebote" },
                 { href: "/preise", label: "Preise" },
                 { href: "/probelektion", label: "Probelektion" },
+                { href: "/faq", label: "Häufige Fragen" },
                 { href: "/kontakt", label: "Kontakt" },
               ].map((l) => (
                 <li key={l.href}>

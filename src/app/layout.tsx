@@ -4,6 +4,7 @@ import "./globals.css";
 import SiteChrome from "@/components/layout/SiteChrome";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
+import { unternehmenJsonLd } from "@/lib/schema-org";
 
 const jakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -55,6 +56,13 @@ export const metadata: Metadata = {
     url: "https://privatklavierunterricht.ch",
   },
   metadataBase: new URL("https://privatklavierunterricht.ch"),
+  /**
+   * Die Startseite ist unter mehreren Adressen erreichbar: mit und ohne www,
+   * mit und ohne Schrägstrich am Ende, dazu die vercel.app-Domains. Ohne
+   * canonical zählt Google das als verschiedene Seiten und teilt die
+   * Bewertung darauf auf. Jede Unterseite setzt ihren eigenen Wert.
+   */
+  alternates: { canonical: "/" },
 };
 
 export default function RootLayout({
@@ -65,6 +73,15 @@ export default function RootLayout({
   return (
     <html lang="de" className={`${jakartaSans.variable} h-full`}>
       <body className="min-h-full flex flex-col font-sans antialiased">
+        {/* Wer, wo, was es kostet — für Suchmaschinen ausdrücklich statt zum
+            Erraten. Bei einem Angebot, das per Ortssuche gefunden wird, ist
+            das die wirksamste einzelne Zeile SEO. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(unternehmenJsonLd()),
+          }}
+        />
         <SiteChrome>{children}</SiteChrome>
         <SpeedInsights />
         <Analytics />

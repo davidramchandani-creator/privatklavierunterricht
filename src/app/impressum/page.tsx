@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { Mail, MapPin } from "lucide-react";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/impressum" },
   title: "Impressum: Privatklavierunterricht David Ramchandani",
   description: "Impressum und Kontaktangaben von David Ramchandani, Klavierunterricht in Neftenbach.",
 };

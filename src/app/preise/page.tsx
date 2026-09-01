@@ -13,6 +13,7 @@ import {
 } from "@/lib/tarifvergleich";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/preise" },
   title: "Preise & Transparenz: Privatklavierunterricht David Ramchandani",
   description:
     "Wie sich meine Unterrichtspreise zusammensetzen und warum sie fair und nachhaltig sind. Einzellektion CHF 85, Halbjahresabo CHF 70, Jahresabo CHF 65 pro Lektion.",

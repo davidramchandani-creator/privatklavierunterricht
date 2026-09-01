@@ -16,7 +16,20 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/admin", "/schueler", "/auth", "/api", "/offline"],
+      disallow: [
+        "/admin",
+        "/schueler",
+        "/auth",
+        "/api",
+        "/offline",
+        // Persönliche Einstellungsseite hinter dem Login. Sie fehlte hier,
+        // obwohl die Middleware sie schützt — ohne Eintrag landet in den
+        // Suchergebnissen irgendwann eine Adresse, die jeden Besucher auf
+        // die Anmeldung wirft.
+        "/benachrichtigungen",
+        // Der Bewertungslink enthält einen persönlichen Token.
+        "/bewerten",
+      ],
     },
     sitemap: `${BASIS_URL}/sitemap.xml`,
     host: BASIS_URL,

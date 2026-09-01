@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/agb" },
   title: "Allgemeine Geschäftsbedingungen (AGB): Privatklavierunterricht",
   description:
     "Allgemeine Geschäftsbedingungen für den Klavierunterricht von David Ramchandani.",
