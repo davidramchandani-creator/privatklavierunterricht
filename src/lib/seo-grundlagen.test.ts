@@ -134,6 +134,87 @@ describe("Strukturierte Daten", () => {
     }
   });
 
+  it("jede Antwort nennt ihre Quelle", () => {
+    // Der Test, den es beim ersten Anlauf gebraucht hätte. Die Antwort zum
+    // Instrument war frei erfunden, während die richtige auf der Preisseite
+    // stand — samt Mietklavier, von dem in der FAQ nichts vorkam.
+    for (const f of FAQ) {
+      expect(f.quelle.length, `ohne Quelle: ${f.frage}`).toBeGreaterThan(3);
+    }
+  });
+
+  it("jede Zahl in einer Antwort steht so auch auf einer echten Seite", () => {
+    // **Von der FAQ aus geprüft, nicht umgekehrt.** Die erste Fassung
+    // dieses Tests lautete sinngemäss „falls die FAQ 88 Tasten sagt, muss
+    // die Preisseite 88 Tasten sagen" — und war damit blind gegen genau den
+    // Fehler, den sie fangen sollte: Steht in der FAQ 76, prüft er nichts.
+    // Die Gegenprobe hat das gezeigt.
+    //
+    // Jetzt wird jede Zahl mit Einheit aus den Antworten eingesammelt und
+    // muss irgendwo im echten Seiteninhalt vorkommen.
+    const quellen = [
+      join(APP, "preise", "page.tsx"),
+      join(APP, "agb", "page.tsx"),
+      join(APP, "ueber-mich", "page.tsx"),
+      join(APP, "probelektion", "page.tsx"),
+      join(WURZEL, "src", "lib", "tarifvergleich.ts"),
+      join(WURZEL, "src", "lib", "abo-pdf.ts"),
+    ]
+      .filter(existsSync)
+      .map((p) => readFileSync(p, "utf8"))
+      .join("\n");
+
+    const behauptungen = new Set<string>();
+    for (const f of FAQ) {
+      // „88 Tasten", „5 Kilometer", „24 Stunden", „10 Tagen", „CHF 65",
+      // „45 Minuten", „6 Monate" …
+      // Die Einheiten stehen gebeugt: „5 Kilometern", „6 Monate", „10
+      // Tagen". Die erste Fassung suchte `Kilometer\b` — und „Kilometern"
+      // passte nicht, die Angabe wurde stillschweigend gar nicht geprüft.
+      for (const m of f.antwort.matchAll(
+        /\b(?:CHF\s*)?(\d{1,3})\s*(Tasten|Kilometer\w*|km|Stunden?|Tagen?|Minuten?|Monaten?|Jahren?)?/g
+      )) {
+        const zahl = m[1];
+        const einheit = m[2];
+        if (!einheit) continue;
+        behauptungen.add(`${zahl} ${einheit}`);
+      }
+      // Preise gesondert, sie stehen oft ohne Einheit dahinter.
+      for (const m of f.antwort.matchAll(/CHF\s*(\d{1,4})/g)) {
+        behauptungen.add(`CHF:${m[1]}`);
+      }
+    }
+
+    expect(behauptungen.size).toBeGreaterThan(5);
+
+    // Zeilenumbrüche und Mehrfach-Leerzeichen raus: Im Quelltext steht
+    // „88 Tasten" oft über zwei Zeilen verteilt.
+    const flach = quellen.replace(/\s+/g, " ");
+
+    const unbelegt: string[] = [];
+    for (const b of behauptungen) {
+      // **Zahl samt Einheit** muss vorkommen, nicht bloss die Zahl. Die
+      // erste Fassung suchte nur nach der Ziffer — und „76" und „95" stehen
+      // zufällig irgendwo im Quelltext, in Koordinaten und Dateinamen. Die
+      // Gegenprobe lief damit durch, obwohl die FAQ falsche Tastenzahlen
+      // und einen falschen Mietpreis behauptete.
+      const gesucht = b.startsWith("CHF:")
+        ? `CHF ${b.slice(4)}`
+        : b.replace(/\s+/g, " ");
+      if (!flach.includes(gesucht)) unbelegt.push(gesucht);
+    }
+    expect(unbelegt).toEqual([]);
+  });
+
+  it("verspricht nichts, was die Preisseite widerlegt", () => {
+    // „inklusive Anfahrt" stand in der ersten Fassung und war schlicht
+    // falsch: Ab 5 km fallen Wegkosten an. Genau solche Sätze werden im
+    // Suchergebnis zur Zusage.
+    const text = FAQ.map((f) => f.antwort).join("\n").toLowerCase();
+    expect(text).not.toContain("inklusive anfahrt");
+    expect(text).not.toContain("ohne wegkosten");
+  });
+
   it("beide Listen speisen sich aus derselben Quelle", () => {
     // Zwei getrennte Listen laufen auseinander, und dann steht im
     // Suchergebnis etwas anderes als auf der Seite.
