@@ -1,11 +1,23 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Loader2, Pencil, Trash2, X, Lock, Clock, Send, Mail } from "lucide-react";
+import {
+  CalendarPlus,
+  Check,
+  Clock,
+  Loader2,
+  Lock,
+  Mail,
+  Pencil,
+  Send,
+  Trash2,
+  X,
+} from "lucide-react";
 import { WEEKDAY_LABELS } from "@/lib/fixplatz";
 import type { FreigabeArt, ZuteilungEintrag } from "@/lib/zuteilung-uebernahme";
 import {
   bestaetigungErneutSenden,
+  serieAuffuellen,
   schuelerFreigeben,
   zuteilungEintragAendern,
   zuteilungEintragEntfernen,
@@ -129,6 +141,34 @@ export default function ZuteilungWerkbank({
     });
   }
 
+  function auffuellen(z: ZuteilungEintrag) {
+    if (
+      !window.confirm(
+        `${z.name}: Fehlende Termine der Serie nachbuchen? Es geht keine Mail raus; die Bestätigung schickst du danach mit dem Brief-Knopf.`
+      )
+    ) {
+      return;
+    }
+    setMeldung(null);
+    setAktiv(z.schuelerId);
+    starte(async () => {
+      const r = await serieAuffuellen(z.schuelerId);
+      setAktiv(null);
+      if ("error" in r && r.error) {
+        setMeldung({ text: `${z.name}: ${r.error}`, fehler: true });
+        return;
+      }
+      if (!("gesamt" in r)) return;
+      setMeldung({
+        text:
+          r.nachgebucht === 0
+            ? `${z.name}: Serie ist vollständig, ${r.gesamt} Termine.`
+            : `${z.name}: ${r.nachgebucht} Termine nachgebucht, jetzt ${r.gesamt}.`,
+        fehler: false,
+      });
+    });
+  }
+
   function erneutSenden(z: ZuteilungEintrag) {
     if (
       !window.confirm(
@@ -239,6 +279,16 @@ export default function ZuteilungWerkbank({
 
                           {fix ? (
                             <div className="flex items-center gap-1 flex-shrink-0">
+                              {art !== "extern" && (
+                                <button
+                                  onClick={() => auffuellen(z)}
+                                  disabled={laeuft}
+                                  className="p-2 rounded-lg text-gray-400 hover:text-[#1C244B] hover:bg-gray-100 disabled:opacity-40"
+                                  title="Fehlende Termine der Serie nachbuchen"
+                                >
+                                  <CalendarPlus className="w-4 h-4" />
+                                </button>
+                              )}
                               {art !== "extern" && (
                                 <button
                                   onClick={() => erneutSenden(z)}

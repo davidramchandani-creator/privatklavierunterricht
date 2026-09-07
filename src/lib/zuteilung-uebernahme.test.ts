@@ -327,6 +327,22 @@ describe("Keine Freigabe mit Lücken", () => {
   it("die Erklärung nennt die Abwesenheit beim Namen", () => {
     expect(fixplatz).toContain("Deine Abwesenheit „${data.title}");
   });
+
+  it("das Nachbuchen bucht nur, was fehlt, und nie über die Lektionenzahl hinaus", () => {
+    const anfang = freigabe.indexOf("async function fuelleSerieAuf");
+    const ende = freigabe.indexOf("async function gebeFrei", anfang);
+    const fn = freigabe.slice(anfang, ende);
+    expect(fn).toContain("!belegt.has(t.start.getTime())");
+    expect(fn).toContain("belegt.size + neue.length > lessons");
+    // Eigene Termine zählen nicht als Kollision, sonst wichen sie aus.
+    expect(fn).toMatch(/ohneTermine:\s*\(vorhandene \?\? \[\]\)\.map/);
+    // Lücken stoppen das Nachbuchen, mit Grund.
+    expect(fn.indexOf("plan.offen.length > 0")).toBeLessThan(fn.indexOf('.insert('));
+    // Erinnerungen und Google wie beim ersten Buchen, und keine Mail.
+    expect(fn).toContain("scheduleLessonReminders");
+    expect(fn).toContain("syncAppointmentToCalendar");
+    expect(fn).not.toContain("sendEmailNow");
+  });
 });
 
 describe("PDF auf Vercel", () => {

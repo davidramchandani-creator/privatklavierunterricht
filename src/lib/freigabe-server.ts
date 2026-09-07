@@ -25,7 +25,9 @@ import {
   type FreigabeArt,
   type ZuteilungEintrag,
 } from "./zuteilung-uebernahme";
-import { wendeUmstellungAn, ladeBestaetigung } from "./umstellung-server";
+import { wendeUmstellungAn, ladeBestaetigung, serienStart } from "./umstellung-server";
+import { syncAppointmentToCalendar } from "./google-calendar";
+import { scheduleLessonReminders } from "./reminders";
 import { setzeExternenTermin } from "./externe-server";
 import {
   bookFixplatzSeries,
@@ -35,7 +37,7 @@ import {
 import { describeFixplatz } from "./fixplatz";
 import { sendEmailNow } from "./emails-outbox";
 import { BASIS_URL } from "./seo";
-import { DEFAULT_BUFFER_MIN } from "./booking";
+import { DEFAULT_BUFFER_MIN, LESSON_DURATION_MIN } from "./booking";
 
 /** Die Einträge einer Runde, immer in der neuen Form. */
 export async function ladeEintraege(
@@ -266,6 +268,109 @@ export async function sendeBestaetigungErneut(
   const ok = await sendeVertragsmail(admin, pkg.id, schuelerId);
   if (!ok) return { error: "Die Mail konnte nicht verschickt werden." };
   return { ok: true, termine: b.termine.length };
+}
+
+/**
+ * Lücken in einer Fixplatz-Serie schliessen.
+ *
+ * Rechnet die Serie so, wie sie am Stichtag hätte gebucht werden sollen,
+ * und bucht nach, was fehlt. Die vorhandenen Termine bleiben, wie sie sind.
+ * Erinnerungen und Google-Sync laufen über denselben Weg wie beim ersten
+ * Buchen, damit nachgebuchte Termine nicht anders aussehen als die anderen.
+ *
+ * Bleibt eine Lücke, weil noch etwas sperrt, wird nichts gebucht und der
+ * Grund genannt. Halbe Reparaturen sind das Problem, nicht die Lösung.
+ */
+export async function fuelleSerieAuf(
+  admin: SupabaseClient,
+  schuelerId: string
+): Promise<{ ok: true; nachgebucht: number; gesamt: number } | { error: string }> {
+  const { data: pkg } = await admin
+    .from("packages")
+    .select(
+      "id, rhythmus, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, abo_lektionen, lessons_total, periode_start, starts_at"
+    )
+    .eq("student_id", schuelerId)
+    .eq("booking_mode", "fix")
+    .in("status", ["active", "scheduled"])
+    .order("erstellt_am", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!pkg || pkg.fixplatz_weekday == null || !pkg.fixplatz_time) {
+    return { error: "Kein Abo mit festem Platz gefunden." };
+  }
+
+  const { data: vorhandene } = await admin
+    .from("appointments")
+    .select("id, start_at, series_id")
+    .eq("package_id", pkg.id)
+    .in("status", ["booked", "completed"]);
+  const belegt = new Set((vorhandene ?? []).map((t) => new Date(t.start_at).getTime()));
+  const seriesId =
+    (vorhandene ?? []).find((t) => t.series_id)?.series_id ?? crypto.randomUUID();
+
+  const lessons = Number(pkg.abo_lektionen ?? pkg.lessons_total ?? 0);
+  const rhythmus = (pkg.rhythmus ?? (pkg.fixplatz_week_parity === null ? "woechentlich" : "zweiwoechentlich")) as
+    | "woechentlich"
+    | "zweiwoechentlich";
+  const start = String(pkg.periode_start ?? String(pkg.starts_at).slice(0, 10));
+
+  const plan = await planeFixplatzSerie(admin, {
+    studentId: schuelerId,
+    wunsch: {
+      weekday: Number(pkg.fixplatz_weekday),
+      time: String(pkg.fixplatz_time).slice(0, 5),
+      rhythmus,
+      lessons,
+    },
+    parity: (pkg.fixplatz_week_parity ?? null) as 0 | 1 | null,
+    now: serienStart(start),
+    ohneTermine: (vorhandene ?? []).map((t) => t.id as string),
+  });
+  if ("error" in plan) return { error: plan.error };
+  if (plan.offen.length > 0) {
+    const grund = await erklaereBlockade(admin, plan.offen);
+    return {
+      error: `${plan.offen.length} Termine haben noch keinen Platz. ${
+        grund ?? "Belegt oder gesperrt."
+      } Betroffen: ${plan.offen.map((d) => d.toISOString().slice(0, 10)).join(", ")}. Nichts gebucht.`,
+    };
+  }
+
+  const neue = plan.zuBuchen.filter((t) => !belegt.has(t.start.getTime()));
+  if (neue.length === 0) return { ok: true, nachgebucht: 0, gesamt: belegt.size };
+  if (belegt.size + neue.length > lessons) {
+    return {
+      error: `Das ergäbe ${belegt.size + neue.length} Termine bei ${lessons} Lektionen. Bitte zuerst im Kalender nachsehen.`,
+    };
+  }
+
+  const { data: created, error } = await admin
+    .from("appointments")
+    .insert(
+      neue.map((t) => ({
+        student_id: schuelerId,
+        package_id: pkg.id,
+        start_at: t.start.toISOString(),
+        end_at: new Date(t.start.getTime() + LESSON_DURATION_MIN * 60000).toISOString(),
+        status: "booked",
+        source: "direct",
+        series_id: seriesId,
+        is_fixplatz: true,
+        notes: t.original ? `Ausweichtermin für ${t.original.toISOString().slice(0, 10)}` : null,
+      }))
+    )
+    .select("id, start_at");
+  if (error || !created) return { error: "Die Termine konnten nicht angelegt werden." };
+
+  for (const c of created) {
+    await scheduleLessonReminders(admin, { id: c.id, student_id: schuelerId, start_at: c.start_at });
+  }
+  for (const c of created) {
+    await syncAppointmentToCalendar(admin, c.id);
+  }
+
+  return { ok: true, nachgebucht: created.length, gesamt: belegt.size + created.length };
 }
 
 /**

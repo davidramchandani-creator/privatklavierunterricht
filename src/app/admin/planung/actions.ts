@@ -28,6 +28,7 @@ import {
   bearbeiteEintrag,
   bestimmeFreigabeArten,
   entferneEintrag,
+  fuelleSerieAuf,
   gebeFrei,
   ladeEintraege,
   sendeBestaetigungErneut,
@@ -865,6 +866,23 @@ export async function bestaetigungErneutSenden(
   const r = await sendeBestaetigungErneut(admin, schuelerId);
   if ("error" in r) return r;
   return { success: true, error: undefined, termine: r.termine };
+}
+
+/** Fehlende Termine einer freigegebenen Serie nachbuchen. */
+export async function serieAuffuellen(
+  schuelerId: string
+): Promise<
+  { success: true; error: undefined; nachgebucht: number; gesamt: number } | { error: string }
+> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+  const admin = await createAdminClient();
+  const r = await fuelleSerieAuf(admin, schuelerId);
+  if ("error" in r) return r;
+  revalidatePath("/admin/planung");
+  revalidatePath("/admin/kalender");
+  revalidatePath("/schueler/portal");
+  return { success: true, error: undefined, nachgebucht: r.nachgebucht, gesamt: r.gesamt };
 }
 
 /** Die Einträge samt dem, was beim Freigeben je Person passieren würde. */
