@@ -1,0 +1,271 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  findeKonflikt,
+  istAenderbar,
+  normalisiere,
+  routenplanZuZuteilungen,
+  ueberschneidet,
+  type ZuteilungEintrag,
+} from "./zuteilung-uebernahme";
+import type { PlanSchueler, Routenplan } from "./routing";
+
+const s = (id: string, rhythmus: PlanSchueler["rhythmus"] = "woechentlich"): PlanSchueler => ({
+  id,
+  name: id.toUpperCase(),
+  lat: 47.5,
+  lng: 8.6,
+  rhythmus,
+  lektionMinuten: 45,
+});
+
+function plan(tage: Routenplan["tage"]): Routenplan {
+  return {
+    tage,
+    nichtEingeplant: [],
+    fahrzeitProWoche: 0,
+    lektionenProWoche: 0,
+    positionen: 0,
+    fahrzeitProLektion: 0,
+  };
+}
+
+const pos = (
+  gerade: PlanSchueler | null,
+  ungerade: PlanSchueler | null,
+  beginn: string
+) => ({
+  geradeWoche: gerade,
+  ungeradeWoche: ungerade,
+  beginn,
+  ende: "00:00",
+  anfahrtSekunden: 0,
+  vonKoordinate: { lat: 0, lng: 0 },
+  nachKoordinate: { lat: 0, lng: 0 },
+});
+
+const tag = (wochentag: number, positionen: ReturnType<typeof pos>[]) => ({
+  wochentag,
+  wochentagName: "",
+  positionen,
+  fahrzeitSekunden: 0,
+  heimwegSekunden: 0,
+  auslastung: 0,
+  passt: true,
+  warnungen: [],
+});
+
+describe("Vom Routenplan zur Zuteilung", () => {
+  it("ein wöchentlicher Schüler wird ein Eintrag ohne Parität", () => {
+    const a = s("a");
+    const z = routenplanZuZuteilungen(plan([tag(4, [pos(a, a, "17:00")])]));
+    expect(z).toHaveLength(1);
+    expect(z[0]).toMatchObject({
+      schuelerId: "a",
+      wochentag: 4,
+      beginn: "17:00",
+      paritaet: null,
+      rhythmus: "woechentlich",
+      status: "offen",
+    });
+  });
+
+  it("ein geteilter Platz wird zu zwei Einträgen mit verschiedener Parität", () => {
+    // Justine und Maurice teilen sich den Donnerstag 18:00. Das muss als
+    // zwei Einträge ankommen, damit jeder einzeln freigegeben werden kann.
+    const j = s("justine", "zweiwoechentlich");
+    const m = s("maurice", "zweiwoechentlich");
+    const z = routenplanZuZuteilungen(plan([tag(4, [pos(j, m, "18:00")])]));
+    expect(z).toHaveLength(2);
+    expect(z.find((x) => x.schuelerId === "justine")?.paritaet).toBe(0);
+    expect(z.find((x) => x.schuelerId === "maurice")?.paritaet).toBe(1);
+    expect(z.every((x) => x.beginn === "18:00" && x.rhythmus === "zweiwoechentlich")).toBe(true);
+  });
+
+  it("eine halb leere Position gibt einen Eintrag, die andere Hälfte bleibt frei", () => {
+    const m = s("marina", "zweiwoechentlich");
+    const z = routenplanZuZuteilungen(plan([tag(1, [pos(null, m, "17:15")])]));
+    expect(z).toHaveLength(1);
+    expect(z[0].paritaet).toBe(1);
+  });
+
+  it("alles beginnt als offen, nie als freigegeben", () => {
+    // Freigegeben ist ein Zustand, der nur durch Davids Klick entsteht.
+    const z = routenplanZuZuteilungen(
+      plan([tag(1, [pos(s("a"), s("a"), "17:00"), pos(s("b", "zweiwoechentlich"), null, "18:00")])])
+    );
+    expect(z.every((x) => x.status === "offen" && x.freigegebenAm === null)).toBe(true);
+  });
+});
+
+describe("Ältere Pläne", () => {
+  it("bekommen Status und Rhythmus nachgetragen", () => {
+    // Runden, die vor dem Umbau gerechnet wurden, haben die neuen Felder
+    // nicht. Sie dürfen deswegen nicht kaputtgehen.
+    const alt = {
+      schuelerId: "x",
+      name: "X",
+      wochentag: 1,
+      beginn: "17:00",
+      paritaet: 1 as const,
+      praeferenz: 2,
+      anfahrtSekunden: 0,
+      unveraendert: false,
+    };
+    const n = normalisiere(alt);
+    expect(n.status).toBe("offen");
+    expect(n.rhythmus).toBe("zweiwoechentlich");
+  });
+});
+
+describe("Überschneidung", () => {
+  const e = (wochentag: number, beginn: string, paritaet: 0 | 1 | null) => ({
+    wochentag,
+    beginn,
+    paritaet,
+  });
+
+  it("gerade und ungerade zur selben Zeit ist kein Konflikt", () => {
+    // Das ist der geteilte Platz, um den es überhaupt geht.
+    expect(ueberschneidet(e(4, "18:00", 0), e(4, "18:00", 1))).toBe(false);
+  });
+
+  it("wöchentlich kollidiert mit beiden Wochen", () => {
+    expect(ueberschneidet(e(4, "18:00", null), e(4, "18:00", 0))).toBe(true);
+    expect(ueberschneidet(e(4, "18:00", null), e(4, "18:00", 1))).toBe(true);
+  });
+
+  it("verschiedene Tage kollidieren nie", () => {
+    expect(ueberschneidet(e(1, "18:00", null), e(4, "18:00", null))).toBe(false);
+  });
+
+  it("der Puffer zählt mit", () => {
+    // 17:00 bis 17:45 plus 15 Puffer reicht bis 18:00. 18:00 ist also frei,
+    // 17:45 nicht.
+    expect(ueberschneidet(e(4, "17:00", null), e(4, "18:00", null), 45, 15)).toBe(false);
+    expect(ueberschneidet(e(4, "17:00", null), e(4, "17:45", null), 45, 15)).toBe(true);
+  });
+
+  it("nennt den Namen dessen, mit dem es sich beisst", () => {
+    const uebrige: ZuteilungEintrag[] = [
+      {
+        ...normalisiere({
+          schuelerId: "angela",
+          name: "Angela",
+          wochentag: 4,
+          beginn: "16:00",
+          paritaet: null,
+          praeferenz: 2,
+          anfahrtSekunden: 0,
+          unveraendert: false,
+        }),
+      },
+    ];
+    expect(
+      findeKonflikt({ schuelerId: "simon", wochentag: 4, beginn: "16:15", paritaet: null }, uebrige, 15)
+    ).toBe("Angela");
+    expect(
+      findeKonflikt({ schuelerId: "simon", wochentag: 4, beginn: "17:00", paritaet: null }, uebrige, 15)
+    ).toBeNull();
+  });
+
+  it("prüft nicht gegen sich selbst", () => {
+    const ich = normalisiere({
+      schuelerId: "a",
+      name: "A",
+      wochentag: 4,
+      beginn: "17:00",
+      paritaet: null,
+      praeferenz: 2,
+      anfahrtSekunden: 0,
+      unveraendert: false,
+    });
+    expect(findeKonflikt({ ...ich, beginn: "17:15" }, [ich], 15)).toBeNull();
+  });
+});
+
+describe("Was sich noch ändern lässt", () => {
+  it("freigegebene Einträge nicht mehr", () => {
+    // Dann existieren Abo, Termine und eine Mail mit genau diesem Termin.
+    const basis = normalisiere({
+      schuelerId: "a",
+      name: "A",
+      wochentag: 1,
+      beginn: "17:00",
+      paritaet: null,
+      praeferenz: 2,
+      anfahrtSekunden: 0,
+      unveraendert: false,
+    });
+    expect(istAenderbar({ ...basis, status: "offen" })).toBe(true);
+    expect(istAenderbar({ ...basis, status: "reserviert" })).toBe(true);
+    expect(istAenderbar({ ...basis, status: "freigegeben" })).toBe(false);
+  });
+});
+
+describe("Verdrahtung", () => {
+  const wurzel = process.cwd();
+  const freigabe = readFileSync(join(wurzel, "src", "lib", "freigabe-server.ts"), "utf8");
+  const routingServer = readFileSync(join(wurzel, "src", "lib", "routing-server.ts"), "utf8");
+  const werkbank = readFileSync(
+    join(wurzel, "src", "app", "admin", "planung", "_components", "ZuteilungWerkbank.tsx"),
+    "utf8"
+  );
+  const board = readFileSync(
+    join(wurzel, "src", "app", "admin", "routenplanung", "_components", "RoutenplanerBoard.tsx"),
+    "utf8"
+  );
+
+  it("ohne Abo wird nur reserviert, nichts angelegt, nichts verschickt", () => {
+    // Martinas Fall. Die Reihenfolge im Code ist die Zusicherung: Der
+    // Zweig für ohne_abo kommt vor jedem Aufruf, der etwas anlegt.
+    const reserviert = freigabe.indexOf('art === "ohne_abo"');
+    const abo = freigabe.indexOf("wendeUmstellungAn(admin");
+    const serie = freigabe.indexOf("bookFixplatzSeries(admin");
+    expect(reserviert).toBeGreaterThan(-1);
+    expect(reserviert).toBeLessThan(abo);
+    expect(reserviert).toBeLessThan(serie);
+    // Und in diesem Zweig steht kein Mailversand.
+    const zweig = freigabe.slice(reserviert, abo);
+    expect(zweig).not.toContain("sendEmailNow");
+  });
+
+  it("Externe bekommen keine Mail", () => {
+    const extern = freigabe.indexOf('art === "extern"');
+    const naechster = freigabe.indexOf('art === "umstellung"');
+    const zweig = freigabe.slice(extern, naechster);
+    expect(zweig).toContain("setzeExternenTermin");
+    expect(zweig).not.toContain("sendEmailNow");
+  });
+
+  it("die Freigabe gilt für genau einen Schüler", () => {
+    // wendeUmstellungAn nimmt eine Liste. Hier darf nur ein Eintrag drin
+    // sein, sonst ginge beim Klick auf einen Namen die Mail an alle.
+    expect(freigabe).toMatch(/zuteilungen:\s*\[z\]/);
+  });
+
+  it("freigegebene Einträge überleben ein erneutes Übernehmen", () => {
+    // Sonst würde ein Klick im Routenplaner einen verschickten Vertrag
+    // still durch einen neuen Vorschlag ersetzen.
+    expect(freigabe).toMatch(/status === "freigegeben"/);
+    expect(freigabe).toContain("schonDa.has(z.schuelerId)");
+  });
+
+  it("reservierte Plätze hält der Routenplaner fest", () => {
+    // Der Schüler „kann" dann nur noch genau dieses eine Fenster.
+    expect(routingServer).toContain("ladeFestgehaltene");
+    expect(routingServer).toMatch(/moeglicheTage:\s*\[fix\.wochentag\]/);
+  });
+
+  it("die Werkbank fragt vor jeder Freigabe nach", () => {
+    // Eine Freigabe ist unumkehrbar und schickt eine Vertragsmail.
+    expect(werkbank).toContain("window.confirm");
+    expect(werkbank).toContain("lässt sich nicht rückgängig machen");
+  });
+
+  it("der Routenplaner hat den Übernehmen-Knopf", () => {
+    expect(board).toContain("routenplanUebernehmen");
+    expect(board).toContain("Als Zuteilung übernehmen");
+  });
+});

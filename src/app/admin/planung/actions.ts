@@ -22,6 +22,17 @@ import { ladeBestaetigung, wendeUmstellungAn } from "@/lib/umstellung-server";
 import { BASIS_URL } from "@/lib/seo";
 import type { Rhythmus } from "@/lib/rhythmus";
 import { istTest, standardKreis } from "@/lib/kreis";
+import type { Routenplan } from "@/lib/routing";
+import { ladeFenster } from "@/lib/routing-server";
+import {
+  bearbeiteEintrag,
+  bestimmeFreigabeArten,
+  entferneEintrag,
+  gebeFrei,
+  ladeEintraege,
+  uebernehmeRoutenplan,
+} from "@/lib/freigabe-server";
+import type { FreigabeArt, ZuteilungEintrag } from "@/lib/zuteilung-uebernahme";
 
 async function assertAdmin(): Promise<{ error: string } | null> {
   const supabase = await createClient();
@@ -751,3 +762,118 @@ export async function rundeSchliessen(
 }
 
 export { beschreibeZuteilung };
+
+// ── Zuteilung: übernehmen, bearbeiten, pro Schüler freigeben ─────────
+//
+// Die Regeln stehen in lib/freigabe-server.ts. Hier nur Rollenprüfung,
+// Runde holen, Seiten neu laden.
+
+async function offeneRundeOderFehler(
+  admin: Awaited<ReturnType<typeof createAdminClient>>
+): Promise<Runde | { error: string }> {
+  const runde = await ladeOffeneRunde(admin);
+  if (!runde) return { error: "Es gibt keine offene Runde." };
+  return runde;
+}
+
+/** Den aktuellen Routenplan als Zuteilung in die offene Runde schreiben. */
+export async function routenplanUebernehmen(
+  plan: Routenplan
+): Promise<
+  { success: true; error: undefined; uebernommen: number; behalten: number } | { error: string }
+> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+  const admin = await createAdminClient();
+  const runde = await offeneRundeOderFehler(admin);
+  if ("error" in runde) return runde;
+
+  const r = await uebernehmeRoutenplan(admin, runde.id, plan);
+  revalidatePath("/admin/planung");
+  return { success: true, error: undefined, ...r };
+}
+
+export async function zuteilungEintragAendern(
+  schuelerId: string,
+  aenderung: { wochentag: number; beginn: string; paritaet: 0 | 1 | null }
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+  const admin = await createAdminClient();
+  const runde = await offeneRundeOderFehler(admin);
+  if ("error" in runde) return runde;
+
+  const r = await bearbeiteEintrag(admin, runde.id, schuelerId, aenderung);
+  if ("error" in r) return r;
+  revalidatePath("/admin/planung");
+  return { success: true, error: undefined };
+}
+
+export async function zuteilungEintragEntfernen(
+  schuelerId: string
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+  const admin = await createAdminClient();
+  const runde = await offeneRundeOderFehler(admin);
+  if ("error" in runde) return runde;
+
+  const r = await entferneEintrag(admin, runde.id, schuelerId);
+  if ("error" in r) return r;
+  revalidatePath("/admin/planung");
+  return { success: true, error: undefined };
+}
+
+/** Einen einzelnen Schüler freigeben. */
+export async function schuelerFreigeben(
+  schuelerId: string
+): Promise<
+  | { success: true; error: undefined; art: FreigabeArt; mailVerschickt: boolean; hinweis?: string }
+  | { error: string }
+> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+  const admin = await createAdminClient();
+  const runde = await offeneRundeOderFehler(admin);
+  if ("error" in runde) return runde;
+
+  const r = await gebeFrei(
+    admin,
+    { id: runde.id, art: runde.art, startDatum: runde.startDatum },
+    schuelerId
+  );
+  if ("error" in r) return r;
+
+  revalidatePath("/admin/planung");
+  revalidatePath("/admin/kalender");
+  revalidatePath("/admin/routenplanung");
+  revalidatePath("/schueler/portal");
+  return { success: true, error: undefined, art: r.art, mailVerschickt: r.mailVerschickt, hinweis: r.hinweis };
+}
+
+/** Die Einträge samt dem, was beim Freigeben je Person passieren würde. */
+export async function zuteilungLaden(): Promise<
+  | {
+      runde: Runde;
+      eintraege: ZuteilungEintrag[];
+      arten: Record<string, FreigabeArt>;
+      fenster: { wochentag: number; beginn: string; ende: string }[];
+    }
+  | { error: string }
+> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+  const admin = await createAdminClient();
+  const runde = await offeneRundeOderFehler(admin);
+  if ("error" in runde) return runde;
+
+  const eintraege = await ladeEintraege(admin, runde.id);
+  const arten = await bestimmeFreigabeArten(
+    admin,
+    runde.id,
+    runde.art,
+    eintraege.map((z) => z.schuelerId)
+  );
+  const fenster = await ladeFenster(admin);
+  return { runde, eintraege, arten, fenster };
+}

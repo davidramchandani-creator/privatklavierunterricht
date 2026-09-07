@@ -13,6 +13,7 @@ import { MAX_PAAR_DISTANZ_M } from "./routing";
 import type { PlanEingabe, PlanSchueler, Tagesfenster } from "./routing";
 import type { Rhythmus } from "./rhythmus";
 import { istTest, type Kreis } from "./kreis";
+import { ladeFestgehaltene } from "./freigabe-server";
 
 /**
  * Daves Ausgangspunkt. Steht in den Einstellungen, damit er nicht im Code
@@ -455,13 +456,14 @@ export async function ladePlanEingabe(
   } = {}
 ): Promise<PlanKontext> {
   const kreis = optionen.kreis ?? "echt";
-  const [zuhause, fenster, schuelerRoh, fahrzeitCache, maxPaarDistanzM] =
+  const [zuhause, fenster, schuelerRoh, fahrzeitCache, maxPaarDistanzM, fest] =
     await Promise.all([
       ladeZuhause(admin),
       ladeFenster(admin),
       ladeSchueler(admin, kreis),
       ladeFahrzeiten(admin),
       ladePaarDistanz(admin),
+      ladeFestgehaltene(admin),
     ]);
 
   const gefiltert = optionen.nurFixplatz
@@ -470,17 +472,44 @@ export async function ladePlanEingabe(
 
   const ohneKoordinaten = gefiltert.filter((s) => s.lat == null || s.lng == null);
 
-  const schueler: PlanSchueler[] = gefiltert.map((s) => ({
-    id: s.id,
-    name: s.name,
-    lat: s.lat ?? NaN,
-    lng: s.lng ?? NaN,
-    rhythmus: s.rhythmus,
-    lektionMinuten: LESSON_DURATION_MIN,
-    moeglicheTage: s.moeglicheTage,
-    fenster: s.fenster,
-    kwPraeferenz: s.kwPraeferenz,
-  }));
+  const schueler: PlanSchueler[] = gefiltert.map((s) => {
+    // Reservierte und freigegebene Plätze hält der Planer fest, statt sie
+    // neu zu vergeben. Der Mechanismus ist absichtlich kein Sonderfall im
+    // Algorithmus: Der Schüler „kann" schlicht nur noch genau dieses eine
+    // Fenster. Damit landet er dort, oder er fällt sichtbar heraus, falls
+    // das Fenster inzwischen anderswo verplant ist.
+    //
+    // Für Martina heisst das: Ihre Probelektion steht noch aus, ihr Platz
+    // am Montag ist reserviert, und niemand anderes wird darauf gelegt.
+    const fix = fest.get(s.id);
+    if (fix) {
+      const [h, m] = fix.beginn.split(":").map(Number);
+      const ende = h * 60 + m + LESSON_DURATION_MIN;
+      const bis = `${String(Math.floor(ende / 60)).padStart(2, "0")}:${String(ende % 60).padStart(2, "0")}`;
+      return {
+        id: s.id,
+        name: s.name,
+        lat: s.lat ?? NaN,
+        lng: s.lng ?? NaN,
+        rhythmus: fix.paritaet === null ? "woechentlich" : "zweiwoechentlich",
+        lektionMinuten: LESSON_DURATION_MIN,
+        moeglicheTage: [fix.wochentag],
+        fenster: [{ wochentag: fix.wochentag, fruehestens: fix.beginn, spaetestens: bis }],
+        kwPraeferenz: fix.paritaet === 0 ? "gerade" : fix.paritaet === 1 ? "ungerade" : null,
+      };
+    }
+    return {
+      id: s.id,
+      name: s.name,
+      lat: s.lat ?? NaN,
+      lng: s.lng ?? NaN,
+      rhythmus: s.rhythmus,
+      lektionMinuten: LESSON_DURATION_MIN,
+      moeglicheTage: s.moeglicheTage,
+      fenster: s.fenster,
+      kwPraeferenz: s.kwPraeferenz,
+    };
+  });
 
   return {
     eingabe: {

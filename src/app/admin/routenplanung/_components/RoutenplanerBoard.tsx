@@ -17,11 +17,13 @@ import {
   Lightbulb,
   MessageCircleQuestion,
   ArrowUpDown,
+  ArrowRight,
 } from "lucide-react";
 import { formatDauer, navigationsLink } from "@/lib/geo";
 import WasWaereWennWerkstatt from "./WasWaereWennWerkstatt";
 import { KREIS_LABEL, type Kreis } from "@/lib/kreis";
 import { WEEKDAY_LABELS, WEEKDAY_SHORT } from "@/lib/fixplatz";
+import { routenplanUebernehmen } from "@/app/admin/planung/actions";
 import {
   adressenGeokodieren,
   berechnePlan,
@@ -208,6 +210,29 @@ export default function RoutenplanerBoard({
         return;
       }
       setMeldung("Ausgangspunkt gespeichert.");
+    });
+  }
+
+  function uebernehmen() {
+    if (!ergebnis) return;
+    setFehler(null);
+    setMeldung(null);
+    startTransition(async () => {
+      const res = await routenplanUebernehmen(ergebnis.plan);
+      // Beide Formen tragen `error`: bei Erfolg ist es `undefined`.
+      // Darum auf den Wert prüfen, nicht auf das Vorhandensein des Feldes.
+      if (res.error) {
+        setFehler(res.error);
+        return;
+      }
+      if (!("uebernommen" in res)) return;
+      setMeldung(
+        `${res.uebernommen} Einträge in die Zuteilung übernommen` +
+          (res.behalten > 0
+            ? `, ${res.behalten} bereits freigegebene unverändert gelassen.`
+            : ".") +
+          " Weiter unter Terminplanung."
+      );
     });
   }
 
@@ -444,6 +469,7 @@ export default function RoutenplanerBoard({
         <Ergebnisansicht
           ergebnis={ergebnis}
           onSpeichern={speichern}
+          onUebernehmen={uebernehmen}
           onNeuRechnen={rechnen}
         />
       )}
@@ -539,10 +565,13 @@ function Fahrzeit({
 function Ergebnisansicht({
   ergebnis,
   onSpeichern,
+  onUebernehmen,
   onNeuRechnen,
 }: {
   ergebnis: PlanErgebnis;
   onSpeichern: () => void;
+  /** Den Plan als Zuteilung in die offene Runde schreiben. */
+  onUebernehmen: () => void;
   /** Nach einem Wochentausch muss der Plan neu gerechnet werden. */
   onNeuRechnen: () => void;
 }) {
@@ -920,11 +949,24 @@ function Ergebnisansicht({
         </div>
       )}
 
+      {/* Der eigentliche nächste Schritt. Nichts geht raus: Die Einträge
+          landen in der Terminplanung, dort wird jeder einzeln freigegeben. */}
+      <button
+        onClick={onUebernehmen}
+        className="w-full flex items-center justify-center gap-2 text-sm font-600 bg-[#1C244B] text-white rounded-xl min-h-[48px] hover:bg-[#151c3d] transition-colors"
+      >
+        <ArrowRight className="w-4 h-4" /> Als Zuteilung übernehmen
+      </button>
+      <p className="text-xs text-gray-400 text-center -mt-2">
+        Schreibt die Plätze in die Terminplanung. Dort passt du an und gibst
+        pro Schüler frei. Es geht noch keine Mail raus.
+      </p>
+
       <button
         onClick={onSpeichern}
         className="w-full flex items-center justify-center gap-2 text-sm font-600 border border-gray-200 rounded-xl min-h-[44px] active:bg-gray-50"
       >
-        <Check className="w-4 h-4" /> Diesen Plan speichern
+        <Check className="w-4 h-4" /> Nur als Notiz speichern
       </button>
     </div>
   );
