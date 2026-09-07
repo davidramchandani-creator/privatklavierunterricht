@@ -27,7 +27,7 @@ import {
 } from "./zuteilung-uebernahme";
 import { wendeUmstellungAn, ladeBestaetigung, serienStart } from "./umstellung-server";
 import { syncAppointmentToCalendar } from "./google-calendar";
-import { scheduleLessonReminders } from "./reminders";
+import { cancelLessonReminders, scheduleLessonReminders } from "./reminders";
 import { setzeExternenTermin } from "./externe-server";
 import {
   bookFixplatzSeries,
@@ -285,7 +285,10 @@ export async function fuelleSerieAuf(
   admin: SupabaseClient,
   runde: { id: string; startDatum: string | null },
   schuelerId: string
-): Promise<{ ok: true; nachgebucht: number; gesamt: number } | { error: string }> {
+): Promise<
+  | { ok: true; nachgebucht: number; zurueckgelegt: number; gesamt: number }
+  | { error: string }
+> {
   // Externe haben keine Serie im Abo-Sinn, sondern eine Vereinbarung. Die
   // wird komplett neu gelegt: künftige Termine weg, dann frisch nach der
   // Zuteilung. Keine Mail, Externe bekommen nie eine.
@@ -306,7 +309,7 @@ export async function fuelleSerieAuf(
       abDatum: runde.startDatum ?? heuteZuerich(),
     });
     if ("error" in r) return { error: r.error };
-    return { ok: true, nachgebucht: r.termine, gesamt: r.termine };
+    return { ok: true, nachgebucht: r.termine, zurueckgelegt: 0, gesamt: r.termine };
   }
 
   const { data: pkg } = await admin
@@ -326,10 +329,9 @@ export async function fuelleSerieAuf(
 
   const { data: vorhandene } = await admin
     .from("appointments")
-    .select("id, start_at, series_id")
+    .select("id, start_at, series_id, notes, status")
     .eq("package_id", pkg.id)
     .in("status", ["booked", "completed"]);
-  const belegt = new Set((vorhandene ?? []).map((t) => new Date(t.start_at).getTime()));
   const seriesId =
     (vorhandene ?? []).find((t) => t.series_id)?.series_id ?? crypto.randomUUID();
 
@@ -361,8 +363,41 @@ export async function fuelleSerieAuf(
     };
   }
 
+  // ── Ausweichtermine, die keiner mehr braucht ─────────────
+  //
+  // Ein Ausweichtermin trägt in der Notiz, wofür er steht. Ist der
+  // ursprüngliche Termin inzwischen frei (Zeitblock gelöscht, Abwesenheit
+  // weg), gehört die Lektion dorthin zurück, und der Ausweichtermin fällt.
+  // Nur solche Termine werden angefasst: Was ein Schüler selbst verschoben
+  // hat, trägt diese Notiz nicht und bleibt.
+  //
+  // Daniels 14.9. war durch „START STUDIUM" gesperrt und wich auf den 21.9.
+  // aus. Nach dem Löschen des Blocks muss er zurück auf den 14.9.
+  const sollZeiten = new Set(plan.zuBuchen.map((t) => t.start.getTime()));
+  const jetzt = Date.now();
+  const ueberfluessig = (vorhandene ?? []).filter(
+    (t) =>
+      t.status === "booked" &&
+      new Date(t.start_at).getTime() > jetzt &&
+      String(t.notes ?? "").startsWith("Ausweichtermin für ") &&
+      !sollZeiten.has(new Date(t.start_at).getTime())
+  );
+  for (const t of ueberfluessig) {
+    await admin.from("appointments").update({ status: "cancelled" }).eq("id", t.id);
+    await cancelLessonReminders(admin, t.id);
+    await syncAppointmentToCalendar(admin, t.id);
+  }
+
+  const belegt = new Set(
+    (vorhandene ?? [])
+      .filter((t) => !ueberfluessig.some((u) => u.id === t.id))
+      .map((t) => new Date(t.start_at).getTime())
+  );
+
   const neue = plan.zuBuchen.filter((t) => !belegt.has(t.start.getTime()));
-  if (neue.length === 0) return { ok: true, nachgebucht: 0, gesamt: belegt.size };
+  if (neue.length === 0) {
+    return { ok: true, nachgebucht: 0, zurueckgelegt: ueberfluessig.length, gesamt: belegt.size };
+  }
   if (belegt.size + neue.length > lessons) {
     return {
       error: `Das ergäbe ${belegt.size + neue.length} Termine bei ${lessons} Lektionen. Bitte zuerst im Kalender nachsehen.`,
@@ -394,7 +429,12 @@ export async function fuelleSerieAuf(
     await syncAppointmentToCalendar(admin, c.id);
   }
 
-  return { ok: true, nachgebucht: created.length, gesamt: belegt.size + created.length };
+  return {
+    ok: true,
+    nachgebucht: created.length,
+    zurueckgelegt: ueberfluessig.length,
+    gesamt: belegt.size + created.length,
+  };
 }
 
 /**

@@ -147,7 +147,7 @@ export default function ZuteilungWerkbank({
       !window.confirm(
         extern
           ? `${z.name}: Künftige Termine absagen und nach der Zuteilung neu legen? Keine Mail.`
-          : `${z.name}: Fehlende Termine der Serie nachbuchen? Es geht keine Mail raus; die Bestätigung schickst du danach mit dem Brief-Knopf.`
+          : `${z.name}: Serie an die Zuteilung angleichen? Fehlende Termine werden nachgebucht, nicht mehr nötige Ausweichtermine zurückgelegt. Keine Mail; die Bestätigung schickst du danach mit dem Brief-Knopf.`
       )
     ) {
       return;
@@ -162,11 +162,14 @@ export default function ZuteilungWerkbank({
         return;
       }
       if (!("gesamt" in r)) return;
+      const teile: string[] = [];
+      if (r.zurueckgelegt > 0) teile.push(`${r.zurueckgelegt} Ausweichtermin${r.zurueckgelegt === 1 ? "" : "e"} zurückgelegt`);
+      if (r.nachgebucht > 0) teile.push(`${r.nachgebucht} Termin${r.nachgebucht === 1 ? "" : "e"} nachgebucht`);
       setMeldung({
         text:
-          r.nachgebucht === 0
+          teile.length === 0
             ? `${z.name}: Serie ist vollständig, ${r.gesamt} Termine.`
-            : `${z.name}: ${r.nachgebucht} Termine nachgebucht, jetzt ${r.gesamt}.`,
+            : `${z.name}: ${teile.join(", ")}, jetzt ${r.gesamt}. Bestätigung mit dem Brief-Knopf nachschicken.`,
         fehler: false,
       });
     });
@@ -289,7 +292,7 @@ export default function ZuteilungWerkbank({
                                 title={
                                   art === "extern"
                                     ? "Termine nach der Zuteilung neu legen"
-                                    : "Fehlende Termine der Serie nachbuchen"
+                                    : "Serie an die Zuteilung angleichen: Fehlendes nachbuchen, überflüssige Ausweichtermine zurücklegen"
                                 }
                               >
                                 <CalendarPlus className="w-4 h-4" />

@@ -351,6 +351,25 @@ describe("Keine Freigabe mit Lücken", () => {
     expect(fn).toContain("syncAppointmentToCalendar");
     expect(fn).not.toContain("sendEmailNow");
   });
+
+  it("legt nur Ausweichtermine zurück, die der Plan nicht mehr braucht, und nur künftige", () => {
+    // Daniels 14.9. war durch „START STUDIUM" gesperrt, wich auf den 21.9.
+    // aus. Nach dem Löschen des Blocks gehört er zurück. Was ein Schüler
+    // selbst verschoben hat, trägt die Notiz nicht und bleibt.
+    const anfang = freigabe.indexOf("async function fuelleSerieAuf");
+    const ende = freigabe.indexOf("async function gebeFrei", anfang);
+    const fn = freigabe.slice(anfang, ende);
+    const filter = fn.slice(fn.indexOf("const ueberfluessig"), fn.indexOf("for (const t of ueberfluessig)"));
+    expect(filter).toContain('t.status === "booked"');
+    expect(filter).toContain("new Date(t.start_at).getTime() > jetzt");
+    expect(filter).toContain('startsWith("Ausweichtermin für ")');
+    expect(filter).toContain("!sollZeiten.has(new Date(t.start_at).getTime())");
+    // Beim Absagen: Erinnerung weg, Google weg.
+    const absage = fn.slice(fn.indexOf("for (const t of ueberfluessig)"), fn.indexOf("const belegt"));
+    expect(absage).toContain('status: "cancelled"');
+    expect(absage).toContain("cancelLessonReminders");
+    expect(absage).toContain("syncAppointmentToCalendar");
+  });
 });
 
 describe("PDF auf Vercel", () => {

@@ -872,7 +872,8 @@ export async function bestaetigungErneutSenden(
 export async function serieAuffuellen(
   schuelerId: string
 ): Promise<
-  { success: true; error: undefined; nachgebucht: number; gesamt: number } | { error: string }
+  | { success: true; error: undefined; nachgebucht: number; zurueckgelegt: number; gesamt: number }
+  | { error: string }
 > {
   const verboten = await assertAdmin();
   if (verboten) return verboten;
@@ -888,7 +889,13 @@ export async function serieAuffuellen(
   revalidatePath("/admin/planung");
   revalidatePath("/admin/kalender");
   revalidatePath("/schueler/portal");
-  return { success: true, error: undefined, nachgebucht: r.nachgebucht, gesamt: r.gesamt };
+  return {
+    success: true,
+    error: undefined,
+    nachgebucht: r.nachgebucht,
+    zurueckgelegt: r.zurueckgelegt,
+    gesamt: r.gesamt,
+  };
 }
 
 /** Die Einträge samt dem, was beim Freigeben je Person passieren würde. */
