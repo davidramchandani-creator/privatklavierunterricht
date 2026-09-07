@@ -5,6 +5,8 @@ import PortalNav from "./_components/PortalNav";
 import PaketCard from "./_components/PaketCard";
 import NeuesAbo from "./_components/NeuesAbo";
 import NaechsteTermine from "./_components/NaechsteTermine";
+import KalenderAbo from "@/components/KalenderAbo";
+import { kalenderLinkHolen, kalenderLinkZuruecksetzen } from "./actions";
 import TerminBuchen from "./_components/TerminBuchen";
 import ZahlungenSection from "./_components/ZahlungenSection";
 import ZahlungsplanCard from "./_components/ZahlungsplanCard";
@@ -349,6 +351,12 @@ export default async function SchuelerPortalPage() {
         appointments={naechsteAppointments ?? []}
         requests={offeneAnfragen ?? []}
         reschedules={offeneVerschiebungen ?? []}
+      />
+      {/* Der Kalender aufs Handy. Steht direkt unter den Terminen, weil
+          das die Stelle ist, an der man ihn sucht. */}
+      <KalenderAbo
+        holeLink={kalenderLinkHolen}
+        setzeZurueck={kalenderLinkZuruecksetzen}
       />
       {aktivesPackage && canBook && remainingLessons != null && remainingLessons > 0 && (
         <div className="pt-1">

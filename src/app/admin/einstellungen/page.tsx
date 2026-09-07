@@ -6,6 +6,8 @@ import EmailTest from "./_components/EmailTest";
 import EmailSettingsClient from "./_components/EmailSettingsClient";
 import AppleKalender from "./_components/AppleKalender";
 import { ladeAppleEinstellung } from "@/lib/apple-kalender";
+import KalenderAbo from "@/components/KalenderAbo";
+import { adminKalenderLinkHolen, adminKalenderLinkZuruecksetzen } from "./kalender-actions";
 
 
 export const dynamic = "force-dynamic";
@@ -42,6 +44,15 @@ export default async function EinstellungenPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <h1 className="text-2xl font-800 text-[#1C244B]">Einstellungen</h1>
+
+      {/* Davids eigener Kalender aufs Handy: alle Lektionen mit Adresse.
+          Unabhaengig vom Google-Sync, der eine Konfiguration braucht. */}
+      <KalenderAbo
+        holeLink={adminKalenderLinkHolen}
+        setzeZurueck={adminKalenderLinkZuruecksetzen}
+        titel="Alle Lektionen im Handy-Kalender"
+        hinweis="Jede Lektion mit Schülername und Adresse, damit du vom Kalender direkt in die Navigation springst. Aktualisiert sich von selbst. Wer den Link hat, sieht alle Adressen. Nur für dich."
+      />
 
       <AppleKalender
         vorhanden={apple != null}

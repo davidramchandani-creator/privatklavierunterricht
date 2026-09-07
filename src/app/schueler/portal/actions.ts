@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { BASIS_URL } from "@/lib/seo";
+import { schuelerToken, schuelerTokenZuruecksetzen } from "@/lib/kalender-feed-server";
 import {
   type Package as Paket,
   PACKAGE_LABELS,
@@ -1817,4 +1818,32 @@ export async function vorrueckAntworten(
 
   revalidatePath("/schueler/portal");
   return result;
+}
+
+// ── Abonnierbarer Kalender ──────────────────────────────────
+
+/** Die Feed-Adresse des angemeldeten Schülers, bei Bedarf erzeugt. */
+export async function kalenderLinkHolen(): Promise<{ url: string } | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const admin = await createAdminClient();
+  const token = await schuelerToken(admin, user.id);
+  return { url: `${BASIS_URL}/api/kalender/${token}` };
+}
+
+/** Neuer Link. Der alte hört sofort auf zu funktionieren. */
+export async function kalenderLinkZuruecksetzen(): Promise<{ url: string } | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht angemeldet." };
+
+  const admin = await createAdminClient();
+  const token = await schuelerTokenZuruecksetzen(admin, user.id);
+  return { url: `${BASIS_URL}/api/kalender/${token}` };
 }
