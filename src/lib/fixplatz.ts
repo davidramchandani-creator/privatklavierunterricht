@@ -242,6 +242,21 @@ export function fixplatzTauglich(pruefung: FixplatzPruefung): boolean {
 
 // ── Ausweichtermine ────────────────────────────────────────
 
+/**
+ * Liegen zwei Zeitpunkte in derselben Woche (Montag bis Sonntag, Zürcher
+ * Zeit)? Für zweiwöchentliche Plätze die Grenze fürs Ausweichen: Die
+ * nächste Woche gehört dem Partner auf demselben Platz.
+ */
+export function inDerselbenWoche(a: Date, b: Date): boolean {
+  const montag = (d: Date) => {
+    const cal = utcToZonedDate(d);
+    const tag = Date.UTC(cal.y, cal.m - 1, cal.d);
+    const wochentag = (new Date(tag).getUTCDay() + 6) % 7; // Mo=0
+    return tag - wochentag * 86400000;
+  };
+  return montag(a) === montag(b);
+}
+
 export type AusweichKandidat = {
   slot: Slot;
   /** 1 = gleiche Woche, 2 = Folgewoche. Entspricht der Ausfall-Kaskade. */

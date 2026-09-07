@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ausweichKandidaten,
   describeFixplatz,
+  inDerselbenWoche,
   firstSeriesStart,
   fixplatzSeriesStarts,
   fixplatzTauglich,
@@ -229,6 +230,28 @@ describe("Ausweichtermine", () => {
 
   it("liefert eine leere Liste, wenn nichts frei ist", () => {
     expect(ausweichKandidaten(pruefung.belegte[0].start, [])).toEqual([]);
+  });
+});
+
+describe("Dieselbe Woche", () => {
+  // Für zweiwöchentliche Plätze die Grenze fürs Ausweichen: Die Folgewoche
+  // gehört dem Partner. Daniels gesperrter Montag 14.9. wich auf Montag
+  // 21.9. aus, Marinas Woche, und Marina rutschte an dem Abend auf 18:15.
+  it("Montag bis Sonntag ist eine Woche, der nächste Montag nicht mehr", () => {
+    const mo = new Date("2026-09-14T15:15:00Z");
+    expect(inDerselbenWoche(mo, new Date("2026-09-16T15:15:00Z"))).toBe(true);
+    expect(inDerselbenWoche(mo, new Date("2026-09-20T15:15:00Z"))).toBe(true);
+    expect(inDerselbenWoche(mo, new Date("2026-09-21T15:15:00Z"))).toBe(false);
+    expect(inDerselbenWoche(mo, new Date("2026-09-13T15:15:00Z"))).toBe(false);
+  });
+
+  it("rechnet in Zürcher Zeit, nicht in UTC", () => {
+    // Sonntag 23:30 Zürich ist Sonntag 21:30 UTC, also noch dieselbe Woche.
+    // Montag 00:30 Zürich ist Sonntag 22:30 UTC, in UTC noch Sonntag.
+    const so = new Date("2026-09-20T21:30:00Z");
+    const mo = new Date("2026-09-20T22:30:00Z");
+    expect(inDerselbenWoche(new Date("2026-09-14T15:15:00Z"), so)).toBe(true);
+    expect(inDerselbenWoche(new Date("2026-09-14T15:15:00Z"), mo)).toBe(false);
   });
 });
 

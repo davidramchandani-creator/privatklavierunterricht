@@ -324,6 +324,14 @@ describe("Keine Freigabe mit Lücken", () => {
     expect(fixplatz.indexOf("planeFixplatzSerie(admin", anfang)).toBeGreaterThan(anfang);
   });
 
+  it("zweiwöchentlich weicht nur in der eigenen Woche aus", () => {
+    // Die Folgewoche gehört dem Partner auf demselben Platz.
+    const anfang = fixplatz.indexOf("ausweichKandidaten(");
+    const filter = fixplatz.slice(anfang, anfang + 500);
+    expect(filter).toContain('wunsch.rhythmus !== "zweiwoechentlich"');
+    expect(filter).toContain("inDerselbenWoche(s.start, slot.start)");
+  });
+
   it("die Erklärung nennt die Abwesenheit beim Namen", () => {
     expect(fixplatz).toContain("Deine Abwesenheit „${data.title}");
   });

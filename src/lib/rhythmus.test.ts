@@ -320,6 +320,36 @@ describe("Kalenderwoche und Parität", () => {
     expect(a).toBe(c);
   });
 
+  it("stimmt bis Ende 2026 mit der ISO-Kalenderwoche überein", () => {
+    // Alles, was bis dahin gebucht wurde, behält damit seine Parität.
+    for (let t = Date.UTC(2024, 0, 1); t < Date.UTC(2027, 0, 1); t += 86400000) {
+      const d = new Date(t);
+      expect(weekParity(d)).toBe(isoWeek(d) % 2);
+    }
+  });
+
+  it("kippt an Neujahr 2027 nicht, obwohl 2026 53 Wochen hat", () => {
+    // Nach KW 53 kommt KW 1: zwei ungerade Wochen hintereinander. Wer alle
+    // zwei Wochen kommt, wechselt deswegen nicht die Woche. Die ISO-Zählung
+    // täte genau das, und jede Buchung ab Januar läge beim Partner.
+    expect(isoWeek(new Date("2026-12-28T00:00:00Z"))).toBe(53);
+    expect(isoWeek(new Date("2027-01-04T00:00:00Z"))).toBe(1);
+    expect(weekParity(new Date("2026-12-28T00:00:00Z"))).toBe(1);
+    expect(weekParity(new Date("2027-01-04T00:00:00Z"))).toBe(0);
+    // Daniels Serie: 7.12. gerade, 14 Tage weiter (Ferien), 4.1. muss
+    // wieder gerade sein.
+    expect(weekParity(new Date("2026-12-07T00:00:00Z"))).toBe(0);
+    expect(weekParity(new Date("2027-01-04T00:00:00Z"))).toBe(0);
+  });
+
+  it("14 Tage weiter ist immer dieselbe Parität, über Jahre hinweg", () => {
+    for (let t = Date.UTC(2024, 0, 1); t < Date.UTC(2032, 0, 1); t += 3 * 86400000) {
+      const d = new Date(t);
+      expect(weekParity(new Date(t + 14 * 86400000))).toBe(weekParity(d));
+      expect(weekParity(new Date(t + 7 * 86400000))).not.toBe(weekParity(d));
+    }
+  });
+
   it("findet den nächsten passenden Tag samt Parität", () => {
     const von = new Date("2026-08-09T00:00:00Z"); // Sonntag
     // Dienstag = 2

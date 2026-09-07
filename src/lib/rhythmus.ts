@@ -376,9 +376,37 @@ export function isoWeek(date: Date): number {
   return 1 + Math.round((d.getTime() - firstThursday.getTime()) / (7 * 86400000));
 }
 
-/** 0 = gerade Kalenderwoche, 1 = ungerade. */
+/**
+ * Nullpunkt der Wochenzählung: Montag, 1. Januar 2024, ISO-Kalenderwoche 1.
+ *
+ * Gezählt wird fortlaufend ab hier, nicht nach der ISO-Kalenderwoche. Der
+ * Unterschied zeigt sich nur in Jahren mit 53 Wochen, und 2026 ist eines:
+ * Auf KW 53 folgt KW 1, zwei ungerade Wochen hintereinander. Ein Schüler,
+ * der „alle zwei Wochen" kommt, wechselt an Neujahr nicht die Woche. Mit
+ * der ISO-Zählung hätte jede Buchung ab Januar 2027 in der falschen Woche
+ * gelegen und sich mit dem Partner desselben Platzes gebissen.
+ *
+ * 2024 und 2025 haben 52 Wochen, darum stimmt diese Zählung bis Ende 2026
+ * mit der Kalenderwoche überein. Alles, was bis dahin gebucht wurde, behält
+ * seine Parität.
+ */
+const WOCHE_NULL = Date.UTC(2024, 0, 1);
+
+/**
+ * 0 = gerade Woche, 1 = ungerade, in der fortlaufenden Zählung ab
+ * `WOCHE_NULL`. Bis Ende 2026 identisch mit der ISO-Kalenderwoche.
+ *
+ * Die eine Stelle, an der Wochen gezählt werden. Fixplatz, Externe und
+ * Routenplanung müssen alle hierher, sonst bedeutet „ungerade" für den
+ * einen etwas anderes als für den anderen. Genau das war am 7. September
+ * 2026 der Fall: Justine (extern) und Maurice (Abo) lagen beide auf dem
+ * Donnerstag 18:00 in denselben Wochen.
+ */
 export function weekParity(date: Date): 0 | 1 {
-  return (isoWeek(date) % 2) as 0 | 1;
+  const tag = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  const wochen = Math.floor((tag - WOCHE_NULL) / (7 * 86400000));
+  // +1, weil der Nullpunkt in KW 1 liegt, einer ungeraden Woche.
+  return ((((wochen + 1) % 2) + 2) % 2) as 0 | 1;
 }
 
 /**

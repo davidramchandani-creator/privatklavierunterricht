@@ -231,3 +231,26 @@ describe("Verfügbarkeit externer Schüler", () => {
     );
   });
 });
+
+/**
+ * Wochen werden an genau einer Stelle gezählt.
+ *
+ * Am 7. September 2026 rechnete `ersterTermin` die Parität selbst (Wochen
+ * seit 1970, ein Donnerstag) und kam auf etwas anderes als der Fixplatz
+ * (Kalenderwoche). Justine (extern, „ungerade") landete damit in Maurices
+ * Wochen, beide Donnerstag 18:00.
+ */
+describe("Externe zählen Wochen wie alle anderen", () => {
+  const externe = readFileSync(
+    join(process.cwd(), "src", "lib", "externe-server.ts"),
+    "utf8"
+  )
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+
+  it("nutzt weekParity aus rhythmus.ts und keine eigene Rechnung", () => {
+    expect(externe).toMatch(/import \{[^}]*weekParity[^}]*\} from "\.\/rhythmus"/);
+    expect(externe).toContain("weekParity(tag) !== v.woche_paritaet");
+    expect(externe).not.toMatch(/7 \* 86400000\)\) % 2/);
+  });
+});

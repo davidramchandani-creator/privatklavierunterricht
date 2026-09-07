@@ -877,7 +877,13 @@ export async function serieAuffuellen(
   const verboten = await assertAdmin();
   if (verboten) return verboten;
   const admin = await createAdminClient();
-  const r = await fuelleSerieAuf(admin, schuelerId);
+  const runde = await offeneRundeOderFehler(admin);
+  if ("error" in runde) return runde;
+  const r = await fuelleSerieAuf(
+    admin,
+    { id: runde.id, startDatum: runde.startDatum },
+    schuelerId
+  );
   if ("error" in r) return r;
   revalidatePath("/admin/planung");
   revalidatePath("/admin/kalender");

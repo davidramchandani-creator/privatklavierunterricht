@@ -142,9 +142,12 @@ export default function ZuteilungWerkbank({
   }
 
   function auffuellen(z: ZuteilungEintrag) {
+    const extern = arten[z.schuelerId] === "extern";
     if (
       !window.confirm(
-        `${z.name}: Fehlende Termine der Serie nachbuchen? Es geht keine Mail raus; die Bestätigung schickst du danach mit dem Brief-Knopf.`
+        extern
+          ? `${z.name}: Künftige Termine absagen und nach der Zuteilung neu legen? Keine Mail.`
+          : `${z.name}: Fehlende Termine der Serie nachbuchen? Es geht keine Mail raus; die Bestätigung schickst du danach mit dem Brief-Knopf.`
       )
     ) {
       return;
@@ -279,16 +282,18 @@ export default function ZuteilungWerkbank({
 
                           {fix ? (
                             <div className="flex items-center gap-1 flex-shrink-0">
-                              {art !== "extern" && (
-                                <button
-                                  onClick={() => auffuellen(z)}
-                                  disabled={laeuft}
-                                  className="p-2 rounded-lg text-gray-400 hover:text-[#1C244B] hover:bg-gray-100 disabled:opacity-40"
-                                  title="Fehlende Termine der Serie nachbuchen"
-                                >
-                                  <CalendarPlus className="w-4 h-4" />
-                                </button>
-                              )}
+                              <button
+                                onClick={() => auffuellen(z)}
+                                disabled={laeuft}
+                                className="p-2 rounded-lg text-gray-400 hover:text-[#1C244B] hover:bg-gray-100 disabled:opacity-40"
+                                title={
+                                  art === "extern"
+                                    ? "Termine nach der Zuteilung neu legen"
+                                    : "Fehlende Termine der Serie nachbuchen"
+                                }
+                              >
+                                <CalendarPlus className="w-4 h-4" />
+                              </button>
                               {art !== "extern" && (
                                 <button
                                   onClick={() => erneutSenden(z)}

@@ -16,6 +16,7 @@ import {
   ausweichKandidaten,
   fixplatzSeriesStarts,
   firstSeriesStart,
+  inDerselbenWoche,
   pruefeFixplatzSerie,
   type AusweichKandidat,
   type FixplatzWunsch,
@@ -184,7 +185,16 @@ export async function planeFixplatzSerie(
     }
     const kandidaten = ausweichKandidaten(
       slot.start,
-      freieSlots.filter((s) => !vergeben.has(s.start.getTime()))
+      freieSlots.filter(
+        (s) =>
+          !vergeben.has(s.start.getTime()) &&
+          // Zweiwöchentlich: nur in der eigenen Woche ausweichen. Die
+          // Folgewoche gehört dem Partner auf demselben Platz. Daniels
+          // gesperrter 14.9. wich auf den 21.9. aus, Marinas Woche, und
+          // Marina rutschte an dem Abend auf 18:15.
+          (wunsch.rhythmus !== "zweiwoechentlich" ||
+            inDerselbenWoche(s.start, slot.start))
+      )
     );
     const bester = kandidaten[0];
     if (bester) {

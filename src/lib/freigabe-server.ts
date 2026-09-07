@@ -283,8 +283,32 @@ export async function sendeBestaetigungErneut(
  */
 export async function fuelleSerieAuf(
   admin: SupabaseClient,
+  runde: { id: string; startDatum: string | null },
   schuelerId: string
 ): Promise<{ ok: true; nachgebucht: number; gesamt: number } | { error: string }> {
+  // Externe haben keine Serie im Abo-Sinn, sondern eine Vereinbarung. Die
+  // wird komplett neu gelegt: künftige Termine weg, dann frisch nach der
+  // Zuteilung. Keine Mail, Externe bekommen nie eine.
+  const { data: profil } = await admin
+    .from("profiles")
+    .select("extern")
+    .eq("id", schuelerId)
+    .maybeSingle();
+  if (profil?.extern) {
+    const eintraege = await ladeEintraege(admin, runde.id);
+    const z = eintraege.find((e) => e.schuelerId === schuelerId);
+    if (!z) return { error: "Dieser Schüler steht nicht in der Zuteilung." };
+    const r = await setzeExternenTermin(admin, {
+      studentId: schuelerId,
+      wochentag: z.wochentag,
+      beginn: z.beginn,
+      paritaet: z.paritaet,
+      abDatum: runde.startDatum ?? heuteZuerich(),
+    });
+    if ("error" in r) return { error: r.error };
+    return { ok: true, nachgebucht: r.termine, gesamt: r.termine };
+  }
+
   const { data: pkg } = await admin
     .from("packages")
     .select(

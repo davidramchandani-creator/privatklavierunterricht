@@ -23,7 +23,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { LESSON_DURATION_MIN } from "./booking";
 import { fixplatzSeriesStarts, type Ferienzeitraum } from "./fixplatz";
 import { syncAppointmentToCalendar } from "./google-calendar";
-import type { Rhythmus } from "./rhythmus";
+import { weekParity, type Rhythmus } from "./rhythmus";
 import { todayInZurich } from "./subscription";
 
 /**
@@ -116,10 +116,11 @@ function ersterTermin(v: ExterneVereinbarung, ab: string): Date {
     if (tag.getUTCDay() !== v.wochentag) continue;
 
     if (v.woche_paritaet != null) {
-      // Dieselbe Wochenzählung wie im Fixplatz-Modell: Wochen seit dem
-      // Nullpunkt, gerade oder ungerade.
-      const kw = Math.floor(tag.getTime() / (7 * 86400000)) % 2;
-      if (kw !== v.woche_paritaet) continue;
+      // Dieselbe Wochenzählung wie beim Fixplatz, aus derselben Funktion.
+      // Hier stand eine eigene Rechnung (Wochen seit 1970), die eine
+      // andere Parität ergab als beim Abo: Justine landete in Maurices
+      // Wochen, beide Donnerstag 18:00.
+      if (weekParity(tag) !== v.woche_paritaet) continue;
     }
 
     return new Date(
