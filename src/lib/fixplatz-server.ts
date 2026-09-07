@@ -32,7 +32,7 @@ export type FixplatzBuchungErgebnis = {
 };
 
 /**
- * Bucht die komplette Fixplatz-Serie eines Pakets.
+ * Die komplette Fixplatz-Serie eines Pakets: erst planen, dann buchen.
  *
  * Ablauf pro Wunschtermin:
  *   frei          → direkt buchen
@@ -52,17 +52,38 @@ export type FixplatzBuchungErgebnis = {
  * sitzt bereits die reguläre Lektion. Übersprungen rückt die Serie einfach
  * um eine Woche weiter, genau wie es die Abo-Rechnung annimmt.
  */
-export async function bookFixplatzSeries(
+export type FixplatzPlan = {
+  zuBuchen: { start: Date; original: Date | null }[];
+  verschoben: { original: Date; ersatz: Date }[];
+  offen: Date[];
+};
+
+/**
+ * Rechnet die Serie durch, ohne etwas zu schreiben.
+ *
+ * Der Grund für die Trennung: Bei der Freigabe eines Abos hängt an der Serie
+ * eine Vertragsmail. Die darf erst raus, wenn feststeht, dass alle Termine
+ * Platz haben. Am 7. September 2026 wurde Flurina freigegeben, während eine
+ * Admin-Abwesenheit bis Silvester im Weg stand: 8 von 20 Terminen gebucht,
+ * Mail mit 8 Terminen verschickt. Mit dieser Vorprüfung wäre die Freigabe
+ * stehen geblieben.
+ */
+export async function planeFixplatzSerie(
   admin: SupabaseClient,
   params: {
     studentId: string;
-    packageId: string;
     wunsch: FixplatzWunsch;
     parity: 0 | 1 | null;
     now?: Date;
+    /**
+     * Termine, die bei der Kollisionsprüfung nicht zählen: die des alten
+     * Pakets ab dem Stichtag, die beim Anlegen des Abos ohnehin abgesagt
+     * werden. Nur für die Vorprüfung nötig, die vor dem Absagen läuft.
+     */
+    ohneTermine?: string[];
   }
-): Promise<FixplatzBuchungErgebnis | { error: string }> {
-  const { studentId, packageId, wunsch, parity } = params;
+): Promise<FixplatzPlan | { error: string }> {
+  const { studentId, wunsch, parity } = params;
   const now = params.now ?? new Date();
 
   const { data: profile } = await admin
@@ -124,7 +145,7 @@ export async function bookFixplatzSeries(
     ersterStart,
     bisInstant,
     now,
-    { skipLeadTime: true }
+    { skipLeadTime: true, excludeAppointmentIds: params.ohneTermine }
   );
 
   const pruefung = pruefeFixplatzSerie(
@@ -174,6 +195,57 @@ export async function bookFixplatzSeries(
       offen.push(slot.start);
     }
   }
+
+  return { zuBuchen, verschoben, offen };
+}
+
+/**
+ * Nennt, was die offenen Termine sperrt, wenn es eine Admin-Abwesenheit ist.
+ *
+ * Nur dieser eine Fall wird erklärt: Er ist der, den man selbst angelegt
+ * und vergessen hat, und ohne den Namen sucht man ihn lange. Belegte Slots
+ * durch andere Schüler nennt die Kalenderansicht ohnehin.
+ */
+export async function erklaereBlockade(
+  admin: SupabaseClient,
+  offen: Date[]
+): Promise<string | null> {
+  if (offen.length === 0) return null;
+  const tage = offen.map((d) => d.toISOString().slice(0, 10)).sort();
+  const { data } = await admin
+    .from("absences")
+    .select("title, start_date, end_date")
+    .eq("scope", "admin")
+    .lte("start_date", tage[tage.length - 1])
+    .gte("end_date", tage[0])
+    .order("start_date")
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  const de = (iso: string) => {
+    const [j, m, t] = String(iso).split("-");
+    return `${t}.${m}.${j}`;
+  };
+  return `Deine Abwesenheit „${data.title}" (${de(data.start_date)} bis ${de(
+    data.end_date
+  )}) sperrt diese Termine.`;
+}
+
+export async function bookFixplatzSeries(
+  admin: SupabaseClient,
+  params: {
+    studentId: string;
+    packageId: string;
+    wunsch: FixplatzWunsch;
+    parity: 0 | 1 | null;
+    now?: Date;
+  }
+): Promise<FixplatzBuchungErgebnis | { error: string }> {
+  const { studentId, packageId } = params;
+
+  const plan = await planeFixplatzSerie(admin, params);
+  if ("error" in plan) return plan;
+  const { zuBuchen, verschoben, offen } = plan;
 
   if (zuBuchen.length === 0) {
     return {

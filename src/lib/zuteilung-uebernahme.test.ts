@@ -269,3 +269,75 @@ describe("Verdrahtung", () => {
     expect(board).toContain("Als Zuteilung übernehmen");
   });
 });
+
+describe("Keine Freigabe mit Lücken", () => {
+  // Flurina, 7. September 2026: Eine Admin-Abwesenheit bis Silvester stand
+  // im Weg, 8 von 20 Terminen wurden gebucht, die Vertragsmail ging mit 8
+  // Terminen raus. Seither: Erst rechnen, dann schreiben, dann mailen.
+  const wurzel = process.cwd();
+  const ohneKommentare = (s: string) =>
+    s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const umstellung = ohneKommentare(
+    readFileSync(join(wurzel, "src", "lib", "umstellung-server.ts"), "utf8")
+  );
+  const freigabe = ohneKommentare(
+    readFileSync(join(wurzel, "src", "lib", "freigabe-server.ts"), "utf8")
+  );
+  const fixplatz = ohneKommentare(
+    readFileSync(join(wurzel, "src", "lib", "fixplatz-server.ts"), "utf8")
+  );
+
+  it("beim neuen Abo wird geplant, bevor irgendetwas geschrieben wird", () => {
+    const anfang = umstellung.indexOf("async function legeAboAn");
+    const probe = umstellung.indexOf("planeFixplatzSerie(admin", anfang);
+    const absage = umstellung.indexOf('.update({ status: "cancelled" })', anfang);
+    const anlegen = umstellung.indexOf('.from("packages")\n    .insert(', anfang);
+    expect(probe).toBeGreaterThan(anfang);
+    expect(probe).toBeLessThan(absage);
+    expect(probe).toBeLessThan(anlegen);
+  });
+
+  it("bei Lücken kommt ein Fehler mit Grund, und nichts geht raus", () => {
+    const anfang = umstellung.indexOf("async function legeAboAn");
+    const probe = umstellung.indexOf("planeFixplatzSerie(admin", anfang);
+    const zweig = umstellung.slice(probe, probe + 900);
+    expect(zweig).toContain("probe.offen.length > 0");
+    expect(zweig).toContain("erklaereBlockade");
+    expect(zweig).toContain("Nichts angelegt, keine Mail.");
+  });
+
+  it("beim bestehenden Abo ebenso, vor dem Absagen der alten Serie", () => {
+    const anfang = freigabe.indexOf("Kein aktives Abo gefunden");
+    const probe = freigabe.indexOf("planeFixplatzSerie(admin", anfang);
+    const absage = freigabe.indexOf('.update({ status: "cancelled" })', anfang);
+    const serie = freigabe.indexOf("bookFixplatzSeries(admin", anfang);
+    const mail = freigabe.indexOf("sendEmailNow", anfang);
+    expect(probe).toBeGreaterThan(anfang);
+    expect(probe).toBeLessThan(absage);
+    expect(probe).toBeLessThan(serie);
+    expect(probe).toBeLessThan(mail);
+  });
+
+  it("Planen und Buchen sind derselbe Code", () => {
+    // Sonst könnte die Vorprüfung ja sagen und das Buchen nein.
+    const anfang = fixplatz.indexOf("async function bookFixplatzSeries");
+    expect(fixplatz.indexOf("planeFixplatzSerie(admin", anfang)).toBeGreaterThan(anfang);
+  });
+
+  it("die Erklärung nennt die Abwesenheit beim Namen", () => {
+    expect(fixplatz).toContain("Deine Abwesenheit „${data.title}");
+  });
+});
+
+describe("PDF auf Vercel", () => {
+  // pdfkit liest Helvetica.afm zur Laufzeit von der Platte. Gebündelt fehlt
+  // die Datei, und die Abo-Bestätigung endet mit ENOENT, live gesehen am
+  // 7. September 2026.
+  const config = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
+
+  it("pdfkit bleibt ungebündelt und die Schriftdateien reisen mit", () => {
+    expect(config).toMatch(/serverExternalPackages:\s*\[[^\]]*"pdfkit"/);
+    expect(config).toMatch(/"\/api\/\*\*":\s*\["\.\/node_modules\/pdfkit\/js\/data\/\*\*"\]/);
+    expect(config).toMatch(/"\/admin\/\*\*":\s*\["\.\/node_modules\/pdfkit\/js\/data\/\*\*"\]/);
+  });
+});

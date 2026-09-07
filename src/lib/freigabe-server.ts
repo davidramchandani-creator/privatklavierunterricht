@@ -27,7 +27,11 @@ import {
 } from "./zuteilung-uebernahme";
 import { wendeUmstellungAn, ladeBestaetigung } from "./umstellung-server";
 import { setzeExternenTermin } from "./externe-server";
-import { bookFixplatzSeries } from "./fixplatz-server";
+import {
+  bookFixplatzSeries,
+  erklaereBlockade,
+  planeFixplatzSerie,
+} from "./fixplatz-server";
 import { describeFixplatz } from "./fixplatz";
 import { sendEmailNow } from "./emails-outbox";
 import { BASIS_URL } from "./seo";
@@ -209,6 +213,61 @@ export async function bestimmeFreigabeArten(
   return raus;
 }
 
+/** Die Vertragsmail zu einem Abo, mit Terminliste und PDF-Link. */
+async function sendeVertragsmail(
+  admin: SupabaseClient,
+  packageId: string,
+  studentId: string
+): Promise<boolean> {
+  const b = await ladeBestaetigung(admin, packageId);
+  if (!b) return false;
+  await sendEmailNow(admin, "umstellung_bestaetigung", {
+    student_id: studentId,
+    student_name: b.studentName,
+    abo_label: b.aboLabel,
+    fixplatz_text: b.fixplatzText,
+    termin_offen: false,
+    lektionen: b.lektionen,
+    monatsbetrag: b.monatsbetrag,
+    laufzeit_monate: b.laufzeitMonate,
+    periode_start: b.periodeStart,
+    periode_ende: b.periodeEnde,
+    termine: b.termine,
+    ferientage: b.ferientage,
+    auto_renew: b.autoRenew,
+    pdf_url: `${BASIS_URL}/api/abo/${packageId}/bestaetigung`,
+  });
+  return true;
+}
+
+/**
+ * Die Vertragsmail noch einmal schicken, mit dem aktuellen Stand.
+ *
+ * Für den Fall, dass die erste falsch war: Die Terminliste kommt frisch aus
+ * der Datenbank, das PDF ebenso. Genommen wird das jüngste Abo mit festem
+ * Platz, aktiv oder geplant.
+ */
+export async function sendeBestaetigungErneut(
+  admin: SupabaseClient,
+  schuelerId: string
+): Promise<{ ok: true; termine: number } | { error: string }> {
+  const { data: pkg } = await admin
+    .from("packages")
+    .select("id")
+    .eq("student_id", schuelerId)
+    .eq("booking_mode", "fix")
+    .in("status", ["active", "scheduled"])
+    .order("erstellt_am", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!pkg) return { error: "Kein Abo mit festem Platz gefunden." };
+  const b = await ladeBestaetigung(admin, pkg.id);
+  if (!b) return { error: "Zu diesem Abo liess sich keine Bestätigung aufbauen." };
+  const ok = await sendeVertragsmail(admin, pkg.id, schuelerId);
+  if (!ok) return { error: "Die Mail konnte nicht verschickt werden." };
+  return { ok: true, termine: b.termine.length };
+}
+
 /**
  * Einen Schüler freigeben: genau das tun, was für ihn richtig ist.
  *
@@ -278,25 +337,7 @@ export async function gebeFrei(
       zuteilungen: [z],
       autoRenew: true,
       beiErfolg: async (packageId, studentId) => {
-        const b = await ladeBestaetigung(admin, packageId);
-        if (!b) return;
-        await sendEmailNow(admin, "umstellung_bestaetigung", {
-          student_id: studentId,
-          student_name: b.studentName,
-          abo_label: b.aboLabel,
-          fixplatz_text: b.fixplatzText,
-          termin_offen: false,
-          lektionen: b.lektionen,
-          monatsbetrag: b.monatsbetrag,
-          laufzeit_monate: b.laufzeitMonate,
-          periode_start: b.periodeStart,
-          periode_ende: b.periodeEnde,
-          termine: b.termine,
-          ferientage: b.ferientage,
-          auto_renew: b.autoRenew,
-          pdf_url: `${BASIS_URL}/api/abo/${packageId}/bestaetigung`,
-        });
-        mail = true;
+        mail = await sendeVertragsmail(admin, packageId, studentId);
       },
     });
     if (ergebnis.uebersprungen.length > 0) {
@@ -324,6 +365,38 @@ export async function gebeFrei(
   if (!pkg) return { error: "Kein aktives Abo gefunden." };
 
   const rhythmus = z.paritaet === null ? "woechentlich" : "zweiwoechentlich";
+  const wunsch = {
+    weekday: z.wochentag,
+    time: z.beginn,
+    rhythmus,
+    lessons: Number(pkg.abo_lektionen ?? pkg.lessons_total ?? 0),
+  } as const;
+
+  // Vorprüfung wie beim neuen Abo: Erst wenn alle Termine Platz haben,
+  // wird die alte Serie abgesagt und die Mail verschickt. Die eigenen
+  // künftigen Fixplatz-Termine zählen dabei nicht als belegt.
+  const { data: eigene } = await admin
+    .from("appointments")
+    .select("id")
+    .eq("package_id", pkg.id)
+    .eq("is_fixplatz", true)
+    .eq("status", "booked")
+    .gt("start_at", new Date().toISOString());
+  const probe = await planeFixplatzSerie(admin, {
+    studentId: schuelerId,
+    wunsch,
+    parity: z.paritaet,
+    ohneTermine: (eigene ?? []).map((t) => t.id as string),
+  });
+  if ("error" in probe) return { error: probe.error };
+  if (probe.offen.length > 0) {
+    const grund = await erklaereBlockade(admin, probe.offen);
+    return {
+      error: `Nur ${probe.zuBuchen.length} von ${wunsch.lessons} Terminen haben Platz. ${
+        grund ?? "Die übrigen sind belegt oder gesperrt."
+      } Betroffen: ${probe.offen.map((d) => d.toISOString().slice(0, 10)).join(", ")}. Nichts geändert, keine Mail.`,
+    };
+  }
 
   await admin
     .from("appointments")
@@ -347,12 +420,7 @@ export async function gebeFrei(
   const serie = await bookFixplatzSeries(admin, {
     studentId: schuelerId,
     packageId: pkg.id,
-    wunsch: {
-      weekday: z.wochentag,
-      time: z.beginn,
-      rhythmus,
-      lessons: Number(pkg.abo_lektionen ?? pkg.lessons_total ?? 0),
-    },
+    wunsch,
     parity: z.paritaet,
   });
   if ("error" in serie) return { error: serie.error };

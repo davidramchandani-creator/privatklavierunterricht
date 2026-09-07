@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Loader2, Pencil, Trash2, X, Lock, Clock, Send } from "lucide-react";
+import { Check, Loader2, Pencil, Trash2, X, Lock, Clock, Send, Mail } from "lucide-react";
 import { WEEKDAY_LABELS } from "@/lib/fixplatz";
 import type { FreigabeArt, ZuteilungEintrag } from "@/lib/zuteilung-uebernahme";
 import {
+  bestaetigungErneutSenden,
   schuelerFreigeben,
   zuteilungEintragAendern,
   zuteilungEintragEntfernen,
@@ -128,6 +129,31 @@ export default function ZuteilungWerkbank({
     });
   }
 
+  function erneutSenden(z: ZuteilungEintrag) {
+    if (
+      !window.confirm(
+        `${z.name}: Bestätigung mit der aktuellen Terminliste und dem PDF noch einmal schicken?`
+      )
+    ) {
+      return;
+    }
+    setMeldung(null);
+    setAktiv(z.schuelerId);
+    starte(async () => {
+      const r = await bestaetigungErneutSenden(z.schuelerId);
+      setAktiv(null);
+      if ("error" in r && r.error) {
+        setMeldung({ text: `${z.name}: ${r.error}`, fehler: true });
+        return;
+      }
+      if (!("termine" in r)) return;
+      setMeldung({
+        text: `${z.name}: Bestätigung erneut verschickt, mit ${r.termine} Terminen.`,
+        fehler: false,
+      });
+    });
+  }
+
   function entfernen(z: ZuteilungEintrag) {
     if (!window.confirm(`${z.name} aus der Zuteilung nehmen?`)) return;
     setMeldung(null);
@@ -212,7 +238,23 @@ export default function ZuteilungWerkbank({
                           </div>
 
                           {fix ? (
-                            <Lock className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {art !== "extern" && (
+                                <button
+                                  onClick={() => erneutSenden(z)}
+                                  disabled={laeuft}
+                                  className="p-2 rounded-lg text-gray-400 hover:text-[#1C244B] hover:bg-gray-100 disabled:opacity-40"
+                                  title="Bestätigung mit aktueller Terminliste erneut senden"
+                                >
+                                  {laeuft && aktiv === z.schuelerId ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Mail className="w-4 h-4" />
+                                  )}
+                                </button>
+                              )}
+                              <Lock className="w-4 h-4 text-gray-300" />
+                            </div>
                           ) : (
                             <div className="flex items-center gap-1 flex-shrink-0">
                               <button

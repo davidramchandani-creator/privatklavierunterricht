@@ -35,7 +35,11 @@ import {
   legeMonatsratenAn,
 } from "./abo-server";
 import { describeFixplatz } from "./fixplatz";
-import { bookFixplatzSeries } from "./fixplatz-server";
+import {
+  bookFixplatzSeries,
+  erklaereBlockade,
+  planeFixplatzSerie,
+} from "./fixplatz-server";
 import type { Rhythmus } from "./rhythmus";
 import type { Zuteilung } from "./zuteilung";
 
@@ -149,6 +153,50 @@ export async function legeAboAn(
     .select("id")
     .eq("student_id", params.studentId)
     .eq("status", "active");
+
+  // ── Vorprüfung: Haben alle Termine Platz? ───────────────────
+  //
+  // Bevor irgendetwas geschrieben wird. Danach hängt an diesem Abo eine
+  // Vertragsmail mit der Terminliste, und die muss vollständig sein. Eine
+  // Serie, die nur zur Hälfte gebucht wird, ist kein Abo, sondern ein
+  // Versprechen mit Lücken. Dann lieber gar nicht, mit dem Grund.
+  //
+  // Die Termine des alten Pakets ab dem Stichtag zählen nicht als belegt:
+  // Sie werden gleich unten abgesagt.
+  const alteIds = (alte ?? []).map((a) => a.id as string);
+  const { data: alteTermine } = alteIds.length
+    ? await admin
+        .from("appointments")
+        .select("id")
+        .in("package_id", alteIds)
+        .eq("status", "booked")
+        .gte("start_at", stichtagIso)
+    : { data: [] as { id: string }[] };
+
+  const probe = await planeFixplatzSerie(admin, {
+    studentId: params.studentId,
+    wunsch: {
+      weekday: params.wochentag,
+      time: params.beginn,
+      rhythmus: params.rhythmus,
+      lessons: zugesichert.lektionen,
+    },
+    parity: params.paritaet,
+    now: serienStart(params.startDatum),
+    ohneTermine: (alteTermine ?? []).map((t) => t.id as string),
+  });
+  if ("error" in probe) return { error: probe.error };
+  if (probe.offen.length > 0) {
+    const grund = await erklaereBlockade(admin, probe.offen);
+    const tage = probe.offen
+      .map((d) => d.toISOString().slice(0, 10))
+      .join(", ");
+    return {
+      error: `Nur ${probe.zuBuchen.length} von ${zugesichert.lektionen} Terminen haben Platz. ${
+        grund ?? "Die übrigen sind belegt oder gesperrt."
+      } Betroffen: ${tage}. Nichts angelegt, keine Mail.`,
+    };
+  }
 
   for (const alt of alte ?? []) {
     // Termine des alten Pakets ab dem Stichtag absagen — nur die. Was vor

@@ -30,6 +30,7 @@ import {
   entferneEintrag,
   gebeFrei,
   ladeEintraege,
+  sendeBestaetigungErneut,
   uebernehmeRoutenplan,
 } from "@/lib/freigabe-server";
 import type { FreigabeArt, ZuteilungEintrag } from "@/lib/zuteilung-uebernahme";
@@ -849,6 +850,21 @@ export async function schuelerFreigeben(
   revalidatePath("/admin/routenplanung");
   revalidatePath("/schueler/portal");
   return { success: true, error: undefined, art: r.art, mailVerschickt: r.mailVerschickt, hinweis: r.hinweis };
+}
+
+/**
+ * Die Vertragsmail eines freigegebenen Schülers noch einmal schicken, mit
+ * dem aktuellen Stand der Termine. Für den Fall, dass die erste falsch war.
+ */
+export async function bestaetigungErneutSenden(
+  schuelerId: string
+): Promise<{ success: true; error: undefined; termine: number } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+  const admin = await createAdminClient();
+  const r = await sendeBestaetigungErneut(admin, schuelerId);
+  if ("error" in r) return r;
+  return { success: true, error: undefined, termine: r.termine };
 }
 
 /** Die Einträge samt dem, was beim Freigeben je Person passieren würde. */

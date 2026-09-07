@@ -19,6 +19,19 @@ import type { NextConfig } from "next";
  * verglichen wird.
  */
 const nextConfig: NextConfig = {
+  /**
+   * pdfkit liest seine Standardschriften zur Laufzeit als Dateien
+   * (`js/data/Helvetica.afm`). Gebündelt in einen Chunk verliert es den
+   * Pfad dorthin, und auf Vercel endet jedes PDF mit ENOENT. Deshalb bleibt
+   * pdfkit ein normales Paket in node_modules, und die Schriftdateien werden
+   * ausdrücklich in jede Funktion mitgenommen, die PDFs erzeugt.
+   */
+  serverExternalPackages: ["pdfkit", "swissqrbill"],
+  outputFileTracingIncludes: {
+    "/api/**": ["./node_modules/pdfkit/js/data/**"],
+    "/admin/**": ["./node_modules/pdfkit/js/data/**"],
+    "/schueler/**": ["./node_modules/pdfkit/js/data/**"],
+  },
   async redirects() {
     return [
       // Seiten, die es weiterhin gibt, nur anders benannt
