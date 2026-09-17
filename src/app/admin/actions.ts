@@ -269,6 +269,29 @@ export async function updateSchueler(id: string, formData: FormData) {
     felder.geocode_adresse = adresseNeu;
   }
 
+  // Die Mailadresse gehört auch dem Login-Konto, nicht nur dem Profil.
+  //
+  // Vorher wurde nur das Profil geändert. Post ging dann an die neue
+  // Adresse, anmelden und „Passwort vergessen" liefen aber weiter über die
+  // alte. Maurice: Profil auf Rolands Adresse, Konto noch auf Jasmines.
+  // Der Reset-Link mit Rolands Adresse fand kein Konto und tat still
+  // nichts.
+  if (email && !bisher?.extern) {
+    const { data: konto } = await adminClient.auth.admin.getUserById(id);
+    const bisherige = konto?.user?.email ?? null;
+    if (bisherige && bisherige.toLowerCase() !== email.toLowerCase()) {
+      const { error: kontoFehler } = await adminClient.auth.admin.updateUserById(id, {
+        email,
+        email_confirm: true,
+      });
+      if (kontoFehler) {
+        return {
+          error: `Die Mailadresse liess sich am Login-Konto nicht ändern: ${kontoFehler.message}`,
+        };
+      }
+    }
+  }
+
   const { error } = await adminClient.from("profiles").update(felder).eq("id", id);
 
   if (error) return { error: error.message };
@@ -368,40 +391,37 @@ export async function resendInvite(email: string) {
   const appUrl = BASIS_URL;
   const adminClient = await createAdminClient();
 
-  // admin.generateLink bypasses PKCE, works across any browser/device.
-  // Wichtig: generateLink versendet selbst KEINE E-Mail, der Link muss
-  // anschliessend explizit über unseren eigenen Versand (Resend) zugestellt werden.
+  // Derselbe Weg wie „Passwort vergessen" auf der Loginseite: Der Token
+  // wird als token_hash in eine eigene Seite gelegt und erst nach einem
+  // echten Klick eingelöst. Der frühere Direktlink lief über Supabases
+  // /verify und wurde von iOS-Mail-Vorschauen und Link-Scannern schon beim
+  // Vorladen verbrannt; der Schüler sah dann „ungültig oder abgelaufen".
   const { data, error } = await adminClient.auth.admin.generateLink({
     type: "recovery",
     email,
     options: {
-      redirectTo: `${appUrl}/auth/callback?next=/auth/passwort-setzen`,
+      redirectTo: `${appUrl}/auth/passwort-setzen`,
     },
   });
 
-  if (error) return { error: error.message };
+  if (error) {
+    // Hier nicht schweigen wie auf der öffentlichen Loginseite: David soll
+    // sehen, wenn die Adresse zu keinem Konto gehört.
+    return {
+      error: `Zu ${email} gibt es kein Login-Konto (${error.message}). Stimmt die Mailadresse im Profil mit dem Konto überein?`,
+    };
+  }
 
-  const actionLink = data?.properties?.action_link;
-  if (!actionLink) return { error: "Zugangslink konnte nicht erstellt werden." };
+  const tokenHash = data?.properties?.hashed_token;
+  if (!tokenHash) return { error: "Zugangslink konnte nicht erstellt werden." };
 
+  const resetUrl = `${appUrl}/auth/bestaetigen?token_hash=${tokenHash}&type=recovery&next=/auth/passwort-setzen`;
+  const { renderEmail } = await import("@/lib/email-templates");
   const { sendEmail } = await import("@/lib/email-sender");
+  const rendered = renderEmail("password_reset", { reset_url: resetUrl });
+  if (!rendered) return { error: "Die Mail liess sich nicht aufbauen." };
   try {
-    await sendEmail({
-      to: email,
-      subject: "Dein Zugang zum Schülerportal: Klavierunterricht",
-      html: `<div style="font-family:sans-serif;padding:24px;background:#f3f4f6;">
-        <div style="background:#fff;border-radius:12px;padding:32px;max-width:480px;margin:0 auto;">
-          <h2 style="color:#1C244B;margin-top:0;">Dein Zugang zum Schülerportal</h2>
-          <p>Hallo</p>
-          <p>Über den folgenden Button kannst du dein Passwort setzen und dich anschliessend im Schülerportal anmelden:</p>
-          <p style="text-align:center;margin:28px 0;">
-            <a href="${actionLink}" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Passwort setzen</a>
-          </p>
-          <p style="color:#6b7280;font-size:13px;">Der Link ist nur einmal gültig. Falls du ihn nicht angefordert hast, kannst du diese E-Mail ignorieren.</p>
-          <p style="margin-bottom:0;">Liebe Grüsse<br/>David Ramchandani</p>
-        </div>
-      </div>`,
-    });
+    await sendEmail({ to: email, subject: rendered.subject, html: rendered.html });
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) };
   }
