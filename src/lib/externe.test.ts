@@ -24,7 +24,7 @@ describe("Externe bekommen keine Post", () => {
     // dann als Fehlschlag in der Outbox, statt dass die Mail einfach
     // unterbleibt.
     const sperre = dispatch.indexOf("empfaenger?.extern === true");
-    const empfaenger = dispatch.indexOf("let to: string | null = null;");
+    const empfaenger = dispatch.indexOf("let an: string[] = [];");
     expect(sperre).toBeGreaterThan(-1);
     expect(sperre).toBeLessThan(empfaenger);
   });

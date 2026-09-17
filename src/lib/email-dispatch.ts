@@ -8,6 +8,7 @@ import { sendPushToUser, sendPushToAdmin } from "@/lib/push";
 import { buildPush } from "@/lib/notification-push";
 import { BASIS_URL } from "@/lib/seo";
 import { zahlungsartFuer } from "@/lib/zahlungsart";
+import { ladeEmpfaenger } from "@/lib/mail-empfaenger-server";
 
 export const ADMIN_RECIPIENT_TYPES = [
   // Mahnwesen: beide gehen an David, obwohl eine student_id im Payload
@@ -181,11 +182,15 @@ export async function dispatchEmail(
     }
   }
 
-  let to: string | null = null;
+  // Empfänger. Bei Schülermails eine Liste: Ein Schüler kann mehrere
+  // Adressen haben, je mit Kategorien (Zahlungen zum Vater, Termine zur
+  // Mutter). Aufgelöst wird an einer Stelle, aus student_id. Ein `to` im
+  // Payload zählt nur noch, wenn keine student_id dabei ist.
+  let an: string[] = [];
   const extraContext: Record<string, unknown> = {};
 
   if (ADMIN_RECIPIENT_TYPES.includes(type)) {
-    to = process.env.ADMIN_EMAIL ?? null;
+    if (process.env.ADMIN_EMAIL) an = [process.env.ADMIN_EMAIL];
     if (
       payload.student_id &&
       (type === "booking_request_withdrawn" ||
@@ -199,26 +204,26 @@ export async function dispatchEmail(
       if (profile)
         extraContext.student_name = `${profile.vorname} ${profile.nachname}`;
     }
-  } else if (STUDENT_PAYLOAD_TO_TYPES.includes(type)) {
-    to = (payload.to as string) ?? null;
-  } else if (STUDENT_LOOKUP_TYPES.includes(type)) {
+  } else if (
+    STUDENT_PAYLOAD_TO_TYPES.includes(type) ||
+    STUDENT_LOOKUP_TYPES.includes(type)
+  ) {
     if (payload.student_id) {
-      const { data: profile } = await admin
-        .from("profiles")
-        .select("email, vorname, nachname")
-        .eq("id", payload.student_id)
-        .single();
-      if (profile) {
-        // Kann seit den externen Schülern null sein. Der Wurf unten ist
+      const e = await ladeEmpfaenger(admin, String(payload.student_id), type);
+      if (e) {
+        // Kann seit den externen Schülern leer sein. Der Wurf unten ist
         // dann richtig: lieber ein sichtbarer Fehler in der Outbox als
         // eine Mail ins Leere.
-        to = profile.email ?? null;
-        extraContext.student_name = `${profile.vorname} ${profile.nachname}`;
+        an = e.an;
+        // Ein Name im Payload bleibt, wie der Aufrufer ihn gesetzt hat.
+        if (!payload.student_name) extraContext.student_name = e.studentName;
       }
+    } else if (payload.to) {
+      an = [String(payload.to)];
     }
   }
 
-  if (!to) throw new Error(`No recipient email resolved for type: ${type}`);
+  if (an.length === 0) throw new Error(`No recipient email resolved for type: ${type}`);
 
   // QR-Rechnung: PDF erzeugen und in Storage ablegen.
   //
@@ -270,7 +275,11 @@ export async function dispatchEmail(
   const rendered = renderEmail(type, { ...payload, ...extraContext });
   if (!rendered) throw new Error(`No template for type: ${type}`);
 
-  await sendEmail({ to, subject: rendered.subject, html: rendered.html });
+  // Eine Mail je Adresse, nicht eine Mail an alle: Der Vater muss nicht
+  // sehen, dass die Mutter dieselbe Rechnung bekommt, und umgekehrt.
+  for (const to of an) {
+    await sendEmail({ to, subject: rendered.subject, html: rendered.html });
+  }
 
   // Zusaetzlich Push senden (fehlertolerant: Mail ist bereits raus).
   await dispatchPush(admin, type, { ...payload, ...extraContext });

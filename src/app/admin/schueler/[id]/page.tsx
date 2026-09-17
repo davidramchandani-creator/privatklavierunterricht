@@ -20,6 +20,8 @@ import PlanungSchalter from "./_components/PlanungSchalter";
 import ZeitenErfassen from "./_components/ZeitenErfassen";
 import NotizVerlauf from "./_components/NotizVerlauf";
 import { ladeVerlauf } from "@/lib/lektionsnotizen-server";
+import Mailadressen from "./_components/Mailadressen";
+import { ladeAdressen } from "@/lib/mail-empfaenger-server";
 import ExterneVereinbarung, {
   type VereinbarungDaten,
 } from "./_components/ExterneVereinbarung";
@@ -87,6 +89,8 @@ export default async function SchuelerDetailPage({
   ]);
 
   if (!profile || profile.role === "admin") notFound();
+
+  const adressen = await ladeAdressen(admin, id);
 
   // Angegebene Zeiten. Ohne sie lässt sich hier nicht beurteilen, ob ein
   // Termin dem Schüler passt oder nur David — und beim Testschüler sah es
@@ -331,6 +335,15 @@ export default async function SchuelerDetailPage({
           />
         </div>
       </div>
+
+      {/* Wer bekommt welche Post. Externe bekommen keine, darum nicht. */}
+      {!istExtern && (
+        <Mailadressen
+          studentId={id}
+          haupt={adressen?.haupt ?? null}
+          weitere={adressen?.weitere ?? []}
+        />
+      )}
 
       {/* Planungsschalter */}
       <PlanungSchalter
