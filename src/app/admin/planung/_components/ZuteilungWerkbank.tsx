@@ -41,8 +41,8 @@ const ART_TEXT: Record<FreigabeArt, { kurz: string; lang: string; ton: string }>
     ton: "bg-navy-50 text-navy-900",
   },
   abo: {
-    kurz: "Fixplatz + Mail",
-    lang: "Setzt den festen Termin im laufenden Abo, bucht die Serie, schickt die Bestätigung.",
+    kurz: "Abo + Vertrag",
+    lang: "Das Abo besteht schon. Setzt den festen Termin, bucht die Serie, schickt die Bestätigung mit PDF.",
     ton: "bg-navy-50 text-navy-900",
   },
   extern: {

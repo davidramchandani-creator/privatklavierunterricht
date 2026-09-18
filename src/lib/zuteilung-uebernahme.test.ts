@@ -399,3 +399,21 @@ describe("Die Serie beginnt frühestens mit dem Abo", () => {
     expect((zweig.match(/now: serieAb/g) ?? []).length).toBe(2);
   });
 });
+
+describe("Ein bestehendes Abo bekommt bei der Freigabe den Vertrag", () => {
+  // Emilie: von Hand angelegtes Abo, dann freigegeben, und sie bekam nur
+  // „Termine zugeteilt" ohne Terminliste und PDF.
+  const freigabe = readFileSync(join(process.cwd(), "src", "lib", "freigabe-server.ts"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+  const anfang = freigabe.indexOf("Kein aktives Abo gefunden");
+  const zweig = freigabe.slice(anfang, freigabe.indexOf("async function setzeStatus", anfang));
+
+  it("Vertragsmail beim Abo, kurze Zuteilungsmail nur beim alten Paket", () => {
+    expect(zweig).toContain("if (pkg.abo_variante) {");
+    expect(zweig.indexOf("sendeVertragsmail(admin, pkg.id")).toBeGreaterThan(-1);
+    expect(zweig.indexOf("sendeVertragsmail(admin, pkg.id")).toBeLessThan(
+      zweig.indexOf('"verfuegbarkeit_zuteilung"')
+    );
+  });
+});

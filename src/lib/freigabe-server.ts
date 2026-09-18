@@ -527,7 +527,7 @@ export async function gebeFrei(
   // ── Bestehendes Abo: Fixplatz, Serie, Mail ───────────────
   const { data: pkg } = await admin
     .from("packages")
-    .select("id, rhythmus, abo_lektionen, lessons_total, periode_start, starts_at")
+    .select("id, rhythmus, abo_lektionen, lessons_total, periode_start, starts_at, abo_variante")
     .eq("student_id", schuelerId)
     .eq("status", "active")
     .maybeSingle();
@@ -605,13 +605,21 @@ export async function gebeFrei(
   });
   if ("error" in serie) return { error: serie.error };
 
-  await sendEmailNow(admin, "verfuegbarkeit_zuteilung", {
-    student_id: schuelerId,
-    student_name: z.name,
-    fixplatz_text: describeFixplatz(z.wochentag, z.beginn, rhythmus, z.paritaet),
-    anzahl_termine: serie.appointmentIds.length,
-    wunsch_erfuellt: z.praeferenz >= 3,
-  });
+  // Ein Abo bekommt die Vertragsmail mit Terminliste und PDF, wie bei der
+  // Umstellung. Emilie, 18. September 2026: von Hand angelegtes Abo, dann
+  // freigegeben, und sie bekam nur „Termine zugeteilt" ohne Vertrag. Das
+  // alte Lektionspaket ohne Abo bekommt weiterhin die kurze Zuteilungsmail.
+  if (pkg.abo_variante) {
+    await sendeVertragsmail(admin, pkg.id, schuelerId);
+  } else {
+    await sendEmailNow(admin, "verfuegbarkeit_zuteilung", {
+      student_id: schuelerId,
+      student_name: z.name,
+      fixplatz_text: describeFixplatz(z.wochentag, z.beginn, rhythmus, z.paritaet),
+      anzahl_termine: serie.appointmentIds.length,
+      wunsch_erfuellt: z.praeferenz >= 3,
+    });
+  }
 
   await setzeStatus(admin, runde.id, schuelerId, "freigegeben");
   return { ok: true, art, mailVerschickt: true };
