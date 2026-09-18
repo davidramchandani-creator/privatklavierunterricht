@@ -15,6 +15,8 @@ export type OffeneLektion = {
   istTest: boolean;
   /** Hat die Lektion bereits stattgefunden? */
   gehalten: boolean;
+  /** Zusätzlich zum Abo, zum Einzelpreis. */
+  zusatz?: boolean;
 };
 
 function formatiere(iso: string): string {
@@ -126,6 +128,11 @@ export default function LektionenBoard({ lektionen }: { lektionen: OffeneLektion
                 {l.istTest && (
                   <span className="ml-2 text-[11px] font-600 uppercase tracking-wide text-amber-700 bg-amber-100 rounded px-1.5 py-0.5">
                     Test
+                  </span>
+                )}
+                {l.zusatz && (
+                  <span className="ml-2 text-[11px] font-600 text-[#1C244B] bg-navy-50 rounded px-1.5 py-0.5">
+                    Zusatzlektion
                   </span>
                 )}
               </p>

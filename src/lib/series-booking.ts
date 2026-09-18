@@ -49,6 +49,13 @@ export async function bookSeriesForStudent(
      * kann gleichzeitig an zwei Orten unterrichten.
      */
     adminOverride?: boolean;
+    /**
+     * Zusätzlich zum laufenden Abo: hängt am Paket, zählt aber nicht zu
+     * dessen Lektionen und wird einzeln zum Einzelpreis abgerechnet. Die
+     * Restprüfung des Pakets entfällt, ein Abo hat ja keine „Restlektionen"
+     * für so etwas.
+     */
+    zusatzlektion?: boolean;
   }
 ): Promise<{ appointmentIds: string[] } | { error: string }> {
   const { data: profile } = await admin
@@ -95,7 +102,7 @@ export async function bookSeriesForStudent(
     if (!pkg) return { error: "Der Schüler hat kein aktives Paket." };
 
     const state = computePackageState(pkg);
-    if (state.lessonsRemaining < lessonsCount) {
+    if (!opts?.zusatzlektion && state.lessonsRemaining < lessonsCount) {
       return {
         error: `Das Paket hat nur noch ${state.lessonsRemaining} Lektion(en), benötigt werden ${lessonsCount}.`,
       };
@@ -169,6 +176,7 @@ export async function bookSeriesForStudent(
     status: "booked",
     source,
     series_id: seriesId,
+    zusatzlektion: opts?.zusatzlektion === true,
   }));
 
   const { data: created, error } = await admin

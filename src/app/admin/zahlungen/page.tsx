@@ -123,7 +123,7 @@ export default async function ZahlungenPage() {
   const { data: gehalten } = await admin
     .from("appointments")
     .select(
-      "id, start_at, end_at, status, student_id, profiles(vorname, nachname, ist_test, payment_method), packages(price_per_lesson, payment_method, billing_mode)"
+      "id, start_at, end_at, status, student_id, zusatzlektion, profiles(vorname, nachname, ist_test, payment_method, price_single), packages(price_per_lesson, payment_method, billing_mode)"
     )
     .in("status", ["booked", "completed"])
     .order("start_at", { ascending: false })
@@ -157,7 +157,10 @@ export default async function ZahlungenPage() {
     const pkg = nameOf(a.packages) as unknown as
       | { price_per_lesson: number | null; payment_method: string | null; billing_mode: string | null }
       | null;
-    if (pkg?.billing_mode !== "pro_lektion") continue;
+    // Einzeln abgerechnet wird, was pro Lektion bezahlt wird, und jede
+    // Zusatzlektion neben einem Abo, zum Einzelpreis des Schülers.
+    const zusatz = a.zusatzlektion === true;
+    if (pkg?.billing_mode !== "pro_lektion" && !zusatz) continue;
 
     const p = nameOf(a.profiles) as unknown as
       | {
@@ -165,6 +168,7 @@ export default async function ZahlungenPage() {
           nachname: string;
           ist_test: boolean | null;
           payment_method: string | null;
+          price_single: number | null;
         }
       | null;
 
@@ -172,7 +176,10 @@ export default async function ZahlungenPage() {
       id: a.id,
       studentName: p ? `${p.vorname} ${p.nachname}`.trim() : "Unbekannt",
       beginn: a.start_at,
-      betrag: Number(pkg?.price_per_lesson ?? 85),
+      betrag: zusatz
+        ? Number(p?.price_single ?? 85)
+        : Number(pkg?.price_per_lesson ?? 85),
+      zusatz,
       // Dieselbe Regel wie beim Erstellen der Rechnung, sonst kündigt die
       // Liste etwas anderes an, als der Knopf dann tut. Genau das ist
       // passiert: Hier stand QR, obwohl beim Schüler TWINT hinterlegt war.

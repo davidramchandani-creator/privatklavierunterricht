@@ -28,6 +28,7 @@ function grenzen(monat: string): { von: Date; bis: Date } {
 type TerminRow = {
   id: string;
   start_at: string;
+  zusatzlektion: boolean | null;
   profiles: {
     vorname: string | null;
     nachname: string | null;
@@ -35,6 +36,7 @@ type TerminRow = {
     ist_test: boolean | null;
     plattform: string | null;
     externer_ertrag: number | string | null;
+    price_single: number | string | null;
   } | null;
   packages: {
     billing_mode: string | null;
@@ -73,7 +75,7 @@ export async function ladePrognose(
     admin
       .from("appointments")
       .select(
-        "id, start_at, profiles!inner(vorname, nachname, extern, ist_test, plattform, externer_ertrag), packages(billing_mode, price_per_lesson)"
+        "id, start_at, zusatzlektion, profiles!inner(vorname, nachname, extern, ist_test, plattform, externer_ertrag, price_single), packages(billing_mode, price_per_lesson)"
       )
       .in("status", ["booked", "completed"])
       .eq("profiles.ist_test", false)
@@ -145,7 +147,11 @@ export async function ladePrognose(
     }
 
     if (fakturiert.has(roh.id)) continue;
-    const betrag = erwarteterBetragProLektion(paket);
+    // Eine Zusatzlektion neben dem Abo wird einzeln zum Einzelpreis
+    // abgerechnet, unabhängig von der Zahlungsweise des Abos.
+    const betrag = roh.zusatzlektion
+      ? Number(profil.price_single ?? 85)
+      : erwarteterBetragProLektion(paket);
     if (betrag <= 0) continue;
     posten.push({
       datum: roh.start_at,

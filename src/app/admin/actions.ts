@@ -1801,6 +1801,7 @@ export async function createDirectBooking(formData: FormData) {
   const startIso = formData.get("start") as string;
   const lessonsCount = parseInt(formData.get("lessons_count") as string) || 1;
   const intervalDays = parseInt(formData.get("interval_days") as string) || 7;
+  const zusatzlektion = formData.get("zusatzlektion") === "on";
 
   if (!userId || !startIso) return { error: "Schüler und Startzeit erforderlich." };
 
@@ -1814,7 +1815,7 @@ export async function createDirectBooking(formData: FormData) {
     lessonsCount,
     intervalDays,
     "direct",
-    { adminOverride: true }
+    { adminOverride: true, zusatzlektion }
   );
   if ("error" in result) return result;
 
@@ -2713,14 +2714,14 @@ export async function createInvoiceForAppointment(appointmentId: string) {
 
   const { data: appt } = await admin
     .from("appointments")
-    .select("id, student_id, start_at, end_at, package_id")
+    .select("id, student_id, start_at, end_at, package_id, zusatzlektion")
     .eq("id", appointmentId)
     .single();
   if (!appt) return { error: "Termin nicht gefunden." };
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("vorname, nachname, email, adresse, payment_method")
+    .select("vorname, nachname, email, adresse, payment_method, price_single")
     .eq("id", appt.student_id)
     .maybeSingle();
 
@@ -2730,7 +2731,11 @@ export async function createInvoiceForAppointment(appointmentId: string) {
     .eq("id", appt.package_id ?? "")
     .maybeSingle();
 
-  const amount = Number(pkg?.price_per_lesson ?? 85);
+  // Eine Zusatzlektion neben dem Abo kostet den Einzelpreis des Schülers,
+  // nicht den Abo-Preis pro Lektion.
+  const amount = appt.zusatzlektion
+    ? Number(profile?.price_single ?? 85)
+    : Number(pkg?.price_per_lesson ?? 85);
   // Das Profil entscheidet, nicht das Paket. Der Paketwert ist eine
   // Momentaufnahme vom Anlegen; ändert der Admin die Zahlungsart beim
   // Schüler, muss die nächste Rechnung ihr folgen.

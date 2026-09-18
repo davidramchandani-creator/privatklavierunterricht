@@ -331,6 +331,7 @@ export async function fuelleSerieAuf(
     .from("appointments")
     .select("id, start_at, series_id, notes, status")
     .eq("package_id", pkg.id)
+    .eq("zusatzlektion", false)
     .in("status", ["booked", "completed"]);
   const seriesId =
     (vorhandene ?? []).find((t) => t.series_id)?.series_id ?? crypto.randomUUID();

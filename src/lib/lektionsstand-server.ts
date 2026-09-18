@@ -26,7 +26,9 @@ export async function ladeLektionsstand(
     .from("appointments")
     .select("package_id, status, end_at")
     .in("package_id", packageIds)
-    .in("status", ["booked", "completed", "no_show"]);
+    .in("status", ["booked", "completed", "no_show"])
+    // Zusatzlektionen hängen am Abo, gehören aber nicht zu seinen Lektionen.
+    .eq("zusatzlektion", false);
 
   const jetztMs = jetzt.getTime();
   for (const a of data ?? []) {

@@ -1272,6 +1272,7 @@ function DirektBuchung({
   const [start, setStart] = useState("");
   const [lessonsCount, setLessonsCount] = useState("1");
   const [intervalDays, setIntervalDays] = useState("7");
+  const [zusatz, setZusatz] = useState(false);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -1286,6 +1287,7 @@ function DirektBuchung({
     formData.set("start", new Date(start).toISOString());
     formData.set("lessons_count", lessonsCount);
     formData.set("interval_days", intervalDays);
+    if (zusatz) formData.set("zusatzlektion", "on");
     startTransition(async () => {
       const result = await createDirectBooking(formData);
       if (result && "error" in result && result.error) setError(result.error ?? null);
@@ -1351,6 +1353,24 @@ function DirektBuchung({
           </select>
         </div>
       </div>
+      {/* Neben einem laufenden Abo: Die Lektion zählt nicht zu den
+          Abo-Lektionen und wird nach der Lektion einzeln zum Einzelpreis
+          abgerechnet, unter Zahlungen → Offene Lektionen. */}
+      <label className="flex items-start gap-2.5 text-sm text-gray-700 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={zusatz}
+          onChange={(e) => setZusatz(e.target.checked)}
+          className="mt-0.5 w-4 h-4 accent-[#1C244B]"
+        />
+        <span>
+          <span className="font-600">Zusatzlektion neben dem Abo</span>
+          <span className="block text-xs text-gray-500 leading-snug">
+            Zählt nicht zu den Abo-Lektionen. Wird nach der Lektion einzeln zum
+            Einzelpreis des Schülers abgerechnet, unter Zahlungen → Offene Lektionen.
+          </span>
+        </span>
+      </label>
       {error && (
         <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
       )}

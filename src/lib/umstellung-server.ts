@@ -435,6 +435,8 @@ export async function ladeBestaetigung(
     .select("start_at")
     .eq("package_id", packageId)
     .eq("status", "booked")
+    // Zusatzlektionen stehen nicht im Vertrag, sie werden einzeln bezahlt.
+    .eq("zusatzlektion", false)
     .order("start_at");
 
   const variante: AboVariante =
