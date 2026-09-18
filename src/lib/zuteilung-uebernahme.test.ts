@@ -384,3 +384,18 @@ describe("PDF auf Vercel", () => {
     expect(config).toMatch(/"\/admin\/\*\*":\s*\["\.\/node_modules\/pdfkit\/js\/data\/\*\*"\]/);
   });
 });
+
+describe("Die Serie beginnt frühestens mit dem Abo", () => {
+  // Emilie, 18. September 2026: Abo ab 1. Oktober, Serie ab 21. September.
+  const freigabe = readFileSync(join(process.cwd(), "src", "lib", "freigabe-server.ts"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+  const anfang = freigabe.indexOf("Kein aktives Abo gefunden");
+  const zweig = freigabe.slice(anfang, freigabe.indexOf("async function setzeStatus", anfang));
+
+  it("rechnet ab dem späteren von heute und Abo-Start", () => {
+    expect(zweig).toContain("Math.max(Date.now()");
+    expect(zweig).toContain("serienStart(aboStart)");
+    expect((zweig.match(/now: serieAb/g) ?? []).length).toBe(2);
+  });
+});

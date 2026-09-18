@@ -6,9 +6,11 @@ import { formatCHF, formatDate, formatDateTime } from "@/lib/utils";
 import {
   computePackageState,
   canCancelPackage,
+  istAbo,
   paketBezeichnung,
   type Package,
 } from "@/lib/packages";
+import { ladeLektionsstand } from "@/lib/lektionsstand-server";
 import { describeFixplatz } from "@/lib/fixplatz";
 import type { Rhythmus } from "@/lib/rhythmus";
 import { parseSchweizerAdresse } from "@/lib/qr-pdf";
@@ -166,19 +168,22 @@ export default async function SchuelerDetailPage({
     plaene.set(pkgId, buildPlanSummary(rows));
   }
 
-  // Dynamisch gezählte Lektionen pro Paket (booked + completed + no_show zählen als verbraucht)
+  // Stattgefunden und geplant, je Paket. Beim Abo zählt als verbraucht nur,
+  // was war; die gebuchten Termine der Zukunft sind „geplant". Beim alten
+  // Lektionspaket zählt wie bisher jede Buchung.
+  const stand = await ladeLektionsstand(
+    admin,
+    ((packages ?? []) as Package[]).map((p) => p.id)
+  );
   const lessonsUsedByPackage = new Map<string, number>();
-  if (packages && packages.length > 0) {
-    await Promise.all(
-      (packages as Package[]).map(async (pkg) => {
-        const { count } = await admin
-          .from("appointments")
-          .select("id", { count: "exact", head: true })
-          .eq("package_id", pkg.id)
-          .in("status", ["booked", "completed", "no_show"]);
-        lessonsUsedByPackage.set(pkg.id, count ?? pkg.lessons_used ?? 0);
-      })
+  const geplantByPackage = new Map<string, number>();
+  for (const pkg of (packages ?? []) as Package[]) {
+    const st = stand.get(pkg.id) ?? { stattgefunden: 0, geplant: 0 };
+    lessonsUsedByPackage.set(
+      pkg.id,
+      istAbo(pkg) ? st.stattgefunden : st.stattgefunden + st.geplant
     );
+    geplantByPackage.set(pkg.id, st.geplant);
   }
 
   // Archiviertes kommt in einen eigenen, eingeklappten Block. Nach einem
@@ -506,10 +511,21 @@ export default async function SchuelerDetailPage({
                       {terminText}
                     </td>
                     <td className="py-3 text-sm text-gray-600">
-                      {state.lessonsUsed}/{state.lessonsTotal}
-                      <span className="text-[#1C244B] font-600 ml-1">
-                        ({state.lessonsRemaining} übrig)
-                      </span>
+                      {istAbo(pkg) ? (
+                        <>
+                          {state.lessonsUsed} von {state.lessonsTotal} stattgefunden
+                          <span className="block text-xs text-[#1C244B] font-600">
+                            {geplantByPackage.get(pkg.id) ?? 0} geplant
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          {state.lessonsUsed}/{state.lessonsTotal}
+                          <span className="text-[#1C244B] font-600 ml-1">
+                            ({state.lessonsRemaining} übrig)
+                          </span>
+                        </>
+                      )}
                     </td>
                     <td className="py-3 text-sm text-gray-600 hidden sm:table-cell">
                       {formatCHF(Number(pkg.price_per_lesson))}

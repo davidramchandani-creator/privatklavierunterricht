@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Music } from "lucide-react";
 import PortalNav from "./_components/PortalNav";
 import PaketCard from "./_components/PaketCard";
+import { ladeLektionsstand } from "@/lib/lektionsstand-server";
 import NeuesAbo from "./_components/NeuesAbo";
 import NaechsteTermine from "./_components/NaechsteTermine";
 import KalenderAbo from "@/components/KalenderAbo";
@@ -78,14 +79,19 @@ export default async function SchuelerPortalPage() {
     relevantePakete[0] ??
     null;
 
+  // Beim Abo zählt nur, was stattgefunden hat. Die gebuchten Termine der
+  // Zukunft sind geplant, nicht verbraucht: Ein frisches Abo mit zehn
+  // Terminen im Kalender hiess sonst „10 von 10, aufgebraucht".
   let lessonsUsed = aktivesPackage?.lessons_used ?? 0;
+  let lessonsPlanned = 0;
   if (aktivesPackage) {
-    const { count } = await supabase
-      .from("appointments")
-      .select("id", { count: "exact", head: true })
-      .eq("package_id", aktivesPackage.id)
-      .in("status", ["booked", "completed"]);
-    if (count != null) lessonsUsed = count;
+    const st = (await ladeLektionsstand(supabase, [aktivesPackage.id])).get(
+      aktivesPackage.id
+    ) ?? { stattgefunden: 0, geplant: 0 };
+    lessonsPlanned = st.geplant;
+    lessonsUsed = aktivesPackage.abo_variante
+      ? st.stattgefunden
+      : st.stattgefunden + st.geplant;
   }
 
   const heute = new Date().toISOString().split("T")[0];
@@ -315,6 +321,7 @@ export default async function SchuelerPortalPage() {
         <PaketCard
           paket={aktivesPackage}
           lessonsUsed={lessonsUsed}
+          lessonsPlanned={lessonsPlanned}
           upcomingAbsence={kommendeAbwesenheit}
         />
         <div className="pt-1">

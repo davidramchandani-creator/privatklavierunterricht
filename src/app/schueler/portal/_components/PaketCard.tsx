@@ -33,10 +33,13 @@ const STATUS_ICON: Record<EffectiveStatus, React.ReactNode> = {
 export default function PaketCard({
   paket,
   lessonsUsed,
+  lessonsPlanned = 0,
   upcomingAbsence,
 }: {
   paket: Paket | null;
   lessonsUsed?: number;
+  /** Gebuchte Termine, die noch kommen. Nur beim Abo angezeigt. */
+  lessonsPlanned?: number;
   upcomingAbsence?: { start_date: string; end_date: string; title: string } | null;
 }) {
   const state = computePackageState(paket, lessonsUsed);
@@ -65,6 +68,7 @@ export default function PaketCard({
       <AboKarte
         paket={paket}
         lessonsUsed={state.lessonsUsed}
+        lessonsPlanned={lessonsPlanned}
         upcomingAbsence={upcomingAbsence}
       />
     );
@@ -188,10 +192,12 @@ export default function PaketCard({
 function AboKarte({
   paket,
   lessonsUsed,
+  lessonsPlanned,
   upcomingAbsence,
 }: {
   paket: Paket;
   lessonsUsed: number;
+  lessonsPlanned: number;
   upcomingAbsence?: { start_date: string; end_date: string; title: string } | null;
 }) {
   const heute = todayInZurich();
@@ -283,6 +289,9 @@ function AboKarte({
             <span className="text-gray-500">Laufende Periode</span>
             <span className="font-600 text-gray-900">
               {lessonsUsed} von {gesamtLektionen} Lektionen
+              {lessonsPlanned > 0 && (
+                <span className="font-400 text-gray-400"> · {lessonsPlanned} geplant</span>
+              )}
             </span>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-2">

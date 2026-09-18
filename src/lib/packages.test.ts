@@ -5,6 +5,7 @@ import {
   cancellationSingleLessonPrice,
   computeCancellationSettlement,
   canCancelPackage,
+  computePackageState,
   istAbo,
   paketBezeichnung,
   type Package,
@@ -261,5 +262,58 @@ describe("PACKAGE_LABELS wird nicht mehr direkt angezeigt", () => {
       suender,
       `Nutzt PACKAGE_LABELS direkt statt paketBezeichnung:\n${suender.join("\n")}`
     ).toEqual([]);
+  });
+});
+
+describe("Ein Abo ist nie durch seine Lektionszahl aufgebraucht", () => {
+  // Emilie, 18. September 2026: zehn Termine gebucht, keiner stattgefunden,
+  // Anzeige „10/10 (0 übrig)" und Status „Aufgebraucht". Beim Abo ist die
+  // Laufzeit gekauft; die Termine stehen von Anfang an alle im Kalender.
+  const abo = makePackage({
+    abo_variante: "halbjahr",
+    lessons_total: 10,
+    lessons_used: 10,
+    status: "active",
+    expires_at: "2027-03-31T23:59:59Z",
+  });
+
+  it("bleibt aktiv, auch wenn alle Termine gebucht sind", () => {
+    const s = computePackageState(abo, 10);
+    expect(s.isExhausted).toBe(false);
+    expect(s.effectiveStatus).toBe("aktiv");
+  });
+
+  it("nur der Status kann es beenden", () => {
+    expect(computePackageState({ ...abo, status: "exhausted" }, 10).isExhausted).toBe(true);
+  });
+
+  it("ein altes Lektionspaket bleibt bei der Stückzahl", () => {
+    const paket = makePackage({ lessons_total: 10, lessons_used: 10, status: "active" });
+    expect(computePackageState(paket, 10).effectiveStatus).toBe("aufgebraucht");
+  });
+});
+
+describe("Stattgefunden und geplant", () => {
+  const wurzel = process.cwd();
+  const ohne = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const stand = ohne(readFileSync(join(wurzel, "src", "lib", "lektionsstand-server.ts"), "utf8"));
+  const detail = ohne(readFileSync(join(wurzel, "src", "app", "admin", "schueler", "[id]", "page.tsx"), "utf8"));
+  const liste = ohne(readFileSync(join(wurzel, "src", "app", "admin", "schueler", "page.tsx"), "utf8"));
+  const portal = ohne(readFileSync(join(wurzel, "src", "app", "schueler", "portal", "page.tsx"), "utf8"));
+
+  it("gebucht und noch nicht vorbei ist geplant, alles andere stattgefunden", () => {
+    expect(stand).toContain('if (a.status === "booked" && !vorbei) s.geplant++;');
+    expect(stand).toContain("else s.stattgefunden++;");
+  });
+
+  it("alle drei Ansichten zählen beim Abo nur Stattgefundenes", () => {
+    for (const quelle of [detail, liste, portal]) {
+      expect(quelle).toContain("ladeLektionsstand(");
+      expect(quelle).toMatch(/abo_variante|istAbo\(pkg\)/);
+      expect(quelle).toContain("st.stattgefunden + st.geplant");
+    }
+    expect(detail).toContain("stattgefunden");
+    expect(detail).toContain("geplant");
+    expect(liste).toContain("geplant`");
   });
 });

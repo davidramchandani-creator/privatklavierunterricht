@@ -527,11 +527,20 @@ export async function gebeFrei(
   // ── Bestehendes Abo: Fixplatz, Serie, Mail ───────────────
   const { data: pkg } = await admin
     .from("packages")
-    .select("id, rhythmus, abo_lektionen, lessons_total")
+    .select("id, rhythmus, abo_lektionen, lessons_total, periode_start, starts_at")
     .eq("student_id", schuelerId)
     .eq("status", "active")
     .maybeSingle();
   if (!pkg) return { error: "Kein aktives Abo gefunden." };
+
+  // Die Serie beginnt frühestens mit dem Abo. Emilie, 18. September 2026:
+  // Abo von Hand angelegt ab 1. Oktober, zwei Minuten später freigegeben,
+  // und die Serie fing am 21. September an, weil sie von „heute" aus
+  // gerechnet wurde. Ein Termin vor dem Abo gehört zu keinem Abo.
+  const aboStart = String(pkg.periode_start ?? String(pkg.starts_at ?? "").slice(0, 10));
+  const serieAb = new Date(
+    Math.max(Date.now(), aboStart ? serienStart(aboStart).getTime() : 0)
+  );
 
   const rhythmus = z.paritaet === null ? "woechentlich" : "zweiwoechentlich";
   const wunsch = {
@@ -555,6 +564,7 @@ export async function gebeFrei(
     studentId: schuelerId,
     wunsch,
     parity: z.paritaet,
+    now: serieAb,
     ohneTermine: (eigene ?? []).map((t) => t.id as string),
   });
   if ("error" in probe) return { error: probe.error };
@@ -591,6 +601,7 @@ export async function gebeFrei(
     packageId: pkg.id,
     wunsch,
     parity: z.paritaet,
+    now: serieAb,
   });
   if ("error" in serie) return { error: serie.error };
 

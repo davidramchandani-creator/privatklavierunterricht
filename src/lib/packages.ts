@@ -157,7 +157,13 @@ export function computePackageState(
 
   const now = Date.now();
   const isPaused = pkg.paused;
-  const isExhausted = lessonsRemaining <= 0 || pkg.status === "exhausted";
+  // Ein Abo ist nie durch seine Lektionszahl aufgebraucht: Gekauft ist die
+  // Laufzeit, die Termine stehen von Anfang an alle im Kalender. Emilie,
+  // 18. September 2026: zehn Termine gebucht, keiner stattgefunden, und
+  // das Abo hiess „Aufgebraucht". Nur der Status kann das sagen.
+  const isExhausted = istAbo(pkg)
+    ? pkg.status === "exhausted"
+    : lessonsRemaining <= 0 || pkg.status === "exhausted";
 
   let remainingMs: number | null = null;
   let isExpired = pkg.status === "expired";

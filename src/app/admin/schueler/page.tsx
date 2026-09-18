@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Users, Plus } from "lucide-react";
-import { computePackageState, paketBezeichnung, type Package } from "@/lib/packages";
+import { computePackageState, istAbo, paketBezeichnung, type Package } from "@/lib/packages";
+import { ladeLektionsstand } from "@/lib/lektionsstand-server";
 import {
   ZeitfensterListe,
   type AngegebenesFenster,
@@ -35,6 +36,17 @@ export default async function AdminSchuelerPage() {
       packageByStudent[pkg.student_id] = pkg as Package;
     }
   }
+
+  // Beim Abo zählt nur, was stattgefunden hat; die Termine der Zukunft sind
+  // geplant, nicht verbraucht. Sonst stünde bei jedem frischen Abo „0 Lekt."
+  const stand = await ladeLektionsstand(
+    admin,
+    Object.values(packageByStudent).map((p) => p.id)
+  );
+  const usedFuer = (pkg: Package): number => {
+    const st = stand.get(pkg.id) ?? { stattgefunden: 0, geplant: 0 };
+    return istAbo(pkg) ? st.stattgefunden : st.stattgefunden + st.geplant;
+  };
 
   // Angegebene Zeiten für die Übersicht. Sie beantworten die Frage, die man
   // beim Planen tatsächlich hat — „wer kann montags?" —, und zwar ohne jeden
@@ -193,7 +205,7 @@ export default async function AdminSchuelerPage() {
               <tbody className="divide-y divide-gray-100">
                 {schueler.map((s) => {
                   const pkg = packageByStudent[s.id] ?? null;
-                  const state = pkg ? computePackageState(pkg) : null;
+                  const state = pkg ? computePackageState(pkg, usedFuer(pkg)) : null;
 
                   return (
                     <tr key={s.id} className="hover:bg-gray-50 transition-colors">
@@ -245,7 +257,9 @@ export default async function AdminSchuelerPage() {
                       <td className="px-5 py-3.5 text-sm text-gray-600 hidden md:table-cell">
                         {state ? (
                           <span className="font-600 text-[#1C244B]">
-                            {state.lessonsRemaining} Lekt.
+                            {pkg && istAbo(pkg)
+                              ? `${stand.get(pkg.id)?.geplant ?? 0} geplant`
+                              : `${state.lessonsRemaining} Lekt.`}
                           </span>
                         ) : (
                           <span className="text-gray-400">—</span>
