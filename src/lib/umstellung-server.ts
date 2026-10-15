@@ -91,6 +91,8 @@ export async function legeAboAn(
     wochentag: number;
     beginn: string;
     paritaet: 0 | 1 | null;
+    /** Nur bei jeder Woche: andere Uhrzeit in ungeraden Wochen. */
+    beginnUngerade?: string | null;
     startDatum: string;
     /** Tage, die der Schüler angegeben hat. Bestimmt die zugesicherte Zahl. */
     moeglicheTage: number[];
@@ -112,6 +114,13 @@ export async function legeAboAn(
 > {
   // Zugesicherte Lektionszahl und Preis: dieselbe Rechnung wie im Portal,
   // über den ungünstigsten der angegebenen Tage.
+  const zweiteZeit =
+    params.rhythmus === "woechentlich" &&
+    params.beginnUngerade &&
+    params.beginnUngerade !== params.beginn
+      ? params.beginnUngerade
+      : null;
+
   const zugesichert = await baueVorschauOhneTermin(admin, {
     studentId: params.studentId,
     variante: params.variante,
@@ -178,6 +187,7 @@ export async function legeAboAn(
     wunsch: {
       weekday: params.wochentag,
       time: params.beginn,
+      timeUngerade: zweiteZeit,
       rhythmus: params.rhythmus,
       lessons: zugesichert.lektionen,
     },
@@ -256,6 +266,7 @@ export async function legeAboAn(
       fixplatz_weekday: params.wochentag,
       fixplatz_time: params.beginn,
       fixplatz_week_parity: params.paritaet,
+      fixplatz_time_ungerade: zweiteZeit,
       flex_surcharge_percent: 0,
       abo_variante: params.variante,
       abo_lektionen: zugesichert.lektionen,
@@ -292,6 +303,7 @@ export async function legeAboAn(
     wunsch: {
       weekday: params.wochentag,
       time: params.beginn,
+      timeUngerade: zweiteZeit,
       rhythmus: params.rhythmus,
       lessons: zugesichert.lektionen,
     },
@@ -417,7 +429,7 @@ export async function ladeBestaetigung(
   const { data: pkg } = await admin
     .from("packages")
     .select(
-      "student_id, abo_variante, rhythmus, abo_lektionen, monatsbetrag, total_price, price_per_lesson, term_months, periode_start, periode_ende, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, auto_renew"
+      "student_id, abo_variante, rhythmus, abo_lektionen, monatsbetrag, total_price, price_per_lesson, term_months, periode_start, periode_ende, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, fixplatz_time_ungerade, auto_renew"
     )
     .eq("id", packageId)
     .maybeSingle();
@@ -467,7 +479,8 @@ export async function ladeBestaetigung(
             Number(pkg.fixplatz_weekday),
             String(pkg.fixplatz_time).slice(0, 5),
             rhythmus,
-            (pkg.fixplatz_week_parity as 0 | 1 | null) ?? null
+            (pkg.fixplatz_week_parity as 0 | 1 | null) ?? null,
+            (pkg.fixplatz_time_ungerade as string | null) ?? null
           )
         : "Termin noch offen",
     lektionen: Number(pkg.abo_lektionen ?? 0),
@@ -544,6 +557,7 @@ export async function wendeUmstellungAn(
         wochentag: z.wochentag,
         beginn: z.beginn,
         paritaet: z.paritaet,
+        beginnUngerade: z.beginnUngerade ?? null,
         abDatum: params.startDatum,
       });
 
@@ -576,6 +590,7 @@ export async function wendeUmstellungAn(
       wochentag: z.wochentag,
       beginn: z.beginn,
       paritaet: z.paritaet,
+      beginnUngerade: z.beginnUngerade ?? null,
       startDatum: params.startDatum,
       moeglicheTage: [...new Set(tageVon.get(z.schuelerId) ?? [])],
       autoRenew: params.autoRenew,

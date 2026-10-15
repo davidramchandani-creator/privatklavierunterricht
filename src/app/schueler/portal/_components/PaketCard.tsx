@@ -249,7 +249,8 @@ function AboKarte({
           paket.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich",
           paket.fixplatz_week_parity == null
             ? null
-            : ((Number(paket.fixplatz_week_parity) === 1 ? 1 : 0) as 0 | 1)
+            : ((Number(paket.fixplatz_week_parity) === 1 ? 1 : 0) as 0 | 1),
+          paket.fixplatz_time_ungerade ?? null
         )
       : paket.booking_mode === "fix"
         ? paket.rhythmus === "zweiwoechentlich"

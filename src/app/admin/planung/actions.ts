@@ -797,7 +797,12 @@ export async function routenplanUebernehmen(
 
 export async function zuteilungEintragAendern(
   schuelerId: string,
-  aenderung: { wochentag: number; beginn: string; paritaet: 0 | 1 | null }
+  aenderung: {
+    wochentag: number;
+    beginn: string;
+    paritaet: 0 | 1 | null;
+    beginnUngerade?: string | null;
+  }
 ): Promise<{ success: true; error: undefined } | { error: string }> {
   const verboten = await assertAdmin();
   if (verboten) return verboten;

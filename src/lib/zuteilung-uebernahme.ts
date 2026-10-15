@@ -143,21 +143,42 @@ const minuten = (hhmm: string) => {
  * ungerade mit ungerade. Gerade und ungerade zur selben Uhrzeit ist kein
  * Konflikt, sondern der geteilte Platz, um den es überhaupt geht.
  */
+type Platz = Pick<Zuteilung, "wochentag" | "beginn" | "paritaet" | "beginnUngerade">;
+
+/**
+ * Ein Platz als Liste von (Woche, Uhrzeit). Jede Woche ohne zweite Zeit
+ * belegt beide Wochen zur selben Zeit; mit zweiter Zeit die gerade zur
+ * einen, die ungerade zur anderen.
+ */
+function belegung(p: Platz): { woche: 0 | 1; beginn: string }[] {
+  if (p.paritaet !== null) return [{ woche: p.paritaet, beginn: p.beginn }];
+  return [
+    { woche: 0, beginn: p.beginn },
+    { woche: 1, beginn: p.beginnUngerade || p.beginn },
+  ];
+}
+
 export function ueberschneidet(
-  a: Pick<Zuteilung, "wochentag" | "beginn" | "paritaet">,
-  b: Pick<Zuteilung, "wochentag" | "beginn" | "paritaet">,
+  a: Platz,
+  b: Platz,
   lektionMinuten = 45,
   pufferMinuten = 0
 ): boolean {
   if (a.wochentag !== b.wochentag) return false;
-  if (a.paritaet !== null && b.paritaet !== null && a.paritaet !== b.paritaet) {
-    return false;
+  for (const x of belegung(a)) {
+    for (const y of belegung(b)) {
+      if (x.woche !== y.woche) continue;
+      const xVon = minuten(x.beginn);
+      const yVon = minuten(y.beginn);
+      if (
+        xVon < yVon + lektionMinuten + pufferMinuten &&
+        yVon < xVon + lektionMinuten + pufferMinuten
+      ) {
+        return true;
+      }
+    }
   }
-  const aVon = minuten(a.beginn);
-  const aBis = aVon + lektionMinuten + pufferMinuten;
-  const bVon = minuten(b.beginn);
-  const bBis = bVon + lektionMinuten + pufferMinuten;
-  return aVon < bBis && bVon < aBis;
+  return false;
 }
 
 /**
@@ -167,7 +188,7 @@ export function ueberschneidet(
  * **wem** es sich beisst, nicht bloss dass es sich beisst.
  */
 export function findeKonflikt(
-  geaendert: Pick<Zuteilung, "schuelerId" | "wochentag" | "beginn" | "paritaet">,
+  geaendert: Pick<Zuteilung, "schuelerId" | "wochentag" | "beginn" | "paritaet" | "beginnUngerade">,
   uebrige: ZuteilungEintrag[],
   pufferMinuten: number
 ): string | null {

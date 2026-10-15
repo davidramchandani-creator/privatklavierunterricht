@@ -277,7 +277,9 @@ export default function ZuteilungWerkbank({
                               </span>
                             </p>
                             <p className="text-xs text-gray-500">
-                              {paritaetText(z.paritaet)}
+                              {z.paritaet === null && z.beginnUngerade
+                                ? `jede Woche, ungerade um ${z.beginnUngerade}`
+                                : paritaetText(z.paritaet)}
                               <span className="mx-1.5 text-gray-300">·</span>
                               <span title={ART_TEXT[art].lang}>{ART_TEXT[art].kurz}</span>
                             </p>
@@ -383,6 +385,9 @@ function Bearbeiten({
   const [wochentag, setWochentag] = useState(z.wochentag);
   const [beginn, setBeginn] = useState(z.beginn);
   const [paritaet, setParitaet] = useState<0 | 1 | null>(z.paritaet);
+  // Jede Woche, aber ungerade Wochen zu einer anderen Zeit. Leer: jede
+  // Woche dieselbe.
+  const [ungerade, setUngerade] = useState<string>(z.beginnUngerade ?? "");
   const [laeuft, starte] = useTransition();
 
   const f = fenster.find((x) => x.wochentag === wochentag);
@@ -390,7 +395,12 @@ function Bearbeiten({
 
   function speichern() {
     starte(async () => {
-      const r = await zuteilungEintragAendern(z.schuelerId, { wochentag, beginn, paritaet });
+      const r = await zuteilungEintragAendern(z.schuelerId, {
+        wochentag,
+        beginn,
+        paritaet,
+        beginnUngerade: paritaet === null && ungerade ? ungerade : null,
+      });
       if ("error" in r && r.error) {
         onMeldung({ text: `${z.name}: ${r.error}`, fehler: true });
         return;
@@ -443,6 +453,30 @@ function Bearbeiten({
           <option value="1">ungerade Wochen</option>
         </select>
       </div>
+      {paritaet === null && (
+        <label className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+          Ungerade Wochen andere Zeit:
+          <select
+            value={ungerade}
+            onChange={(e) => setUngerade(e.target.value)}
+            className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm bg-white tabular-nums"
+          >
+            <option value="">gleich wie oben</option>
+            {zeiten
+              .filter((t) => t !== beginn)
+              .map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+          </select>
+          {ungerade && (
+            <span className="text-gray-400">
+              Gerade Wochen {beginn}, ungerade Wochen {ungerade}.
+            </span>
+          )}
+        </label>
+      )}
       <div className="flex gap-2">
         <button
           onClick={speichern}

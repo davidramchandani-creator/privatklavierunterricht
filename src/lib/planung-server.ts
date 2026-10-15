@@ -234,7 +234,7 @@ export async function ladeBestehendenPlan(
   const { data } = await admin
     .from("packages")
     .select(
-      "student_id, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, rhythmus, profiles!inner(vorname, nachname, lat, lng, ist_test, aktiv)"
+      "student_id, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, fixplatz_time_ungerade, rhythmus, profiles!inner(vorname, nachname, lat, lng, ist_test, aktiv)"
     )
     .eq("status", "active")
     .eq("booking_mode", "fix")
@@ -263,21 +263,49 @@ export async function ladeBestehendenPlan(
     ) as { vorname: string; nachname: string; lat: number | null; lng: number | null } | null;
     if (!prof || prof.lat == null || prof.lng == null) continue;
 
-    termine.push({
+    const basis = {
       schuelerId: p.student_id as string,
       name: `${prof.vorname ?? ""} ${prof.nachname ?? ""}`.trim() || "Ohne Namen",
       lat: Number(prof.lat),
       lng: Number(prof.lng),
       wochentag: Number(p.fixplatz_weekday),
-      beginn: String(p.fixplatz_time).slice(0, 5),
       lektionMinuten: LESSON_DURATION_MIN,
-      paritaet:
+    };
+    termine.push(
+      ...geteilteZeiten(
+        basis,
+        String(p.fixplatz_time).slice(0, 5),
         p.fixplatz_week_parity == null
           ? null
           : ((Number(p.fixplatz_week_parity) === 1 ? 1 : 0) as 0 | 1),
-    });
+        p.fixplatz_time_ungerade ? String(p.fixplatz_time_ungerade).slice(0, 5) : null
+      )
+    );
   }
   return [...termine, ...externe];
+}
+
+/**
+ * Ein fester Platz als belegte Zeit für den Planer.
+ *
+ * Jede Woche mit einer zweiten Uhrzeit für ungerade Wochen wird zu zwei
+ * Einträgen: gerade Wochen zur einen, ungerade zur anderen Zeit. So
+ * blockiert der Planer genau das, was belegt ist, und nicht jede Woche
+ * nur die erste Zeit.
+ */
+export function geteilteZeiten<T extends object>(
+  basis: T,
+  beginn: string,
+  paritaet: 0 | 1 | null,
+  beginnUngerade: string | null
+): (T & { beginn: string; paritaet: 0 | 1 | null })[] {
+  if (paritaet === null && beginnUngerade && beginnUngerade !== beginn) {
+    return [
+      { ...basis, beginn, paritaet: 0 },
+      { ...basis, beginn: beginnUngerade, paritaet: 1 },
+    ];
+  }
+  return [{ ...basis, beginn, paritaet }];
 }
 
 /**
@@ -294,7 +322,7 @@ export async function ladeExterneTermine(
   const { data } = await admin
     .from("externe_vereinbarungen")
     .select(
-      "student_id, wochentag, zeit, lektion_minuten, woche_paritaet, profiles!inner(vorname, nachname, lat, lng, ist_test, aktiv)"
+      "student_id, wochentag, zeit, zeit_ungerade, lektion_minuten, woche_paritaet, profiles!inner(vorname, nachname, lat, lng, ist_test, aktiv)"
     )
     .eq("aktiv", true)
     // Nur wer schon einen Termin hat, blockiert Zeit. Wer noch keinen hat,
@@ -310,19 +338,23 @@ export async function ladeExterneTermine(
     ) as { vorname: string; nachname: string; lat: number | null; lng: number | null } | null;
     if (!prof || prof.lat == null || prof.lng == null) continue;
 
-    termine.push({
-      schuelerId: v.student_id as string,
-      name: `${prof.vorname ?? ""} ${prof.nachname ?? ""}`.trim() || "Extern",
-      lat: Number(prof.lat),
-      lng: Number(prof.lng),
-      wochentag: Number(v.wochentag),
-      beginn: String(v.zeit).slice(0, 5),
-      lektionMinuten: Number(v.lektion_minuten ?? LESSON_DURATION_MIN),
-      paritaet:
+    termine.push(
+      ...geteilteZeiten(
+        {
+          schuelerId: v.student_id as string,
+          name: `${prof.vorname ?? ""} ${prof.nachname ?? ""}`.trim() || "Extern",
+          lat: Number(prof.lat),
+          lng: Number(prof.lng),
+          wochentag: Number(v.wochentag),
+          lektionMinuten: Number(v.lektion_minuten ?? LESSON_DURATION_MIN),
+        },
+        String(v.zeit).slice(0, 5),
         v.woche_paritaet == null
           ? null
           : ((Number(v.woche_paritaet) === 1 ? 1 : 0) as 0 | 1),
-    });
+        v.zeit_ungerade ? String(v.zeit_ungerade).slice(0, 5) : null
+      )
+    );
   }
   return termine;
 }

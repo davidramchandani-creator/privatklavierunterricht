@@ -38,6 +38,8 @@ export type Package = {
   auto_renew?: boolean | null;
   fixplatz_weekday?: number | null;
   fixplatz_time?: string | null;
+  /** Andere Uhrzeit in ungeraden Wochen, nur bei wöchentlich. */
+  fixplatz_time_ungerade?: string | null;
   fixplatz_week_parity?: number | null;
 };
 

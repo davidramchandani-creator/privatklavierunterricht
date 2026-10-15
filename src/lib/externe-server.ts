@@ -51,6 +51,8 @@ export type ExterneVereinbarung = {
   rhythmus: Rhythmus;
   wochentag: number;
   zeit: string;
+  /** Andere Uhrzeit in ungeraden Wochen, nur bei wöchentlich. */
+  zeit_ungerade?: string | null;
   lektion_minuten: number;
   woche_paritaet: 0 | 1 | null;
   start_datum: string;
@@ -90,6 +92,7 @@ function termineDerVereinbarung(
     {
       weekday: v.wochentag,
       time: v.zeit.slice(0, 5),
+      timeUngerade: v.zeit_ungerade ? v.zeit_ungerade.slice(0, 5) : null,
       rhythmus: v.rhythmus,
       lessons: anzahl,
     },
@@ -327,6 +330,8 @@ export async function setzeExternenTermin(
     wochentag: number;
     beginn: string;
     paritaet: 0 | 1 | null;
+    /** Andere Uhrzeit in ungeraden Wochen, nur wenn jede Woche. */
+    beginnUngerade?: string | null;
     abDatum: string;
   }
 ): Promise<{ termine: number } | { error: string }> {
@@ -354,6 +359,8 @@ export async function setzeExternenTermin(
       wochentag: params.wochentag,
       zeit: params.beginn,
       woche_paritaet: params.paritaet,
+      zeit_ungerade:
+        params.paritaet === null && params.beginnUngerade ? params.beginnUngerade : null,
       // Ab hier läuft es: Ein Startdatum in der Vergangenheit würde die
       // Serie rückwirkend beginnen lassen.
       start_datum:

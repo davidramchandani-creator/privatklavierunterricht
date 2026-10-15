@@ -28,7 +28,26 @@ export type FixplatzWunsch = {
   rhythmus: Rhythmus;
   /** Anzahl Lektionen im Paket. */
   lessons: number;
+  /**
+   * Andere Uhrzeit in ungeraden Wochen, nur bei wöchentlich. Dann gilt
+   * `time` für gerade Wochen. Leer: jede Woche `time`.
+   */
+  timeUngerade?: string | null;
 };
+
+/**
+ * Die Uhrzeit für einen bestimmten Tag.
+ *
+ * Bei wöchentlich mit zweiter Zeit entscheidet die Woche des Tages, nach
+ * derselben Zählung wie überall (weekParity). `tag` ist Mitternacht UTC des
+ * Kalendertags in Zürich.
+ */
+export function zeitFuerTag(wunsch: Pick<FixplatzWunsch, "time" | "timeUngerade" | "rhythmus">, tag: Date): string {
+  if (wunsch.rhythmus === "woechentlich" && wunsch.timeUngerade && weekParity(tag) === 1) {
+    return wunsch.timeUngerade.slice(0, 5);
+  }
+  return wunsch.time.slice(0, 5);
+}
 
 export const WEEKDAY_LABELS: Record<number, string> = {
   0: "Sonntag",
@@ -55,11 +74,18 @@ export function describeFixplatz(
   weekday: number,
   time: string,
   rhythmus: Rhythmus,
-  parity?: 0 | 1 | null
+  parity?: 0 | 1 | null,
+  timeUngerade?: string | null
 ): string {
   const tag = WEEKDAY_LABELS[weekday] ?? "?";
   const hhmm = time.slice(0, 5);
-  if (rhythmus === "woechentlich") return `Jeden ${tag} um ${hhmm}`;
+  if (rhythmus === "woechentlich") {
+    const zweite = timeUngerade ? timeUngerade.slice(0, 5) : null;
+    if (zweite && zweite !== hhmm) {
+      return `Jeden ${tag}, gerade Wochen um ${hhmm}, ungerade Wochen um ${zweite}`;
+    }
+    return `Jeden ${tag} um ${hhmm}`;
+  }
   const woche =
     parity == null ? "" : parity === 0 ? " (gerade Wochen)" : " (ungerade Wochen)";
   return `Jeden zweiten ${tag} um ${hhmm}${woche}`;
@@ -79,7 +105,6 @@ export function firstSeriesStart(
   parity: 0 | 1 | null,
   minLeadHours = 24
 ): Date {
-  const [hh, mm] = wunsch.time.split(":").map(Number);
   const frühestens = now.getTime() + minLeadHours * 3600000;
 
   // Bis zu 4 Wochen vorausschauen: deckt jeden Wochentag in beiden
@@ -87,6 +112,9 @@ export function firstSeriesStart(
   for (let i = 0; i <= 28; i++) {
     const tag = new Date(now.getTime() + i * 86400000);
     const cal = utcToZonedDate(tag);
+    const [hh, mm] = zeitFuerTag(wunsch, new Date(Date.UTC(cal.y, cal.m - 1, cal.d)))
+      .split(":")
+      .map(Number);
     const kandidat = zonedToUtc(cal.y, cal.m, cal.d, hh, mm);
 
     if (kandidat.getTime() < frühestens) continue;
@@ -150,7 +178,6 @@ export function fixplatzSeriesStarts(
   firstStart: Date,
   ferien: Ferienzeitraum[] = []
 ): Date[] {
-  const [hh, mm] = wunsch.time.split(":").map(Number);
   const abstand = intervalDaysFor(wunsch.rhythmus);
   const ersterTag = utcToZonedDate(firstStart);
   const basis = Date.UTC(ersterTag.y, ersterTag.m - 1, ersterTag.d);
@@ -163,6 +190,7 @@ export function fixplatzSeriesStarts(
     const datum = tag.toISOString().slice(0, 10);
     if (inFerien(datum, ferien)) continue;
 
+    const [hh, mm] = zeitFuerTag(wunsch, tag).split(":").map(Number);
     starts.push(
       zonedToUtc(
         tag.getUTCFullYear(),

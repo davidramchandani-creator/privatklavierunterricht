@@ -280,6 +280,17 @@ export default function ExternerForm() {
               </div>
             </div>
 
+            {rhythmus === "woechentlich" && (
+              <div className="space-y-1">
+                {feld("Ungerade Wochen andere Uhrzeit (optional)")}
+                <input name="zeit_ungerade" type="time" className={input} />
+                <p className="text-[11px] text-gray-400 leading-snug">
+                  Leer lassen, wenn jede Woche dieselbe Zeit gilt. Sonst gilt die
+                  Uhrzeit oben in geraden Wochen, diese in ungeraden.
+                </p>
+              </div>
+            )}
+
             {rhythmus === "zweiwoechentlich" && (
               <div className="space-y-1">
                 {feld("In welchen Wochen?")}

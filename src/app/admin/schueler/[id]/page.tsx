@@ -23,6 +23,7 @@ import ZeitenErfassen from "./_components/ZeitenErfassen";
 import NotizVerlauf from "./_components/NotizVerlauf";
 import { ladeVerlauf } from "@/lib/lektionsnotizen-server";
 import Mailadressen from "./_components/Mailadressen";
+import FesterPlatz from "./_components/FesterPlatz";
 import { ladeAdressen } from "@/lib/mail-empfaenger-server";
 import ExterneVereinbarung, {
   type VereinbarungDaten,
@@ -93,6 +94,13 @@ export default async function SchuelerDetailPage({
   if (!profile || profile.role === "admin") notFound();
 
   const adressen = await ladeAdressen(admin, id);
+
+  // Das laufende Abo, dessen fester Platz sich ändern lässt: aktiv oder
+  // geplant, das jüngste zuerst.
+  const laufendesPaket =
+    ((packages ?? []) as Package[]).find(
+      (p) => p.status === "active" || p.status === "scheduled"
+    ) ?? null;
 
   // Angegebene Zeiten. Ohne sie lässt sich hier nicht beurteilen, ob ein
   // Termin dem Schüler passt oder nur David — und beim Testschüler sah es
@@ -224,7 +232,7 @@ export default async function SchuelerDetailPage({
     );
     const { data: v } = await admin
       .from("externe_vereinbarungen")
-      .select("rhythmus, wochentag, zeit, lektion_minuten, woche_paritaet, anzahl, start_datum")
+      .select("rhythmus, wochentag, zeit, zeit_ungerade, lektion_minuten, woche_paritaet, anzahl, start_datum")
       .eq("student_id", id)
       .eq("aktiv", true)
       .maybeSingle();
@@ -244,6 +252,7 @@ export default async function SchuelerDetailPage({
         rhythmus: String(v.rhythmus ?? "woechentlich"),
         wochentag: v.wochentag != null ? Number(v.wochentag) : null,
         zeit: (v.zeit as string | null) ?? null,
+        zeitUngerade: (v.zeit_ungerade as string | null) ?? null,
         lektionMinuten: Number(v.lektion_minuten ?? 45),
         paritaet: v.woche_paritaet != null ? Number(v.woche_paritaet) : null,
         anzahl: v.anzahl != null ? Number(v.anzahl) : null,
@@ -347,6 +356,34 @@ export default async function SchuelerDetailPage({
           studentId={id}
           haupt={adressen?.haupt ?? null}
           weitere={adressen?.weitere ?? []}
+        />
+      )}
+
+      {/* Fester Platz des laufenden Abos, direkt änderbar. */}
+      {!istExtern && laufendesPaket && (
+        <FesterPlatz
+          studentId={id}
+          rhythmus={
+            laufendesPaket.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich"
+          }
+          jetzt={{
+            wochentag: laufendesPaket.fixplatz_weekday ?? null,
+            beginn: laufendesPaket.fixplatz_time ?? null,
+            paritaet: (laufendesPaket.fixplatz_week_parity as 0 | 1 | null) ?? null,
+            beginnUngerade: laufendesPaket.fixplatz_time_ungerade ?? null,
+            text:
+              laufendesPaket.fixplatz_weekday != null && laufendesPaket.fixplatz_time
+                ? describeFixplatz(
+                    laufendesPaket.fixplatz_weekday,
+                    laufendesPaket.fixplatz_time,
+                    laufendesPaket.rhythmus === "zweiwoechentlich"
+                      ? "zweiwoechentlich"
+                      : "woechentlich",
+                    (laufendesPaket.fixplatz_week_parity as 0 | 1 | null) ?? null,
+                    laufendesPaket.fixplatz_time_ungerade ?? null
+                  )
+                : null,
+          }}
         />
       )}
 
@@ -475,7 +512,8 @@ export default async function SchuelerDetailPage({
                           (pkg.rhythmus === "zweiwoechentlich"
                             ? "zweiwoechentlich"
                             : "woechentlich") as Rhythmus,
-                          (pkg.fixplatz_week_parity as 0 | 1 | null) ?? null
+                          (pkg.fixplatz_week_parity as 0 | 1 | null) ?? null,
+                          pkg.fixplatz_time_ungerade ?? null
                         )
                       : pkg.booking_mode === "fix"
                         ? "Fixplatz, Termin folgt aus der Planung"

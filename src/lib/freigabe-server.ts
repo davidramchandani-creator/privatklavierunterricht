@@ -109,7 +109,13 @@ export async function bearbeiteEintrag(
   admin: SupabaseClient,
   rundeId: string,
   schuelerId: string,
-  aenderung: { wochentag: number; beginn: string; paritaet: 0 | 1 | null },
+  aenderung: {
+    wochentag: number;
+    beginn: string;
+    paritaet: 0 | 1 | null;
+    /** Nur bei jeder Woche: andere Uhrzeit in ungeraden Wochen. */
+    beginnUngerade?: string | null;
+  },
   pufferMinuten = DEFAULT_BUFFER_MIN
 ): Promise<{ ok: true } | { error: string }> {
   const eintraege = await ladeEintraege(admin, rundeId);
@@ -136,6 +142,12 @@ export async function bearbeiteEintrag(
       ? {
           ...z,
           ...aenderung,
+          beginnUngerade:
+            aenderung.paritaet === null &&
+            aenderung.beginnUngerade &&
+            aenderung.beginnUngerade !== aenderung.beginn
+              ? aenderung.beginnUngerade
+              : null,
           rhythmus:
             aenderung.paritaet === null
               ? ("woechentlich" as const)
@@ -306,6 +318,7 @@ export async function fuelleSerieAuf(
       wochentag: z.wochentag,
       beginn: z.beginn,
       paritaet: z.paritaet,
+      beginnUngerade: z.beginnUngerade ?? null,
       abDatum: runde.startDatum ?? heuteZuerich(),
     });
     if ("error" in r) return { error: r.error };
@@ -315,7 +328,7 @@ export async function fuelleSerieAuf(
   const { data: pkg } = await admin
     .from("packages")
     .select(
-      "id, rhythmus, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, abo_lektionen, lessons_total, periode_start, starts_at"
+      "id, rhythmus, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, fixplatz_time_ungerade, abo_lektionen, lessons_total, periode_start, starts_at"
     )
     .eq("student_id", schuelerId)
     .eq("booking_mode", "fix")
@@ -347,6 +360,9 @@ export async function fuelleSerieAuf(
     wunsch: {
       weekday: Number(pkg.fixplatz_weekday),
       time: String(pkg.fixplatz_time).slice(0, 5),
+      timeUngerade: pkg.fixplatz_time_ungerade
+        ? String(pkg.fixplatz_time_ungerade).slice(0, 5)
+        : null,
       rhythmus,
       lessons,
     },
@@ -485,6 +501,7 @@ export async function gebeFrei(
       wochentag: z.wochentag,
       beginn: z.beginn,
       paritaet: z.paritaet,
+      beginnUngerade: z.beginnUngerade ?? null,
       abDatum: ab,
     });
     if ("error" in ergebnis) return { error: ergebnis.error };
@@ -544,9 +561,14 @@ export async function gebeFrei(
   );
 
   const rhythmus = z.paritaet === null ? "woechentlich" : "zweiwoechentlich";
+  const zweiteZeit =
+    z.paritaet === null && z.beginnUngerade && z.beginnUngerade !== z.beginn
+      ? z.beginnUngerade
+      : null;
   const wunsch = {
     weekday: z.wochentag,
     time: z.beginn,
+    timeUngerade: zweiteZeit,
     rhythmus,
     lessons: Number(pkg.abo_lektionen ?? pkg.lessons_total ?? 0),
   } as const;
@@ -593,6 +615,7 @@ export async function gebeFrei(
       fixplatz_weekday: z.wochentag,
       fixplatz_time: z.beginn,
       fixplatz_week_parity: z.paritaet,
+      fixplatz_time_ungerade: zweiteZeit,
       rhythmus,
     })
     .eq("id", pkg.id);
@@ -616,7 +639,7 @@ export async function gebeFrei(
     await sendEmailNow(admin, "verfuegbarkeit_zuteilung", {
       student_id: schuelerId,
       student_name: z.name,
-      fixplatz_text: describeFixplatz(z.wochentag, z.beginn, rhythmus, z.paritaet),
+      fixplatz_text: describeFixplatz(z.wochentag, z.beginn, rhythmus, z.paritaet, zweiteZeit),
       anzahl_termine: serie.appointmentIds.length,
       wunsch_erfuellt: z.praeferenz >= 3,
     });
@@ -685,4 +708,164 @@ export async function ladeFestgehaltene(
     }
   }
   return raus;
+}
+
+/**
+ * Den festen Platz eines laufenden Abos direkt ändern, ohne Planungsrunde.
+ *
+ * Für den Fall, dass sich mitten in der Periode etwas ändert, etwa: jede
+ * Woche am selben Tag, aber in ungeraden Wochen zu einer anderen Zeit.
+ *
+ * Ablauf wie bei der Freigabe: erst rechnen, dann schreiben. Gebucht werden
+ * die noch offenen Lektionen, also alle des Abos minus die, die schon
+ * stattgefunden haben oder ausserhalb der Serie gebucht sind. Die künftigen
+ * Serientermine werden ersetzt. Fehlt ein Termin, passiert nichts.
+ */
+export async function setzeFestenPlatz(
+  admin: SupabaseClient,
+  schuelerId: string,
+  platz: {
+    wochentag: number;
+    beginn: string;
+    paritaet: 0 | 1 | null;
+    beginnUngerade: string | null;
+  },
+  mitMail: boolean
+): Promise<{ ok: true; termine: number; mail: boolean } | { error: string }> {
+  const { data: pkg } = await admin
+    .from("packages")
+    .select("id, rhythmus, abo_lektionen, lessons_total, periode_start, starts_at, abo_variante")
+    .eq("student_id", schuelerId)
+    .in("status", ["active", "scheduled"])
+    .order("erstellt_am", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!pkg) return { error: "Kein laufendes Abo gefunden." };
+
+  const rhythmus: "woechentlich" | "zweiwoechentlich" =
+    pkg.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich";
+  if (rhythmus === "zweiwoechentlich" && platz.paritaet === null) {
+    return { error: "Bei alle zwei Wochen bitte gerade oder ungerade Wochen wählen." };
+  }
+  const paritaet = rhythmus === "woechentlich" ? null : platz.paritaet;
+  const zweiteZeit =
+    rhythmus === "woechentlich" && platz.beginnUngerade && platz.beginnUngerade !== platz.beginn
+      ? platz.beginnUngerade
+      : null;
+
+  const jetzt = new Date();
+  const { data: termine } = await admin
+    .from("appointments")
+    .select("id, start_at, status, is_fixplatz")
+    .eq("package_id", pkg.id)
+    .eq("zusatzlektion", false)
+    .in("status", ["booked", "completed", "no_show"]);
+
+  // Was ersetzt wird: künftige, gebuchte Serientermine.
+  const ersetzt = (termine ?? []).filter(
+    (t) => t.status === "booked" && t.is_fixplatz && new Date(t.start_at) > jetzt
+  );
+  const bleibt = (termine ?? []).length - ersetzt.length;
+  const gesamt = Number(pkg.abo_lektionen ?? pkg.lessons_total ?? 0);
+  const offen = gesamt - bleibt;
+  if (offen < 1) return { error: "Für dieses Abo sind keine Lektionen mehr offen." };
+
+  const aboStart = String(pkg.periode_start ?? String(pkg.starts_at ?? "").slice(0, 10));
+  const serieAb = new Date(
+    Math.max(jetzt.getTime(), aboStart ? serienStart(aboStart).getTime() : 0)
+  );
+  const wunsch = {
+    weekday: platz.wochentag,
+    time: platz.beginn,
+    timeUngerade: zweiteZeit,
+    rhythmus,
+    lessons: offen,
+  };
+
+  const probe = await planeFixplatzSerie(admin, {
+    studentId: schuelerId,
+    wunsch,
+    parity: paritaet,
+    now: serieAb,
+    ohneTermine: ersetzt.map((t) => t.id as string),
+  });
+  if ("error" in probe) return { error: probe.error };
+  if (probe.offen.length > 0) {
+    const grund = await erklaereBlockade(admin, probe.offen);
+    return {
+      error: `Nur ${probe.zuBuchen.length} von ${offen} Terminen haben Platz. ${
+        grund ?? "Die übrigen sind belegt oder gesperrt."
+      } Betroffen: ${probe.offen.map((d) => d.toISOString().slice(0, 10)).join(", ")}. Nichts geändert.`,
+    };
+  }
+
+  for (const t of ersetzt) {
+    await admin.from("appointments").update({ status: "cancelled" }).eq("id", t.id);
+    await cancelLessonReminders(admin, t.id as string);
+    await syncAppointmentToCalendar(admin, t.id as string);
+  }
+
+  await admin
+    .from("packages")
+    .update({
+      booking_mode: "fix",
+      fixplatz_weekday: platz.wochentag,
+      fixplatz_time: platz.beginn,
+      fixplatz_week_parity: paritaet,
+      fixplatz_time_ungerade: zweiteZeit,
+    })
+    .eq("id", pkg.id);
+
+  const serie = await bookFixplatzSeries(admin, {
+    studentId: schuelerId,
+    packageId: pkg.id,
+    wunsch,
+    parity: paritaet,
+    now: serieAb,
+  });
+  if ("error" in serie) return { error: serie.error };
+
+  // Steht der Schüler in einer offenen Zuteilung, dort mitziehen. Sonst
+  // zeigte die Werkbank weiterhin den alten Platz.
+  const { data: runden } = await admin
+    .from("planungsrunden")
+    .select("id")
+    .eq("status", "offen");
+  for (const r of runden ?? []) {
+    const eintraege = await ladeEintraege(admin, r.id as string);
+    if (!eintraege.some((e) => e.schuelerId === schuelerId)) continue;
+    await speichereEintraege(
+      admin,
+      r.id as string,
+      eintraege.map((e) =>
+        e.schuelerId === schuelerId
+          ? {
+              ...e,
+              wochentag: platz.wochentag,
+              beginn: platz.beginn,
+              paritaet,
+              beginnUngerade: zweiteZeit,
+              rhythmus,
+            }
+          : e
+      )
+    );
+  }
+
+  let mail = false;
+  if (mitMail) {
+    if (pkg.abo_variante) {
+      mail = await sendeVertragsmail(admin, pkg.id, schuelerId);
+    } else {
+      await sendEmailNow(admin, "verfuegbarkeit_zuteilung", {
+        student_id: schuelerId,
+        fixplatz_text: describeFixplatz(platz.wochentag, platz.beginn, rhythmus, paritaet, zweiteZeit),
+        anzahl_termine: serie.appointmentIds.length,
+        wunsch_erfuellt: true,
+      });
+      mail = true;
+    }
+  }
+
+  return { ok: true, termine: serie.appointmentIds.length, mail };
 }

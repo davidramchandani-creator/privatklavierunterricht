@@ -3788,6 +3788,23 @@ export async function paketLoeschen(
  * Die Adresse wird sofort geokodiert. Ohne Koordinaten fiele der Schüler
  * lautlos aus der Routenplanung, und der ganze Zweck wäre verfehlt.
  */
+/**
+ * Die zweite Uhrzeit für ungerade Wochen aus einem Formular.
+ *
+ * Nur bei wöchentlich, nur im Format HH:MM, und nur wenn sie sich von der
+ * ersten unterscheidet. Sonst null: dann gilt jede Woche dieselbe Zeit.
+ */
+function zeitUngeradeAus(
+  formData: FormData,
+  rhythmus: Rhythmus,
+  zeit: string
+): string | null {
+  if (rhythmus !== "woechentlich") return null;
+  const roh = String(formData.get("zeit_ungerade") ?? "").trim();
+  if (!/^\d{2}:\d{2}$/.test(roh)) return null;
+  return roh === zeit ? null : roh;
+}
+
 export async function externenAnlegen(
   formData: FormData
 ): Promise<
@@ -3930,6 +3947,7 @@ export async function externenAnlegen(
       // Termin später ein.
       wochentag: terminGeplant ? null : wochentag,
       zeit: terminGeplant ? null : zeit,
+      zeit_ungerade: terminGeplant ? null : zeitUngeradeAus(formData, rhythmus, zeit),
       lektion_minuten: Number.isFinite(dauer) ? dauer : 45,
       woche_paritaet:
         !terminGeplant && rhythmus === "zweiwoechentlich"
@@ -4206,6 +4224,7 @@ export async function externeVereinbarungSpeichern(
             ? 1
             : 0
           : null,
+      beginnUngerade: zeitUngeradeAus(formData, rhythmus, zeit),
       abDatum,
     });
     if ("error" in ergebnis) return { error: ergebnis.error };

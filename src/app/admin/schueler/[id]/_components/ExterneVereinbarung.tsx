@@ -35,6 +35,8 @@ export type VereinbarungDaten = {
   rhythmus: string;
   wochentag: number | null;
   zeit: string | null;
+  /** Andere Uhrzeit in ungeraden Wochen, nur bei wöchentlich. */
+  zeitUngerade?: string | null;
   lektionMinuten: number;
   paritaet: number | null;
   anzahl: number | null;
@@ -66,6 +68,7 @@ export default function ExterneVereinbarung({
     daten.wochentag != null ? String(daten.wochentag) : ""
   );
   const [zeit, setZeit] = useState(daten.zeit?.slice(0, 5) ?? "");
+  const [zeitUngerade, setZeitUngerade] = useState(daten.zeitUngerade?.slice(0, 5) ?? "");
   const [paritaet, setParitaet] = useState(String(daten.paritaet ?? 0));
   const [abDatum, setAbDatum] = useState(new Date().toISOString().slice(0, 10));
 
@@ -81,6 +84,7 @@ export default function ExterneVereinbarung({
     fd.set("lektion_minuten", dauer);
     fd.set("wochentag", wochentag);
     fd.set("zeit", zeit);
+    fd.set("zeit_ungerade", zeitUngerade);
     fd.set("paritaet", paritaet);
     fd.set("ab_datum", abDatum);
 
@@ -102,7 +106,9 @@ export default function ExterneVereinbarung({
 
   const terminText =
     daten.wochentag != null && daten.zeit
-      ? `${WOCHENTAGE.find((w) => w.wert === daten.wochentag)?.name ?? "?"}, ${daten.zeit.slice(0, 5)}`
+      ? daten.zeitUngerade && daten.rhythmus !== "zweiwoechentlich"
+        ? `${WOCHENTAGE.find((w) => w.wert === daten.wochentag)?.name ?? "?"}, gerade Wochen ${daten.zeit.slice(0, 5)}, ungerade Wochen ${daten.zeitUngerade.slice(0, 5)}`
+        : `${WOCHENTAGE.find((w) => w.wert === daten.wochentag)?.name ?? "?"}, ${daten.zeit.slice(0, 5)}`
       : "noch offen — wird über die Planung zugeteilt";
 
   return (
@@ -297,6 +303,24 @@ export default function ExterneVereinbarung({
                 />
               </label>
             </div>
+            {rhythmus === "woechentlich" && wochentag !== "" && (
+              <label className="space-y-1 block max-w-xs">
+                <span className="text-xs font-600 text-gray-600">
+                  Ungerade Wochen andere Uhrzeit (optional)
+                </span>
+                <input
+                  type="time"
+                  step={900}
+                  value={zeitUngerade}
+                  onChange={(e) => setZeitUngerade(e.target.value)}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2"
+                />
+                <span className="block text-[11px] text-gray-400 leading-snug">
+                  Leer lassen, wenn jede Woche dieselbe Zeit gilt. Sonst gilt die
+                  Uhrzeit oben in geraden Wochen, diese in ungeraden.
+                </span>
+              </label>
+            )}
             {rhythmus === "zweiwoechentlich" && wochentag !== "" && (
               <label className="space-y-1 block max-w-xs">
                 <span className="text-xs font-600 text-gray-600">

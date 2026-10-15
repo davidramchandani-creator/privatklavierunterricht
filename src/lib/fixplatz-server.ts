@@ -341,7 +341,7 @@ export async function haengeLektionAn(
   const { data: pkg } = await admin
     .from("packages")
     .select(
-      "id, booking_mode, rhythmus, fixplatz_weekday, fixplatz_time, fixplatz_week_parity"
+      "id, booking_mode, rhythmus, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, fixplatz_time_ungerade"
     )
     .eq("id", params.packageId)
     .maybeSingle();
@@ -382,6 +382,9 @@ export async function haengeLektionAn(
   const wunsch: FixplatzWunsch = {
     weekday: Number(pkg.fixplatz_weekday),
     time: String(pkg.fixplatz_time).slice(0, 5),
+    timeUngerade: pkg.fixplatz_time_ungerade
+      ? String(pkg.fixplatz_time_ungerade).slice(0, 5)
+      : null,
     rhythmus:
       pkg.rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich",
     // Mehrere Kandidaten holen: Der nächste Takt kann belegt sein, etwa weil

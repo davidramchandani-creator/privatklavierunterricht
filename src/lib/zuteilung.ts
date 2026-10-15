@@ -57,6 +57,11 @@ export type Zuteilung = {
   beginn: string;
   /** Bei zweiwöchentlichem Rhythmus: 0 = gerade KW, 1 = ungerade. */
   paritaet: 0 | 1 | null;
+  /**
+   * Nur bei jeder Woche: andere Uhrzeit in ungeraden Wochen. Dann gilt
+   * `beginn` für gerade Wochen. Leer: jede Woche `beginn`.
+   */
+  beginnUngerade?: string | null;
   /** Welche Präferenz erfüllt wurde (1–3). */
   praeferenz: number;
   /** Anfahrt vom vorherigen Halt in Sekunden. */

@@ -84,6 +84,7 @@ type PackageJobRow = {
   booking_mode: string | null;
   fixplatz_weekday: number | null;
   fixplatz_time: string | null;
+  fixplatz_time_ungerade?: string | null;
   fixplatz_week_parity: number | null;
   abo_variante: string | null;
   abo_lektionen: number | null;
@@ -105,7 +106,7 @@ type InstalmentJobRow = {
 
 const PROFILE_FIELDS = "vorname, nachname, adresse, email, payment_method";
 const PACKAGE_FIELDS =
-  "id, student_id, type, total_price, price_per_lesson, payment_method, lessons_total, lessons_used, expires_at, auto_renew, billing_mode, term_months, instalment_count, renewal_notice_sent_at, status, rhythmus, booking_mode, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, abo_variante, abo_lektionen, monatsbetrag, periode_start, periode_ende";
+  "id, student_id, type, total_price, price_per_lesson, payment_method, lessons_total, lessons_used, expires_at, auto_renew, billing_mode, term_months, instalment_count, renewal_notice_sent_at, status, rhythmus, booking_mode, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, fixplatz_time_ungerade, abo_variante, abo_lektionen, monatsbetrag, periode_start, periode_ende";
 
 /** Outbox-Eintrag, idempotent über `dedupe_key`. */
 async function enqueueOnce(
@@ -487,6 +488,7 @@ async function verlaengereAbo(
       fixplatz_weekday: pkg.fixplatz_weekday,
       fixplatz_time: pkg.fixplatz_time,
       fixplatz_week_parity: pkg.fixplatz_week_parity,
+      fixplatz_time_ungerade: pkg.fixplatz_time_ungerade ?? null,
       abo_variante: variante,
       abo_lektionen: vorschau.lektionen,
       monatsbetrag: vorschau.monatsbetrag,
@@ -523,6 +525,9 @@ async function verlaengereAbo(
       wunsch: {
         weekday: Number(pkg.fixplatz_weekday),
         time: String(pkg.fixplatz_time).slice(0, 5),
+        timeUngerade: pkg.fixplatz_time_ungerade
+          ? String(pkg.fixplatz_time_ungerade).slice(0, 5)
+          : null,
         rhythmus,
         lessons: vorschau.lektionen,
       },
@@ -724,6 +729,7 @@ async function processExpiredPackages(
         fixplatz_weekday: pkg.fixplatz_weekday,
         fixplatz_time: pkg.fixplatz_time,
         fixplatz_week_parity: pkg.fixplatz_week_parity,
+        fixplatz_time_ungerade: pkg.fixplatz_time_ungerade ?? null,
       })
       .select(PACKAGE_FIELDS)
       .maybeSingle<PackageJobRow>();
@@ -763,6 +769,9 @@ async function processExpiredPackages(
         wunsch: {
           weekday: Number(next.fixplatz_weekday),
           time: String(next.fixplatz_time).slice(0, 5),
+          timeUngerade: next.fixplatz_time_ungerade
+            ? String(next.fixplatz_time_ungerade).slice(0, 5)
+            : null,
           rhythmus,
           lessons: lessonsTotal,
         },
