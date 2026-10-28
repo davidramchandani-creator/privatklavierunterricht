@@ -1,5 +1,7 @@
 "use server";
 
+import { mitOrtRabatt } from "@/lib/ort-rabatt";
+import { wendeOrtWechselAn } from "@/lib/ort-rabatt-server";
 import { revalidatePath } from "next/cache";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -2721,7 +2723,7 @@ export async function createInvoiceForAppointment(appointmentId: string) {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("vorname, nachname, email, adresse, payment_method, price_single")
+    .select("vorname, nachname, email, adresse, payment_method, price_single, hausbesuch")
     .eq("id", appt.student_id)
     .maybeSingle();
 
@@ -2734,7 +2736,7 @@ export async function createInvoiceForAppointment(appointmentId: string) {
   // Eine Zusatzlektion neben dem Abo kostet den Einzelpreis des Schülers,
   // nicht den Abo-Preis pro Lektion.
   const amount = appt.zusatzlektion
-    ? Number(profile?.price_single ?? 85)
+    ? mitOrtRabatt(Number(profile?.price_single ?? 85), profile?.hausbesuch)
     : Number(pkg?.price_per_lesson ?? 85);
   // Das Profil entscheidet, nicht das Paket. Der Paketwert ist eine
   // Momentaufnahme vom Anlegen; ändert der Admin die Zahlungsart beim
@@ -4113,11 +4115,22 @@ export async function planungSchalterSetzen(
   }
 
   const admin = await createAdminClient();
+  const { data: vorher } = await admin
+    .from("profiles")
+    .select("hausbesuch")
+    .eq("id", studentId)
+    .maybeSingle();
   const { error } = await admin
     .from("profiles")
     .update({ [feld]: wert })
     .eq("id", studentId);
   if (error) return { error: "Die Einstellung liess sich nicht speichern." };
+
+  // Unterricht bei David kostet 5 % weniger. Beim Wechsel gelten die neuen
+  // Preise sofort für alles, was noch nicht gestellt ist.
+  if (feld === "hausbesuch" && (vorher?.hausbesuch !== false) !== wert) {
+    await wendeOrtWechselAn(admin, studentId, wert === false);
+  }
 
   revalidatePath(`/admin/schueler/${studentId}`);
   revalidatePath("/admin/schueler");

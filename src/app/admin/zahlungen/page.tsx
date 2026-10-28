@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server";
+import { mitOrtRabatt } from "@/lib/ort-rabatt";
 import PaymentsBoard from "./_components/PaymentsBoard";
 import RatenBoard, { type RatenZeile } from "./_components/RatenBoard";
 import ZahlungenTabs from "./_components/ZahlungenTabs";
@@ -123,7 +124,7 @@ export default async function ZahlungenPage() {
   const { data: gehalten } = await admin
     .from("appointments")
     .select(
-      "id, start_at, end_at, status, student_id, zusatzlektion, profiles(vorname, nachname, ist_test, payment_method, price_single), packages(price_per_lesson, payment_method, billing_mode)"
+      "id, start_at, end_at, status, student_id, zusatzlektion, profiles(vorname, nachname, ist_test, payment_method, price_single, hausbesuch), packages(price_per_lesson, payment_method, billing_mode)"
     )
     .in("status", ["booked", "completed"])
     .order("start_at", { ascending: false })
@@ -169,6 +170,7 @@ export default async function ZahlungenPage() {
           ist_test: boolean | null;
           payment_method: string | null;
           price_single: number | null;
+          hausbesuch: boolean | null;
         }
       | null;
 
@@ -177,7 +179,7 @@ export default async function ZahlungenPage() {
       studentName: p ? `${p.vorname} ${p.nachname}`.trim() : "Unbekannt",
       beginn: a.start_at,
       betrag: zusatz
-        ? Number(p?.price_single ?? 85)
+        ? mitOrtRabatt(Number(p?.price_single ?? 85), p?.hausbesuch)
         : Number(pkg?.price_per_lesson ?? 85),
       zusatz,
       // Dieselbe Regel wie beim Erstellen der Rechnung, sonst kündigt die

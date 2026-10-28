@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { DAVIDS_ADRESSE, ORT_RABATT_PROZENT, kommtZuDavid } from "@/lib/ort-rabatt";
 import { createClient } from "@/lib/supabase/server";
 import { Music } from "lucide-react";
 import PortalNav from "./_components/PortalNav";
@@ -47,7 +48,7 @@ export default async function SchuelerPortalPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, role, vorname, nachname, price_single, price_10er, price_20er, travel_surcharge")
+    .select("id, role, vorname, nachname, price_single, price_10er, price_20er, travel_surcharge, hausbesuch")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -318,6 +319,17 @@ export default async function SchuelerPortalPage() {
           das auf seinen Vertrag nicht zutrifft.
         */}
         <SectionHeader title={istAbo ? "Mein Abo" : "Mein Paket"} />
+        {/* Wer zu David kommt, muss wissen wohin, und dass es dafür
+            günstiger ist. */}
+        {kommtZuDavid(profile?.hausbesuch) && (
+          <div className="rounded-2xl border border-gray-100 bg-white px-5 py-4 text-sm text-gray-600">
+            <p className="font-600 text-[#1C244B]">Der Unterricht findet bei mir statt</p>
+            <p className="mt-0.5">{DAVIDS_ADRESSE}</p>
+            <p className="mt-1 text-xs text-gray-400">
+              Weil du zu mir kommst, sind deine Lektionen {ORT_RABATT_PROZENT} % günstiger.
+            </p>
+          </div>
+        )}
         <PaketCard
           paket={aktivesPackage}
           lessonsUsed={lessonsUsed}

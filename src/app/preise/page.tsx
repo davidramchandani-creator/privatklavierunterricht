@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { DAVIDS_ORT, ORT_RABATT_PROZENT } from "@/lib/ort-rabatt";
 import Link from "next/link";
 import { Check, Car, ShieldCheck, Piano, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -231,6 +232,16 @@ export default function PreisePage() {
               sonst niemanden unterrichte, kommen ab 5 Kilometern CHF 5.– pro
               angefangene 5 Kilometer dazu. Das sagt sich vorher, nicht
               nachher.
+            </p>
+            {/* Angabe David, 28. Oktober 2026. Die genaue Adresse steht
+                bewusst nicht hier, sondern im Portal der Schüler, die zu
+                mir kommen. */}
+            <p className="text-gray-600 leading-relaxed text-sm">
+              <strong className="text-navy-900 font-600">
+                Du kannst auch zu mir kommen.
+              </strong>{" "}
+              Der Unterricht findet dann bei mir in {DAVIDS_ORT} statt, und alle
+              Preise sind {ORT_RABATT_PROZENT} % günstiger.
             </p>
           </div>
 

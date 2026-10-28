@@ -3,6 +3,8 @@
 // Status, Timer-Berechnung, Preise, Gültigkeit
 // ============================================================
 
+import { mitOrtRabatt } from "./ort-rabatt";
+
 export type PackageType = "single" | "10er" | "20er";
 
 export type Package = {
@@ -339,7 +341,13 @@ export function canCancelPackage(
 /** Preis pro Lektion für einen Pakettyp inkl. Wegaufschlag. */
 export function pricePerLessonFor(
   type: PackageType,
-  prices: { price_single: number; price_10er: number; price_20er: number; travel_surcharge: number }
+  prices: {
+    price_single: number;
+    price_10er: number;
+    price_20er: number;
+    travel_surcharge: number;
+    hausbesuch?: boolean | null;
+  }
 ): number {
   const base =
     type === "single"
@@ -347,5 +355,6 @@ export function pricePerLessonFor(
       : type === "10er"
       ? prices.price_10er
       : prices.price_20er;
-  return Number(base) + Number(prices.travel_surcharge);
+  // Unterricht bei David: 5 % weniger.
+  return mitOrtRabatt(Number(base) + Number(prices.travel_surcharge), prices.hausbesuch);
 }

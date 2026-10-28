@@ -661,6 +661,7 @@ export default async function SchuelerDetailPage({
             price_10er: prices.price_10er,
             price_20er: prices.price_20er,
             travel_surcharge: prices.travel_surcharge,
+            hausbesuch: profile.hausbesuch,
           }}
           schueler_id={id}
           student_user_id={id}

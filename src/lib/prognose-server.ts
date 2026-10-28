@@ -7,6 +7,7 @@
 // steht in prognose.ts — hier wird nur geladen.
 // ============================================================
 
+import { mitOrtRabatt } from "./ort-rabatt";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { monatsSchluessel, type Monatsabrechnung } from "./abrechnung";
 import {
@@ -37,6 +38,7 @@ type TerminRow = {
     plattform: string | null;
     externer_ertrag: number | string | null;
     price_single: number | string | null;
+    hausbesuch: boolean | null;
   } | null;
   packages: {
     billing_mode: string | null;
@@ -75,7 +77,7 @@ export async function ladePrognose(
     admin
       .from("appointments")
       .select(
-        "id, start_at, zusatzlektion, profiles!inner(vorname, nachname, extern, ist_test, plattform, externer_ertrag, price_single), packages(billing_mode, price_per_lesson)"
+        "id, start_at, zusatzlektion, profiles!inner(vorname, nachname, extern, ist_test, plattform, externer_ertrag, price_single, hausbesuch), packages(billing_mode, price_per_lesson)"
       )
       .in("status", ["booked", "completed"])
       .eq("profiles.ist_test", false)
@@ -150,7 +152,7 @@ export async function ladePrognose(
     // Eine Zusatzlektion neben dem Abo wird einzeln zum Einzelpreis
     // abgerechnet, unabhängig von der Zahlungsweise des Abos.
     const betrag = roh.zusatzlektion
-      ? Number(profil.price_single ?? 85)
+      ? mitOrtRabatt(Number(profil.price_single ?? 85), profil.hausbesuch)
       : erwarteterBetragProLektion(paket);
     if (betrag <= 0) continue;
     posten.push({
