@@ -1,6 +1,5 @@
 "use client";
 
-import { mitOrtRabatt } from "@/lib/ort-rabatt";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -609,8 +608,6 @@ export type PaketPreise = {
   price_10er: number;
   price_20er: number;
   travel_surcharge: number;
-  /** false: kommt zu dir, dann 5 % Rabatt. */
-  hausbesuch?: boolean | null;
 };
 
 /**
@@ -1071,7 +1068,7 @@ function PaketForm({
       : typ === "10er"
         ? (preise?.price_10er ?? 75)
         : (preise?.price_20er ?? 70);
-  const proLektion = mitOrtRabatt(basis + (preise?.travel_surcharge ?? 0), preise?.hausbesuch);
+  const proLektion = basis + (preise?.travel_surcharge ?? 0);
 
   const [preisText, setPreisText] = useState(String(proLektion));
 
@@ -1085,7 +1082,7 @@ function PaketForm({
         : neu === "10er"
           ? (preise?.price_10er ?? 75)
           : (preise?.price_20er ?? 70);
-    setPreisText(String(mitOrtRabatt(b + (preise?.travel_surcharge ?? 0), preise?.hausbesuch)));
+    setPreisText(String(b + (preise?.travel_surcharge ?? 0)));
     if (neu === "single") setBookingMode("flex");
   }
 

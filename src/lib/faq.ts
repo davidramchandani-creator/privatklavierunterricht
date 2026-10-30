@@ -99,9 +99,9 @@ export const FAQ: FrageAntwort[] = [
   },
   {
     frage: "Wo unterrichtest du?",
-    quelle: "/preise, Wegkosten und Einzugsgebiet; Unterricht bei mir: Angabe David 28.10.2026",
+    quelle: "/preise, Wegkosten und Einzugsgebiet",
     antwort:
-      "Bei dir zu Hause, in Neftenbach und der Umgebung bis Winterthur. Ob deine Adresse noch dazugehört, klärt sich am schnellsten über das Kontaktformular. Du kannst auch zu mir nach Neftenbach kommen, dann sind alle Preise 5 % günstiger.",
+      "Bei dir zu Hause, in Neftenbach und der Umgebung bis Winterthur. Ob deine Adresse noch dazugehört, klärt sich am schnellsten über das Kontaktformular.",
   },
   {
     frage: "Wie wird bezahlt?",

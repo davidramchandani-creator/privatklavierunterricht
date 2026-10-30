@@ -2,7 +2,6 @@
 // Abonnierbarer Kalender: Token verwalten, Termine holen
 // ============================================================
 
-import { DAVIDS_ADRESSE } from "./ort-rabatt";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   FEED_RUECKBLICK_TAGE,
@@ -146,13 +145,7 @@ export async function ladeFeedTermine(
     ende: z.end_at,
     status: z.status,
     name: z.profiles ? `${z.profiles.vorname} ${z.profiles.nachname}`.trim() : "Schüler",
-    // Im Kalender des Schülers steht, wo er hin muss: zu Hause, oder bei
-    // David, wenn er zu ihm kommt. Davids Sicht zeigt immer die Adresse
-    // des Schülers und markiert die anderen mit „Bei mir".
-    adresse:
-      wer.sicht === "schueler" && z.profiles?.hausbesuch === false
-        ? DAVIDS_ADRESSE
-        : z.profiles?.adresse ?? null,
+    adresse: z.profiles?.adresse ?? null,
     hausbesuch: z.profiles?.hausbesuch ?? true,
   }));
 }

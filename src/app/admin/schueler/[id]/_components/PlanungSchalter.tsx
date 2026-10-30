@@ -93,18 +93,6 @@ export default function PlanungSchalter({
   const [welcher, setWelcher] = useState<Feld | null>(null);
 
   function umschalten(feld: Feld, wert: boolean) {
-    // Der Ort ändert den Preis: Wer zu dir kommt, zahlt 5 % weniger. Das
-    // gilt sofort für alle Raten, die noch nicht gestellt sind.
-    if (
-      feld === "hausbesuch" &&
-      !window.confirm(
-        wert
-          ? "Wieder Hausbesuch? Die noch nicht gestellten Raten und der Preis pro Lektion gehen wieder auf den vollen Betrag."
-          : "Kommt ab jetzt zu dir? Die noch nicht gestellten Raten und der Preis pro Lektion werden um 5 % gesenkt."
-      )
-    ) {
-      return;
-    }
     setFehler(null);
     setWelcher(feld);
     starte(async () => {
@@ -147,8 +135,8 @@ export default function PlanungSchalter({
           onToggle={() => umschalten("hausbesuch", !hausbesuch)}
           icon={<Car className="w-4 h-4" />}
           titel="Ich fahre hin"
-          anText="Hausbesuch. Die Fahrzeit zählt in der Route."
-          ausText="Kommt zu dir nach Hause. Alle Preise 5 % günstiger, die Lektion belegt Zeit, kostet aber keine Fahrt."
+          anText="Hausbesuch — die Fahrzeit zählt in der Route."
+          ausText="Er kommt zu dir oder es läuft online. Die Lektion belegt Zeit, kostet aber keine Fahrt."
         />
       </div>
     </div>

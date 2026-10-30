@@ -55,13 +55,9 @@ describe("Zusatzlektion", () => {
 
   it("wird einzeln zum Einzelpreis abgerechnet", () => {
     expect(zahlungen).toContain('pkg?.billing_mode !== "pro_lektion" && !zusatz');
-    expect(zahlungen).toContain("mitOrtRabatt(Number(p?.price_single ?? 85), p?.hausbesuch)");
+    expect(zahlungen).toContain("Number(p?.price_single ?? 85)");
     const rechnung = actions.slice(actions.indexOf("export async function createInvoiceForAppointment"));
-    expect(rechnung.slice(0, 2500)).toContain(
-      "appt.zusatzlektion\n    ? mitOrtRabatt(Number(profile?.price_single ?? 85), profile?.hausbesuch)"
-    );
-    expect(prognose).toContain(
-      "roh.zusatzlektion\n      ? mitOrtRabatt(Number(profil.price_single ?? 85), profil.hausbesuch)"
-    );
+    expect(rechnung.slice(0, 2500)).toContain("appt.zusatzlektion\n    ? Number(profile?.price_single ?? 85)");
+    expect(prognose).toContain("roh.zusatzlektion\n      ? Number(profil.price_single ?? 85)");
   });
 });

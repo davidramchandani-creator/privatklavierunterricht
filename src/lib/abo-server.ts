@@ -5,7 +5,6 @@
 // Die Rechnung selbst steht in abo.ts und kommt ohne DB aus.
 // ============================================================
 
-import { mitOrtRabatt } from "./ort-rabatt";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   ABO_LAUFZEIT_MONATE,
@@ -42,8 +41,6 @@ export type AboPreise = {
   halbjahr: number;
   jahr: number;
   wegaufschlag: number;
-  /** false: kommt zu David, dann 5 % Rabatt (ort-rabatt.ts). */
-  hausbesuch?: boolean | null;
 };
 
 /**
@@ -57,7 +54,7 @@ export async function ladeAboPreise(
 ): Promise<AboPreise> {
   const { data } = await admin
     .from("profiles")
-    .select("price_halbjahr, price_jahr, travel_surcharge, hausbesuch")
+    .select("price_halbjahr, price_jahr, travel_surcharge")
     .eq("id", studentId)
     .maybeSingle();
 
@@ -65,7 +62,6 @@ export async function ladeAboPreise(
     halbjahr: Number(data?.price_halbjahr ?? 70),
     jahr: Number(data?.price_jahr ?? 65),
     wegaufschlag: Number(data?.travel_surcharge ?? 0),
-    hausbesuch: (data?.hausbesuch as boolean | null) ?? null,
   };
 }
 
@@ -81,8 +77,7 @@ export function aboLektionspreis(
   const basis =
     (variante === "halbjahr" ? preise.halbjahr : preise.jahr) +
     preise.wegaufschlag;
-  // Unterricht bei David: 5 % weniger, auf den ganzen Lektionspreis.
-  return priceWithBookingMode(mitOrtRabatt(basis, preise.hausbesuch), bookingMode);
+  return priceWithBookingMode(basis, bookingMode);
 }
 
 export type AboVorschau = AboAngebot & {
