@@ -42,6 +42,7 @@ import {
 } from "@/lib/rhythmus";
 import { describeFixplatz } from "@/lib/fixplatz";
 import { bookFixplatzSeries } from "@/lib/fixplatz-server";
+import { entferneAusZuteilungen } from "@/lib/freigabe-server";
 import { meldeAusfall, schliesseOffeneAusfaelle } from "@/lib/ausfall";
 import { bieteFrueherenSlotAn } from "@/lib/vorrueck-server";
 import {
@@ -318,8 +319,10 @@ export async function deleteSchueler(id: string) {
     .contains("payload", { student_id: id });
   const { error } = await adminClient.from("profiles").update({ aktiv: false }).eq("id", id);
   if (error) return { error: error.message };
+  await entferneAusZuteilungen(adminClient, id);
   revalidatePath("/admin/schueler");
   revalidatePath(`/admin/schueler/${id}`);
+  revalidatePath("/admin/planung");
   return { success: true, error: undefined };
 }
 
@@ -360,6 +363,10 @@ export async function hardDeleteSchueler(id: string) {
     .eq("student_id", id)
     .eq("status", "booked")
     .gte("start_at", new Date().toISOString());
+
+  // Die Zuteilung hat keinen Fremdschlüssel, sie wird von Hand geräumt.
+  await entferneAusZuteilungen(adminClient, id);
+  revalidatePath("/admin/planung");
 
   // Externe haben kein Konto: Bei ihnen gäbe es nichts zu löschen, und der
   // Aufruf schlüge fehl. Ihr Profil wird direkt entfernt, die Termine gehen

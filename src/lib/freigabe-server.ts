@@ -73,6 +73,32 @@ async function speichereEintraege(
 }
 
 /**
+ * Einen Schüler aus allen Zuteilungen nehmen.
+ *
+ * Die Zuteilung ist eine Kopie im JSON der Runde, ohne Fremdschlüssel.
+ * Wird ein Schüler gelöscht oder deaktiviert, blieb sein Eintrag deshalb
+ * stehen (Simon, 30. Oktober 2026) und belegte weiter seinen Platz.
+ */
+export async function entferneAusZuteilungen(
+  admin: SupabaseClient,
+  schuelerId: string
+): Promise<void> {
+  const { data: runden } = await admin
+    .from("planungsrunden")
+    .select("id, plan");
+  for (const r of runden ?? []) {
+    const plan = r.plan as { zuteilungen?: Zuteilung[] } | null;
+    const alle = plan?.zuteilungen ?? [];
+    const rest = alle.filter((z) => z.schuelerId !== schuelerId);
+    if (rest.length === alle.length) continue;
+    await admin
+      .from("planungsrunden")
+      .update({ plan: { ...plan, zuteilungen: rest } })
+      .eq("id", r.id);
+  }
+}
+
+/**
  * Den Routenplan als Zuteilung in die Runde schreiben.
  *
  * Bereits freigegebene Einträge bleiben unangetastet: Für sie existieren

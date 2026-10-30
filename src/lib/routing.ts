@@ -102,7 +102,10 @@ export type PlanEingabe = {
   zuhause: Punkt;
   schueler: PlanSchueler[];
   fenster: Tagesfenster[];
-  /** Mindestpuffer zwischen zwei Lektionen, zusätzlich zur Fahrzeit (Min.). */
+  /**
+   * Mindestzeit zwischen zwei Lektionen (Min.). Die Fahrt steckt darin:
+   * Dauert sie länger, zählt die Fahrt. Siehe `abstandMin`.
+   */
   pufferMinuten: number;
   fahrzeit?: Fahrzeitfunktion;
   /**
@@ -200,6 +203,23 @@ function alsZeit(minuten: number): string {
  */
 function aufRaster(minuten: number, raster = 15): number {
   return Math.ceil(minuten / raster) * raster;
+}
+
+/**
+ * Wie viel Zeit zwischen dem Ende einer Lektion und dem Beginn der
+ * nächsten liegen muss.
+ *
+ * Die Pause ist eine Untergrenze, in der die Fahrt drinsteckt, kein Zuschlag
+ * auf die Fahrt. So arbeitet David tatsächlich: 45 Minuten Lektion, 15
+ * Minuten bis zur nächsten, und darin fährt er die vier bis zehn Minuten.
+ *
+ * Vorher wurden Fahrt und Pause addiert und dann aufs Viertelstunden-Raster
+ * gehoben. Aus vier Minuten Fahrt wurden so 30 Minuten Abstand, und der
+ * Planer warf Daniel, Marina und Flurina aus einem Plan, der seit September
+ * Woche für Woche aufgeht (30. Oktober 2026).
+ */
+export function abstandMin(anfahrtMin: number, pufferMinuten: number): number {
+  return Math.max(Math.ceil(anfahrtMin), pufferMinuten);
 }
 
 /**
@@ -751,7 +771,7 @@ function baueTag(
       const frueheste =
         gebaut.length === 0
           ? beginnMin
-          : aufRaster(uhr + Math.ceil(anfahrtMin) + pufferMinuten);
+          : aufRaster(uhr + abstandMin(anfahrtMin, pufferMinuten));
 
       const dauer = Math.max(
         pos.gerade?.lektionMinuten ?? 45,
@@ -864,7 +884,7 @@ function baueTag(
     // Aufs Raster **abrunden**: Später als dieser Wert, und die Folgelektion
     // müsste rutschen — genau das darf der Rückwärtsgang nie.
     const spaetestensWegenAnschluss =
-      Math.floor((naechsteStart - pufferMinuten - anfahrtWeiter - dauer) / 15) *
+      Math.floor((naechsteStart - abstandMin(anfahrtWeiter, pufferMinuten) - dauer) / 15) *
       15;
 
     const mitglieder = [gebaut[i].geradeWoche, gebaut[i].ungeradeWoche].filter(
@@ -895,8 +915,7 @@ function baueTag(
   for (let i = 1; i < gebaut.length; i++) {
     const fruehester = aufRaster(
       minutenVon(gebaut[i - 1].ende) +
-        Math.ceil(gebaut[i].anfahrtSekunden / 60) +
-        pufferMinuten
+        abstandMin(gebaut[i].anfahrtSekunden / 60, pufferMinuten)
     );
     leerlaufMin += Math.max(0, minutenVon(gebaut[i].beginn) - fruehester);
   }
@@ -1356,19 +1375,19 @@ function planeEinmal(
         const next = belegt.find((b) => b.von >= ende) ?? null;
         const vorOrt = prev ? prev.ort : tagesStart;
 
-        // Vom Vorgänger herkommen — Ankunft plus Puffer, aufs Raster.
+        // Vom Vorgänger herkommen, mit Mindestabstand, aufs Raster.
         // Ohne Vorgänger ist es die erste Lektion: Die Anfahrt passiert
         // vor Fensterbeginn, wie überall im Plan.
         if (prev) {
           const anfahrtMin = Math.ceil(fahrzeit(vorOrt, ort) / 60);
-          if (aufRaster(prev.bis + anfahrtMin + eingabe.pufferMinuten) > start) {
+          if (aufRaster(prev.bis + abstandMin(anfahrtMin, eingabe.pufferMinuten)) > start) {
             continue;
           }
         }
         // Und rechtzeitig beim Nachfolger sein.
         if (next) {
           const weiterMin = Math.ceil(fahrzeit(ort, next.ort) / 60);
-          if (ende + weiterMin + eingabe.pufferMinuten > next.von) continue;
+          if (ende + abstandMin(weiterMin, eingabe.pufferMinuten) > next.von) continue;
         }
 
         const nachOrt = next ? next.ort : eingabe.zuhause;
