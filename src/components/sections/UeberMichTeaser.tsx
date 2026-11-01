@@ -40,7 +40,7 @@ export default function UeberMichTeaser() {
               </span>
             </h2>
             <p className="text-gray-600 leading-relaxed mb-4">
-              Ich bin 21 Jahre alt und habe 16 Jahre Klaviererfahrung. Ich teile
+              Ich bin 22 Jahre alt und habe 16 Jahre Klaviererfahrung. Ich teile
               gern mein Wissen und meine Techniken, um anderen das
               Klavierspielen beizubringen.
             </p>
