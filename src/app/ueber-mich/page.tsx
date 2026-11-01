@@ -207,7 +207,7 @@ export default async function UeberMichPage() {
               "Klavierunterricht für Anfängerinnen und Fortgeschrittene",
               "Spielen nach Akkorden, Gehör und Gefühl. Ohne Notenlesen",
               "Moderne Songs, die du wirklich spielen willst",
-              "Unterricht in meinem Studio in Neftenbach, auf einem E-Piano mit gewichteten Tasten",
+              "Unterricht in meinem Studio in Neftenbach, auf einem Kawai ES120 mit gewichteten Tasten",
               "Lektionen à 45 Minuten, wöchentlich oder alle zwei Wochen",
               "Halbjahres- oder Jahresabo mit festem Platz",
               "Individuell auf dein Tempo und deine Ziele abgestimmt",

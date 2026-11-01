@@ -3,7 +3,7 @@
 //
 // Seit November 2026 bietet David keine Hausbesuche mehr an. Neue Schüler
 // kommen zu ihm ins Studio in Neftenbach, wo ein E-Piano mit gewichteten
-// Tasten steht. Bestehende Hausbesuche laufen weiter, solange David sie im
+// Tasten steht, ein Kawai ES120. Bestehende Hausbesuche laufen weiter, solange David sie im
 // Admin so eingestellt lässt (Schalter „Ich fahre hin", `profiles.hausbesuch`).
 //
 // Öffentlich steht nur der Ort. Die volle Adresse erscheint nur dort, wo

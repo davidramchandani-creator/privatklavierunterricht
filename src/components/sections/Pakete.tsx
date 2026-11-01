@@ -192,8 +192,8 @@ export default function Pakete() {
           mehr und damit auch keinen Preisrechner.
         */}
         <p className="text-center text-sm text-gray-500 mt-10">
-          Unterricht im Studio in Neftenbach auf einem E-Piano mit gewichteten
-          Tasten.{" "}
+          Unterricht im Studio in Neftenbach auf einem Kawai ES120 mit
+          gewichteten Tasten.{" "}
           <Link
             href="/preise"
             className="text-navy-900 font-600 underline decoration-navy-200 hover:decoration-navy-900 underline-offset-4 transition-colors"

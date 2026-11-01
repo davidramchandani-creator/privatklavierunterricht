@@ -231,9 +231,9 @@ export default function PreisePage() {
               <strong className="text-navy-900 font-600">
                 In meinem Studio in Neftenbach.
               </strong>{" "}
-              Du spielst dort auf einem E-Piano mit gewichteten Tasten, die
-              sich anfühlen wie bei einem Klavier. Es kommen keine Wegkosten
-              dazu.
+              Du spielst dort auf einem Kawai ES120, einem E-Piano mit 88
+              gewichteten Tasten, die sich anfühlen wie bei einem Klavier. Es
+              kommen keine Wegkosten dazu.
             </p>
             <p className="text-gray-600 leading-relaxed text-sm">
               Die genaue Adresse bekommst du, sobald wir einen Termin

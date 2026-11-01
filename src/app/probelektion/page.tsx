@@ -153,8 +153,8 @@ export default function ProbelektionPage() {
                 </Schritt>
                 <Schritt nr={3} titel="Wir spielen zusammen">
                   45 Minuten in meinem Studio in Neftenbach, auf einem
-                  E-Piano mit gewichteten Tasten. Danach entscheidest du in
-                  Ruhe, ob du weitermachen willst.
+                  Kawai ES120 mit gewichteten Tasten. Danach entscheidest du
+                  in Ruhe, ob du weitermachen willst.
                 </Schritt>
               </ol>
             </div>
@@ -191,7 +191,7 @@ export default function ProbelektionPage() {
                   </div>
                   <p className="text-xs text-gray-400 mt-2.5">
                     Für die Probelektion selbst brauchst du nichts, du spielst
-                    auf meinem E-Piano.
+                    auf meinem Kawai ES120.
                   </p>
                 </div>
               </div>

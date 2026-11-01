@@ -262,7 +262,7 @@ describe("Strukturierte Daten", () => {
     // Was stattdessen dasteht.
     const preise = readFileSync(join(APP, "preise", "page.tsx"), "utf8").replace(/\s+/g, " ");
     expect(preise).toContain("In meinem Studio in Neftenbach.");
-    expect(preise).toContain("E-Piano mit gewichteten Tasten");
+    expect(preise).toContain("Kawai ES120, einem E-Piano mit 88 gewichteten Tasten");
     expect(preise).not.toContain("Preisrechner");
 
     // Öffentlich nur der Ort, nie die Strasse.
