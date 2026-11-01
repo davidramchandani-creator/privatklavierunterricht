@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { davidsAlter, jahreKlaviererfahrung } from "@/lib/ueber-david";
 
 export default function UeberMichTeaser() {
   return (
@@ -40,7 +41,7 @@ export default function UeberMichTeaser() {
               </span>
             </h2>
             <p className="text-gray-600 leading-relaxed mb-4">
-              Ich bin 22 Jahre alt und habe 16 Jahre Klaviererfahrung. Ich teile
+              Ich bin {davidsAlter()} Jahre alt und habe {jahreKlaviererfahrung()} Jahre Klaviererfahrung. Ich teile
               gern mein Wissen und meine Techniken, um anderen das
               Klavierspielen beizubringen.
             </p>

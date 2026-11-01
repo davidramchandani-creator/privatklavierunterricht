@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarCheck, Star, Users, Clock, ArrowRight } from "lucide-react";
 import { naechsterTerminText } from "@/lib/naechster-termin";
 import { ladeBewertungen } from "@/lib/bewertungen";
+import { jahreKlaviererfahrung } from "@/lib/ueber-david";
 
 
 export default async function Hero() {
@@ -66,7 +67,7 @@ export default async function Hero() {
             <div className="flex flex-wrap gap-3 pt-2 opacity-0 animate-fade-in delay-300">
               <Pill icon={<Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />} text={`${schnitt} aus ${anzahl} Bewertungen`} />
               <Pill icon={<Users className="w-3.5 h-3.5 text-navy-900" />} text="Im Studio in Neftenbach" />
-              <Pill icon={<Clock className="w-3.5 h-3.5 text-navy-900" />} text="16 Jahre Klaviererfahrung" />
+              <Pill icon={<Clock className="w-3.5 h-3.5 text-navy-900" />} text={`${jahreKlaviererfahrung()} Jahre Klaviererfahrung`} />
             </div>
           </div>
 
@@ -110,7 +111,7 @@ export default async function Hero() {
 
               {/* Floating badge: Erfahrung */}
               <div className="absolute -top-5 -left-5 bg-white rounded-2xl shadow-lg px-4 py-3 border border-gray-100">
-                <p className="text-2xl font-800 text-navy-900">16+</p>
+                <p className="text-2xl font-800 text-navy-900">{jahreKlaviererfahrung()}+</p>
                 <p className="text-xs text-gray-400 font-500">Jahre Erfahrung</p>
               </div>
 

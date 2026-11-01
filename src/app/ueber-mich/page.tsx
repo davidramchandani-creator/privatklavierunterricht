@@ -4,6 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { ladeBewertungen } from "@/lib/bewertungen";
+import { jahreKlaviererfahrung } from "@/lib/ueber-david";
+
+// Alter und Erfahrung rechnen sich aus dem Datum, die Seite darf also nicht ewig
+// im Cache stehen.
+export const revalidate = 86400;
 
 export const metadata: Metadata = {
   alternates: { canonical: "/ueber-mich" },
@@ -83,7 +88,7 @@ export default async function UeberMichPage() {
           <div className="text-white space-y-6">
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-500 text-white/80">
               <Music className="w-4 h-4" />
-              16 Jahre Klaviererfahrung
+              {jahreKlaviererfahrung()} Jahre Klaviererfahrung
             </div>
             <h1 className="text-4xl sm:text-5xl font-800 leading-tight">
               Hallo, ich bin <span className="italic">David</span>.
@@ -118,7 +123,7 @@ export default async function UeberMichPage() {
               </div>
               {/* Badge */}
               <div className="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-lg px-4 py-3 text-navy-900">
-                <p className="text-2xl font-800">16+</p>
+                <p className="text-2xl font-800">{jahreKlaviererfahrung()}+</p>
                 <p className="text-xs text-gray-500 font-500">Jahre Erfahrung</p>
               </div>
             </div>
@@ -130,7 +135,7 @@ export default async function UeberMichPage() {
       <section className="bg-white border-b border-[#EAECEF] py-10">
         <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
-            { value: "16", label: "Jahre Klaviererfahrung" },
+            { value: String(jahreKlaviererfahrung()), label: "Jahre Klaviererfahrung" },
             {
               value: `${schnitt}★`,
               label: `aus ${anzahl} Bewertungen`,

@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import { jahreKlaviererfahrung } from "@/lib/ueber-david";
 import { Check, MapPin, ShieldCheck, Piano, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +11,9 @@ import {
   SMPV_TARIFBLATT,
   vergleiche,
 } from "@/lib/tarifvergleich";
+
+// Die Erfahrung rechnet sich aus dem Datum, darum täglich neu.
+export const revalidate = 86400;
 
 export const metadata: Metadata = {
   alternates: { canonical: "/preise" },
@@ -54,15 +58,16 @@ const abobeispiele = [
   },
 ];
 
-const leistungen = [
-  "Hohe Unterrichtsqualität, 16 Jahre Spielerfahrung, individuelle Methoden ohne Notenzwang",
-  "Vorbereitung und Nachbearbeitung jeder Lektion",
-  "Nutzung von Material, Equipment und Software",
-  "Faire Entlohnung, damit ich Studium und Unterricht langfristig vereinbaren kann",
-  "Günstigere Abos für langfristige Schüler, Musik braucht Zeit und Entwicklung",
-];
 
 export default function PreisePage() {
+  const leistungen = [
+    `Hohe Unterrichtsqualität, ${jahreKlaviererfahrung()} Jahre Spielerfahrung, individuelle Methoden ohne Notenzwang`,
+    "Vorbereitung und Nachbearbeitung jeder Lektion",
+    "Nutzung von Material, Equipment und Software",
+    "Faire Entlohnung, damit ich Studium und Unterricht langfristig vereinbaren kann",
+    "Günstigere Abos für langfristige Schüler, Musik braucht Zeit und Entwicklung",
+  ];
+
   return (
     <main>
       {/* Hero */}

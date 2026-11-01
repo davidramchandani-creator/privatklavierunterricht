@@ -1,0 +1,42 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { davidsAlter, jahreKlaviererfahrung } from "./ueber-david";
+
+describe("Alter und Erfahrung", () => {
+  it("das Alter springt am Geburtstag, 15. September", () => {
+    expect(davidsAlter(new Date("2026-09-14T12:00:00+02:00"))).toBe(21);
+    expect(davidsAlter(new Date("2026-09-15T12:00:00+02:00"))).toBe(22);
+    expect(davidsAlter(new Date("2026-11-01T12:00:00+01:00"))).toBe(22);
+    expect(davidsAlter(new Date("2027-09-14T12:00:00+02:00"))).toBe(22);
+    expect(davidsAlter(new Date("2027-09-15T12:00:00+02:00"))).toBe(23);
+  });
+
+  it("der Sprung gilt nach Schweizer Zeit, nicht nach UTC", () => {
+    // 15.9. 00:30 Uhr in Zürich ist noch der 14.9. in UTC.
+    expect(davidsAlter(new Date("2026-09-15T00:30:00+02:00"))).toBe(22);
+  });
+
+  it("die Erfahrung zählt Kalenderjahre seit 2009", () => {
+    expect(jahreKlaviererfahrung(new Date("2026-11-01T12:00:00+01:00"))).toBe(17);
+    expect(jahreKlaviererfahrung(new Date("2026-12-31T12:00:00+01:00"))).toBe(17);
+    expect(jahreKlaviererfahrung(new Date("2027-01-01T12:00:00+01:00"))).toBe(18);
+  });
+
+  it("keine festen Zahlen mehr in den Seiten", () => {
+    const ohne = (t: string) =>
+      t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    const dateien = [
+      ["src", "components", "sections", "Hero.tsx"],
+      ["src", "components", "sections", "UeberMichTeaser.tsx"],
+      ["src", "app", "ueber-mich", "page.tsx"],
+      ["src", "app", "preise", "page.tsx"],
+    ];
+    for (const d of dateien) {
+      const t = ohne(readFileSync(join(process.cwd(), ...d), "utf8"));
+      expect(t, d.join("/")).not.toMatch(/\b(16|17|21|22)\s*(\+\s*)?Jahre/);
+      expect(t, d.join("/")).not.toMatch(/value:\s*"1[67]"/);
+      expect(t, d.join("/")).not.toMatch(/>1[67]\+</);
+    }
+  });
+});
