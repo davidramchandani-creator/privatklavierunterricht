@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { jahreKlaviererfahrung } from "@/lib/ueber-david";
+import { jahreKlaviererfahrung, unterrichtserfahrungText } from "@/lib/ueber-david";
 import { Check, MapPin, ShieldCheck, Piano, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -205,7 +205,7 @@ export default function PreisePage() {
           <div className="space-y-3">
             <h2 className="text-2xl font-800 text-navy-900">Warum keine Billigstpreise?</h2>
             <p className="text-gray-600 leading-relaxed">
-              In meinen zwei Jahren Unterrichtserfahrung habe ich gemerkt, dass manche
+              In {unterrichtserfahrungText()} Unterrichtserfahrung habe ich gemerkt, dass manche
               einfach einen sehr günstigen Lehrer suchen, keine Verbindlichkeit zeigen
               und trotzdem hohes Engagement erwarten. Mein Ziel ist es, ein Umfeld zu
               schaffen, in dem sich beide Seiten wertschätzen und bewusst sind, was sie

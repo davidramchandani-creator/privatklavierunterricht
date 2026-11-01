@@ -54,4 +54,15 @@ describe("Alter und Erfahrung", () => {
       expect(t).not.toMatch(/über 14 Jahren/);
     }
   });
+
+  it("Unterrichtserfahrung seit Anfang 2024, ehrlich gerundet", async () => {
+    const { unterrichtserfahrungText } = await import("./ueber-david");
+    expect(unterrichtserfahrungText(new Date("2026-02-10T12:00:00+01:00"))).toBe("zwei Jahren");
+    expect(unterrichtserfahrungText(new Date("2026-05-10T12:00:00+02:00"))).toBe("über zwei Jahren");
+    expect(unterrichtserfahrungText(new Date("2026-11-01T12:00:00+01:00"))).toBe("knapp drei Jahren");
+    expect(unterrichtserfahrungText(new Date("2027-01-15T12:00:00+01:00"))).toBe("drei Jahren");
+    const preise = readFileSync(join(process.cwd(), "src", "app", "preise", "page.tsx"), "utf8");
+    expect(preise).toContain("In {unterrichtserfahrungText()} Unterrichtserfahrung");
+    expect(preise).not.toMatch(/zwei Jahren Unterrichtserfahrung/);
+  });
 });
