@@ -129,4 +129,19 @@ export const SCHUELERVIDEOS: Schuelervideo[] = [
     poster: "/schuelervideos/marina-something-strange.jpg",
     dauer: 56,
   },
+  {
+    /*
+      Aufgenommen am 3. September 2026. Sie hat vorher gespielt, ein Jahr
+      pausiert und ist seit Mai wieder dabei. „Seit Mai" heisst zum
+      Aufnahmedatum gut vier Monate, und das steht da, nichts Grösseres.
+      Das Stück ist „Idea 10" von Gibran Alcocer.
+    */
+    id: "idea-10",
+    titel: "Idea 10 Gibran Alcocer",
+    name: "Schülerin",
+    stand: "Nach 1 Jahr Pause, 4 Monate",
+    datei: "/schuelervideos/idea-10.mp4",
+    poster: "/schuelervideos/idea-10.jpg",
+    dauer: 77,
+  },
 ];
