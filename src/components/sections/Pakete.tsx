@@ -22,7 +22,7 @@ const pakete = [
       "Gezieltes Arbeiten an einem Thema",
       "Ohne Bindung",
     ],
-    hinweis: "Anfahrt inbegriffen.",
+    hinweis: "Im Studio in Neftenbach.",
     cta: "Jetzt anfragen",
     href: "/probelektion",
   },
@@ -169,7 +169,7 @@ export default function Pakete() {
                   ))}
                 </ul>
 
-                {/* Wegkosten Hinweis */}
+                {/* Hinweis */}
                 <p className="text-xs text-gray-400 mb-4">* {paket.hinweis}</p>
 
                 {/* CTA */}
@@ -187,18 +187,18 @@ export default function Pakete() {
         </div>
 
         {/*
-          Der einzige Weg von der Startseite zur Preisseite. Dort steht die
-          ausführliche Übersicht samt Preisrechner, der hier auf der
-          Startseite nichts verloren hatte, weil er eine Adresseingabe
-          verlangt, bevor überhaupt ein Verhältnis besteht.
+          Der einzige Weg von der Startseite zur Preisseite. Seit der
+          Unterricht nur noch im Studio stattfindet, gibt es keine Wegkosten
+          mehr und damit auch keinen Preisrechner.
         */}
         <p className="text-center text-sm text-gray-500 mt-10">
-          Anfahrt inbegriffen.{" "}
+          Unterricht im Studio in Neftenbach auf einem E-Piano mit gewichteten
+          Tasten.{" "}
           <Link
             href="/preise"
             className="text-navy-900 font-600 underline decoration-navy-200 hover:decoration-navy-900 underline-offset-4 transition-colors"
           >
-            Preise im Detail und Rechner
+            Preise im Detail
           </Link>
         </p>
       </div>

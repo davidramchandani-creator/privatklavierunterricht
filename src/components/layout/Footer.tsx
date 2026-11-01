@@ -31,7 +31,7 @@ export default function Footer() {
               <Logo invert className="h-7 w-auto" />
             </div>
             <p className="text-white/50 text-sm leading-relaxed">
-              Individueller Klavierunterricht in Neftenbach und Umgebung.
+              Individueller Klavierunterricht in meinem Studio in Neftenbach.
               Ohne Schema F, mit Gefühl und Verstand.
             </p>
             <div className="flex gap-3 mt-4">

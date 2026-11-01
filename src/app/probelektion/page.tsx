@@ -9,7 +9,7 @@ import {
   Loader2,
   Gift,
   Clock,
-  Home,
+  MapPin,
   MessageCircle,
   Piano,
 } from "lucide-react";
@@ -131,7 +131,7 @@ export default function ProbelektionPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <Fakt icon={<Gift className="w-4 h-4" />} titel="Kostenlos" text="Keine Verpflichtung" />
               <Fakt icon={<Clock className="w-4 h-4" />} titel="45 Minuten" text="Eine ganze Lektion" />
-              <Fakt icon={<Home className="w-4 h-4" />} titel="Bei dir zuhause" text="Ich komme vorbei" />
+              <Fakt icon={<MapPin className="w-4 h-4" />} titel="In Neftenbach" text="In meinem Studio" />
               <Fakt icon={<MessageCircle className="w-4 h-4" />} titel="Antwort in 24 h" text="Persönlich von mir" />
             </div>
 
@@ -152,8 +152,9 @@ export default function ProbelektionPage() {
                   dann steht der Termin.
                 </Schritt>
                 <Schritt nr={3} titel="Wir spielen zusammen">
-                  45 Minuten bei dir zuhause. Danach entscheidest du in Ruhe,
-                  ob du weitermachen willst.
+                  45 Minuten in meinem Studio in Neftenbach, auf einem
+                  E-Piano mit gewichteten Tasten. Danach entscheidest du in
+                  Ruhe, ob du weitermachen willst.
                 </Schritt>
               </ol>
             </div>
@@ -189,8 +190,8 @@ export default function ProbelektionPage() {
                     </p>
                   </div>
                   <p className="text-xs text-gray-400 mt-2.5">
-                    Für die Probelektion selbst brauchst du nichts: Schreib es
-                    einfach in die Nachricht, dann klären wir es zusammen.
+                    Für die Probelektion selbst brauchst du nichts, du spielst
+                    auf meinem E-Piano.
                   </p>
                 </div>
               </div>

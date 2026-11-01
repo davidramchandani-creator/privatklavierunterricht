@@ -136,9 +136,9 @@ export default function KontaktPage() {
               <div className="flex items-start gap-3 text-sm text-gray-600">
                 <MapPin className="w-4 h-4 mt-0.5 text-navy-600 flex-shrink-0" />
                 <span>
-                  Neftenbach und Umgebung
+                  Neftenbach
                   <br />
-                  <span className="text-gray-400 text-xs">Unterricht bei dir zuhause</span>
+                  <span className="text-gray-400 text-xs">Unterricht in meinem Studio</span>
                 </span>
               </div>
             </div>

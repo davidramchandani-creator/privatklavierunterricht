@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/ueber-mich" },
   title: "Über mich: David Ramchandani | Privatklavierunterricht",
   description:
-    "Erfahre mehr über David Ramchandani, Klavierunterricht in Neftenbach und Umgebung. Ohne Noten, individuell und praxisnah.",
+    "Erfahre mehr über David Ramchandani, Klavierunterricht in Neftenbach. Ohne Noten, individuell und praxisnah.",
 };
 
 const stationen = [
@@ -136,7 +136,7 @@ export default async function UeberMichPage() {
               label: `aus ${anzahl} Bewertungen`,
             },
             { value: "45 Min", label: "pro Lektion" },
-            { value: "100%", label: "Unterricht bei dir zuhause" },
+            { value: "Studio", label: "in Neftenbach" },
           ].map(({ value, label }) => (
             <div key={label}>
               <p className="text-3xl font-800 text-navy-900">{value}</p>
@@ -198,7 +198,7 @@ export default async function UeberMichPage() {
               "Klavierunterricht für Anfängerinnen und Fortgeschrittene",
               "Spielen nach Akkorden, Gehör und Gefühl. Ohne Notenlesen",
               "Moderne Songs, die du wirklich spielen willst",
-              "Unterricht bei dir zuhause in Neftenbach und Umgebung",
+              "Unterricht in meinem Studio in Neftenbach, auf einem E-Piano mit gewichteten Tasten",
               "Lektionen à 45 Minuten, wöchentlich oder alle zwei Wochen",
               "Halbjahres- oder Jahresabo mit festem Platz",
               "Individuell auf dein Tempo und deine Ziele abgestimmt",

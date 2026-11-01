@@ -218,51 +218,58 @@ describe("Strukturierte Daten", () => {
     expect(unbelegt).toEqual([]);
   });
 
-  it("die Anfahrt ist überall gleich beschrieben", () => {
+  it("Unterricht nur noch im Studio: keine Hausbesuche, keine Wegkosten", () => {
     /*
-      Die Regel hat sich geändert: Anfahrt inbegriffen, sobald in einer
-      Umgebung mindestens drei Lektionen stattfinden. Der alte Satz (ab 5 km
-      generell Wegkosten) stand an vier Stellen. Bleibt einer davon stehen,
-      widersprechen sich Startseite, Preisseite und FAQ, und der Interessent
-      glaubt die teuerste Aussage.
+      Seit November 2026 bietet David keine Hausbesuche mehr an. Bleibt auf
+      einer öffentlichen Seite ein Satz wie „bei dir zuhause" stehen, glaubt
+      der Interessent das und wartet auf einen Besuch, den es nicht gibt.
     */
-    const oeffentlich = [
+    const dateien = [
+      join(APP, "page.tsx"),
+      join(APP, "layout.tsx"),
+      join(APP, "opengraph-image.tsx"),
       join(APP, "preise", "page.tsx"),
+      join(APP, "probelektion", "page.tsx"),
+      join(APP, "probelektion", "layout.tsx"),
+      join(APP, "kontakt", "page.tsx"),
+      join(APP, "kontakt", "layout.tsx"),
+      join(APP, "ueber-mich", "page.tsx"),
+      join(APP, "agb", "page.tsx"),
+      join(WURZEL, "src", "components", "sections", "Hero.tsx"),
       join(WURZEL, "src", "components", "sections", "Pakete.tsx"),
-      join(WURZEL, "src", "components", "sections", "Preisrechner.tsx"),
-    ]
-      .map((p) => readFileSync(p, "utf8"))
-      .join("\n")
-      .replace(/\s+/g, " ");
+      join(WURZEL, "src", "components", "layout", "Footer.tsx"),
+      join(WURZEL, "src", "lib", "schema-org.ts"),
+    ];
+    const ohneKommentare = (t: string) =>
+      t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/^\s*\/\/.*$/gm, "");
+    const oeffentlich =
+      dateien.map((p) => ohneKommentare(readFileSync(p, "utf8"))).join("\n") +
+      "\n" +
+      FAQ.map((f) => `${f.frage} ${f.antwort}`).join("\n");
+    const flach = oeffentlich.replace(/\s+/g, " ");
 
-    // Der alte, generelle Satz darf nirgends mehr stehen.
-    expect(oeffentlich).not.toMatch(/Ab 5 km ab Neftenbach fallen Wegkosten/);
-    expect(oeffentlich).not.toMatch(/Wegkosten ab 5 km ab Neftenbach/);
-    expect(oeffentlich).not.toMatch(/erste 5 km kostenlos/);
+    for (const verboten of [
+      /bei dir zu ?hause/i,
+      /ich komme vorbei/i,
+      /Anfahrt (ist )?(im (Lektions)?preis )?inbegriffen/i,
+      /CHF 5\.– pro angefangene 5 Kilometer/,
+      /Unterricht bei dir/i,
+      /Neftenbach (&|und) Umgebung/,
+    ]) {
+      expect(flach, String(verboten)).not.toMatch(verboten);
+    }
 
-    // Und die neue Zusage muss auf der Preisseite ausdrücklich stehen.
-    const preise = readFileSync(join(APP, "preise", "page.tsx"), "utf8").replace(
-      /\s+/g,
-      " "
-    );
-    expect(preise).toContain("Die Anfahrt ist im Preis inbegriffen.");
-    expect(preise).toContain("drei Lektionen");
+    // Was stattdessen dasteht.
+    const preise = readFileSync(join(APP, "preise", "page.tsx"), "utf8").replace(/\s+/g, " ");
+    expect(preise).toContain("In meinem Studio in Neftenbach.");
+    expect(preise).toContain("E-Piano mit gewichteten Tasten");
+    expect(preise).not.toContain("Preisrechner");
 
-    // Die FAQ sagt dasselbe und nennt die Ausnahme.
-    const faqText = FAQ.map((f) => f.antwort).join(" ");
-    expect(faqText).toContain("Anfahrt ist im Preis inbegriffen");
-    expect(faqText).toContain("drei Lektionen");
-  });
+    // Öffentlich nur der Ort, nie die Strasse.
+    expect(flach).not.toContain("Sattleracherstrasse");
 
-  it("der Preisrechner schlägt keine Wegkosten mehr auf", () => {
-    // Er rechnete `basis + aufschlag`. Ein Rechner, der mehr zeigt als die
-    // Preisseite verspricht, ist die teuerste Art von Widerspruch.
-    const rechner = readFileSync(
-      join(WURZEL, "src", "components", "sections", "Preisrechner.tsx"),
-      "utf8"
-    );
-    expect(rechner).not.toMatch(/const aufschlag/);
-    expect(rechner).toContain("const gesamt = basis;");
+    // Der Rechner mit Adresseingabe für Wegkosten ist weg.
+    expect(existsSync(join(WURZEL, "src", "components", "sections", "Preisrechner.tsx"))).toBe(false);
   });
 
   it("beide Listen speisen sich aus derselben Quelle", () => {

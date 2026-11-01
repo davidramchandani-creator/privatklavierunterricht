@@ -24,7 +24,7 @@ export default async function Hero() {
             <div className="inline-flex items-center gap-2 bg-navy-50 border border-navy-100 rounded-full px-4 py-1.5">
               <span className="w-2 h-2 rounded-full bg-navy-400 animate-pulse" />
               <span className="text-navy-900 text-sm font-600">
-                Klavierunterricht in Neftenbach & Umgebung
+                Klavierunterricht in Neftenbach
               </span>
             </div>
 
@@ -65,7 +65,7 @@ export default async function Hero() {
             {/* Social proof pills */}
             <div className="flex flex-wrap gap-3 pt-2 opacity-0 animate-fade-in delay-300">
               <Pill icon={<Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />} text={`${schnitt} aus ${anzahl} Bewertungen`} />
-              <Pill icon={<Users className="w-3.5 h-3.5 text-navy-900" />} text="Unterricht bei dir zuhause" />
+              <Pill icon={<Users className="w-3.5 h-3.5 text-navy-900" />} text="Im Studio in Neftenbach" />
               <Pill icon={<Clock className="w-3.5 h-3.5 text-navy-900" />} text="16 Jahre Klaviererfahrung" />
             </div>
           </div>
@@ -81,7 +81,7 @@ export default async function Hero() {
                 <div className="text-white space-y-2">
                   <p className="text-white/50 text-xs font-600 uppercase tracking-widest">Nächster freier Termin</p>
                   <p className="text-2xl font-800 leading-tight">{nextSlotLabel}</p>
-                  <p className="text-white/60 text-sm">Bei dir zu Hause · 45 Min.</p>
+                  <p className="text-white/60 text-sm">Im Studio in Neftenbach · 45 Min.</p>
                 </div>
 
                 {/*

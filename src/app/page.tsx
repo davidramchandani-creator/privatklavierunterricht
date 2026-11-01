@@ -48,14 +48,9 @@ export default async function HomePage() {
         <Bewertungen />
       </Reveal>
       {/*
-        Der Preisrechner stand hier bis vor Kurzem und ist raus.
-
-        Er steht ohnehin schon auf /preise, wo jemand hingeht, der über Geld
-        nachdenken will. Auf der Startseite verlangte er als Einziges eine
-        Eingabe, die Wohnadresse, von einem Fremden, bevor irgendein
-        Verhältnis besteht. Das ist eine grosse Bitte an einer Stelle, an der
-        das Ziel „Probelektion buchen" heisst, und jedes Feld ist eine
-        Gelegenheit zu gehen. Die Paketkarten nennen die Preise ohnehin.
+        Hier stand einmal ein Preisrechner mit Adresseingabe für die
+        Wegkosten. Seit der Unterricht nur noch im Studio in Neftenbach
+        stattfindet, gibt es keine Wegkosten mehr und keinen Rechner.
       */}
       <Reveal>
         <Pakete />

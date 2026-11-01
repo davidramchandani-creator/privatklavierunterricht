@@ -24,8 +24,8 @@ const abschnitte: Abschnitt[] = [
       "Alle Preise, ob für Einzellektionen oder Abos, sind verbindlich.",
       "Probestunden sind immer kostenlos.",
       "Einzellektionen sind nach der Buchung verbindlich und unterliegen denselben Regeln wie Abos.",
-      "Die Anfahrt ist im Lektionspreis inbegriffen, sobald in deiner Umgebung mindestens drei Lektionen stattfinden. Das ist der Regelfall.",
-      "Fahre ich eigens für eine einzelne Lektion in eine Gegend, in der ich sonst niemanden unterrichte, kommen ab 5 Kilometern CHF 5.– pro angefangene 5 Kilometer dazu. Dieser Zuschlag wird vor der Buchung vereinbart und nie nachträglich erhoben.",
+      "Der Unterricht findet in meinem Studio in Neftenbach statt. Es fallen keine Wegkosten an.",
+      "Unterricht an einem anderen Ort ist nur nach ausdrücklicher Absprache möglich. Allfällige Wegkosten werden dabei vor der Buchung vereinbart und nie nachträglich erhoben.",
     ],
   },
   {

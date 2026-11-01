@@ -394,13 +394,12 @@ export default function VerfuegbarkeitFormular({
           <Info className="w-4 h-4 text-[#1C244B] flex-shrink-0 mt-0.5" />
           <div className="text-sm text-gray-600 leading-snug space-y-1.5">
             <p>
-              Gib möglichst <strong>mehrere Zeitfenster</strong> an. Ich fahre zu
-              allen Schülern und plane die Route so, dass möglichst wenig Leerfahrt
-              entsteht, je mehr Auswahl ich habe, desto eher bekommst du eine
-              Zeit, die dir wirklich passt.
+              Gib möglichst <strong>mehrere Zeitfenster</strong> an. Je mehr
+              Auswahl ich habe, desto eher bekommst du eine Zeit, die dir
+              wirklich passt.
             </p>
             <p className="text-gray-500">
-              Mit dem Stern markierst du deine Wunschzeit. Wenn es die Route
+              Mit dem Stern markierst du deine Wunschzeit. Wenn es der Plan
               zulässt, bekommst du sie.
             </p>
           </div>

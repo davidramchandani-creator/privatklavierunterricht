@@ -1,8 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { Check, Car, ShieldCheck, Piano, ExternalLink } from "lucide-react";
+import { Check, MapPin, ShieldCheck, Piano, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import Preisrechner from "@/components/sections/Preisrechner";
 import {
   EIGENE_ANGEBOTE,
   LEKTION_MINUTEN,
@@ -210,27 +209,30 @@ export default function PreisePage() {
             </p>
           </div>
 
-          {/* Wegvergütung */}
+          {/*
+            Wo der Unterricht stattfindet. Bis November 2026 stand hier die
+            Anfahrt mit Wegkosten ab 5 km; seither unterrichtet David nur noch
+            im eigenen Studio. Öffentlich steht nur der Ort, die genaue
+            Adresse bekommt man mit der Anmeldung.
+          */}
           <div className="bg-surface rounded-2xl p-6 border border-[#EAECEF] space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-navy-50 text-navy-900 flex items-center justify-center">
-                <Car className="w-5 h-5" />
+                <MapPin className="w-5 h-5" />
               </div>
-              <h2 className="text-xl font-800 text-navy-900">Anfahrt</h2>
+              <h2 className="text-xl font-800 text-navy-900">Wo der Unterricht stattfindet</h2>
             </div>
             <p className="text-gray-600 leading-relaxed text-sm">
               <strong className="text-navy-900 font-600">
-                Die Anfahrt ist im Preis inbegriffen.
+                In meinem Studio in Neftenbach.
               </strong>{" "}
-              Ich unterrichte an einem Abend mehrere Leute in derselben Gegend
-              und fahre die Strecke ohnehin. Ab drei Lektionen in einer
-              Umgebung entstehen dir keine Wegkosten.
+              Du spielst dort auf einem E-Piano mit gewichteten Tasten, die
+              sich anfühlen wie bei einem Klavier. Es kommen keine Wegkosten
+              dazu.
             </p>
             <p className="text-gray-600 leading-relaxed text-sm">
-              Nur wenn ich für eine einzelne Lektion eigens rausfahre und dort
-              sonst niemanden unterrichte, kommen ab 5 Kilometern CHF 5.– pro
-              angefangene 5 Kilometer dazu. Das sagt sich vorher, nicht
-              nachher.
+              Die genaue Adresse bekommst du, sobald wir einen Termin
+              abgemacht haben.
             </p>
           </div>
 
@@ -356,9 +358,6 @@ export default function PreisePage() {
           </a>
         </div>
       </section>
-
-      {/* Preisrechner */}
-      <Preisrechner />
 
       {/* CTA */}
       <section className="bg-navy-900 py-20 px-4 text-center">

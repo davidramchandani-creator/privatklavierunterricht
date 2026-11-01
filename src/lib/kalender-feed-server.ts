@@ -3,6 +3,7 @@
 // ============================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { ladeStudioAdresse, unterrichtsort } from "./studio";
 import {
   FEED_RUECKBLICK_TAGE,
   FEED_VORSCHAU_TAGE,
@@ -138,14 +139,18 @@ export async function ladeFeedTermine(
     abfrage = abfrage.eq("profiles.ist_test", false);
   }
 
-  const { data } = await abfrage;
+  const [{ data }, studioAdresse] = await Promise.all([
+    abfrage,
+    ladeStudioAdresse(admin),
+  ]);
   return ((data ?? []) as unknown as Zeile[]).map((z) => ({
     id: z.id,
     beginn: z.start_at,
     ende: z.end_at,
     status: z.status,
     name: z.profiles ? `${z.profiles.vorname} ${z.profiles.nachname}`.trim() : "Schüler",
-    adresse: z.profiles?.adresse ?? null,
+    // Wer zu David kommt, sieht das Studio, nicht die eigene Adresse.
+    adresse: z.profiles ? unterrichtsort(z.profiles, studioAdresse) : null,
     hausbesuch: z.profiles?.hausbesuch ?? true,
   }));
 }

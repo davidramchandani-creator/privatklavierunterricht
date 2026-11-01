@@ -16,12 +16,12 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Probelektion buchen — kostenlos und unverbindlich",
   description:
-    "Eine kostenlose Probelektion bei dir zu Hause in Neftenbach, Winterthur und Umgebung. Ohne Verpflichtung, ohne Vorkenntnisse, ohne eigenes Klavier nötig.",
+    "Eine kostenlose Probelektion in meinem Studio in Neftenbach. Ohne Verpflichtung, ohne Vorkenntnisse, ohne eigenes Klavier nötig.",
   alternates: { canonical: "/probelektion" },
   openGraph: {
     title: "Probelektion buchen — kostenlos und unverbindlich",
     description:
-      "Eine kostenlose Probelektion bei dir zu Hause. Ohne Verpflichtung, ohne Vorkenntnisse.",
+      "Eine kostenlose Probelektion in meinem Studio in Neftenbach. Ohne Verpflichtung, ohne Vorkenntnisse.",
     url: "/probelektion",
   },
 };

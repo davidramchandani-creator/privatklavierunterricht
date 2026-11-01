@@ -26,7 +26,7 @@ export function unternehmenJsonLd() {
     "@id": `${BASIS_URL}/#unternehmen`,
     name: "Privatklavierunterricht David Ramchandani",
     description:
-      "Individueller Klavierunterricht bei dir zu Hause. Ohne Noten, ohne Schema F — mit Gefühl und Verstand.",
+      "Individueller Klavierunterricht im Studio in Neftenbach. Ohne Noten, ohne Schema F, mit Gefühl und Verstand.",
     url: BASIS_URL,
     email: KONTAKT_MAIL,
     image: `${BASIS_URL}/opengraph-image`,
@@ -38,8 +38,9 @@ export function unternehmenJsonLd() {
       addressRegion: "ZH",
       addressCountry: "CH",
     },
-    // Der Unterricht findet beim Schüler statt, nicht an einer
-    // Ladenadresse. `areaServed` ist die ehrliche Angabe dafür.
+    // Der Unterricht findet im Studio in Neftenbach statt. Öffentlich steht
+    // nur der Ort, keine Strasse. `areaServed` nennt, woher die Schüler
+    // kommen.
     areaServed: [
       { "@type": "City", name: "Neftenbach" },
       { "@type": "City", name: "Winterthur" },

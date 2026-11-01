@@ -467,9 +467,9 @@ export default function NeuesAbo({
                       grundsätzlich kannst.
                     </p>
                     <p>
-                      Ich fahre zu allen Schülern und lege die Termine so, dass
-                      möglichst wenig Leerfahrt entsteht. Je mehr Auswahl ich habe,
-                      desto eher bekommst du eine Zeit, die dir wirklich passt.
+                      Ich lege alle Termine so, dass sie gut nebeneinander
+                      Platz haben. Je mehr Auswahl ich habe, desto eher
+                      bekommst du eine Zeit, die dir wirklich passt.
                     </p>
                   </Infobox>
 

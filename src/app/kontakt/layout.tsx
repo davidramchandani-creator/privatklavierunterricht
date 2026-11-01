@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Kontakt — Fragen zum Klavierunterricht",
   description:
-    "Fragen zum Klavierunterricht in Neftenbach und Umgebung? Schreib mir, ich antworte innerhalb von zwei Tagen.",
+    "Fragen zum Klavierunterricht in Neftenbach? Schreib mir, ich antworte innerhalb von zwei Tagen.",
   alternates: { canonical: "/kontakt" },
   openGraph: {
     title: "Kontakt — Fragen zum Klavierunterricht",

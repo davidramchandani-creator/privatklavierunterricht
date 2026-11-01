@@ -18,7 +18,7 @@ import { ImageResponse } from "next/og";
  * robuster und in den kleinen Vorschauen ohnehin besser lesbar.
  */
 
-export const alt = "Klavierunterricht mit David, Neftenbach & Umgebung";
+export const alt = "Klavierunterricht mit David in Neftenbach";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -80,7 +80,7 @@ export default async function Image() {
           }}
         >
           <div style={{ fontSize: 30, color: "#c3c7e3" }}>
-            David Ramchandani · Neftenbach & Umgebung
+            David Ramchandani · Studio in Neftenbach
           </div>
           <div style={{ fontSize: 26, color: "#6973b9" }}>
             privatklavierunterricht.ch

@@ -11,7 +11,8 @@
 // die richtige Antwort stand — 88 Tasten, Anschlagdynamik, und ein
 // vermitteltes Mietklavier für CHF 65 im Monat, von dem gar nichts in der
 // FAQ vorkam. Ebenso falsch: „inklusive Anfahrt", während die Preisseite
-// Wegkosten ab 5 km nennt.
+// damals Wegkosten ab 5 km nannte. (Seit November 2026 gibt es keine
+// Hausbesuche mehr, der Unterricht findet im Studio in Neftenbach statt.)
 //
 // Erfundene Antworten sind hier besonders teuer. Sie stehen im
 // Suchergebnis, jemand richtet sich danach, und am Ende widersprechen sie
@@ -46,7 +47,7 @@ export const FAQ: FrageAntwort[] = [
     frage: "Wie lange dauert eine Lektion?",
     quelle: "LEKTION_MINUTEN in lib/tarifvergleich",
     antwort:
-      "45 Minuten. Der Unterricht findet bei dir zu Hause statt, in Neftenbach und Umgebung.",
+      "45 Minuten. Der Unterricht findet in meinem Studio in Neftenbach statt.",
   },
   {
     frage: "Was kostet der Unterricht?",
@@ -56,9 +57,9 @@ export const FAQ: FrageAntwort[] = [
   },
   {
     frage: "Kommen Wegkosten dazu?",
-    quelle: "/preise Abschnitt Anfahrt, AGB Ziffer 2",
+    quelle: "/preise Abschnitt Wo der Unterricht stattfindet, AGB Ziffer 2",
     antwort:
-      "In aller Regel nicht. Die Anfahrt ist im Preis inbegriffen, sobald in deiner Umgebung mindestens drei Lektionen stattfinden, und das ist der Normalfall. Ich unterrichte an einem Abend mehrere Leute auf derselben Strecke. Nur wenn ich eigens für eine einzelne Lektion in eine Gegend fahre, in der ich sonst niemanden unterrichte, kommen ab 5 Kilometern CHF 5.– pro angefangene 5 Kilometer dazu. Das bespreche ich vorher mit dir, nie nachträglich.",
+      "Nein. Der Unterricht findet in meinem Studio in Neftenbach statt, es kommen keine Wegkosten dazu.",
   },
   {
     frage: "Ist die Probelektion wirklich kostenlos?",
@@ -99,9 +100,9 @@ export const FAQ: FrageAntwort[] = [
   },
   {
     frage: "Wo unterrichtest du?",
-    quelle: "/preise, Wegkosten und Einzugsgebiet",
+    quelle: "/preise, Abschnitt Wo der Unterricht stattfindet",
     antwort:
-      "Bei dir zu Hause, in Neftenbach und der Umgebung bis Winterthur. Ob deine Adresse noch dazugehört, klärt sich am schnellsten über das Kontaktformular.",
+      "In meinem Studio in Neftenbach. Du spielst dort auf einem E-Piano mit gewichteten Tasten. Die genaue Adresse bekommst du, sobald wir einen Termin abgemacht haben.",
   },
   {
     frage: "Wie wird bezahlt?",

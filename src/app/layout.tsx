@@ -26,7 +26,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "Klavierunterricht mit David, Neftenbach & Umgebung",
+    default: "Klavierunterricht mit David in Neftenbach",
     template: "%s | David, Klavierunterricht",
   },
   description:

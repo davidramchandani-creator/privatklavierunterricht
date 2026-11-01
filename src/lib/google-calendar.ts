@@ -7,6 +7,7 @@
 
 import { createSign } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { ladeStudioAdresse, unterrichtsort } from "./studio";
 
 const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID ?? "primary";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -121,7 +122,10 @@ type AppointmentForSync = {
     nachname: string | null;
     email: string | null;
     adresse: string | null;
+    hausbesuch: boolean | null;
   } | null;
+  /** Volle Studioadresse, für Schüler, die zu David kommen. */
+  studioAdresse: string;
 };
 
 // Farben je Status (Google colorId 1–11)
@@ -137,9 +141,10 @@ function buildEventBody(appt: AppointmentForSync) {
   const name = appt.student
     ? `${appt.student.vorname ?? ""} ${appt.student.nachname ?? ""}`.trim()
     : "Schüler";
-  const location = appt.student?.adresse
-    ? appt.student.adresse
-    : `Hausbesuch, ${name}`;
+  // Kommt der Schüler zu David, steht das Studio da, sonst seine Adresse.
+  const location =
+    (appt.student ? unterrichtsort(appt.student, appt.studioAdresse) : null) ??
+    `Hausbesuch, ${name}`;
 
   const descriptionParts = [
     `Schüler/in: ${name}`,
@@ -169,14 +174,15 @@ async function fetchAppointment(
   const { data } = await admin
     .from("appointments")
     .select(
-      "id, start_at, end_at, status, notes, google_event_id, student:profiles!student_id(vorname, nachname, email, adresse)"
+      "id, start_at, end_at, status, notes, google_event_id, student:profiles!student_id(vorname, nachname, email, adresse, hausbesuch)"
     )
     .eq("id", appointmentId)
     .maybeSingle();
   if (!data) return null;
   // student kann als Array oder Objekt kommen, normalisieren
   const student = Array.isArray(data.student) ? data.student[0] : data.student;
-  return { ...data, student: student ?? null } as AppointmentForSync;
+  const studioAdresse = await ladeStudioAdresse(admin);
+  return { ...data, student: student ?? null, studioAdresse } as AppointmentForSync;
 }
 
 const CAL_BASE = "https://www.googleapis.com/calendar/v3/calendars";
