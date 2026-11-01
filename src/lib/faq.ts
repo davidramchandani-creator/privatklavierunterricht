@@ -102,7 +102,7 @@ export const FAQ: FrageAntwort[] = [
     frage: "Wo unterrichtest du?",
     quelle: "/preise, Abschnitt Wo der Unterricht stattfindet",
     antwort:
-      "In meinem Studio in Neftenbach. Du spielst dort auf einem Kawai ES120, einem E-Piano mit 88 gewichteten Tasten. Die genaue Adresse bekommst du, sobald wir einen Termin abgemacht haben.",
+      "In meinem Studio in Neftenbach. Du spielst dort auf einem Kawai ES120, einem E-Piano mit 88 gewichteten Tasten und Hammermechanik, dessen Klang einem Kawai-Konzertflügel nachempfunden ist. Die genaue Adresse bekommst du, sobald wir einen Termin abgemacht haben.",
   },
   {
     frage: "Wie wird bezahlt?",

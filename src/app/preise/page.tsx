@@ -232,8 +232,10 @@ export default function PreisePage() {
                 In meinem Studio in Neftenbach.
               </strong>{" "}
               Du spielst dort auf einem Kawai ES120, einem E-Piano mit 88
-              gewichteten Tasten, die sich anfühlen wie bei einem Klavier. Es
-              kommen keine Wegkosten dazu.
+              gewichteten Tasten und Hammermechanik (Responsive Hammer
+              Compact). Die Tasten fühlen sich an wie bei einem Klavier, und
+              der Klang ist einem Kawai-Konzertflügel nachempfunden. Es kommen
+              keine Wegkosten dazu.
             </p>
             <p className="text-gray-600 leading-relaxed text-sm">
               Die genaue Adresse bekommst du, sobald wir einen Termin
