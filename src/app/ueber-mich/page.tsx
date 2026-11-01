@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { Music, Users, Heart, CheckCircle2, Star } from "lucide-react";
+import { Music, Users, Heart, CheckCircle2, Star, GraduationCap } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,7 @@ const stationen = [
   {
     year: "Herbst 2026",
     title: "PH Studium",
-    desc: "Start des Pädagogikstudiums an der PH Zürich, um Musik auch beruflich weiterzugeben.",
+    desc: "Start des Studiums an der PH Zürich. Das Diplom ist von der EDK anerkannt, ich werde also Lehrperson mit anerkannter Ausbildung und gebe Musik auch beruflich weiter.",
   },
 ];
 
@@ -89,6 +89,10 @@ export default async function UeberMichPage() {
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-500 text-white/80">
               <Music className="w-4 h-4" />
               {jahreKlaviererfahrung()} Jahre Klaviererfahrung
+            </div>
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-500 text-white/80 ml-2">
+              <GraduationCap className="w-4 h-4" />
+              Studium an der PH Zürich
             </div>
             <h1 className="text-4xl sm:text-5xl font-800 leading-tight">
               Hallo, ich bin <span className="italic">David</span>.

@@ -112,9 +112,9 @@ export const FAQ: FrageAntwort[] = [
   },
   {
     frage: "Bist du ausgebildeter Musiklehrer?",
-    quelle: "AGB Ziffer 1",
+    quelle: "AGB Ziffer 1, /ueber-mich",
     antwort:
-      "Ich habe kein abgeschlossenes Musikpädagogikstudium. Mein Unterricht beruht auf über 14 Jahren Spielerfahrung und langjährigem eigenem Unterricht, und er ist praxisorientiert. Wer eine konservatoriumsnahe Ausbildung sucht, ist bei einer Musikschule besser aufgehoben. Wer spielen lernen will, was ihm gefällt, bei mir.",
+      "Ich bin angehende Lehrperson: Seit Herbst 2026 studiere ich an der PH Zürich, deren Diplom von der EDK anerkannt ist. Ein abgeschlossenes Musikpädagogikstudium habe ich noch nicht. Mein Unterricht beruht auf Spielerfahrung seit 2009 und eigenem Unterricht seit 2024, und er ist praxisorientiert. Wer eine konservatoriumsnahe Ausbildung sucht, ist bei einer Musikschule besser aufgehoben. Wer spielen lernen will, was ihm gefällt, bei mir.",
   },
 ];
 

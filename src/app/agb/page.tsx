@@ -13,8 +13,8 @@ const abschnitte: Abschnitt[] = [
   {
     titel: "1. Unterricht & Inhalte",
     absaetze: [
-      "Mein Unterricht basiert auf über 14 Jahren Spielerfahrung und persönlichem Unterricht.",
-      "Ich habe kein abgeschlossenes Musikpädagogikstudium, sondern unterrichte praxisorientiert mit Fokus auf Spielen nach Gehör, Muster und Auge.",
+      "Mein Unterricht basiert auf Spielerfahrung seit 2009 und eigenem Unterricht seit 2024. Seit Herbst 2026 studiere ich an der PH Zürich, deren Diplom von der EDK anerkannt ist.",
+      "Ich habe noch kein abgeschlossenes Musikpädagogikstudium und unterrichte praxisorientiert mit Fokus auf Spielen nach Gehör, Muster und Auge.",
       "Ein bestimmter Lernerfolg kann nicht garantiert werden, der Fortschritt hängt auch vom Engagement des Schülers ab.",
     ],
   },

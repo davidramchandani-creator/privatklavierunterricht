@@ -24,7 +24,7 @@ export default function UeberMichTeaser() {
 
             {/* Floating stat */}
             <div className="absolute -bottom-4 -right-4 lg:right-0 bg-navy-900 text-white rounded-2xl px-5 py-4 shadow-lg shadow-navy-900/30">
-              <p className="text-3xl font-800 leading-none">16</p>
+              <p className="text-3xl font-800 leading-none">{jahreKlaviererfahrung()}</p>
               <p className="text-xs font-600 mt-0.5 text-white/70">Jahre Erfahrung</p>
             </div>
           </div>
@@ -43,7 +43,9 @@ export default function UeberMichTeaser() {
             <p className="text-gray-600 leading-relaxed mb-4">
               Ich bin {davidsAlter()} Jahre alt und habe {jahreKlaviererfahrung()} Jahre Klaviererfahrung. Ich teile
               gern mein Wissen und meine Techniken, um anderen das
-              Klavierspielen beizubringen.
+              Klavierspielen beizubringen. Seit Herbst 2026 studiere ich an
+              der PH Zürich und werde Lehrperson mit einem von der EDK
+              anerkannten Diplom.
             </p>
             <p className="text-gray-600 leading-relaxed mb-4">
               Mir geht es um Technik, Begeisterung und Freude am Klavierspiel.

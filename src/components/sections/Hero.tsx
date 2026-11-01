@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { CalendarCheck, Star, Users, Clock, ArrowRight } from "lucide-react";
+import { CalendarCheck, Star, Users, Clock, ArrowRight, GraduationCap } from "lucide-react";
 import { naechsterTerminText } from "@/lib/naechster-termin";
 import { ladeBewertungen } from "@/lib/bewertungen";
 import { jahreKlaviererfahrung } from "@/lib/ueber-david";
@@ -68,6 +68,7 @@ export default async function Hero() {
               <Pill icon={<Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />} text={`${schnitt} aus ${anzahl} Bewertungen`} />
               <Pill icon={<Users className="w-3.5 h-3.5 text-navy-900" />} text="Im Studio in Neftenbach" />
               <Pill icon={<Clock className="w-3.5 h-3.5 text-navy-900" />} text={`${jahreKlaviererfahrung()} Jahre Klaviererfahrung`} />
+              <Pill icon={<GraduationCap className="w-3.5 h-3.5 text-navy-900" />} text="Studium an der PH Zürich" />
             </div>
           </div>
 

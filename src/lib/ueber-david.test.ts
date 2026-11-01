@@ -36,7 +36,22 @@ describe("Alter und Erfahrung", () => {
       const t = ohne(readFileSync(join(process.cwd(), ...d), "utf8"));
       expect(t, d.join("/")).not.toMatch(/\b(16|17|21|22)\s*(\+\s*)?Jahre/);
       expect(t, d.join("/")).not.toMatch(/value:\s*"1[67]"/);
-      expect(t, d.join("/")).not.toMatch(/>1[67]\+</);
+      expect(t, d.join("/")).not.toMatch(/>\s*1[4-9]\+?\s*</);
+    }
+  });
+
+  it("das Studium an der PH Zürich steht überall, wo es um die Ausbildung geht", () => {
+    const lies = (...d: string[]) => readFileSync(join(process.cwd(), ...d), "utf8").replace(/\s+/g, " ");
+    const stellen = [
+      lies("src", "lib", "faq.ts"),
+      lies("src", "app", "agb", "page.tsx"),
+      lies("src", "app", "preise", "page.tsx"),
+      lies("src", "components", "sections", "UeberMichTeaser.tsx"),
+      lies("src", "components", "sections", "Hero.tsx"),
+    ];
+    for (const t of stellen) {
+      expect(t).toContain("PH Zürich");
+      expect(t).not.toMatch(/über 14 Jahren/);
     }
   });
 });

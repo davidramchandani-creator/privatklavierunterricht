@@ -196,8 +196,8 @@ export default function PreisePage() {
               Ich orientiere mich an den Richtpreisen des SMPV (Schweizerischer
               Musikpädagogischer Verband) sowie an der Preisstruktur von Matchspace
               Music, wo ich den kompletten Qualifizierungsprozess durchlaufen habe.
-              Mit über 14 Jahren Spielerfahrung, pädagogischem Interesse und
-              kontinuierlicher Weiterbildung ergibt sich ein Preis, der Qualität,
+              Mit Spielerfahrung seit 2009, eigenem Unterricht seit 2024 und
+              dem laufenden Studium an der PH Zürich ergibt sich ein Preis, der Qualität,
               Zeitaufwand und Professionalität widerspiegelt.
             </p>
           </div>
