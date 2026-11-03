@@ -5,6 +5,11 @@
 // darum ab sofort mehr, bestehende behalten ihren Preis, bis David ihn
 // im Admin pro Schüler ändert.
 //
+// Zuerst 100 / 85 / 80, noch am selben Tag auf 97.50 / 82.50 / 77.50: Das
+// Semesterabo entspricht so genau dem Richtwert des SMPV (CHF 110 pro
+// 60 Minuten, auf 45 Minuten umgerechnet 82.50). Die Abstände zwischen
+// den drei Preisen sind geblieben.
+//
 // Diese Datei ist die einzige Stelle, an der die öffentlichen Preise
 // stehen. Webseite, FAQ, strukturierte Daten, Tarifvergleich und die
 // Standardwerte für neu angelegte Schüler lesen von hier. Wer die Preise
@@ -19,11 +24,11 @@ import { roundRappen } from "./subscription";
 
 export const NEUPREISE = {
   /** Einzellektion, 45 Minuten. */
-  einzel: 100,
-  /** Semesterabo, pro Lektion. */
-  semester: 85,
+  einzel: 97.5,
+  /** Semesterabo, pro Lektion. Genau der SMPV-Richtwert auf 45 Minuten. */
+  semester: 82.5,
   /** Jahresabo, pro Lektion. */
-  jahr: 80,
+  jahr: 77.5,
 } as const;
 
 /** Wie viel Prozent ein Abo gegenüber der Einzellektion spart, gerundet. */
@@ -31,9 +36,14 @@ export function rabattGegenueberEinzel(preis: number): number {
   return Math.round(((NEUPREISE.einzel - preis) / NEUPREISE.einzel) * 100);
 }
 
-/** „CHF 85.–“ */
-export function chf(betrag: number): string {
-  return Number.isInteger(betrag) ? `CHF ${betrag}.–` : `CHF ${betrag.toFixed(2)}`;
+/** „85“ oder „82.50“, nie „82.5“. */
+export function betrag(wert: number): string {
+  return Number.isInteger(wert) ? String(wert) : wert.toFixed(2);
+}
+
+/** „CHF 85.–“ oder „CHF 82.50“ */
+export function chf(wert: number): string {
+  return Number.isInteger(wert) ? `CHF ${wert}.–` : `CHF ${wert.toFixed(2)}`;
 }
 
 /**

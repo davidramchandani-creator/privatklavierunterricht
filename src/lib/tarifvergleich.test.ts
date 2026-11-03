@@ -41,21 +41,22 @@ describe("vergleiche", () => {
    * Seite das zugibt, statt es wegzurunden.
    */
   it("gibt zu, was ueber der Empfehlung liegt", () => {
-    // Neue Preise ab November 2026: 100 / 85 / 80 fuer 45 Minuten.
+    // Neue Preise ab November 2026: 97.50 / 82.50 / 77.50 fuer 45 Minuten.
     const einzel = zeilen.find((z) => z.bezeichnung === "Einzellektion");
     const semester = zeilen.find((z) => z.bezeichnung === "Semesterabo");
     const jahr = zeilen.find((z) => z.bezeichnung === "Jahresabo");
-    expect(einzel?.preis60).toBe(133);
-    expect(semester?.preis60).toBe(113);
-    expect(jahr?.preis60).toBe(107);
+    expect(einzel?.preis60).toBe(130);
+    expect(semester?.preis60).toBe(110);
+    expect(jahr?.preis60).toBe(103);
     expect(einzel?.unterEmpfehlung).toBe(false);
+    expect(semester?.gleichEmpfehlung).toBe(true);
     expect(semester?.unterEmpfehlung).toBe(false);
     expect(jahr?.unterEmpfehlung).toBe(true);
   });
 
   it("baut den Satz unter der Tabelle aus den Zahlen", () => {
     expect(vergleichsSatz(zeilen)).toBe(
-      "Jahresabo liegt damit unter der Empfehlung, Einzellektion und Semesterabo darüber."
+      "Semesterabo entspricht damit genau der Empfehlung, Jahresabo liegt darunter, Einzellektion darüber."
     );
     expect(
       vergleichsSatz(vergleiche([

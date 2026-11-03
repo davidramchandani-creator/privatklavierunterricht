@@ -16,8 +16,8 @@
 //
 // ── Was dabei herauskommt ───────────────────────────────────
 //
-// Seit den neuen Preisen vom November 2026 liegt nur noch das Jahresabo
-// unter der Empfehlung, Semesterabo und Einzellektion darüber. Der Satz
+// Seit den neuen Preisen vom November 2026 entspricht das Semesterabo genau
+// der Empfehlung, das Jahresabo liegt darunter, die Einzellektion darüber. Der Satz
 // dazu auf der Preisseite wird aus den Zahlen gebaut (`vergleichsSatz`),
 // damit er nach der nächsten Preisänderung nicht wieder falsch ist. Wer das
 // PDF öffnet, findet dieselben Zahlen.
@@ -69,6 +69,8 @@ export type Vergleichszeile = {
   preis60: number;
   /** Unter der SMPV-Empfehlung für Erwachsene? */
   unterEmpfehlung: boolean;
+  /** Genau auf der Empfehlung (auf ganze Franken pro Stunde)? */
+  gleichEmpfehlung: boolean;
 };
 
 export function vergleiche(
@@ -81,6 +83,7 @@ export function vergleiche(
       preis45,
       preis60,
       unterEmpfehlung: preis60 < SMPV_STUNDE,
+      gleichEmpfehlung: preis60 === SMPV_STUNDE,
     };
   });
 }
@@ -103,12 +106,44 @@ function aufzaehlen(namen: string[]): string {
  * Vorher stand dort fest „Die Abos liegen damit unter der Empfehlung, die
  * Einzellektion knapp darüber“. Mit den neuen Preisen stimmte das nicht
  * mehr, und genau so ein Satz fällt beim Nachrechnen auf.
+ *
+ * Seit dem 3. November 2026 liegt das Semesterabo genau auf der
+ * Empfehlung (David wollte das so). Das bekommt einen eigenen Satzteil,
+ * „darüber“ wäre falsch und „darunter“ auch.
  */
 export function vergleichsSatz(zeilen: Vergleichszeile[]): string {
+  const gleich = zeilen.filter((z) => z.gleichEmpfehlung).map((z) => z.bezeichnung);
   const unter = zeilen.filter((z) => z.unterEmpfehlung).map((z) => z.bezeichnung);
-  const ueber = zeilen.filter((z) => !z.unterEmpfehlung).map((z) => z.bezeichnung);
-  if (ueber.length === 0) return "Alle Angebote liegen damit unter der Empfehlung.";
-  if (unter.length === 0) return "Alle Angebote liegen damit über der Empfehlung.";
-  const verbU = unter.length === 1 ? "liegt" : "liegen";
-  return `${aufzaehlen(unter)} ${verbU} damit unter der Empfehlung, ${aufzaehlen(ueber)} darüber.`;
+  const ueber = zeilen
+    .filter((z) => !z.unterEmpfehlung && !z.gleichEmpfehlung)
+    .map((z) => z.bezeichnung);
+
+  const teile: string[] = [];
+  if (gleich.length > 0) {
+    teile.push(
+      `${aufzaehlen(gleich)} ${gleich.length === 1 ? "entspricht" : "entsprechen"} damit genau der Empfehlung`
+    );
+  }
+  if (unter.length > 0) {
+    const verb = unter.length === 1 ? "liegt" : "liegen";
+    teile.push(
+      teile.length === 0
+        ? `${aufzaehlen(unter)} ${verb} damit unter der Empfehlung`
+        : `${aufzaehlen(unter)} ${verb} darunter`
+    );
+  }
+  if (ueber.length > 0) {
+    teile.push(
+      teile.length === 0
+        ? `${aufzaehlen(ueber)} ${ueber.length === 1 ? "liegt" : "liegen"} damit über der Empfehlung`
+        : `${aufzaehlen(ueber)} darüber`
+    );
+  }
+  if (teile.length === 1 && gleich.length === 0 && ueber.length === 0) {
+    return "Alle Angebote liegen damit unter der Empfehlung.";
+  }
+  if (teile.length === 1 && gleich.length === 0 && unter.length === 0) {
+    return "Alle Angebote liegen damit über der Empfehlung.";
+  }
+  return `${teile.join(", ")}.`;
 }

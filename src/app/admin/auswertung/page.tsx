@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server";
-import { NEUPREISE } from "@/lib/neupreise";
+import { NEUPREISE, betrag } from "@/lib/neupreise";
 import {
   ALTPREISE,
   MINDEST_ANFRAGEN_FUER_QUOTE,
@@ -72,8 +72,8 @@ export default async function AuswertungPage() {
       <div>
         <h1 className="text-2xl font-800 text-[#1C244B]">Auswertung</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Seit {datumLabel(PREISSTART)} zahlen neue Schüler {NEUPREISE.einzel} / {NEUPREISE.semester} /{" "}
-          {NEUPREISE.jahr} CHF pro Lektion (vorher {ALTPREISE.einzel} / {ALTPREISE.semester} /{" "}
+          Seit {datumLabel(PREISSTART)} zahlen neue Schüler {betrag(NEUPREISE.einzel)} / {betrag(NEUPREISE.semester)} /{" "}
+          {betrag(NEUPREISE.jahr)} CHF pro Lektion (vorher {ALTPREISE.einzel} / {ALTPREISE.semester} /{" "}
           {ALTPREISE.jahr}).
         </p>
       </div>

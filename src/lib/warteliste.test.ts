@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { platzstufe, platzText, wartendeText, zaehlePlaetze } from "./platzstatus";
 import { angebotFrist, angebotZustand, neuesToken, pruefeAnmeldung } from "./warteliste";
-import { NEUPREISE, beispielMonatsrate, rabattGegenueberEinzel } from "./neupreise";
+import { NEUPREISE, beispielMonatsrate, betrag, chf, rabattGegenueberEinzel } from "./neupreise";
 import { renderEmail } from "./email-templates";
 
 function fd(werte: Record<string, string | string[]>) {
@@ -143,16 +143,26 @@ describe("Mails der Warteliste", () => {
 });
 
 describe("Neue Preise", () => {
-  it("sind 100 / 85 / 80", () => {
-    expect(NEUPREISE).toEqual({ einzel: 100, semester: 85, jahr: 80 });
-    expect(rabattGegenueberEinzel(85)).toBe(15);
-    expect(rabattGegenueberEinzel(80)).toBe(20);
+  it("sind 97.50 / 82.50 / 77.50, das Semesterabo genau auf dem SMPV-Richtwert", () => {
+    expect(NEUPREISE).toEqual({ einzel: 97.5, semester: 82.5, jahr: 77.5 });
+    // 110 pro 60 Minuten = 82.50 pro 45 Minuten
+    expect((110 / 60) * 45).toBe(NEUPREISE.semester);
+    expect(rabattGegenueberEinzel(NEUPREISE.semester)).toBe(15);
+    expect(rabattGegenueberEinzel(NEUPREISE.jahr)).toBe(21);
+  });
+
+  it("zeigt Beträge mit zwei Stellen, nie „82.5“", () => {
+    expect(betrag(82.5)).toBe("82.50");
+    expect(betrag(100)).toBe("100");
+    expect(chf(82.5)).toBe("CHF 82.50");
+    expect(chf(85)).toBe("CHF 85.–");
   });
 
   it("rechnen die Beispielraten auf 5 Rappen", () => {
-    // 25 × 85 = 2125 / 7 = 303.57 → 303.55
-    expect(beispielMonatsrate(25, 85, 7)).toBe(303.55);
-    expect(beispielMonatsrate(13, 80, 7)).toBe(148.55);
+    // 25 × 82.50 = 2062.50 / 7 = 294.64 → 294.65
+    expect(beispielMonatsrate(25, 82.5, 7)).toBe(294.65);
+    // 13 × 77.50 = 1007.50 / 7 = 143.93 → 143.95
+    expect(beispielMonatsrate(13, 77.5, 7)).toBe(143.95);
   });
 
   /**
@@ -162,12 +172,12 @@ describe("Neue Preise", () => {
    */
   it("stimmen mit den Vorgabewerten der Datenbank überein", () => {
     const sql = readFileSync(
-      join(process.cwd(), "supabase/migrations/068_neupreise_warteliste.sql"),
+      join(process.cwd(), "supabase/migrations/069_neupreise_smpv.sql"),
       "utf8"
     );
-    expect(sql).toContain(`price_single set default ${NEUPREISE.einzel}.00`);
-    expect(sql).toContain(`price_halbjahr set default ${NEUPREISE.semester}.00`);
-    expect(sql).toContain(`price_jahr set default ${NEUPREISE.jahr}.00`);
+    expect(sql).toContain(`price_single set default ${NEUPREISE.einzel.toFixed(2)}`);
+    expect(sql).toContain(`price_halbjahr set default ${NEUPREISE.semester.toFixed(2)}`);
+    expect(sql).toContain(`price_jahr set default ${NEUPREISE.jahr.toFixed(2)}`);
   });
 
   it("stehen auf der Webseite nirgends mehr fest im Code", () => {

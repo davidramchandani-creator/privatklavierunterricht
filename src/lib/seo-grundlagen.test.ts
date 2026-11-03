@@ -121,11 +121,7 @@ describe("Strukturierte Daten", () => {
     // Seit November 2026 lesen Preisseite und strukturierte Daten aus
     // derselben Quelle (`NEUPREISE`), damit sie nicht auseinanderlaufen.
     const preise = unternehmenJsonLd().makesOffer.map((o) => o.price);
-    expect(preise).toEqual([
-      String(NEUPREISE.einzel),
-      String(NEUPREISE.semester),
-      String(NEUPREISE.jahr),
-    ]);
+    expect(preise).toEqual(["97.50", "82.50", "77.50"]);
 
     const seite = readFileSync(join(APP, "preise", "page.tsx"), "utf8");
     for (const p of ["NEUPREISE.einzel", "NEUPREISE.semester", "NEUPREISE.jahr"]) {
@@ -174,7 +170,7 @@ describe("Strukturierte Daten", () => {
       .concat(
         // Die Preisseite rechnet ihre Preise aus `NEUPREISE`, im Quelltext
         // steht darum keine Zahl. Gerendert steht dort „CHF 100.–“ usw.
-        Object.values(NEUPREISE).map((p) => `CHF ${p}`)
+        Object.values(NEUPREISE).map((p) => `CHF ${Number.isInteger(p) ? p : p.toFixed(2)}`)
       )
       .join("\n");
 

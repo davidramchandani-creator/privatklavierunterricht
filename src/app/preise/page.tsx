@@ -12,7 +12,7 @@ import {
   vergleiche,
   vergleichsSatz,
 } from "@/lib/tarifvergleich";
-import { NEUPREISE, beispielMonatsrate, chf } from "@/lib/neupreise";
+import { NEUPREISE, beispielMonatsrate, betrag, chf } from "@/lib/neupreise";
 
 // Die Erfahrung rechnet sich aus dem Datum, darum täglich neu.
 export const revalidate = 86400;
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/preise" },
   title: "Preise & Transparenz: Privatklavierunterricht David Ramchandani",
   description:
-    `Wie sich meine Unterrichtspreise zusammensetzen und warum sie fair und nachhaltig sind. Einzellektion CHF ${NEUPREISE.einzel}, Semesterabo CHF ${NEUPREISE.semester}, Jahresabo CHF ${NEUPREISE.jahr} pro Lektion.`,
+    `Wie sich meine Unterrichtspreise zusammensetzen und warum sie fair und nachhaltig sind. Einzellektion CHF ${betrag(NEUPREISE.einzel)}, Semesterabo CHF ${betrag(NEUPREISE.semester)}, Jahresabo CHF ${betrag(NEUPREISE.jahr)} pro Lektion.`,
 };
 
 const vergleichszeilen = vergleiche(EIGENE_ANGEBOTE);
@@ -337,12 +337,12 @@ export default function PreisePage() {
                 <div>
                   <p className="text-sm font-600 text-navy-900">{z.bezeichnung}</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    CHF {z.preis45}.– für {LEKTION_MINUTEN} Minuten
+                    {chf(z.preis45)} für {LEKTION_MINUTEN} Minuten
                   </p>
                 </div>
                 <span
                   className={`text-lg font-800 ${
-                    z.unterEmpfehlung ? "text-emerald-600" : "text-navy-900"
+                    z.unterEmpfehlung || z.gleichEmpfehlung ? "text-emerald-600" : "text-navy-900"
                   }`}
                 >
                   CHF {z.preis60}.–

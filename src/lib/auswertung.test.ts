@@ -17,7 +17,7 @@ describe("Monat und Listenpreis", () => {
   });
   it("kennt den Listenpreis vor und nach der Umstellung", () => {
     expect(listenpreisSemester("2026-11-02")).toBe(70);
-    expect(listenpreisSemester("2026-11-03")).toBe(85);
+    expect(listenpreisSemester("2026-11-03")).toBe(82.5);
   });
 });
 
@@ -38,7 +38,7 @@ describe("baueAuswertung", () => {
           { erstellt_am: "2027-01-05T10:00:00Z", email: "c@x.ch" },
         ],
         warteliste: [{ erstellt_am: "2026-12-10T10:00:00Z", quelle: "webseite" }],
-        schueler: [{ erstellt_am: "2026-12-15T10:00:00Z", email: "a@x.ch", price_halbjahr: 85 }],
+        schueler: [{ erstellt_am: "2026-12-15T10:00:00Z", email: "a@x.ch", price_halbjahr: 82.5 }],
       },
       jetzt
     );
@@ -56,7 +56,7 @@ describe("baueAuswertung", () => {
         anfragen: [],
         warteliste: [],
         schueler: [
-          // Nach der Umstellung: 75 ist günstiger als 85.
+          // Nach der Umstellung: 75 ist günstiger als 82.50.
           { erstellt_am: "2026-12-01T10:00:00Z", email: null, price_halbjahr: 75 },
           // Vor der Umstellung war 70 der Listenpreis, also kein Rabatt.
           { erstellt_am: "2026-10-01T10:00:00Z", email: null, price_halbjahr: "70.00" },
@@ -81,9 +81,9 @@ describe("baueAuswertung", () => {
         warteliste: [],
         schueler: [
           // Anfrage über 90 Tage her
-          { erstellt_am: "2026-12-01T10:00:00Z", email: "ALT@x.ch", price_halbjahr: 85 },
+          { erstellt_am: "2026-12-01T10:00:00Z", email: "ALT@x.ch", price_halbjahr: 82.5 },
           // Anfrage kam erst nach dem Anlegen
-          { erstellt_am: "2026-12-10T10:00:00Z", email: "spaeter@x.ch", price_halbjahr: 85 },
+          { erstellt_am: "2026-12-10T10:00:00Z", email: "spaeter@x.ch", price_halbjahr: 82.5 },
         ],
       },
       jetzt
@@ -113,8 +113,8 @@ describe("baueAuswertung", () => {
         })),
         warteliste: [],
         schueler: [
-          { erstellt_am: "2026-12-10T10:00:00Z", email: "p0@x.ch", price_halbjahr: 85 },
-          { erstellt_am: "2026-12-11T10:00:00Z", email: "p1@x.ch", price_halbjahr: 85 },
+          { erstellt_am: "2026-12-10T10:00:00Z", email: "p0@x.ch", price_halbjahr: 82.5 },
+          { erstellt_am: "2026-12-11T10:00:00Z", email: "p1@x.ch", price_halbjahr: 82.5 },
         ],
       },
       jetzt

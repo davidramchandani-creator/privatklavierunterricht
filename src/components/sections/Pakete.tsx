@@ -3,7 +3,7 @@ import { Check, Lock, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import AbschnittsKopf from "@/components/AbschnittsKopf";
-import { NEUPREISE, rabattGegenueberEinzel } from "@/lib/neupreise";
+import { NEUPREISE, betrag, rabattGegenueberEinzel } from "@/lib/neupreise";
 import PlatzHinweis from "@/components/PlatzHinweis";
 
 const pakete = [
@@ -130,7 +130,7 @@ export default function Pakete() {
                 <div className="mb-6">
                   <div className="flex items-baseline gap-2">
                     <span className="text-4xl font-800 text-navy-900">
-                      {paket.preis}
+                      {betrag(paket.preis)}
                     </span>
                     <span className="text-gray-500 text-sm">
                       CHF / Lektion
@@ -139,7 +139,7 @@ export default function Pakete() {
                   {paket.preisAlt && (
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-gray-400 line-through text-sm">
-                        {paket.preisAlt} CHF
+                        {betrag(paket.preisAlt)} CHF
                       </span>
                       <span className="text-status-paid font-600 text-sm">
                         {paket.rabatt}% Rabatt
