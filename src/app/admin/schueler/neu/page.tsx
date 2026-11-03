@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { inviteSchueler, createSchuelerDirekt } from "../../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,7 +58,20 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+/**
+ * Kommt man von der Warteliste („Als Schüler anlegen“), stehen Name,
+ * Mail und Telefon schon in der Adresse und werden vorausgefüllt.
+ */
 export default function NeuenSchuelerPage() {
+  return (
+    <Suspense>
+      <NeuenSchuelerFormular />
+    </Suspense>
+  );
+}
+
+function NeuenSchuelerFormular() {
+  const vorab = useSearchParams();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -200,13 +213,13 @@ export default function NeuenSchuelerPage() {
               <label className="text-sm font-500 text-gray-700">
                 Vorname <span className="text-red-500">*</span>
               </label>
-              <Input name="vorname" placeholder="Max" required />
+              <Input name="vorname" placeholder="Max" required defaultValue={vorab.get("vorname") ?? ""} />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-500 text-gray-700">
                 Nachname <span className="text-red-500">*</span>
               </label>
-              <Input name="nachname" placeholder="Mustermann" required />
+              <Input name="nachname" placeholder="Mustermann" required defaultValue={vorab.get("nachname") ?? ""} />
             </div>
           </div>
 
@@ -214,7 +227,7 @@ export default function NeuenSchuelerPage() {
             <label className="text-sm font-500 text-gray-700">
               E-Mail <span className="text-red-500">*</span>
             </label>
-            <Input name="email" type="email" placeholder="max@beispiel.ch" required />
+            <Input name="email" type="email" placeholder="max@beispiel.ch" required defaultValue={vorab.get("email") ?? ""} />
           </div>
 
           {mode === "direct" && (
@@ -248,7 +261,7 @@ export default function NeuenSchuelerPage() {
 
           <div className="space-y-1.5">
             <label className="text-sm font-500 text-gray-700">Telefon</label>
-            <Input name="telefon" placeholder="+41 79 123 45 67" />
+            <Input name="telefon" placeholder="+41 79 123 45 67" defaultValue={vorab.get("telefon") ?? ""} />
           </div>
 
           <div className="space-y-1.5">

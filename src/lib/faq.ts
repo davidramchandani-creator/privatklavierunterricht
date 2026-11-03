@@ -23,6 +23,8 @@
 // stünde im Suchergebnis etwas anderes als auf der Seite.
 // ============================================================
 
+import { NEUPREISE } from "./neupreise";
+
 export type FrageAntwort = {
   frage: string;
   /** Woher die Antwort stammt. Ohne Quelle kein Eintrag. */
@@ -53,7 +55,7 @@ export const FAQ: FrageAntwort[] = [
     frage: "Was kostet der Unterricht?",
     quelle: "/preise, EIGENE_ANGEBOTE",
     antwort:
-      "Eine Einzellektion kostet CHF 85. Mit einem Semesterabo zahlst du CHF 70 pro Lektion, mit einem Jahresabo CHF 65. Alle Preise gelten für 45 Minuten.",
+      `Eine Einzellektion kostet CHF ${NEUPREISE.einzel}. Mit einem Semesterabo zahlst du CHF ${NEUPREISE.semester} pro Lektion, mit einem Jahresabo CHF ${NEUPREISE.jahr}. Alle Preise gelten für 45 Minuten.`,
   },
   {
     frage: "Kommen Wegkosten dazu?",

@@ -15,6 +15,7 @@ import {
   type ErwarteteEinnahme,
   type Monatsprognose,
 } from "./prognose";
+import { NEUPREISE } from "@/lib/neupreise";
 
 /** Grosszügige Grenzen um den Monat; exakt gefiltert wird über den Schlüssel. */
 function grenzen(monat: string): { von: Date; bis: Date } {
@@ -150,7 +151,7 @@ export async function ladePrognose(
     // Eine Zusatzlektion neben dem Abo wird einzeln zum Einzelpreis
     // abgerechnet, unabhängig von der Zahlungsweise des Abos.
     const betrag = roh.zusatzlektion
-      ? Number(profil.price_single ?? 85)
+      ? Number(profil.price_single ?? NEUPREISE.einzel)
       : erwarteterBetragProLektion(paket);
     if (betrag <= 0) continue;
     posten.push({

@@ -9,6 +9,7 @@ import { zahlungsartFuer } from "@/lib/zahlungsart";
 import type { Invoice } from "./_components/PaymentCard";
 import { buildPlanSummary, type InstalmentRow } from "@/lib/instalment-view";
 import { paketBezeichnung } from "@/lib/packages";
+import { NEUPREISE } from "@/lib/neupreise";
 
 export const dynamic = "force-dynamic";
 
@@ -177,7 +178,7 @@ export default async function ZahlungenPage() {
       studentName: p ? `${p.vorname} ${p.nachname}`.trim() : "Unbekannt",
       beginn: a.start_at,
       betrag: zusatz
-        ? Number(p?.price_single ?? 85)
+        ? Number(p?.price_single ?? NEUPREISE.einzel)
         : Number(pkg?.price_per_lesson ?? 85),
       zusatz,
       // Dieselbe Regel wie beim Erstellen der Rechnung, sonst kündigt die

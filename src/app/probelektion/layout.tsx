@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { ladePlatzstatus } from "@/lib/platzstatus-server";
 
 /**
  * Metadaten für die Probelektion.
@@ -26,10 +28,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ProbelektionLayout({
+/**
+ * Ist kein fester Platz mehr frei, führt die Probelektion zur Warteliste.
+ *
+ * Eine Probelektion, nach der es keinen Platz gibt, weckt eine Erwartung,
+ * die David nicht erfüllen kann (David, 3. November 2026: „ist alles voll,
+ * wird das Anfrageformular zur Wartelisten-Anmeldung“).
+ */
+export default async function ProbelektionLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const status = await ladePlatzstatus().catch(() => null);
+  if (status?.stufe === "ausgebucht") redirect("/warteliste");
   return children;
 }

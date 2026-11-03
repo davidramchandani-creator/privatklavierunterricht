@@ -14,6 +14,7 @@ import { BASIS_URL } from "@/lib/seo";
 const SEITEN: { pfad: string; prioritaet: number; frequenz: MetadataRoute.Sitemap[number]["changeFrequency"] }[] = [
   { pfad: "/", prioritaet: 1.0, frequenz: "monthly" },
   { pfad: "/probelektion", prioritaet: 0.9, frequenz: "monthly" },
+  { pfad: "/warteliste", prioritaet: 0.5, frequenz: "weekly" },
   { pfad: "/preise", prioritaet: 0.8, frequenz: "monthly" },
   { pfad: "/ueber-mich", prioritaet: 0.7, frequenz: "yearly" },
   { pfad: "/faq", prioritaet: 0.7, frequenz: "monthly" },

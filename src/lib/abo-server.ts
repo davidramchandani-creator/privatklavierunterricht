@@ -18,6 +18,7 @@ import {
   type Semester,
 } from "./abo";
 import { priceWithBookingMode, type BookingMode, type Rhythmus } from "./rhythmus";
+import { NEUPREISE } from "./neupreise";
 
 /** Alle hinterlegten Ferienzeiträume, optional ab einem Datum. */
 export async function ladeFerien(
@@ -74,8 +75,8 @@ export async function ladeAboPreise(
     .maybeSingle();
 
   return {
-    halbjahr: Number(data?.price_halbjahr ?? 70),
-    jahr: Number(data?.price_jahr ?? 65),
+    halbjahr: Number(data?.price_halbjahr ?? NEUPREISE.semester),
+    jahr: Number(data?.price_jahr ?? NEUPREISE.jahr),
     wegaufschlag: Number(data?.travel_surcharge ?? 0),
   };
 }

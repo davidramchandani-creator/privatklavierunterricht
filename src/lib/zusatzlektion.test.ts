@@ -55,9 +55,9 @@ describe("Zusatzlektion", () => {
 
   it("wird einzeln zum Einzelpreis abgerechnet", () => {
     expect(zahlungen).toContain('pkg?.billing_mode !== "pro_lektion" && !zusatz');
-    expect(zahlungen).toContain("Number(p?.price_single ?? 85)");
+    expect(zahlungen).toContain("Number(p?.price_single ?? NEUPREISE.einzel)");
     const rechnung = actions.slice(actions.indexOf("export async function createInvoiceForAppointment"));
-    expect(rechnung.slice(0, 2500)).toContain("appt.zusatzlektion\n    ? Number(profile?.price_single ?? 85)");
-    expect(prognose).toContain("roh.zusatzlektion\n      ? Number(profil.price_single ?? 85)");
+    expect(rechnung.slice(0, 2500)).toContain("appt.zusatzlektion\n    ? Number(profile?.price_single ?? NEUPREISE.einzel)");
+    expect(prognose).toContain("roh.zusatzlektion\n      ? Number(profil.price_single ?? NEUPREISE.einzel)");
   });
 });

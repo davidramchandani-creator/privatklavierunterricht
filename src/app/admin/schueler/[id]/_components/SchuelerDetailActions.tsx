@@ -62,6 +62,7 @@ import {
   XCircle,
   CalendarClock,
 } from "lucide-react";
+import { NEUPREISE } from "@/lib/neupreise";
 
 type Profile = {
   id: string;
@@ -1182,7 +1183,7 @@ function PaketForm({
   // wie beim Abo, damit im Preisformular steht, was hier herauskommt.
   const basis =
     typ === "single"
-      ? (preise?.price_single ?? 85)
+      ? (preise?.price_single ?? NEUPREISE.einzel)
       : typ === "10er"
         ? (preise?.price_10er ?? 75)
         : (preise?.price_20er ?? 70);
@@ -1196,7 +1197,7 @@ function PaketForm({
     setTyp(neu);
     const b =
       neu === "single"
-        ? (preise?.price_single ?? 85)
+        ? (preise?.price_single ?? NEUPREISE.einzel)
         : neu === "10er"
           ? (preise?.price_10er ?? 75)
           : (preise?.price_20er ?? 70);

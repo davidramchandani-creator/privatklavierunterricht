@@ -6,6 +6,7 @@ import {
   SMPV_STUNDE_JUGEND,
   proStunde,
   vergleiche,
+  vergleichsSatz,
 } from "./tarifvergleich";
 
 describe("proStunde", () => {
@@ -39,16 +40,32 @@ describe("vergleiche", () => {
    * Einzellektion liegt sogar darueber. Dieser Test haelt fest, dass die
    * Seite das zugibt, statt es wegzurunden.
    */
-  it("gibt zu, dass die Einzellektion ueber der Empfehlung liegt", () => {
+  it("gibt zu, was ueber der Empfehlung liegt", () => {
+    // Neue Preise ab November 2026: 100 / 85 / 80 fuer 45 Minuten.
     const einzel = zeilen.find((z) => z.bezeichnung === "Einzellektion");
-    expect(einzel?.preis60).toBe(113);
+    const semester = zeilen.find((z) => z.bezeichnung === "Semesterabo");
+    const jahr = zeilen.find((z) => z.bezeichnung === "Jahresabo");
+    expect(einzel?.preis60).toBe(133);
+    expect(semester?.preis60).toBe(113);
+    expect(jahr?.preis60).toBe(107);
     expect(einzel?.unterEmpfehlung).toBe(false);
+    expect(semester?.unterEmpfehlung).toBe(false);
+    expect(jahr?.unterEmpfehlung).toBe(true);
   });
 
-  it("zeigt die Abos unter der Empfehlung", () => {
-    const abos = zeilen.filter((z) => z.bezeichnung.includes("abo"));
-    expect(abos).toHaveLength(2);
-    for (const a of abos) expect(a.unterEmpfehlung).toBe(true);
+  it("baut den Satz unter der Tabelle aus den Zahlen", () => {
+    expect(vergleichsSatz(zeilen)).toBe(
+      "Jahresabo liegt damit unter der Empfehlung, Einzellektion und Semesterabo darüber."
+    );
+    expect(
+      vergleichsSatz(vergleiche([
+        { bezeichnung: "Einzellektion", preis45: 85 },
+        { bezeichnung: "Semesterabo", preis45: 70 },
+        { bezeichnung: "Jahresabo", preis45: 65 },
+      ]))
+    ).toBe(
+      "Semesterabo und Jahresabo liegen damit unter der Empfehlung, Einzellektion darüber."
+    );
   });
 
   it("rechnet den Jugendtarif des SMPV korrekt", () => {

@@ -3,12 +3,14 @@ import { Check, Lock, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import AbschnittsKopf from "@/components/AbschnittsKopf";
+import { NEUPREISE, rabattGegenueberEinzel } from "@/lib/neupreise";
+import PlatzHinweis from "@/components/PlatzHinweis";
 
 const pakete = [
   {
     id: "einzellektion",
     name: "Einzellektion",
-    preis: 85,
+    preis: NEUPREISE.einzel,
     preisAlt: null,
     rabatt: null,
     einheit: "pro Lektion",
@@ -29,9 +31,9 @@ const pakete = [
   {
     id: "halbjahr",
     name: "Semesterabo",
-    preis: 70,
-    preisAlt: 85,
-    rabatt: 18,
+    preis: NEUPREISE.semester,
+    preisAlt: NEUPREISE.einzel,
+    rabatt: rabattGegenueberEinzel(NEUPREISE.semester),
     einheit: "pro Lektion",
     highlight: true,
     badge: "Beliebt",
@@ -53,9 +55,9 @@ const pakete = [
   {
     id: "jahr",
     name: "Jahresabo",
-    preis: 65,
-    preisAlt: 85,
-    rabatt: 24,
+    preis: NEUPREISE.jahr,
+    preisAlt: NEUPREISE.einzel,
+    rabatt: rabattGegenueberEinzel(NEUPREISE.jahr),
     einheit: "pro Lektion",
     highlight: false,
     badge: "Bestes Angebot",
@@ -85,8 +87,11 @@ export default function Pakete() {
           kicker="Angebote"
           titel="Wähle dein Abo"
           text="Ob einmalig zum Reinschnuppern oder mit festem Platz für langfristigen Fortschritt, hier findest du das passende Angebot."
-          className="mb-12"
+          className="mb-6"
         />
+        <div className="flex justify-center mb-10">
+          <PlatzHinweis />
+        </div>
 
         {/* Cards */}
         <div className="grid md:grid-cols-3 gap-6 items-start">

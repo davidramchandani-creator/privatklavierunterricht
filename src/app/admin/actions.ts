@@ -89,6 +89,7 @@ import {
   testCalendarConnection,
   fullSyncFutureAppointments,
 } from "@/lib/google-calendar";
+import { NEUPREISE } from "@/lib/neupreise";
 
 // ── Schüler ──────────────────────────────────────────────────────────────────
 
@@ -2864,8 +2865,8 @@ export async function createInvoiceForAppointment(appointmentId: string) {
   // Eine Zusatzlektion neben dem Abo kostet den Einzelpreis des Schülers,
   // nicht den Abo-Preis pro Lektion.
   const amount = appt.zusatzlektion
-    ? Number(profile?.price_single ?? 85)
-    : Number(pkg?.price_per_lesson ?? 85);
+    ? Number(profile?.price_single ?? NEUPREISE.einzel)
+    : Number(pkg?.price_per_lesson ?? NEUPREISE.einzel);
   // Das Profil entscheidet, nicht das Paket. Der Paketwert ist eine
   // Momentaufnahme vom Anlegen; ändert der Admin die Zahlungsart beim
   // Schüler, muss die nächste Rechnung ihr folgen.

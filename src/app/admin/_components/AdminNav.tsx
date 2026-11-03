@@ -15,6 +15,7 @@ import {
   Wallet,
   FlaskConical,
   Inbox,
+  ListOrdered,
   LayoutDashboard,
   NotebookPen,
   Route,
@@ -44,6 +45,7 @@ export const navEntries: NavEntry[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/terminanfragen", label: "Terminanfragen", icon: CalendarClock },
   { href: "/admin/anfragen", label: "Probelektionen", icon: Inbox },
+  { href: "/admin/warteliste", label: "Warteliste", icon: ListOrdered },
   { href: "/admin/schueler", label: "Schüler", icon: Users },
   { href: "/admin/lektionen", label: "Was lief?", icon: NotebookPen },
   {

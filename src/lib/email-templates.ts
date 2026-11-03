@@ -78,6 +78,49 @@ function baseWrapper(contentHtml: string): string {
 </html>`;
 }
 
+/** Für Angaben aus öffentlichen Formularen. */
+function escWl(wert: unknown): string {
+  return String(wert ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+const WL_TAGE = ["", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"];
+const WL_RHYTHMUS: Record<string, string> = {
+  woechentlich: "jede Woche",
+  zweiwoechentlich: "alle zwei Wochen",
+  egal: "egal",
+};
+
+/** Die Wünsche aus der Wartelisten-Anmeldung als kleine Tabelle. */
+function wartelisteWuensche(payload: Record<string, unknown>): string {
+  const tage = Array.isArray(payload.wunsch_tage)
+    ? (payload.wunsch_tage as number[]).map((t) => WL_TAGE[Number(t)]).filter(Boolean)
+    : [];
+  const zeilen: Array<[string, string]> = [
+    ["Rhythmus", WL_RHYTHMUS[String(payload.wunsch_rhythmus ?? "egal")] ?? "egal"],
+    ["Tage", tage.length > 0 ? tage.join(", ") : "egal"],
+  ];
+  if (payload.wunsch_zeiten) zeilen.push(["Zeiten", escWl(payload.wunsch_zeiten)]);
+  return `
+    <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:20px;background:#f8f9fa;border-radius:8px;">
+      <tr><td style="padding:14px 18px;">
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+          ${zeilen
+            .map(
+              ([k, v]) => `<tr>
+            <td style="padding:4px 0;color:#6b7280;font-size:13px;width:110px;">${k}</td>
+            <td style="padding:4px 0;color:#1f2937;font-size:14px;">${v}</td>
+          </tr>`
+            )
+            .join("")}
+        </table>
+      </td></tr>
+    </table>`;
+}
+
 export function renderEmail(
   type: string,
   payload: Record<string, unknown>
@@ -1290,6 +1333,121 @@ export function renderEmail(
           <a href="${APP_URL}/admin/anfragen"
              style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
             Anfrage öffnen
+          </a>
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    // ── Warteliste (David, 3. November 2026) ─────────────────
+    // Die Angaben stammen aus einem öffentlichen Formular und werden darum
+    // maskiert, bevor sie ins HTML kommen.
+    case "warteliste_bestaetigung": {
+      const vorname = escWl(payload.vorname);
+      const subject = "Du stehst auf der Warteliste";
+      const content = `
+        <p style="margin:0 0 16px;">Hallo ${vorname}</p>
+        <p style="margin:0 0 16px;">
+          danke für dein Interesse an meinem Klavierunterricht! Zurzeit sind alle festen Plätze vergeben.
+          Ich habe dich deshalb auf die Warteliste gesetzt.
+        </p>
+        ${wartelisteWuensche(payload)}
+        <p style="margin:0 0 16px;">
+          Sobald ein Platz frei wird, der zu deinen Wünschen passt, melde ich mich per Mail bei dir.
+          Du musst bis dahin nichts tun.
+        </p>
+        <p style="margin:0 0 24px;">
+          Möchtest du nicht mehr warten oder haben sich deine Zeiten geändert? Antworte einfach auf dieses Mail.
+        </p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Liebe Grüsse<br/>David Ramchandani<br/>
+          <a href="${APP_URL}" style="color:#6b7280;">privatklavierunterricht.ch</a>
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "warteliste_admin": {
+      const name = `${escWl(payload.vorname)} ${escWl(payload.nachname)}`;
+      const email = escWl(payload.email);
+      const telefon = payload.telefon ? escWl(payload.telefon) : null;
+      const nachricht = payload.nachricht ? escWl(payload.nachricht) : null;
+      const subject = `Neu auf der Warteliste: ${String(payload.vorname ?? "")} ${String(payload.nachname ?? "")}`;
+      const content = `
+        <p style="margin:0 0 16px;">Jemand hat sich auf die Warteliste gesetzt:</p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:20px;background:#f8f9fa;border-radius:8px;">
+          <tr><td style="padding:14px 18px;">
+            <p style="margin:0 0 4px;font-size:15px;color:#1C244B;font-weight:600;">${name}</p>
+            <p style="margin:0;font-size:14px;"><a href="mailto:${email}" style="color:#1C244B;">${email}</a>${telefon ? ` · ${telefon}` : ""}</p>
+          </td></tr>
+        </table>
+        ${wartelisteWuensche(payload)}
+        ${nachricht ? `<p style="margin:0 0 20px;color:#1f2937;font-size:14px;"><strong>Nachricht:</strong> ${nachricht}</p>` : ""}
+        <p style="margin:0 0 24px;">
+          <a href="${APP_URL}/admin/warteliste"
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+            Warteliste öffnen
+          </a>
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "warteliste_angebot": {
+      const vorname = escWl(payload.vorname);
+      const angebot = escWl(payload.angebot_text);
+      const frist = payload.angebot_frist ? fmtDateTime(String(payload.angebot_frist)) : "";
+      const link = `${APP_URL}/warteliste/${encodeURIComponent(String(payload.token ?? ""))}`;
+      const subject = "Ein Platz ist frei geworden";
+      const content = `
+        <p style="margin:0 0 16px;">Hallo ${vorname}</p>
+        <p style="margin:0 0 16px;">
+          gute Neuigkeiten: Bei mir ist ein fester Platz frei geworden, und du bist auf der Warteliste.
+          Ich würde ihn dir gerne anbieten:
+        </p>
+        <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:16px;margin:0 0 20px;">
+          <p style="margin:0;color:#3730a3;font-size:16px;font-weight:700;">${angebot}</p>
+          <p style="margin:6px 0 0;color:#3730a3;font-size:13px;">Im Studio in Neftenbach, 45 Minuten pro Lektion</p>
+        </div>
+        <p style="margin:0 0 16px;">
+          Die aktuellen Preise findest du auf <a href="${APP_URL}/preise" style="color:#1C244B;">meiner Preisseite</a>.
+          ${frist ? `Bitte gib mir bis <strong>${frist}</strong> Bescheid, danach biete ich den Platz der nächsten Person an.` : ""}
+        </p>
+        <p style="text-align:center;margin:28px 0;">
+          <a href="${link}" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Zusagen oder absagen</a>
+        </p>
+        <p style="margin:0 0 24px;">Passt es dir nicht? Kein Problem, sag kurz ab, dann bleibst du auf Wunsch auf der Warteliste.</p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Liebe Grüsse<br/>David Ramchandani<br/>
+          <a href="${APP_URL}" style="color:#6b7280;">privatklavierunterricht.ch</a>
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "warteliste_antwort_admin": {
+      const name = `${escWl(payload.vorname)} ${escWl(payload.nachname)}`;
+      const zugesagt = payload.zugesagt === true;
+      const bleibt = payload.bleibt_auf_liste === true;
+      const subject = zugesagt
+        ? `Zusage von der Warteliste: ${String(payload.vorname ?? "")} ${String(payload.nachname ?? "")}`
+        : `Absage von der Warteliste: ${String(payload.vorname ?? "")} ${String(payload.nachname ?? "")}`;
+      const content = `
+        <p style="margin:0 0 16px;">
+          <strong>${name}</strong> hat das Angebot <strong>${escWl(payload.angebot_text)}</strong>
+          ${zugesagt ? "angenommen." : "abgelehnt."}
+        </p>
+        <p style="margin:0 0 24px;">
+          ${zugesagt
+            ? "Leg die Person jetzt als Schüler an und trag den festen Platz ein."
+            : bleibt
+              ? "Die Person bleibt auf der Warteliste. Du kannst den Platz jetzt jemand anderem anbieten."
+              : "Die Person möchte nicht mehr auf der Warteliste stehen. Du kannst den Platz jetzt jemand anderem anbieten."}
+        </p>
+        <p style="margin:0 0 24px;">
+          <a href="${APP_URL}/admin/warteliste"
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+            Warteliste öffnen
           </a>
         </p>
       `;

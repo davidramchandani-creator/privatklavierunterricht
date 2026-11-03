@@ -1,3 +1,4 @@
+import { NEUPREISE } from "./neupreise";
 import { describe, expect, it } from "vitest";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -117,11 +118,19 @@ describe("Strukturierte Daten", () => {
   it("die Preise stimmen mit der Preisseite überein", () => {
     // Ein falscher Preis in strukturierten Daten erscheint im
     // Suchergebnis, wo ihn niemand gegenliest — und wird zur Zusage.
+    // Seit November 2026 lesen Preisseite und strukturierte Daten aus
+    // derselben Quelle (`NEUPREISE`), damit sie nicht auseinanderlaufen.
     const preise = unternehmenJsonLd().makesOffer.map((o) => o.price);
-    expect(preise).toEqual(["85", "70", "65"]);
+    expect(preise).toEqual([
+      String(NEUPREISE.einzel),
+      String(NEUPREISE.semester),
+      String(NEUPREISE.jahr),
+    ]);
 
     const seite = readFileSync(join(APP, "preise", "page.tsx"), "utf8");
-    for (const p of ["85", "70", "65"]) expect(seite).toContain(p);
+    for (const p of ["NEUPREISE.einzel", "NEUPREISE.semester", "NEUPREISE.jahr"]) {
+      expect(seite).toContain(p);
+    }
   });
 
   it("die FAQ liefert gültige strukturierte Daten", () => {
@@ -162,6 +171,11 @@ describe("Strukturierte Daten", () => {
     ]
       .filter(existsSync)
       .map((p) => readFileSync(p, "utf8"))
+      .concat(
+        // Die Preisseite rechnet ihre Preise aus `NEUPREISE`, im Quelltext
+        // steht darum keine Zahl. Gerendert steht dort „CHF 100.–“ usw.
+        Object.values(NEUPREISE).map((p) => `CHF ${p}`)
+      )
       .join("\n");
 
     const behauptungen = new Set<string>();

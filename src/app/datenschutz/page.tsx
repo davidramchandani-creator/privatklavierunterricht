@@ -14,7 +14,7 @@ const abschnitte = [
   },
   {
     titel: "Welche Daten ich erhebe",
-    text: "Bei einer Anfrage für eine Probelektion erhebe ich Vorname, Nachname, E-Mail-Adresse, optional Telefonnummer sowie deine Nachricht und einen allfälligen Wunschtermin. Als Schülerin oder Schüler kommen Adresse, gebuchte Lektionen, Pakete und Zahlungsstatus dazu. All das ist für die Organisation des Unterrichts nötig.",
+    text: "Bei einer Anfrage für eine Probelektion erhebe ich Vorname, Nachname, E-Mail-Adresse, optional Telefonnummer sowie deine Nachricht und einen allfälligen Wunschtermin. Auf der Warteliste speichere ich dieselben Kontaktangaben und deine Wunschtage und Zeiten, bis du einen Platz hast oder dich abmeldest. Als Schülerin oder Schüler kommen Adresse, gebuchte Lektionen, Pakete und Zahlungsstatus dazu. All das ist für die Organisation des Unterrichts nötig.",
   },
   {
     titel: "Zweck der Bearbeitung",

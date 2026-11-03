@@ -40,6 +40,7 @@ import {
   type AngegebenesFenster,
 } from "@/components/ui/zeitfenster-liste";
 import { todayInZurich } from "@/lib/subscription";
+import { NEUPREISE } from "@/lib/neupreise";
 
 export default async function SchuelerDetailPage({
   params,
@@ -202,9 +203,9 @@ export default async function SchuelerDetailPage({
   const archivierte = allePakete.filter((p) => p.archiviert_am);
 
   const prices = {
-    price_single: Number(profile.price_single ?? 85),
-    price_halbjahr: Number(profile.price_halbjahr ?? 70),
-    price_jahr: Number(profile.price_jahr ?? 65),
+    price_single: Number(profile.price_single ?? NEUPREISE.einzel),
+    price_halbjahr: Number(profile.price_halbjahr ?? NEUPREISE.semester),
+    price_jahr: Number(profile.price_jahr ?? NEUPREISE.jahr),
     // Paketpreise: Vorgabe zwischen Einzellektion und Abo, weil ein Paket
     // weniger bindet als ein Abo, aber mehr als eine Einzellektion.
     price_10er: Number(profile.price_10er ?? 75),

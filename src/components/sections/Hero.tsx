@@ -4,11 +4,17 @@ import { CalendarCheck, Star, Users, Clock, ArrowRight, GraduationCap } from "lu
 import { naechsterTerminText } from "@/lib/naechster-termin";
 import { ladeBewertungen } from "@/lib/bewertungen";
 import { jahreKlaviererfahrung } from "@/lib/ueber-david";
+import { ladePlatzstatus } from "@/lib/platzstatus-server";
+import PlatzHinweis from "@/components/PlatzHinweis";
 
 
 export default async function Hero() {
   const nextSlotLabel = (await naechsterTerminText()) ?? "Auf Anfrage";
   const { anzahl, schnitt } = await ladeBewertungen();
+  // Ist kein fester Platz mehr frei, führt der Hauptknopf zur Warteliste.
+  // Eine Probelektion ohne Platz danach wäre ein leeres Versprechen.
+  const platz = await ladePlatzstatus().catch(() => null);
+  const ausgebucht = platz?.stufe === "ausgebucht";
 
   return (
     <section className="relative min-h-screen bg-white flex items-center overflow-hidden">
@@ -22,11 +28,14 @@ export default async function Hero() {
           {/* Left: Text content */}
           <div className="space-y-8 opacity-0 animate-fade-in">
             {/* Overline badge */}
-            <div className="inline-flex items-center gap-2 bg-navy-50 border border-navy-100 rounded-full px-4 py-1.5">
-              <span className="w-2 h-2 rounded-full bg-navy-400 animate-pulse" />
-              <span className="text-navy-900 text-sm font-600">
-                Klavierunterricht in Neftenbach
-              </span>
+            <div className="flex flex-wrap gap-2">
+              <div className="inline-flex items-center gap-2 bg-navy-50 border border-navy-100 rounded-full px-4 py-1.5">
+                <span className="w-2 h-2 rounded-full bg-navy-400 animate-pulse" />
+                <span className="text-navy-900 text-sm font-600">
+                  Klavierunterricht in Neftenbach
+                </span>
+              </div>
+              {platz && <PlatzHinweis status={platz} />}
             </div>
 
             {/* Headline */}
@@ -43,10 +52,10 @@ export default async function Hero() {
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-3 opacity-0 animate-fade-in delay-200">
-              <Link href="/probelektion">
+              <Link href={ausgebucht ? "/warteliste" : "/probelektion"}>
                 <Button size="lg" className="gap-2 shadow-lg shadow-navy-900/20 w-full sm:w-auto">
                   <CalendarCheck className="w-5 h-5" />
-                  Jetzt Probelektion buchen
+                  {ausgebucht ? "Auf die Warteliste" : "Jetzt Probelektion buchen"}
                 </Button>
               </Link>
               {/*
@@ -81,8 +90,12 @@ export default async function Hero() {
                 <Keyboard className="mb-8 opacity-90" />
 
                 <div className="text-white space-y-2">
-                  <p className="text-white/50 text-xs font-600 uppercase tracking-widest">Nächster freier Termin</p>
-                  <p className="text-2xl font-800 leading-tight">{nextSlotLabel}</p>
+                  <p className="text-white/50 text-xs font-600 uppercase tracking-widest">
+                    {ausgebucht ? "Feste Plätze" : "Nächster freier Termin"}
+                  </p>
+                  <p className="text-2xl font-800 leading-tight">
+                    {ausgebucht ? "Zurzeit ausgebucht" : nextSlotLabel}
+                  </p>
                   <p className="text-white/60 text-sm">Im Studio in Neftenbach · 45 Min.</p>
                 </div>
 
@@ -95,13 +108,15 @@ export default async function Hero() {
                   Bewertungen.
                 */}
                 <Link
-                  href="/probelektion"
+                  href={ausgebucht ? "/warteliste" : "/probelektion"}
                   className="group mt-6 bg-white/[0.08] hover:bg-white/[0.14] border border-white/10 rounded-2xl px-4 py-3.5 flex items-center justify-between transition-colors"
                 >
                   <div>
-                    <p className="text-white font-700 text-base">Probelektion sichern</p>
+                    <p className="text-white font-700 text-base">
+                      {ausgebucht ? "Auf die Warteliste" : "Probelektion sichern"}
+                    </p>
                     <p className="text-white/55 text-xs mt-0.5">
-                      Unverbindlich · kein Abo nötig
+                      {ausgebucht ? "Ich melde mich, sobald ein Platz frei wird" : "Unverbindlich · kein Abo nötig"}
                     </p>
                   </div>
                   <span className="w-9 h-9 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center transition-colors">

@@ -16,6 +16,7 @@
 // ============================================================
 
 import { BASIS_URL } from "./seo";
+import { NEUPREISE } from "./neupreise";
 
 export const KONTAKT_MAIL = "david.privatklavierunterricht@gmail.com";
 
@@ -30,7 +31,7 @@ export function unternehmenJsonLd() {
     url: BASIS_URL,
     email: KONTAKT_MAIL,
     image: `${BASIS_URL}/opengraph-image`,
-    priceRange: "CHF 65–85",
+    priceRange: `CHF ${NEUPREISE.jahr}–${NEUPREISE.einzel}`,
     address: {
       "@type": "PostalAddress",
       addressLocality: "Neftenbach",
@@ -52,19 +53,19 @@ export function unternehmenJsonLd() {
       {
         "@type": "Offer",
         name: "Einzellektion, 45 Minuten",
-        price: "85",
+        price: String(NEUPREISE.einzel),
         priceCurrency: "CHF",
       },
       {
         "@type": "Offer",
         name: "Semesterabo, Preis pro Lektion",
-        price: "70",
+        price: String(NEUPREISE.semester),
         priceCurrency: "CHF",
       },
       {
         "@type": "Offer",
         name: "Jahresabo, Preis pro Lektion",
-        price: "65",
+        price: String(NEUPREISE.jahr),
         priceCurrency: "CHF",
       },
     ],

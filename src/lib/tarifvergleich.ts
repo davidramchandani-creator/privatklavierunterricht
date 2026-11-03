@@ -16,11 +16,14 @@
 //
 // ── Was dabei herauskommt ───────────────────────────────────
 //
-// Die Abos liegen unter der Empfehlung, die Einzellektion liegt leicht
-// darüber. Das ist ein schwächeres Argument als erhofft, aber es ist das
-// wahre, und es hält der Nachfrage stand: Wer das PDF öffnet, findet
-// dieselben Zahlen.
+// Seit den neuen Preisen vom November 2026 liegt nur noch das Jahresabo
+// unter der Empfehlung, Semesterabo und Einzellektion darüber. Der Satz
+// dazu auf der Preisseite wird aus den Zahlen gebaut (`vergleichsSatz`),
+// damit er nach der nächsten Preisänderung nicht wieder falsch ist. Wer das
+// PDF öffnet, findet dieselben Zahlen.
 // ============================================================
+
+import { NEUPREISE } from "./neupreise";
 
 /** Quelle der Empfehlung, damit jeder nachsehen kann. */
 export const SMPV_TARIFBLATT =
@@ -84,7 +87,28 @@ export function vergleiche(
 
 /** Die eigenen Angebote, in derselben Reihenfolge wie auf der Preisseite. */
 export const EIGENE_ANGEBOTE = [
-  { bezeichnung: "Einzellektion", preis45: 85 },
-  { bezeichnung: "Semesterabo", preis45: 70 },
-  { bezeichnung: "Jahresabo", preis45: 65 },
+  { bezeichnung: "Einzellektion", preis45: NEUPREISE.einzel },
+  { bezeichnung: "Semesterabo", preis45: NEUPREISE.semester },
+  { bezeichnung: "Jahresabo", preis45: NEUPREISE.jahr },
 ];
+
+function aufzaehlen(namen: string[]): string {
+  if (namen.length <= 1) return namen.join("");
+  return `${namen.slice(0, -1).join(", ")} und ${namen[namen.length - 1]}`;
+}
+
+/**
+ * Der Satz unter der Vergleichstabelle, aus den Zahlen gebaut.
+ *
+ * Vorher stand dort fest „Die Abos liegen damit unter der Empfehlung, die
+ * Einzellektion knapp darüber“. Mit den neuen Preisen stimmte das nicht
+ * mehr, und genau so ein Satz fällt beim Nachrechnen auf.
+ */
+export function vergleichsSatz(zeilen: Vergleichszeile[]): string {
+  const unter = zeilen.filter((z) => z.unterEmpfehlung).map((z) => z.bezeichnung);
+  const ueber = zeilen.filter((z) => !z.unterEmpfehlung).map((z) => z.bezeichnung);
+  if (ueber.length === 0) return "Alle Angebote liegen damit unter der Empfehlung.";
+  if (unter.length === 0) return "Alle Angebote liegen damit über der Empfehlung.";
+  const verbU = unter.length === 1 ? "liegt" : "liegen";
+  return `${aufzaehlen(unter)} ${verbU} damit unter der Empfehlung, ${aufzaehlen(ueber)} darüber.`;
+}

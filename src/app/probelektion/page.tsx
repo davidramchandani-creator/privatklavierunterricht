@@ -19,6 +19,8 @@ import Logo from "@/components/layout/Logo";
 import { getPublicSlots, submitAnfrage, type PublicSlot } from "./actions";
 import { HoerprobeEinzeln } from "@/components/sections/Hoerproben";
 import { HOERPROBEN } from "@/lib/hoerproben";
+import { holePlatzstatus } from "@/app/warteliste/actions";
+import { platzText, type Platzstatus } from "@/lib/platzstatus";
 
 export default function ProbelektionPage() {
   const [step, setStep] = useState<"slots" | "form" | "done">("slots");
@@ -28,6 +30,11 @@ export default function ProbelektionPage() {
   const [selectedSlot, setSelectedSlot] = useState<PublicSlot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [platz, setPlatz] = useState<Platzstatus | null>(null);
+
+  useEffect(() => {
+    holePlatzstatus().then(setPlatz).catch(() => null);
+  }, []);
 
   useEffect(() => {
     setLoadingSlots(true);
@@ -121,6 +128,14 @@ export default function ProbelektionPage() {
                 Wähle einen Wunschtermin und hinterlasse deine Kontaktdaten.
                 Ich bestätige die Anfrage persönlich.
               </p>
+              {platz && platzText(platz) && (
+                <p className="pt-2">
+                  <span className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-full px-4 py-1.5 text-sm font-600">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    {platzText(platz)}
+                  </span>
+                </p>
+              )}
             </div>
 
             {/*

@@ -10,7 +10,9 @@ import {
   SMPV_STUNDE,
   SMPV_TARIFBLATT,
   vergleiche,
+  vergleichsSatz,
 } from "@/lib/tarifvergleich";
+import { NEUPREISE, beispielMonatsrate, chf } from "@/lib/neupreise";
 
 // Die Erfahrung rechnet sich aus dem Datum, darum täglich neu.
 export const revalidate = 86400;
@@ -19,15 +21,15 @@ export const metadata: Metadata = {
   alternates: { canonical: "/preise" },
   title: "Preise & Transparenz: Privatklavierunterricht David Ramchandani",
   description:
-    "Wie sich meine Unterrichtspreise zusammensetzen und warum sie fair und nachhaltig sind. Einzellektion CHF 85, Semesterabo CHF 70, Jahresabo CHF 65 pro Lektion.",
+    `Wie sich meine Unterrichtspreise zusammensetzen und warum sie fair und nachhaltig sind. Einzellektion CHF ${NEUPREISE.einzel}, Semesterabo CHF ${NEUPREISE.semester}, Jahresabo CHF ${NEUPREISE.jahr} pro Lektion.`,
 };
 
 const vergleichszeilen = vergleiche(EIGENE_ANGEBOTE);
 
 const modelle = [
-  { modell: "Einzellektion", preis: "CHF 85.–" },
-  { modell: "Semesterabo (bis Semesterende)", preis: "CHF 70.–" },
-  { modell: "Jahresabo (zwei Semester)", preis: "CHF 65.–" },
+  { modell: "Einzellektion", preis: chf(NEUPREISE.einzel) },
+  { modell: "Semesterabo (bis Semesterende)", preis: chf(NEUPREISE.semester) },
+  { modell: "Jahresabo (zwei Semester)", preis: chf(NEUPREISE.jahr) },
 ];
 
 /**
@@ -37,26 +39,32 @@ const modelle = [
  * ab und wird beim Abschluss exakt gerechnet, darum steht hier "ca.".
  * Das Jahresabo wird pro Semester abgerechnet, darum dieselbe Lektionszahl.
  */
+const BEISPIEL_MONATE = 7;
+
+function monat(lektionen: number, preis: number): string {
+  return `CHF ${beispielMonatsrate(lektionen, preis, BEISPIEL_MONATE).toFixed(2)}`;
+}
+
 const abobeispiele = [
   {
     abo: "Semesterabo, wöchentlich",
     lektionen: "ca. 25 Lektionen",
-    monat: "CHF 250.00",
+    monat: monat(25, NEUPREISE.semester),
   },
   {
     abo: "Semesterabo, alle zwei Wochen",
     lektionen: "ca. 13 Lektionen",
-    monat: "CHF 130.00",
+    monat: monat(13, NEUPREISE.semester),
   },
   {
     abo: "Jahresabo, wöchentlich",
     lektionen: "ca. 25 Lektionen pro Semester",
-    monat: "CHF 232.15",
+    monat: monat(25, NEUPREISE.jahr),
   },
   {
     abo: "Jahresabo, alle zwei Wochen",
     lektionen: "ca. 13 Lektionen pro Semester",
-    monat: "CHF 120.70",
+    monat: monat(13, NEUPREISE.jahr),
   },
 ];
 
@@ -344,8 +352,8 @@ export default function PreisePage() {
           </div>
 
           {/*
-            Die Einzellektion liegt ueber der Empfehlung, und das steht auch
-            da. Wer das Tarifblatt oeffnet, sieht es sowieso; eine Tabelle,
+            Was ueber der Empfehlung liegt, steht auch da (der Satz wird aus
+            den Zahlen gebaut). Wer das Tarifblatt oeffnet, sieht es sowieso; eine Tabelle,
             die genau die eine unguenstige Zeile verschweigt, faellt beim
             Nachrechnen sofort auf.
 
@@ -355,8 +363,7 @@ export default function PreisePage() {
             die es sonst noch gibt. Nachzulesen ist er im verlinkten PDF.
           */}
           <p className="text-sm text-gray-500 leading-relaxed">
-            Die Abos liegen damit unter der Empfehlung, die Einzellektion knapp
-            darüber.
+            {vergleichsSatz(vergleichszeilen)}
           </p>
 
           <a
