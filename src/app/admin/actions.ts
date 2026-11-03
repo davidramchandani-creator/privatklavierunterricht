@@ -1269,7 +1269,9 @@ function aboBeginnAus(roh: unknown): string | { error: string } {
 
 export async function aboAnlegenAdmin(
   formData: FormData
-): Promise<{ success: true; error: undefined } | { error: string }> {
+): Promise<
+  { success: true; error: undefined } | { error: string; ausweichFrage?: true }
+> {
   const verboten = await assertAdmin();
   if (verboten) return verboten;
 
@@ -1395,6 +1397,8 @@ export async function aboAnlegenAdmin(
       parity: fixplatz.parity,
       // Erster Termin ab dem gewählten Beginn, nicht ab heute.
       now: serienStart(periodeStart),
+      // Von David festgelegt: nur echte Überschneidungen zählen.
+      ohnePuffer: true,
     });
     if ("error" in probe) return { error: probe.error };
     if (probe.offen.length > 0) {
@@ -1404,6 +1408,25 @@ export async function aboAnlegenAdmin(
         error: `Nur ${probe.zuBuchen.length} von ${vorschau.lektionen} Terminen haben Platz. ${
           grund ?? "Die übrigen sind belegt oder gesperrt."
         } Betroffen: ${tage}. Nichts angelegt, keine Mail.`,
+      };
+    }
+    // Weicht ein Termin auf eine andere Zeit aus, nicht still buchen. Hugo
+    // sollte um 18:10 kommen und bekam sieben Termine um 20:00, ohne dass
+    // es jemand sah. Erst nach ausdrücklicher Bestätigung.
+    if (probe.verschoben.length > 0 && formData.get("ausweich_ok") !== "1") {
+      const zeit = (d: Date) =>
+        d.toLocaleString("de-CH", {
+          timeZone: "Europe/Zurich",
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      return {
+        error: `${probe.verschoben.length} Termine passen nicht zur gewählten Zeit und würden ausweichen: ${probe.verschoben
+          .map((v) => `${zeit(v.original)} → ${zeit(v.ersatz)}`)
+          .join(", ")}. Nichts angelegt.`,
+        ausweichFrage: true as const,
       };
     }
   }
@@ -1486,6 +1509,8 @@ export async function aboAnlegenAdmin(
       },
       parity: fixplatz.parity,
       now: serienStart(periodeStart),
+      // Von David festgelegt: nur echte Überschneidungen zählen.
+      ohnePuffer: true,
     });
     if ("error" in serie) {
       console.error("[abo] Fixplatz-Serie (Admin):", pkg.id, serie.error);

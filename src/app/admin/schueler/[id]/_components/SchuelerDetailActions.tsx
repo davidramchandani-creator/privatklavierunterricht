@@ -647,6 +647,9 @@ function PackageFormNew({
   const [platz, setPlatz] = useState<FixplatzAngebot | null>(null);
   const [vorschau, setVorschau] = useState<AboVorschau | null>(null);
   const [ersterTermin, setErsterTermin] = useState<string | null>(null);
+  // Würden Termine ausweichen, fragt der Server zuerst nach.
+  const [ausweichFrage, setAusweichFrage] = useState(false);
+  const [ausweichOk, setAusweichOk] = useState(false);
   // Vorgabe: die Planung entscheidet. Wer jeden Termin einzeln von Hand
   // setzt, bekommt eine Route aus lauter einzeln vernünftigen Entscheidungen,
   // die in der Summe trotzdem schlecht ist.
@@ -705,10 +708,13 @@ function PackageFormNew({
     e.preventDefault();
     setError(null);
     const formData = new FormData(e.currentTarget);
+    if (ausweichOk) formData.set("ausweich_ok", "1");
     startTransition(async () => {
       const result = await aboAnlegenAdmin(formData);
-      if (result.error) setError(result.error);
-      else {
+      if (result.error) {
+        setError(result.error);
+        setAusweichFrage("ausweichFrage" in result && result.ausweichFrage === true);
+      } else {
         setOpen(false);
         router.refresh();
       }
@@ -1100,6 +1106,18 @@ function PackageFormNew({
 
       {error && (
         <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+      )}
+      {ausweichFrage && (
+        <label className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 rounded-lg px-3 py-2">
+          <input
+            type="checkbox"
+            checked={ausweichOk}
+            onChange={(e) => setAusweichOk(e.target.checked)}
+            className="mt-0.5 w-3.5 h-3.5 rounded border-gray-300"
+          />
+          Trotzdem so anlegen, mit diesen Ausweichterminen. Sonst eine andere
+          Zeit wählen.
+        </label>
       )}
 
       <div className="flex gap-2">

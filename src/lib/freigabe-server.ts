@@ -143,7 +143,9 @@ export async function bearbeiteEintrag(
     /** Nur bei jeder Woche: andere Uhrzeit in ungeraden Wochen. */
     beginnUngerade?: string | null;
   },
-  pufferMinuten = DEFAULT_BUFFER_MIN
+  // Von Hand gesetzt: nur echte Überschneidungen zählen, keine Pause
+  // dazurechnen (David, 3. November 2026).
+  pufferMinuten = 0
 ): Promise<{ ok: true } | { error: string }> {
   const eintraege = await ladeEintraege(admin, rundeId);
   const ich = eintraege.find((z) => z.schuelerId === schuelerId);
@@ -218,7 +220,9 @@ export async function aendereFreigegebenenEintrag(
     beginnUngerade?: string | null;
   },
   mitMail: boolean,
-  pufferMinuten = DEFAULT_BUFFER_MIN
+  // Von Hand gesetzt: nur echte Überschneidungen zählen, keine Pause
+  // dazurechnen (David, 3. November 2026).
+  pufferMinuten = 0
 ): Promise<{ ok: true; termine: number; mail: boolean } | { error: string }> {
   const eintraege = await ladeEintraege(admin, rundeId);
   const ich = eintraege.find((z) => z.schuelerId === schuelerId);
@@ -506,6 +510,7 @@ export async function fuelleSerieAuf(
     parity: (pkg.fixplatz_week_parity ?? null) as 0 | 1 | null,
     now: serienStart(start),
     ohneTermine: (vorhandene ?? []).map((t) => t.id as string),
+    ohnePuffer: true,
   });
   if ("error" in plan) return { error: plan.error };
   if (plan.offen.length > 0) {
@@ -725,6 +730,8 @@ export async function gebeFrei(
     wunsch,
     parity: z.paritaet,
     now: serieAb,
+    // Zeit aus Zuteilung oder von David gesetzt: keine Pause dazurechnen.
+    ohnePuffer: true,
     ohneTermine: (eigene ?? []).map((t) => t.id as string),
   });
   if ("error" in probe) return { error: probe.error };
@@ -763,6 +770,8 @@ export async function gebeFrei(
     wunsch,
     parity: z.paritaet,
     now: serieAb,
+    // Zeit aus Zuteilung oder von David gesetzt: keine Pause dazurechnen.
+    ohnePuffer: true,
   });
   if ("error" in serie) return { error: serie.error };
 
@@ -924,6 +933,8 @@ export async function setzeFestenPlatz(
     wunsch,
     parity: paritaet,
     now: serieAb,
+    // Zeit aus Zuteilung oder von David gesetzt: keine Pause dazurechnen.
+    ohnePuffer: true,
     ohneTermine: ersetzt.map((t) => t.id as string),
   });
   if ("error" in probe) return { error: probe.error };
@@ -959,6 +970,8 @@ export async function setzeFestenPlatz(
     wunsch,
     parity: paritaet,
     now: serieAb,
+    // Zeit aus Zuteilung oder von David gesetzt: keine Pause dazurechnen.
+    ohnePuffer: true,
   });
   if ("error" in serie) return { error: serie.error };
 

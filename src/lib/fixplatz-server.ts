@@ -82,6 +82,14 @@ export async function planeFixplatzSerie(
      * werden. Nur für die Vorprüfung nötig, die vor dem Absagen läuft.
      */
     ohneTermine?: string[];
+    /**
+     * Die Zeit hat David selbst festgelegt: Keine Pause dazurechnen, nur
+     * echte Überschneidungen zählen (David, 3. November 2026: „wenn ich
+     * selber eintrage, dann ist das egal"). Hugo um 18:10 nach Daniels
+     * Hausbesuch bis 18:00 im selben Dorf war sonst „belegt" und wich still
+     * auf 20:00 aus.
+     */
+    ohnePuffer?: boolean;
   }
 ): Promise<FixplatzPlan | { error: string }> {
   const { studentId, wunsch, parity } = params;
@@ -148,6 +156,10 @@ export async function planeFixplatzSerie(
     now,
     { skipLeadTime: true, excludeAppointmentIds: params.ohneTermine }
   );
+  if (params.ohnePuffer) {
+    ctx.bufferMin = 0;
+    ctx.appointments = ctx.appointments.map((t) => ({ ...t, bufferMinutes: 0 }));
+  }
 
   const pruefung = pruefeFixplatzSerie(
     wunsch,
@@ -249,6 +261,8 @@ export async function bookFixplatzSeries(
     wunsch: FixplatzWunsch;
     parity: 0 | 1 | null;
     now?: Date;
+    /** Siehe `planeFixplatzSerie`. */
+    ohnePuffer?: boolean;
   }
 ): Promise<FixplatzBuchungErgebnis | { error: string }> {
   const { studentId, packageId } = params;
