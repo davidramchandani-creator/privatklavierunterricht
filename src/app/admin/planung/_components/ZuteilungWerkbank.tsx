@@ -68,14 +68,17 @@ function paritaetText(p: 0 | 1 | null): string {
   return p === 0 ? "gerade Wochen" : "ungerade Wochen";
 }
 
-/** Viertelstunden zwischen zwei Uhrzeiten, für das Auswahlfeld. */
+/**
+ * Uhrzeiten zwischen zwei Zeiten, für das Auswahlfeld. In 5-Minuten-Schritten,
+ * damit eine Studio-Lektion mit 10 Minuten Pause anschliessen kann (17:25).
+ */
 function raster(von: string, bis: string): string[] {
   const m = (t: string) => {
     const [h, mi] = t.split(":").map(Number);
     return h * 60 + mi;
   };
   const raus: string[] = [];
-  for (let t = m(von); t + 45 <= m(bis); t += 15) {
+  for (let t = m(von); t + 45 <= m(bis); t += 5) {
     raus.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
   }
   return raus;

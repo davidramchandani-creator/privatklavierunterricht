@@ -112,7 +112,7 @@ export default function FesterPlatz({
             </select>
             <input
               type="time"
-              step={900}
+              step={300}
               value={beginn}
               onChange={(e) => setBeginn(e.target.value)}
               className={`${feld} tabular-nums`}
@@ -133,7 +133,7 @@ export default function FesterPlatz({
               </span>
               <input
                 type="time"
-                step={900}
+                step={300}
                 value={ungerade}
                 onChange={(e) => setUngerade(e.target.value)}
                 className={`${feld} w-full tabular-nums`}

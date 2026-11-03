@@ -3,7 +3,7 @@
 //
 // Geschäftsregeln (Spec §4), systemweit gültig:
 //  - Lektionsdauer: 45 Min.
-//  - Raster: 15 Min.
+//  - Raster: 15 Min., im Studio auch 5 Min. (Anschluss mit 10 Min. Pause).
 //  - Verfügbarkeit (Zürich-Lokalzeit):
 //      Mo, Do 16:30–20:30, Fr 16:30–18:00, Sa/So keine Termine.
 //  - Pufferzeit pro Schüler (15 oder 30 Min), vor UND nach jedem Termin.
@@ -20,6 +20,29 @@
 export const LESSON_DURATION_MIN = 45;
 export const SLOT_GRID_MIN = 15;
 export const DEFAULT_BUFFER_MIN = 15;
+
+/**
+ * Pause zwischen zwei Lektionen im Studio (David, 3. November 2026).
+ *
+ * Kommen beide Schüler zu David, fährt niemand, und 10 Minuten reichen.
+ * Grenzt eine Studio-Lektion an einen Hausbesuch, gilt der grössere Puffer,
+ * weil dazwischen gefahren wird. Das ergibt sich von selbst: Überall wird
+ * der grössere der beiden Puffer genommen.
+ *
+ * Studio-Lektionen dürfen darum auch zu Zeiten wie 17:25 beginnen, also im
+ * 5-Minuten-Raster (`ANSCHLUSS_RASTER_MIN`).
+ */
+export const STUDIO_PAUSE_MIN = 10;
+export const ANSCHLUSS_RASTER_MIN = 5;
+
+/** Wirksamer Puffer eines Schülers: im Studio 10 Min., sonst sein eigener. */
+export function wirksamerPuffer(
+  hausbesuch: boolean | null | undefined,
+  bufferTimeMinutes: number | null | undefined
+): number {
+  if (hausbesuch === false) return STUDIO_PAUSE_MIN;
+  return bufferTimeMinutes ?? DEFAULT_BUFFER_MIN;
+}
 export const BOOKING_LEAD_HOURS = 24;
 export const TIMEZONE = "Europe/Zurich";
 
@@ -367,13 +390,58 @@ export function computeAvailableSlots(
 ): Slot[] {
   const windows = ctx.availabilityWindows ?? AVAILABILITY;
   const result: Slot[] = [];
+  const gesehen = new Set<number>();
   for (let i = 0; i < days; i++) {
     const date = addDaysCal(fromDate, i);
-    for (const slot of generateDaySlots(date, windows, durationMin)) {
+    const kandidaten = [
+      ...generateDaySlots(date, windows, durationMin),
+      ...anschlussSlots(date, ctx, durationMin),
+    ];
+    for (const slot of kandidaten) {
+      if (gesehen.has(slot.start.getTime())) continue;
+      gesehen.add(slot.start.getTime());
       if (isSlotBookable(slot, ctx)) result.push(slot);
     }
   }
   return result.sort((a, b) => a.start.getTime() - b.start.getTime());
+}
+
+/**
+ * Startzeiten direkt im Anschluss an bestehende Termine dieses Tages, mit
+ * genau dem nötigen Abstand davor oder danach.
+ *
+ * Das Viertelstunden-Raster allein fände 17:25 nach einer Studio-Lektion
+ * bis 17:15 nie. Statt alle fünf Minuten einen Kandidaten zu prüfen (und
+ * Schülern eine Liste mit 16:30, 16:35, 16:40 … zu zeigen), kommen nur die
+ * Zeiten dazu, die wirklich bündig anschliessen. Ob sie buchbar sind,
+ * entscheidet wie immer `isSlotBookable`.
+ */
+export function anschlussSlots(
+  date: CalDate,
+  ctx: AvailabilityContext,
+  durationMin: number = LESSON_DURATION_MIN
+): Slot[] {
+  const tagStart = zonedToUtc(date.y, date.m, date.d, 0, 0).getTime();
+  const tagEnde = tagStart + 24 * 3600000;
+  const raster = ANSCHLUSS_RASTER_MIN * 60000;
+  const out: Slot[] = [];
+  for (const a of ctx.appointments) {
+    const s = new Date(a.start_at).getTime();
+    const e = new Date(a.end_at).getTime();
+    if (e <= tagStart || s >= tagEnde) continue;
+    const abstand =
+      Math.max(ctx.bufferMin, a.bufferMinutes ?? ctx.bufferMin) * 60000;
+    const danach = Math.ceil((e + abstand) / raster) * raster;
+    const davor =
+      Math.floor((s - abstand - durationMin * 60000) / raster) * raster;
+    for (const start of [danach, davor]) {
+      out.push({
+        start: new Date(start),
+        end: new Date(start + durationMin * 60000),
+      });
+    }
+  }
+  return out;
 }
 
 // ── 24-Stunden-Regel (einzeln nutzbar) ─────────────────────

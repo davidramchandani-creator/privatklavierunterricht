@@ -17,6 +17,7 @@ import {
   type AvailabilityWindows,
   type Slot,
   AVAILABILITY,
+  ANSCHLUSS_RASTER_MIN,
   BOOKING_LEAD_HOURS,
   DEFAULT_BUFFER_MIN,
   LESSON_DURATION_MIN,
@@ -30,7 +31,6 @@ import {
 import {
   type BlockConfig,
   type Interval,
-  DEFAULT_GRID_MINUTES,
   validStartTimes,
   isValidStart,
   travelToBuffer,
@@ -73,13 +73,14 @@ export function gapAwareDaySlots(
   const windows = availability[weekdayOf(day)] ?? [];
   if (windows.length === 0) return [];
 
-  // Puffer des anfragenden Schülers: Fahrzeit, aufgerundet aufs
-  // **Slot-Raster** (15 Min.), mindestens der konfigurierte Mindestpuffer.
-  // Der Mindestpuffer ist NICHT das Raster — er darf 0 sein, ein Raster
-  // von 0 wäre eine Division durch null (siehe travelToBuffer).
+  // Puffer des anfragenden Schülers, mindestens der konfigurierte
+  // Mindestpuffer. Aufgerundet wird aufs Anschluss-Raster (5 Min.), nicht
+  // mehr auf die Viertelstunde: Sonst würden aus den 10 Minuten Pause im
+  // Studio wieder 15 (November 2026). Der Mindestpuffer ist NICHT das
+  // Raster, er darf 0 sein (siehe travelToBuffer).
   const myBuffer = travelToBuffer(
     ctx.bufferMin ?? settings.minBufferMinutes,
-    DEFAULT_GRID_MINUTES,
+    ANSCHLUSS_RASTER_MIN,
     settings.minBufferMinutes
   );
 
@@ -99,7 +100,7 @@ export function gapAwareDaySlots(
       end: minutesOfDay(new Date(a.e), day),
       bufferMinutes: travelToBuffer(
         a.buf ?? settings.minBufferMinutes,
-        DEFAULT_GRID_MINUTES,
+        ANSCHLUSS_RASTER_MIN,
         settings.minBufferMinutes
       ),
     }));
@@ -144,7 +145,23 @@ export function gapAwareDaySlots(
       (b) => b.end > cfg.block.start && b.start < cfg.block.end
     );
 
-    for (const startMin of validStartTimes(cfg, busy, myBuffer)) {
+    // Viertelstunden-Raster plus die Zeiten, die bündig an einen Termin
+    // anschliessen (17:25 nach einer Studio-Lektion bis 17:15). Nur so
+    // werden die 10 Minuten im Studio auch wirklich angeboten.
+    const kandidaten = new Set<number>(validStartTimes(cfg, busy, myBuffer));
+    for (const b of busy) {
+      const abstand = Math.max(b.bufferMinutes ?? myBuffer, myBuffer);
+      const danach =
+        Math.ceil((b.end + abstand) / ANSCHLUSS_RASTER_MIN) * ANSCHLUSS_RASTER_MIN;
+      const davor =
+        Math.floor((b.start - abstand - cfg.lessonMinutes) / ANSCHLUSS_RASTER_MIN) *
+        ANSCHLUSS_RASTER_MIN;
+      for (const s of [danach, davor]) {
+        if (isValidStart(s, cfg, busy, myBuffer)) kandidaten.add(s);
+      }
+    }
+
+    for (const startMin of [...kandidaten].sort((a, b) => a - b)) {
       const start = new Date(dayStart + startMin * 60000);
       const end = new Date(start.getTime() + settings.lessonMinutes * 60000);
       const slot: Slot = { start, end };

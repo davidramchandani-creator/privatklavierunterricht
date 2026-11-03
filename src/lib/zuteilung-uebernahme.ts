@@ -17,6 +17,7 @@
 // Reine Funktionen. Datenbank in planung-server.ts und den Actions.
 // ============================================================
 
+import { STUDIO_PAUSE_MIN } from "./booking";
 import type { Routenplan } from "./routing";
 import type { Zuteilung } from "./zuteilung";
 import type { Rhythmus } from "./rhythmus";
@@ -190,11 +191,20 @@ export function ueberschneidet(
 export function findeKonflikt(
   geaendert: Pick<Zuteilung, "schuelerId" | "wochentag" | "beginn" | "paritaet" | "beginnUngerade">,
   uebrige: ZuteilungEintrag[],
-  pufferMinuten: number
+  pufferMinuten: number,
+  /**
+   * Wer ins Studio kommt. Zwischen zwei Studio-Lektionen reichen 10 Minuten
+   * (`STUDIO_PAUSE_MIN`), sonst gilt `pufferMinuten`.
+   */
+  imStudio: ReadonlySet<string> = new Set()
 ): string | null {
   for (const z of uebrige) {
     if (z.schuelerId === geaendert.schuelerId) continue;
-    if (ueberschneidet(geaendert, z, 45, pufferMinuten)) return z.name;
+    const puffer =
+      imStudio.has(z.schuelerId) && imStudio.has(geaendert.schuelerId)
+        ? Math.min(pufferMinuten, STUDIO_PAUSE_MIN)
+        : pufferMinuten;
+    if (ueberschneidet(geaendert, z, 45, puffer)) return z.name;
   }
   return null;
 }

@@ -154,10 +154,17 @@ export async function bearbeiteEintrag(
     };
   }
 
+  // Wer ins Studio kommt: Zwischen zwei Studio-Lektionen reichen 10 Minuten.
+  const { data: studio } = await admin
+    .from("profiles")
+    .select("id")
+    .in("id", eintraege.map((z) => z.schuelerId))
+    .eq("hausbesuch", false);
   const konflikt = findeKonflikt(
     { schuelerId, ...aenderung },
     eintraege,
-    pufferMinuten
+    pufferMinuten,
+    new Set((studio ?? []).map((p) => p.id as string))
   );
   if (konflikt) {
     return { error: `Überschneidet sich mit ${konflikt}.` };

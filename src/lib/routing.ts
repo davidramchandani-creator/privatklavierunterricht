@@ -35,6 +35,7 @@ import {
   type Punkt,
 } from "./geo";
 import { WEEKDAY_LABELS } from "./fixplatz";
+import { ANSCHLUSS_RASTER_MIN, STUDIO_PAUSE_MIN } from "./booking";
 import type { Rhythmus } from "./rhythmus";
 
 export type PlanSchueler = {
@@ -220,6 +221,35 @@ function aufRaster(minuten: number, raster = 15): number {
  */
 export function abstandMin(anfahrtMin: number, pufferMinuten: number): number {
   return Math.max(Math.ceil(anfahrtMin), pufferMinuten);
+}
+
+/**
+ * Liegt dieser Punkt im Studio? Wer zu David kommt, sitzt rechnerisch an
+ * seiner Adresse (siehe `ladeSchueler`).
+ */
+function imStudio(p: Punkt, zuhause: Punkt): boolean {
+  return Math.abs(p.lat - zuhause.lat) < 1e-6 && Math.abs(p.lng - zuhause.lng) < 1e-6;
+}
+
+/**
+ * Abstand und Raster für den Übergang von einer Lektion zur nächsten.
+ *
+ * Sind beide im Studio, fährt niemand: 10 Minuten Pause, Beginn im
+ * 5-Minuten-Raster (17:25 nach 16:30 bis 17:15). Sonst gilt die Pause mit
+ * der Fahrt darin, aufs Viertelstunden-Raster gehoben (David, 3. November
+ * 2026).
+ */
+export function uebergang(
+  von: Punkt,
+  nach: Punkt,
+  anfahrtMin: number,
+  pufferMinuten: number,
+  zuhause: Punkt
+): { abstand: number; raster: number } {
+  if (imStudio(von, zuhause) && imStudio(nach, zuhause)) {
+    return { abstand: STUDIO_PAUSE_MIN, raster: ANSCHLUSS_RASTER_MIN };
+  }
+  return { abstand: abstandMin(anfahrtMin, pufferMinuten), raster: 15 };
 }
 
 /**
@@ -768,10 +798,12 @@ function baueTag(
       // Fensterbeginn so gesetzt, dass die Fahrt von der Schule bereits
       // darin steckt. Danach zählt Fahrzeit plus Puffer zwischen den
       // Lektionen, angehoben aufs Viertelstunden-Raster.
+      const ue = uebergang(vorherigerOrt, ort, anfahrtMin, pufferMinuten, zuhause);
+      const raster = gebaut.length === 0 ? 15 : ue.raster;
       const frueheste =
         gebaut.length === 0
           ? beginnMin
-          : aufRaster(uhr + abstandMin(anfahrtMin, pufferMinuten));
+          : aufRaster(uhr + ue.abstand, raster);
 
       const dauer = Math.max(
         pos.gerade?.lektionMinuten ?? 45,
@@ -787,7 +819,8 @@ function baueTag(
       // Tagesplan; es ist aber allemal besser, als jemanden gar nicht
       // einzuplanen.
       const startZeit = aufRaster(
-        spaetesterBeginn(schuelerHier, wochentag, frueheste)
+        spaetesterBeginn(schuelerHier, wochentag, frueheste),
+        raster
       );
       const schluss = startZeit + dauer;
 
@@ -880,12 +913,19 @@ function baueTag(
     const naechsteStart = minutenVon(gebaut[i + 1].beginn);
     const anfahrtWeiter = Math.ceil(gebaut[i + 1].anfahrtSekunden / 60);
     const dauer = minutenVon(gebaut[i].ende) - minutenVon(gebaut[i].beginn);
+    const ueW = uebergang(
+      gebaut[i].nachKoordinate,
+      gebaut[i + 1].nachKoordinate,
+      anfahrtWeiter,
+      pufferMinuten,
+      zuhause
+    );
 
     // Aufs Raster **abrunden**: Später als dieser Wert, und die Folgelektion
     // müsste rutschen — genau das darf der Rückwärtsgang nie.
     const spaetestensWegenAnschluss =
-      Math.floor((naechsteStart - abstandMin(anfahrtWeiter, pufferMinuten) - dauer) / 15) *
-      15;
+      Math.floor((naechsteStart - ueW.abstand - dauer) / ueW.raster) *
+      ueW.raster;
 
     const mitglieder = [gebaut[i].geradeWoche, gebaut[i].ungeradeWoche].filter(
       Boolean
@@ -900,7 +940,7 @@ function baueTag(
         zeitErlaubt(s, wochentag, neuerStart, neuerStart + dauer)
       )
     ) {
-      neuerStart -= 15;
+      neuerStart -= ueW.raster;
     }
 
     if (neuerStart > minutenVon(gebaut[i].beginn)) {
@@ -913,10 +953,14 @@ function baueTag(
   // Vorwärtsbau und wäre jetzt zu hoch.
   let leerlaufMin = 0;
   for (let i = 1; i < gebaut.length; i++) {
-    const fruehester = aufRaster(
-      minutenVon(gebaut[i - 1].ende) +
-        abstandMin(gebaut[i].anfahrtSekunden / 60, pufferMinuten)
+    const ueL = uebergang(
+      gebaut[i - 1].nachKoordinate,
+      gebaut[i].nachKoordinate,
+      gebaut[i].anfahrtSekunden / 60,
+      pufferMinuten,
+      zuhause
     );
+    const fruehester = aufRaster(minutenVon(gebaut[i - 1].ende) + ueL.abstand, ueL.raster);
     leerlaufMin += Math.max(0, minutenVon(gebaut[i].beginn) - fruehester);
   }
 
@@ -1367,7 +1411,10 @@ function planeEinmal(
     for (const [av, ab] of abschnitte) {
       const von = Math.max(av, tagVon);
       const bis = Math.min(ab, tagBis);
-      for (let start = aufRaster(von); start + dauer <= bis; start += 15) {
+      // Im Studio auch 5-Minuten-Schritte, damit eine Lektion bündig mit
+      // 10 Minuten Pause anschliessen kann.
+      const schritt = imStudio(ort, eingabe.zuhause) ? ANSCHLUSS_RASTER_MIN : 15;
+      for (let start = aufRaster(von, schritt); start + dauer <= bis; start += schritt) {
         const ende = start + dauer;
         if (belegt.some((b) => start < b.bis && b.von < ende)) continue;
 
@@ -1380,14 +1427,16 @@ function planeEinmal(
         // vor Fensterbeginn, wie überall im Plan.
         if (prev) {
           const anfahrtMin = Math.ceil(fahrzeit(vorOrt, ort) / 60);
-          if (aufRaster(prev.bis + abstandMin(anfahrtMin, eingabe.pufferMinuten)) > start) {
+          const u = uebergang(vorOrt, ort, anfahrtMin, eingabe.pufferMinuten, eingabe.zuhause);
+          if (aufRaster(prev.bis + u.abstand, u.raster) > start) {
             continue;
           }
         }
         // Und rechtzeitig beim Nachfolger sein.
         if (next) {
           const weiterMin = Math.ceil(fahrzeit(ort, next.ort) / 60);
-          if (ende + abstandMin(weiterMin, eingabe.pufferMinuten) > next.von) continue;
+          const u = uebergang(ort, next.ort, weiterMin, eingabe.pufferMinuten, eingabe.zuhause);
+          if (ende + u.abstand > next.von) continue;
         }
 
         const nachOrt = next ? next.ort : eingabe.zuhause;

@@ -9,6 +9,8 @@ import {
   type TimeBlock,
   type TimeBlockRule,
   DEFAULT_BUFFER_MIN,
+  STUDIO_PAUSE_MIN,
+  wirksamerPuffer,
 } from "./booking";
 import { after } from "next/server";
 import {
@@ -94,7 +96,7 @@ export async function loadAvailabilityContext(
   // Kollisionsprüfung ausgenommen werden (sonst kollidiert er mit sich selbst).
   let apptQuery = admin
     .from("appointments")
-    .select("start_at, end_at, profiles(buffer_time_minutes)")
+    .select("start_at, end_at, profiles(buffer_time_minutes, hausbesuch)")
     .in("status", ["booked", "pending"])
     .gte("start_at", apptFrom)
     .lte("start_at", apptTo);
@@ -109,7 +111,7 @@ export async function loadAvailabilityContext(
     );
   }
 
-  const [apptRes, absRes, blockRes, ruleRes, availRes, groupSessionRes] = await Promise.all([
+  const [apptRes, absRes, blockRes, ruleRes, availRes, groupSessionRes, ichRes] = await Promise.all([
     apptQuery,
     admin
       .from("absences")
@@ -134,6 +136,10 @@ export async function loadAvailabilityContext(
       .in("status", ["open", "full"])
       .gte("start_at", apptFrom)
       .lte("start_at", apptTo),
+    // Kommt dieser Schüler ins Studio? Dann gilt für ihn die kurze Pause.
+    studentId
+      ? admin.from("profiles").select("hausbesuch").eq("id", studentId).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   // Vom Admin gepflegte Verfügbarkeit → Fenster-Map (nur aktive Tage).
@@ -170,11 +176,14 @@ export async function loadAvailabilityContext(
 
   const appointments: ExistingAppointment[] = [
     ...(apptRes.data ?? []).map((a: Record<string, unknown>) => {
-      const prof = a.profiles as { buffer_time_minutes?: number } | null;
+      const prof = a.profiles as {
+        buffer_time_minutes?: number | null;
+        hausbesuch?: boolean | null;
+      } | null;
       return {
         start_at: a.start_at as string,
         end_at: a.end_at as string,
-        bufferMinutes: prof?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN,
+        bufferMinutes: wirksamerPuffer(prof?.hausbesuch, prof?.buffer_time_minutes),
       };
     }),
     // Geplante Gruppensessions ohne Teilnehmer als Blocker eintragen.
@@ -185,9 +194,15 @@ export async function loadAvailabilityContext(
     })),
   ];
 
+  // Wer ins Studio kommt, hat 10 Minuten Pause. Ohne Profil (Probelektion
+  // einer neuen Person) ebenfalls: Neue Schüler kommen seit November 2026
+  // ins Studio.
+  const ich = (ichRes as { data: { hausbesuch?: boolean | null } | null }).data;
+  const imStudio = ich ? ich.hausbesuch === false : true;
+
   const ctx: AvailabilityContext = {
     studentId,
-    bufferMin: studentBufferMin,
+    bufferMin: imStudio ? STUDIO_PAUSE_MIN : studentBufferMin,
     now,
     appointments,
     absences: (absRes.data ?? []) as Absence[],

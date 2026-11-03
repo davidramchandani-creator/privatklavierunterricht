@@ -287,7 +287,7 @@ export default function ExterneVereinbarung({
                 <span className="text-xs font-600 text-gray-600">Uhrzeit</span>
                 <input
                   type="time"
-                  step={900}
+                  step={300}
                   value={zeit}
                   onChange={(e) => setZeit(e.target.value)}
                   className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2"
@@ -310,7 +310,7 @@ export default function ExterneVereinbarung({
                 </span>
                 <input
                   type="time"
-                  step={900}
+                  step={300}
                   value={zeitUngerade}
                   onChange={(e) => setZeitUngerade(e.target.value)}
                   className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2"
