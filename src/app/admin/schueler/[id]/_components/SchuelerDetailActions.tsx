@@ -640,9 +640,13 @@ function PackageFormNew({
   const [rhythmus, setRhythmus] = useState<Rhythmus>("woechentlich");
   const [bookingMode, setBookingMode] = useState<BookingMode>("fix");
   const [autoRenew, setAutoRenew] = useState(true);
+  // Beginn des Abos. Vorgabe wie bisher der Erste des nächsten Monats; der
+  // erste Termin ist der erste passende Wochentag ab diesem Datum.
+  const [beginn, setBeginn] = useState(ersterNaechsterMonat());
   const [angebote, setAngebote] = useState<FixplatzAngebot[] | null>(null);
   const [platz, setPlatz] = useState<FixplatzAngebot | null>(null);
   const [vorschau, setVorschau] = useState<AboVorschau | null>(null);
+  const [ersterTermin, setErsterTermin] = useState<string | null>(null);
   // Vorgabe: die Planung entscheidet. Wer jeden Termin einzeln von Hand
   // setzt, bekommt eine Route aus lauter einzeln vernünftigen Entscheidungen,
   // die in der Summe trotzdem schlecht ist.
@@ -657,7 +661,8 @@ function PackageFormNew({
       const res = await fixplaetzeFuerSchueler(
         student_user_id,
         variante === "halbjahr" ? "10er" : "20er",
-        rhythmus
+        rhythmus,
+        beginn
       );
       if ("error" in res) {
         setError(res.error ?? null);
@@ -669,8 +674,13 @@ function PackageFormNew({
   }
 
   /** Ohne Wochentag: vorsichtige Rechnung über den ungünstigsten Tag. */
-  function vorschauLaden(weekday?: number) {
+  function vorschauLaden(
+    weekday?: number,
+    mit: { beginn?: string; platz?: FixplatzAngebot | null } = {}
+  ) {
+    const p = mit.platz !== undefined ? mit.platz : platz;
     setVorschau(null);
+    setErsterTermin(null);
     startLaden(async () => {
       const res = await aboVorschauAdmin({
         studentUserId: student_user_id,
@@ -678,12 +688,16 @@ function PackageFormNew({
         rhythmus,
         bookingMode,
         weekday: weekday ?? null,
+        beginn: mit.beginn ?? beginn,
+        time: p?.time ?? null,
+        parity: p?.parity ?? null,
       });
       if ("error" in res) {
         setError(res.error ?? null);
         return;
       }
       setVorschau(res.vorschau);
+      setErsterTermin(res.ersterTermin);
     });
   }
 
@@ -838,6 +852,29 @@ function PackageFormNew({
         </div>
       </div>
 
+      <div className="space-y-1">
+        <label className="text-xs font-500 text-gray-600">Beginn</label>
+        <input
+          type="date"
+          name="periode_start"
+          value={beginn}
+          min={morgenLokal()}
+          onChange={(e) => {
+            setBeginn(e.target.value);
+            setAngebote(null);
+            setVorschau(null);
+            setErsterTermin(null);
+            if (platz) vorschauLaden(platz.weekday, { beginn: e.target.value });
+          }}
+          className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          required
+        />
+        <p className="text-[11px] text-gray-500 leading-snug">
+          Ab diesem Tag läuft das Abo. Der erste Termin ist der erste passende
+          Wochentag ab hier.
+        </p>
+      </div>
+
       {bookingMode === "fix" && (
         <div className="rounded-lg border border-gray-200 p-3 space-y-2.5">
           <input type="hidden" name="fixplatz_quelle" value={quelle} />
@@ -939,7 +976,7 @@ function PackageFormNew({
                             title={`${a.beschreibung}, ${a.freie} von ${a.gesamt} Terminen frei`}
                             onClick={() => {
                               setPlatz(a);
-                              vorschauLaden(a.weekday);
+                              vorschauLaden(a.weekday, { platz: a });
                             }}
                             className={`rounded-lg border px-2.5 py-1.5 text-xs tabular-nums transition-colors ${
                               aktiv
@@ -978,7 +1015,7 @@ function PackageFormNew({
             rhythmus={rhythmus}
             onWahl={(p) => {
               setPlatz(p);
-              vorschauLaden(p.weekday);
+              vorschauLaden(p.weekday, { platz: p });
             }}
           />
 
@@ -1024,6 +1061,20 @@ function PackageFormNew({
             {formatDay(vorschau.periodeStart)}, {formatDay(vorschau.periodeEnde)} ·{" "}
             {formatCHF(vorschau.preisProLektion)} pro Lektion
           </p>
+          {platz && ersterTermin && (
+            <p className="font-600 text-gray-900">
+              Erster Termin:{" "}
+              {new Date(ersterTermin).toLocaleString("de-CH", {
+                timeZone: "Europe/Zurich",
+                weekday: "short",
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+          )}
           {vorschau.ferientage.length > 0 && (
             <p className="text-gray-500">
               {vorschau.ferientage.length} Termine fallen auf Ferien und sind bereits
@@ -2052,7 +2103,7 @@ function DirektPlatz({
   onWahl: (p: FixplatzAngebot) => void;
 }) {
   const [tag, setTag] = useState(1);
-  const [zeit, setZeit] = useState("");
+  const [zeit, setZeit] = useState("16:30");
   const [woche, setWoche] = useState<"0" | "1">("0");
   const feld =
     "h-9 rounded-lg border border-input bg-background px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -2110,4 +2161,18 @@ function DirektPlatz({
       </div>
     </div>
   );
+}
+
+/** Erster Tag des nächsten Monats, "YYYY-MM-DD", in Lokalzeit. */
+function ersterNaechsterMonat(): string {
+  const d = new Date();
+  const y = d.getMonth() === 11 ? d.getFullYear() + 1 : d.getFullYear();
+  const m = d.getMonth() === 11 ? 1 : d.getMonth() + 2;
+  return `${y}-${String(m).padStart(2, "0")}-01`;
+}
+
+/** Morgen, "YYYY-MM-DD", in Lokalzeit. */
+function morgenLokal(): string {
+  const d = new Date(Date.now() + 86400000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }

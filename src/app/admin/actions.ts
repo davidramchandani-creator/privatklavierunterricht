@@ -38,9 +38,10 @@ import {
   type BookingMode,
   type Rhythmus,
 } from "@/lib/rhythmus";
-import { describeFixplatz } from "@/lib/fixplatz";
+import { describeFixplatz, firstSeriesStart, fixplatzSeriesStarts } from "@/lib/fixplatz";
 import { bookFixplatzSeries, erklaereBlockade, planeFixplatzSerie } from "@/lib/fixplatz-server";
 import { entferneAusZuteilungen } from "@/lib/freigabe-server";
+import { serienStart } from "@/lib/umstellung-server";
 import { meldeAusfall, schliesseOffeneAusfaelle } from "@/lib/ausfall";
 import { bieteFrueherenSlotAn } from "@/lib/vorrueck-server";
 import {
@@ -1244,6 +1245,28 @@ export async function createPackageAdmin(formData: FormData) {
  * Selbstabschluss. Zwei getrennte Rechenwege wären die sichere Quelle für
  * Abweichungen, die niemand bemerkt.
  */
+/**
+ * Beginn eines Abos aus der Eingabe.
+ *
+ * Bisher fest der Erste des nächsten Monats, ohne Wahl (David, 3. November
+ * 2026: „ich kann ja gar nicht das Startdatum festlegen"). Leer bleibt das
+ * die Vorgabe. Sonst ein Datum ab morgen und höchstens ein Jahr voraus. Der
+ * erste Termin ist der erste passende Wochentag ab diesem Datum.
+ */
+function aboBeginnAus(roh: unknown): string | { error: string } {
+  const heute = todayInZurich();
+  const wert = typeof roh === "string" ? roh.trim() : "";
+  if (!wert) return naechsterPeriodenstart(heute);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(wert) || Number.isNaN(Date.parse(wert))) {
+    return { error: "Bitte ein gültiges Startdatum wählen." };
+  }
+  const morgen = new Date(Date.parse(`${heute}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
+  const inEinemJahr = new Date(Date.parse(`${heute}T00:00:00Z`) + 366 * 86400000).toISOString().slice(0, 10);
+  if (wert < morgen) return { error: "Das Abo kann frühestens morgen beginnen." };
+  if (wert > inEinemJahr) return { error: "Das Startdatum liegt mehr als ein Jahr voraus." };
+  return wert;
+}
+
 export async function aboAnlegenAdmin(
   formData: FormData
 ): Promise<{ success: true; error: undefined } | { error: string }> {
@@ -1328,7 +1351,9 @@ export async function aboAnlegenAdmin(
     return { error: "Dieser Schüler hat bereits ein aktives Abo oder Paket." };
   }
 
-  const periodeStart = naechsterPeriodenstart(todayInZurich());
+  const beginn = aboBeginnAus(formData.get("periode_start"));
+  if (typeof beginn !== "string") return beginn;
+  const periodeStart = beginn;
 
   // Steht der Termin noch nicht fest, wird mit dem *ungünstigsten* möglichen
   // Wochentag gerechnet. Sonst verspräche das Abo eine Lektion mehr, als es
@@ -1368,6 +1393,8 @@ export async function aboAnlegenAdmin(
         lessons: vorschau.lektionen,
       },
       parity: fixplatz.parity,
+      // Erster Termin ab dem gewählten Beginn, nicht ab heute.
+      now: serienStart(periodeStart),
     });
     if ("error" in probe) return { error: probe.error };
     if (probe.offen.length > 0) {
@@ -1458,6 +1485,7 @@ export async function aboAnlegenAdmin(
         lessons: vorschau.lektionen,
       },
       parity: fixplatz.parity,
+      now: serienStart(periodeStart),
     });
     if ("error" in serie) {
       console.error("[abo] Fixplatz-Serie (Admin):", pkg.id, serie.error);
@@ -1633,14 +1661,21 @@ export async function aboVorschauAdmin(params: {
   bookingMode: BookingMode;
   /** null = Termin steht noch nicht fest. */
   weekday: number | null;
-}): Promise<{ vorschau: AboVorschau } | { error: string }> {
+  /** Beginn des Abos, leer = Erster des nächsten Monats. */
+  beginn?: string | null;
+  /** Gewählte Uhrzeit und Woche, für den ersten Termin. */
+  time?: string | null;
+  parity?: 0 | 1 | null;
+}): Promise<{ vorschau: AboVorschau; ersterTermin: string | null } | { error: string }> {
   const verboten = await assertAdmin();
   if (verboten) return verboten;
 
   if (!params.studentUserId) return { error: "Kein Schüler angegeben." };
 
   const admin = await createAdminClient();
-  const periodeStart = naechsterPeriodenstart(todayInZurich());
+  const beginn = aboBeginnAus(params.beginn ?? "");
+  if (typeof beginn !== "string") return beginn;
+  const periodeStart = beginn;
 
   // Ohne festen Wochentag über den ungünstigsten möglichen Tag rechnen. Sonst
   // zeigt die Vorschau eine Lektion mehr, als das Abo an manchen Tagen halten
@@ -1653,7 +1688,7 @@ export async function aboVorschauAdmin(params: {
       moeglicheTage: (await ladeFenster(admin)).map((f) => f.wochentag),
       periodeStart,
     });
-    return { vorschau };
+    return { vorschau, ersterTermin: null };
   }
 
   const vorschau = await baueVorschau(admin, {
@@ -1664,7 +1699,34 @@ export async function aboVorschauAdmin(params: {
     weekday: params.weekday,
     periodeStart,
   });
-  return { vorschau };
+
+  // Der erste Termin, genau wie ihn die Serie beim Anlegen legt: erster
+  // passender Wochentag ab Beginn, in der gewählten Woche, nicht in den
+  // Ferien. Die Vorschau allein kennt die Woche (gerade/ungerade) nicht.
+  let ersterTermin: string | null = null;
+  if (params.time && /^\d{2}:\d{2}$/.test(params.time)) {
+    const wunsch = {
+      weekday: params.weekday,
+      time: params.time,
+      rhythmus: params.rhythmus,
+      lessons: 1,
+    };
+    try {
+      const erster = firstSeriesStart(wunsch, serienStart(periodeStart), params.parity ?? null);
+      const { data: ferienRoh } = await admin
+        .from("schulferien")
+        .select("start_datum, end_datum")
+        .gte("end_datum", periodeStart);
+      const ferien = (ferienRoh ?? []).map((f) => ({
+        start: String(f.start_datum),
+        ende: String(f.end_datum),
+      }));
+      ersterTermin = fixplatzSeriesStarts(wunsch, erster, ferien)[0]?.toISOString() ?? null;
+    } catch {
+      ersterTermin = null;
+    }
+  }
+  return { vorschau, ersterTermin };
 }
 
 /**
@@ -1674,7 +1736,9 @@ export async function aboVorschauAdmin(params: {
 export async function fixplaetzeFuerSchueler(
   studentUserId: string,
   type: "10er" | "20er",
-  rhythmus: Rhythmus
+  rhythmus: Rhythmus,
+  /** Beginn des Abos: gesucht wird ab diesem Tag, nicht ab heute. */
+  beginnRoh?: string | null
 ): Promise<{ angebote: FixplatzAngebot[] } | { error: string }> {
   const verboten = await assertAdmin();
   if (verboten) return verboten;
@@ -1687,6 +1751,12 @@ export async function fixplaetzeFuerSchueler(
     studentId: studentUserId,
     rhythmus: rhythmus === "zweiwoechentlich" ? "zweiwoechentlich" : "woechentlich",
     lessons: PACKAGE_LESSONS[type],
+    ...(beginnRoh
+      ? (() => {
+          const b = aboBeginnAus(beginnRoh);
+          return typeof b === "string" ? { now: serienStart(b) } : {};
+        })()
+      : {}),
   });
   return { angebote };
 }
