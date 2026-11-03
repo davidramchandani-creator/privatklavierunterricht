@@ -74,7 +74,62 @@ export type Platzstatus = {
   freiePlaetze: number;
   wartende: number;
   stufe: "frei" | "wenige" | "ausgebucht";
+  /** Kurzer Zusatz zur Zahl, z. B. „ab Februar“. Nur bei eigener Zahl. */
+  zusatz?: string | null;
+  /** Hat David die Zahl selbst eingetragen? */
+  manuell?: boolean;
+  /** Was die Rechnung ergeben hätte, als Vorschlag im Admin. */
+  automatisch?: number;
 };
+
+/**
+ * Davids eigene Angabe (David, 3. November 2026: „ich möchte die freien
+ * Plätze selbst eintragen können“). Die gerechnete Zahl bleibt als
+ * Vorschlag sichtbar, zählt aber nicht, solange `aktiv` gesetzt ist.
+ */
+export type PlatzEinstellung = {
+  aktiv: boolean;
+  freie: number;
+  zusatz: string | null;
+};
+
+export const EINSTELLUNG_PLAETZE = "platzstatus_manuell";
+
+/** Liest die Einstellung robust, auch wenn etwas Unerwartetes drinsteht. */
+export function leseEinstellung(wert: unknown): PlatzEinstellung | null {
+  if (!wert || typeof wert !== "object") return null;
+  const w = wert as Record<string, unknown>;
+  const freie = Number(w.freie);
+  if (!Number.isFinite(freie)) return null;
+  const zusatz = typeof w.zusatz === "string" && w.zusatz.trim() ? w.zusatz.trim().slice(0, 60) : null;
+  return { aktiv: w.aktiv === true, freie: Math.max(0, Math.round(freie)), zusatz };
+}
+
+/** Eigene Zahl vor gerechneter, wenn eingeschaltet. */
+export function wendeEinstellungAn(
+  automatisch: number,
+  wartende: number,
+  einstellung: PlatzEinstellung | null
+): Platzstatus {
+  if (einstellung?.aktiv) {
+    return {
+      freiePlaetze: einstellung.freie,
+      wartende,
+      stufe: platzstufe(einstellung.freie),
+      zusatz: einstellung.zusatz,
+      manuell: true,
+      automatisch,
+    };
+  }
+  return {
+    freiePlaetze: automatisch,
+    wartende,
+    stufe: platzstufe(automatisch),
+    zusatz: null,
+    manuell: false,
+    automatisch,
+  };
+}
 
 export function platzstufe(freiePlaetze: number): Platzstatus["stufe"] {
   if (freiePlaetze <= 0) return "ausgebucht";
@@ -86,9 +141,11 @@ export function platzstufe(freiePlaetze: number): Platzstatus["stufe"] {
 export function platzText(status: Platzstatus): string | null {
   if (status.stufe === "ausgebucht") return "Zurzeit ausgebucht, die Warteliste ist offen";
   if (status.stufe === "wenige") {
-    return status.freiePlaetze === 1
-      ? "Nur noch 1 freier Platz"
-      : `Nur noch ${status.freiePlaetze} freie Plätze`;
+    const basis =
+      status.freiePlaetze === 1
+        ? "Nur noch 1 freier Platz"
+        : `Nur noch ${status.freiePlaetze} freie Plätze`;
+    return status.zusatz ? `${basis} ${status.zusatz}` : basis;
   }
   return null;
 }

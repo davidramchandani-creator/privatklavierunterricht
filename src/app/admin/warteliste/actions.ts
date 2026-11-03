@@ -5,6 +5,7 @@ import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email-sender";
 import { renderEmail } from "@/lib/email-templates";
 import { PLATZSTATUS_TAG } from "@/lib/platzstatus-server";
+import { EINSTELLUNG_PLAETZE } from "@/lib/platzstatus";
 import {
   ANGEBOT_FRIST_TAGE,
   angebotFrist,
@@ -170,6 +171,30 @@ export async function wartelisteLoeschen(id: string) {
 export async function platzstatusNeuRechnen() {
   const verboten = await assertAdmin();
   if (verboten) return verboten;
+  fertig();
+  return { success: true as const };
+}
+
+/**
+ * Freie Plätze selbst eintragen.
+ *
+ * `aktiv = false` schaltet zurück auf die gerechnete Zahl. Zahl und Zusatz
+ * bleiben dabei gespeichert, damit sie beim Wiedereinschalten noch da sind.
+ */
+export async function freiePlaetzeSpeichern(aktiv: boolean, freie: number, zusatz: string) {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+  const zahl = Math.round(Number(freie));
+  if (!Number.isFinite(zahl) || zahl < 0 || zahl > 99) {
+    return { error: "Bitte eine Zahl zwischen 0 und 99 eintragen." };
+  }
+  const admin = createAdminClient();
+  const { error } = await admin.from("app_settings").upsert({
+    key: EINSTELLUNG_PLAETZE,
+    value: { aktiv, freie: zahl, zusatz: zusatz.trim().slice(0, 60) || null },
+    updated_at: new Date().toISOString(),
+  });
+  if (error) return { error: error.message };
   fertig();
   return { success: true as const };
 }

@@ -2,7 +2,13 @@ import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/server";
 import { LESSON_DURATION_MIN, STUDIO_PAUSE_MIN } from "./booking";
 import { findeFixplaetze } from "./fixplatz-suche";
-import { platzstufe, zaehlePlaetze, type Platzstatus } from "./platzstatus";
+import {
+  EINSTELLUNG_PLAETZE,
+  leseEinstellung,
+  wendeEinstellungAn,
+  zaehlePlaetze,
+  type Platzstatus,
+} from "./platzstatus";
 
 export const PLATZSTATUS_TAG = "platzstatus";
 
@@ -24,7 +30,7 @@ const MINDEST_QUOTE = 0.8;
 async function berechne(): Promise<Platzstatus> {
   const admin = createAdminClient();
 
-  const [angebote, { count }] = await Promise.all([
+  const [angebote, { count }, { data: einstellung }] = await Promise.all([
     findeFixplaetze(admin, {
       // Keine Person: eine neue Anmeldung, die ins Studio kommt.
       studentId: "",
@@ -36,14 +42,11 @@ async function berechne(): Promise<Platzstatus> {
       .from("warteliste")
       .select("id", { count: "exact", head: true })
       .in("status", ["wartend", "angeboten"]),
+    admin.from("app_settings").select("value").eq("key", EINSTELLUNG_PLAETZE).maybeSingle(),
   ]);
 
-  const freiePlaetze = zaehlePlaetze(angebote, LESSON_DURATION_MIN + STUDIO_PAUSE_MIN);
-  return {
-    freiePlaetze,
-    wartende: count ?? 0,
-    stufe: platzstufe(freiePlaetze),
-  };
+  const automatisch = zaehlePlaetze(angebote, LESSON_DURATION_MIN + STUDIO_PAUSE_MIN);
+  return wendeEinstellungAn(automatisch, count ?? 0, leseEinstellung(einstellung?.value));
 }
 
 /**
@@ -53,7 +56,7 @@ async function berechne(): Promise<Platzstatus> {
  * zu teuer für jeden Seitenaufruf. Nach einer Buchung oder einer neuen
  * Wartelisten-Anmeldung wird der Speicher über `PLATZSTATUS_TAG` geleert.
  */
-export const ladePlatzstatus = unstable_cache(berechne, ["platzstatus-v1"], {
+export const ladePlatzstatus = unstable_cache(berechne, ["platzstatus-v2"], {
   revalidate: 3600,
   tags: [PLATZSTATUS_TAG],
 });

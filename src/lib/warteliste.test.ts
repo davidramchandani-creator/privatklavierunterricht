@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { platzstufe, platzText, wartendeText, zaehlePlaetze } from "./platzstatus";
+import { leseEinstellung, platzstufe, platzText, wartendeText, wendeEinstellungAn, zaehlePlaetze } from "./platzstatus";
 import { angebotFrist, angebotZustand, neuesToken, pruefeAnmeldung } from "./warteliste";
 import { NEUPREISE, beispielMonatsrate, betrag, chf, rabattGegenueberEinzel } from "./neupreise";
 import { renderEmail } from "./email-templates";
@@ -194,5 +194,32 @@ describe("Neue Preise", () => {
       expect(ohneKommentare, datei).not.toMatch(/preis(45)?:\s*(85|70|65)\b/);
       expect(ohneKommentare, datei).not.toMatch(/CHF (85|70|65)\b(?! im Monat)/);
     }
+  });
+});
+
+describe("Freie Plätze selbst eintragen", () => {
+  it("nimmt die eigene Zahl, wenn eingeschaltet, und behält den Vorschlag", () => {
+    const s = wendeEinstellungAn(7, 2, { aktiv: true, freie: 2, zusatz: "ab Februar" });
+    expect(s.freiePlaetze).toBe(2);
+    expect(s.automatisch).toBe(7);
+    expect(s.manuell).toBe(true);
+    expect(platzText(s)).toBe("Nur noch 2 freie Plätze ab Februar");
+  });
+
+  it("nimmt die gerechnete Zahl, wenn ausgeschaltet oder nichts gespeichert", () => {
+    expect(wendeEinstellungAn(3, 0, { aktiv: false, freie: 0, zusatz: "x" }).freiePlaetze).toBe(3);
+    expect(wendeEinstellungAn(3, 0, null).zusatz).toBeNull();
+  });
+
+  it("zeigt bei 0 ausgebucht, ohne Zusatz", () => {
+    const s = wendeEinstellungAn(5, 0, { aktiv: true, freie: 0, zusatz: "ab Februar" });
+    expect(s.stufe).toBe("ausgebucht");
+    expect(platzText(s)).toBe("Zurzeit ausgebucht, die Warteliste ist offen");
+  });
+
+  it("liest gespeicherte Werte robust", () => {
+    expect(leseEinstellung(null)).toBeNull();
+    expect(leseEinstellung({ freie: "abc" })).toBeNull();
+    expect(leseEinstellung({ aktiv: true, freie: -3, zusatz: "  " })).toEqual({ aktiv: true, freie: 0, zusatz: null });
   });
 });

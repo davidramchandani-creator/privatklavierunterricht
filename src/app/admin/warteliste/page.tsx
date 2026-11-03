@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { ladePlatzstatus } from "@/lib/platzstatus-server";
-import { platzText, WENIGE_PLAETZE } from "@/lib/platzstatus";
 import WartelisteBoard, { type Eintrag } from "./_components/WartelisteBoard";
+import FreiePlaetze from "./_components/FreiePlaetze";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +17,6 @@ export default async function AdminWartelistePage() {
     ladePlatzstatus(),
   ]);
 
-  const hinweis = platzText(status);
-
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
@@ -28,16 +26,14 @@ export default async function AdminWartelistePage() {
         </p>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-3">
-        <div className="bg-white rounded-2xl border border-gray-200 p-5">
-          <p className="text-xs font-600 text-gray-400 uppercase tracking-wide">Freie Plätze</p>
-          <p className="text-3xl font-800 text-[#1C244B] mt-1">{status.freiePlaetze}</p>
-          <p className="text-xs text-gray-500 mt-2 leading-relaxed">
-            Feste Termine alle zwei Wochen, die in den nächsten zwölf Wochen frei
-            sind (wöchentlich zählt doppelt). Auf der Webseite steht{" "}
-            {hinweis ? <strong>„{hinweis}“</strong> : <>nichts, solange es mehr als {WENIGE_PLAETZE} sind</>}.
-          </p>
-        </div>
+      <div className="grid sm:grid-cols-2 gap-3 items-start">
+        <FreiePlaetze
+          manuell={status.manuell === true}
+          freie={status.freiePlaetze}
+          zusatz={status.zusatz ?? null}
+          automatisch={status.automatisch ?? status.freiePlaetze}
+          wartende={status.wartende}
+        />
         <div className="bg-white rounded-2xl border border-gray-200 p-5">
           <p className="text-xs font-600 text-gray-400 uppercase tracking-wide">Wartend</p>
           <p className="text-3xl font-800 text-[#1C244B] mt-1">{status.wartende}</p>
