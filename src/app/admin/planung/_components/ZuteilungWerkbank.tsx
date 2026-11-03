@@ -21,6 +21,7 @@ import {
   schuelerFreigeben,
   zuteilungEintragAendern,
   zuteilungEintragEntfernen,
+  freigegebenenEintragAendern,
 } from "../actions";
 
 /**
@@ -263,6 +264,7 @@ export default function ZuteilungWerkbank({
                       {istOffen ? (
                         <Bearbeiten
                           z={z}
+                          art={art}
                           fenster={fenster}
                           onFertig={() => setBearbeite(null)}
                           onMeldung={(m) => setMeldung(m)}
@@ -316,6 +318,14 @@ export default function ZuteilungWerkbank({
                                   )}
                                 </button>
                               )}
+                              <button
+                                onClick={() => setBearbeite(z.schuelerId)}
+                                disabled={laeuft}
+                                className="p-2 rounded-lg text-gray-400 hover:text-[#1C244B] hover:bg-gray-100 disabled:opacity-40"
+                                title="Tag, Uhrzeit oder Woche ändern. Die Termine werden neu gelegt."
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
                               <Lock className="w-4 h-4 text-gray-300" />
                             </div>
                           ) : (
@@ -376,11 +386,13 @@ export default function ZuteilungWerkbank({
 
 function Bearbeiten({
   z,
+  art,
   fenster,
   onFertig,
   onMeldung,
 }: {
   z: ZuteilungEintrag;
+  art: FreigabeArt;
   fenster: { wochentag: number; beginn: string; ende: string }[];
   onFertig: () => void;
   onMeldung: (m: { text: string; fehler: boolean }) => void;
@@ -392,18 +404,42 @@ function Bearbeiten({
   // Woche dieselbe.
   const [ungerade, setUngerade] = useState<string>(z.beginnUngerade ?? "");
   const [laeuft, starte] = useTransition();
+  // Schon freigegeben: Die Termine liegen im Kalender und werden neu gelegt.
+  // Beim Abo darf der Schüler davon per Mail erfahren.
+  const freigegeben = z.status === "freigegeben";
+  const [mitMail, setMitMail] = useState(true);
 
   const f = fenster.find((x) => x.wochentag === wochentag);
   const zeiten = f ? raster(f.beginn, f.ende) : [];
 
   function speichern() {
     starte(async () => {
-      const r = await zuteilungEintragAendern(z.schuelerId, {
+      const aenderung = {
         wochentag,
         beginn,
         paritaet,
         beginnUngerade: paritaet === null && ungerade ? ungerade : null,
-      });
+      };
+      if (freigegeben) {
+        const r = await freigegebenenEintragAendern(
+          z.schuelerId,
+          aenderung,
+          art !== "extern" && mitMail
+        );
+        if ("error" in r && r.error) {
+          onMeldung({ text: `${z.name}: ${r.error}`, fehler: true });
+          return;
+        }
+        if ("termine" in r) {
+          onMeldung({
+            text: `${z.name} verschoben, ${r.termine} Termine neu gelegt${r.mail ? ", Mail ist raus" : ""}.`,
+            fehler: false,
+          });
+        }
+        onFertig();
+        return;
+      }
+      const r = await zuteilungEintragAendern(z.schuelerId, aenderung);
       if ("error" in r && r.error) {
         onMeldung({ text: `${z.name}: ${r.error}`, fehler: true });
         return;
@@ -479,6 +515,25 @@ function Bearbeiten({
             </span>
           )}
         </label>
+      )}
+      {freigegeben && (
+        <div className="space-y-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <p>
+            Schon freigegeben. Die künftigen Termine werden auf die neue Zeit
+            neu gelegt. Passt ein Termin nicht, wird nichts geändert.
+          </p>
+          {art !== "extern" && (
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mitMail}
+                onChange={(e) => setMitMail(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-gray-300"
+              />
+              Schüler per Mail über den neuen Termin informieren
+            </label>
+          )}
+        </div>
       )}
       <div className="flex gap-2">
         <button

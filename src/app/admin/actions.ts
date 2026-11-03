@@ -39,7 +39,7 @@ import {
   type Rhythmus,
 } from "@/lib/rhythmus";
 import { describeFixplatz } from "@/lib/fixplatz";
-import { bookFixplatzSeries } from "@/lib/fixplatz-server";
+import { bookFixplatzSeries, erklaereBlockade, planeFixplatzSerie } from "@/lib/fixplatz-server";
 import { entferneAusZuteilungen } from "@/lib/freigabe-server";
 import { meldeAusfall, schliesseOffeneAusfaelle } from "@/lib/ausfall";
 import { bieteFrueherenSlotAn } from "@/lib/vorrueck-server";
@@ -1352,6 +1352,33 @@ export async function aboAnlegenAdmin(
 
   if (vorschau.lektionen < 1) {
     return { error: "In diesem Zeitraum liegen keine Unterrichtstermine." };
+  }
+
+  // Erst rechnen, dann schreiben. Seit der Termin hier auch von Hand
+  // eingegeben werden kann, muss vor dem Anlegen feststehen, dass die ganze
+  // Serie Platz hat. Sonst entstünde ein Abo mit Lücken und eine Mail mit
+  // zu wenigen Terminen (wie bei Flurina am 7. September 2026).
+  if (fixplatz) {
+    const probe = await planeFixplatzSerie(admin, {
+      studentId,
+      wunsch: {
+        weekday: fixplatz.weekday,
+        time: fixplatz.time,
+        rhythmus,
+        lessons: vorschau.lektionen,
+      },
+      parity: fixplatz.parity,
+    });
+    if ("error" in probe) return { error: probe.error };
+    if (probe.offen.length > 0) {
+      const grund = await erklaereBlockade(admin, probe.offen);
+      const tage = probe.offen.map((d) => d.toISOString().slice(0, 10)).join(", ");
+      return {
+        error: `Nur ${probe.zuBuchen.length} von ${vorschau.lektionen} Terminen haben Platz. ${
+          grund ?? "Die übrigen sind belegt oder gesperrt."
+        } Betroffen: ${tage}. Nichts angelegt, keine Mail.`,
+      };
+    }
   }
 
   const { data: prof } = await admin

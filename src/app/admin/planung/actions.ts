@@ -25,6 +25,7 @@ import { istTest, standardKreis } from "@/lib/kreis";
 import type { Routenplan } from "@/lib/routing";
 import { ladeFenster } from "@/lib/routing-server";
 import {
+  aendereFreigegebenenEintrag,
   bearbeiteEintrag,
   bestimmeFreigabeArten,
   entferneEintrag,
@@ -814,6 +815,35 @@ export async function zuteilungEintragAendern(
   if ("error" in r) return r;
   revalidatePath("/admin/planung");
   return { success: true, error: undefined };
+}
+
+/** Einen schon freigegebenen Eintrag ändern: Serie neu legen, auf Wunsch mit Mail. */
+export async function freigegebenenEintragAendern(
+  schuelerId: string,
+  aenderung: {
+    wochentag: number;
+    beginn: string;
+    paritaet: 0 | 1 | null;
+    beginnUngerade?: string | null;
+  },
+  mitMail: boolean
+): Promise<
+  { success: true; error: undefined; termine: number; mail: boolean } | { error: string }
+> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+  if (!/^\d{2}:\d{2}$/.test(aenderung.beginn)) return { error: "Bitte eine Uhrzeit angeben." };
+  const admin = await createAdminClient();
+  const runde = await offeneRundeOderFehler(admin);
+  if ("error" in runde) return runde;
+
+  const r = await aendereFreigegebenenEintrag(admin, runde.id, schuelerId, aenderung, mitMail);
+  if ("error" in r) return r;
+  revalidatePath("/admin/planung");
+  revalidatePath(`/admin/schueler/${schuelerId}`);
+  revalidatePath("/admin/kalender");
+  revalidatePath("/schueler/portal");
+  return { success: true, error: undefined, termine: r.termine, mail: r.mail };
 }
 
 export async function zuteilungEintragEntfernen(

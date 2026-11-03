@@ -37,6 +37,7 @@ import {
 import { describeFixplatz } from "./fixplatz";
 import { sendEmailNow } from "./emails-outbox";
 import { BASIS_URL } from "./seo";
+import { todayInZurich } from "./subscription";
 import { DEFAULT_BUFFER_MIN, LESSON_DURATION_MIN } from "./booking";
 
 /** Die Einträge einer Runde, immer in der neuen Form. */
@@ -190,6 +191,109 @@ export async function bearbeiteEintrag(
   );
   await speichereEintraege(admin, rundeId, neu);
   return { ok: true };
+}
+
+/**
+ * Einen **freigegebenen** Eintrag ändern.
+ *
+ * Freigegeben heisst: Termine liegen im Kalender, beim Abo steht der Platz
+ * im Vertrag. Trotzdem muss David hier umstellen können (3. November 2026),
+ * ohne erst auf jede Schülerseite zu wechseln. Darum wird nicht nur der
+ * Eintrag geändert, sondern die Serie dahinter neu gelegt:
+ *
+ *   Abo     → `setzeFestenPlatz`: künftige Termine neu, auf Wunsch mit Mail.
+ *   Extern  → `setzeExternenTermin`: künftige Termine ab heute neu.
+ *
+ * Beide rechnen erst und schreiben dann. Passt die neue Zeit nicht, bleibt
+ * alles beim Alten.
+ */
+export async function aendereFreigegebenenEintrag(
+  admin: SupabaseClient,
+  rundeId: string,
+  schuelerId: string,
+  aenderung: {
+    wochentag: number;
+    beginn: string;
+    paritaet: 0 | 1 | null;
+    beginnUngerade?: string | null;
+  },
+  mitMail: boolean,
+  pufferMinuten = DEFAULT_BUFFER_MIN
+): Promise<{ ok: true; termine: number; mail: boolean } | { error: string }> {
+  const eintraege = await ladeEintraege(admin, rundeId);
+  const ich = eintraege.find((z) => z.schuelerId === schuelerId);
+  if (!ich) return { error: "Dieser Schüler steht nicht in der Zuteilung." };
+
+  const { data: studio } = await admin
+    .from("profiles")
+    .select("id")
+    .in("id", eintraege.map((z) => z.schuelerId))
+    .eq("hausbesuch", false);
+  const konflikt = findeKonflikt(
+    { schuelerId, ...aenderung },
+    eintraege,
+    pufferMinuten,
+    new Set((studio ?? []).map((p) => p.id as string))
+  );
+  if (konflikt) return { error: `Überschneidet sich mit ${konflikt}.` };
+
+  const zweite =
+    aenderung.paritaet === null &&
+    aenderung.beginnUngerade &&
+    aenderung.beginnUngerade !== aenderung.beginn
+      ? aenderung.beginnUngerade
+      : null;
+
+  const { data: profil } = await admin
+    .from("profiles")
+    .select("extern")
+    .eq("id", schuelerId)
+    .maybeSingle();
+
+  if (profil?.extern === true) {
+    const r = await setzeExternenTermin(admin, {
+      studentId: schuelerId,
+      wochentag: aenderung.wochentag,
+      beginn: aenderung.beginn,
+      paritaet: aenderung.paritaet,
+      beginnUngerade: zweite,
+      abDatum: todayInZurich(),
+    });
+    if ("error" in r) return r;
+    await speichereEintraege(
+      admin,
+      rundeId,
+      eintraege.map((z) =>
+        z.schuelerId === schuelerId
+          ? {
+              ...z,
+              wochentag: aenderung.wochentag,
+              beginn: aenderung.beginn,
+              paritaet: aenderung.paritaet,
+              beginnUngerade: zweite,
+              rhythmus:
+                aenderung.paritaet === null
+                  ? ("woechentlich" as const)
+                  : ("zweiwoechentlich" as const),
+            }
+          : z
+      )
+    );
+    return { ok: true, termine: r.termine, mail: false };
+  }
+
+  // Abo: zieht den Eintrag in der Zuteilung selbst mit.
+  return setzeFestenPlatz(
+    admin,
+    schuelerId,
+    {
+      wochentag: aenderung.wochentag,
+      beginn: aenderung.beginn,
+      paritaet: aenderung.paritaet,
+      beginnUngerade: zweite,
+    },
+    mitMail
+  );
 }
 
 export async function entferneEintrag(

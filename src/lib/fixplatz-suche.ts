@@ -146,7 +146,8 @@ export async function findeFixplaetze(
   // sonst wären es hunderte Datenbankabfragen.
   const abstandTage = params.rhythmus === "zweiwoechentlich" ? 14 : 7;
   const bis = new Date(
-    now.getTime() + (params.lessons + 2) * abstandTage * 86400000
+    // Grosszügig: Ferien verlängern die Serie über die reine Lektionszahl.
+    now.getTime() + (params.lessons + 10) * abstandTage * 86400000
   );
   const ctx = await loadAvailabilityContext(
     admin,
@@ -158,6 +159,17 @@ export async function findeFixplaetze(
     { skipLeadTime: false }
   );
   const ctxMitFenster = { ...ctx, availabilityWindows: fenster };
+
+  // Schulferien überspringen, genau wie beim Anlegen des Abos. Sonst zählt
+  // die Suche Termine an Weihnachten mit, die es nie geben wird.
+  const { data: ferienRoh } = await admin
+    .from("schulferien")
+    .select("start_datum, end_datum")
+    .gte("end_datum", now.toISOString().slice(0, 10));
+  const ferien = (ferienRoh ?? []).map((f) => ({
+    start: String(f.start_datum),
+    ende: String(f.end_datum),
+  }));
 
   const angebote: FixplatzAngebot[] = [];
   // Bei zweiwöchentlichem Rhythmus beide Wochenparitäten anbieten: der
@@ -183,11 +195,17 @@ export async function findeFixplaetze(
           continue;
         }
 
-        const pruefung = pruefeFixplatzSerie(wunsch, ersterStart, ctxMitFenster);
+        const pruefung = pruefeFixplatzSerie(
+          wunsch,
+          ersterStart,
+          ctxMitFenster,
+          LESSON_DURATION_MIN,
+          ferien
+        );
         if (pruefung.slots.length === 0) continue;
         if (pruefung.freie / pruefung.slots.length < mindestQuote) continue;
 
-        const starts = fixplatzSeriesStarts(wunsch, ersterStart);
+        const starts = fixplatzSeriesStarts(wunsch, ersterStart, ferien);
         angebote.push({
           weekday,
           time,
@@ -205,12 +223,20 @@ export async function findeFixplaetze(
     }
   }
 
-  // Beste zuerst: möglichst wenig Kollisionen, dann früher Start.
+  // Nach Tag und Uhrzeit, nicht nach Quote.
+  //
+  // Vorher: Beste zuerst, dann die ersten 40, und die Oberfläche zeigte
+  // davon die ersten 10. Freitag und Donnerstag am frühen Nachmittag sind
+  // fast immer ganz frei und füllten die Liste, der Montag mit 8 von 10
+  // freien Terminen kam nie vor (Hugo, 3. November 2026). Jetzt kommt jeder
+  // Tag mit allem, was die Mindestquote schafft, und die Oberfläche
+  // gruppiert nach Tag.
   angebote.sort(
     (a, b) =>
-      b.freie / b.gesamt - a.freie / a.gesamt ||
-      a.ersterTermin.localeCompare(b.ersterTermin)
+      a.weekday - b.weekday ||
+      a.time.localeCompare(b.time) ||
+      (a.parity ?? -1) - (b.parity ?? -1)
   );
 
-  return angebote.slice(0, params.maxAngebote ?? 40);
+  return params.maxAngebote ? angebote.slice(0, params.maxAngebote) : angebote;
 }

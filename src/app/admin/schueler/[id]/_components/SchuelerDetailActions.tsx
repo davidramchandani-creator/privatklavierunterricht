@@ -35,6 +35,7 @@ import { formatCHF } from "@/lib/utils";
 
 import type { BookingMode, Rhythmus } from "@/lib/rhythmus";
 import type { FixplatzAngebot } from "@/lib/fixplatz-suche";
+import { describeFixplatz } from "@/lib/fixplatz";
 import type { AboVorschau } from "@/lib/abo-server";
 import { formatDay } from "@/lib/instalment-view";
 import {
@@ -912,31 +913,79 @@ function PackageFormNew({
           )}
 
           {angebote && angebote.length > 0 && (
-            <div className="space-y-1.5 max-h-56 overflow-y-auto">
-              {angebote.slice(0, 10).map((a) => {
-                const aktiv =
-                  platz?.weekday === a.weekday &&
-                  platz?.time === a.time &&
-                  platz?.parity === a.parity;
-                return (
-                  <button
-                    key={`${a.weekday}-${a.time}-${a.parity}`}
-                    type="button"
-                    onClick={() => {
-                      setPlatz(a);
-                      vorschauLaden(a.weekday);
-                    }}
-                    className={`w-full text-left rounded-lg border px-3 py-2 text-xs transition-colors ${
-                      aktiv
-                        ? "border-[#1C244B] bg-[#1C244B]/5"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <p className="font-600 text-gray-900">{a.beschreibung}</p>
-                  </button>
-                );
-              })}
+            <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+              {/*
+                Nach Tag gruppiert, alle Zeiten. Vorher standen hier nur die
+                ersten 10 einer nach Quote sortierten Liste, und ganze Tage
+                fehlten (Hugo, Montag).
+              */}
+              {[...new Set(angebote.map((a) => a.weekday))].map((tag) => (
+                <div key={tag} className="space-y-1">
+                  <p className="text-[11px] font-600 uppercase tracking-wide text-gray-500">
+                    {WOCHENTAGE_KURZ[tag] ?? tag}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {angebote
+                      .filter((a) => a.weekday === tag)
+                      .map((a) => {
+                        const aktiv =
+                          platz?.weekday === a.weekday &&
+                          platz?.time === a.time &&
+                          platz?.parity === a.parity;
+                        return (
+                          <button
+                            key={`${a.weekday}-${a.time}-${a.parity}`}
+                            type="button"
+                            title={`${a.beschreibung}, ${a.freie} von ${a.gesamt} Terminen frei`}
+                            onClick={() => {
+                              setPlatz(a);
+                              vorschauLaden(a.weekday);
+                            }}
+                            className={`rounded-lg border px-2.5 py-1.5 text-xs tabular-nums transition-colors ${
+                              aktiv
+                                ? "border-[#1C244B] bg-[#1C244B] text-white"
+                                : "border-gray-200 hover:border-gray-300 text-gray-800"
+                            }`}
+                          >
+                            {a.time}
+                            {a.parity !== null && (
+                              <span className={aktiv ? "text-white/70" : "text-gray-400"}>
+                                {" "}
+                                {a.parity === 0 ? "gerade" : "ungerade"}
+                              </span>
+                            )}
+                            {a.freie < a.gesamt && (
+                              <span className={aktiv ? "text-white/70" : "text-amber-600"}>
+                                {" "}
+                                {a.freie}/{a.gesamt}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              ))}
             </div>
+          )}
+
+          {/*
+            Termin direkt eingeben, wenn er schon abgemacht ist oder die Suche
+            ihn nicht anbietet (etwa 17:25 im Studio). Geprüft wird beim
+            Anlegen: Ist ein Termin der Serie belegt, wird nichts angelegt.
+          */}
+          <DirektPlatz
+            rhythmus={rhythmus}
+            onWahl={(p) => {
+              setPlatz(p);
+              vorschauLaden(p.weekday);
+            }}
+          />
+
+          {platz && (
+            <p className="text-xs text-gray-700 bg-gray-50 rounded-lg px-3 py-2">
+              Gewählt: <span className="font-600">{platz.beschreibung}</span>
+            </p>
           )}
 
           {platz && (
@@ -1983,3 +2032,82 @@ export {
   AppointmentActions,
 };
 export default SchuelerDetailActionsRoot;
+
+const WOCHENTAGE_KURZ: Record<number, string> = {
+  1: "Montag",
+  2: "Dienstag",
+  3: "Mittwoch",
+  4: "Donnerstag",
+  5: "Freitag",
+  6: "Samstag",
+  0: "Sonntag",
+};
+
+/** Fester Termin von Hand: Tag, Uhrzeit (5-Minuten-Schritte), Woche. */
+function DirektPlatz({
+  rhythmus,
+  onWahl,
+}: {
+  rhythmus: Rhythmus;
+  onWahl: (p: FixplatzAngebot) => void;
+}) {
+  const [tag, setTag] = useState(1);
+  const [zeit, setZeit] = useState("");
+  const [woche, setWoche] = useState<"0" | "1">("0");
+  const feld =
+    "h-9 rounded-lg border border-input bg-background px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  const zweiwoechentlich = rhythmus === "zweiwoechentlich";
+
+  return (
+    <div className="space-y-1.5 border-t border-gray-100 pt-2.5">
+      <p className="text-[11px] font-600 text-gray-600">Oder selbst eingeben</p>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <select value={tag} onChange={(e) => setTag(Number(e.target.value))} className={feld}>
+          {[1, 2, 3, 4, 5].map((t) => (
+            <option key={t} value={t}>
+              {WOCHENTAGE_KURZ[t]}
+            </option>
+          ))}
+        </select>
+        <input
+          type="time"
+          step={300}
+          value={zeit}
+          onChange={(e) => setZeit(e.target.value)}
+          className={`${feld} tabular-nums`}
+        />
+        {zweiwoechentlich && (
+          <select
+            value={woche}
+            onChange={(e) => setWoche(e.target.value as "0" | "1")}
+            className={feld}
+          >
+            <option value="0">gerade Wochen</option>
+            <option value="1">ungerade Wochen</option>
+          </select>
+        )}
+        <button
+          type="button"
+          disabled={!/^\d{2}:\d{2}$/.test(zeit)}
+          onClick={() => {
+            const parity = zweiwoechentlich ? (Number(woche) as 0 | 1) : null;
+            onWahl({
+              weekday: tag,
+              time: zeit,
+              parity,
+              freie: 0,
+              gesamt: 0,
+              ersterTermin: "",
+              letzterTermin: "",
+              belegteTage: [],
+              beschreibung: describeFixplatz(tag, zeit, rhythmus, parity),
+            });
+          }}
+          className="text-xs font-600 px-3 h-9 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40"
+        >
+          Übernehmen
+        </button>
+      </div>
+    </div>
+  );
+}
