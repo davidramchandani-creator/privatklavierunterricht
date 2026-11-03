@@ -151,6 +151,7 @@ async function legeTestAboAn(
       monatsbetrag: vorschau.monatsbetrag,
       periode_start: periodeStart,
       periode_ende: vorschau.periodeEnde,
+      bindung_bis: vorschau.bindungBis,
     })
     .select("id")
     .single();

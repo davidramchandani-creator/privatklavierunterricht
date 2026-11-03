@@ -120,7 +120,7 @@ export async function loadAvailabilityContext(
       .gte("end_date", fromDate),
     admin
       .from("time_blocks")
-      .select("date, start_time, end_time")
+      .select("date, start_time, end_time, quelle")
       .gte("date", fromDate)
       .lte("date", toDate),
     admin
@@ -206,7 +206,13 @@ export async function loadAvailabilityContext(
     now,
     appointments,
     absences: (absRes.data ?? []) as Absence[],
-    timeBlocks: (blockRes.data ?? []) as TimeBlock[],
+    // Ganztägige Einträge aus Davids Kalender sperren nichts (David,
+    // 3. November 2026: „wenn ich mal ganze Tage eintrage, müssen diese nicht
+    // berücksichtigt werden"). Geburtstage, Reisen, Erinnerungen stehen dort
+    // ganztägig; freie Tage trägt David als Abwesenheit ein.
+    timeBlocks: ((blockRes.data ?? []) as Array<TimeBlock & { quelle?: string | null }>)
+      .filter((b) => !(b.quelle === "apple" && istGanztaegig(b)))
+      .map(({ date, start_time, end_time }) => ({ date, start_time, end_time })),
     timeBlockRules: (ruleRes.data ?? []) as TimeBlockRule[],
     availabilityWindows,
     skipLeadTime: opts.skipLeadTime ?? false,
@@ -215,4 +221,9 @@ export async function loadAvailabilityContext(
   return Object.assign(ctx, { blockSettings }) as AvailabilityContext & {
     blockSettings: BlockSettings;
   };
+}
+
+/** Ein Zeitblock über den ganzen Tag (00:00 bis 23:55 oder später). */
+export function istGanztaegig(b: { start_time: string; end_time: string }): boolean {
+  return b.start_time.slice(0, 5) === "00:00" && b.end_time.slice(0, 5) >= "23:55";
 }

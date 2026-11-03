@@ -2140,6 +2140,62 @@ export function renderEmail(
       };
     }
 
+    // ── Umstellung auf den Semesterrhythmus (November 2026) ──
+    case "semester_umstellung": {
+      const chf = (n: unknown) =>
+        Number(n ?? 0).toLocaleString("de-CH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      const lang = (iso: unknown) =>
+        new Date(`${String(iso)}T12:00:00Z`).toLocaleDateString("de-CH", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+      const kurz = (iso: string) =>
+        new Date(`${iso}T12:00:00Z`).toLocaleDateString("de-CH", {
+          day: "numeric",
+          month: "long",
+        });
+      const frei = Array.isArray(payload.unterrichtsfrei)
+        ? (payload.unterrichtsfrei as { bezeichnung: string; start: string; ende: string }[])
+        : [];
+      const freiText = frei
+        .map((f) => `vom ${kurz(f.start)} bis ${kurz(f.ende)}`)
+        .join(" und ");
+      const vorname = payload.student_name
+        ? " " + String(payload.student_name).split(" ")[0]
+        : "";
+      const laufzeit = payload.jahresabo
+        ? `Dein Jahresabo läuft wie vereinbart bis ${lang(payload.bindung_bis)}. Die Raten werden neu pro Semester berechnet, das erste Semester endet am ${lang(payload.periode_ende)}. Kündigen kannst du wie bisher bis einen Monat vor Ende.`
+        : `Dein Abo läuft bis zum ${lang(payload.periode_ende)} und geht danach automatisch im nächsten Semester weiter. Den neuen Termin legen wir fest, sobald mein Stundenplan steht. Kündigen kannst du wie bisher bis einen Monat vor Semesterende.`;
+      return {
+        subject: "Deine Klavierstunden ab jetzt im Semesterrhythmus",
+        html: baseWrapper(
+          `<p>Hallo${vorname}</p>
+           <p>ich muss dir eine Änderung mitteilen, und es tut mir leid, dass sie so kurzfristig kommt.</p>
+           <p>Seit diesem Herbst studiere ich an der PH Zürich. Jedes Semester bekomme ich einen neuen Stundenplan, dazu kommen Praktika. Gleichzeitig melde ich gerade mein Unternehmen an, auch bei der SVA. Und es sind viele neue Schülerinnen und Schüler dazugekommen, was mich riesig freut. Damit ich das alles gut planen kann, laufen die Abos ab jetzt von Semester zu Semester.</p>
+           <p><strong>Für dich heisst das:</strong></p>
+           <ul style="padding-left:20px;margin:0 0 16px;">
+             <li style="margin-bottom:8px;">${laufzeit}</li>
+             ${
+               freiText
+                 ? `<li style="margin-bottom:8px;">${freiText.charAt(0).toUpperCase() + freiText.slice(1)} findet kein Unterricht statt (Ferien und Praktikum).${payload.zusatz ? " " + String(payload.zusatz) : ""}</li>`
+                 : ""
+             }
+             <li style="margin-bottom:8px;">Bis Semesterende sind es insgesamt <strong>${payload.lektionen ?? 0} Lektionen</strong>. Deine Monatsrate beträgt neu <strong>CHF ${chf(payload.monatsbetrag_neu)}</strong> statt CHF ${chf(payload.monatsbetrag_alt)}. Bereits bezahlte Raten sind verrechnet.</li>
+           </ul>
+           <p>Mit dem neuen Jahr werden meine Preise steigen. Die genauen Zahlen teile ich dir mit, sobald ich alles berechnet habe, und rechtzeitig vor dem nächsten Semester.</p>
+           <p>Danke für dein Verständnis. Bei Fragen melde dich jederzeit.</p>
+           <p style="text-align:center;margin:28px 0;">
+             <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Deine Termine im Portal</a>
+           </p>
+           <p>Liebe Grüsse<br/>David Ramchandani</p>`
+        ),
+      };
+    }
+
     // ── Abo ──────────────────────────────────────────────────
     case "abo_gestartet":
     case "umstellung_bestaetigung": {
@@ -2684,9 +2740,9 @@ export function renderEmail(
                       nichts mehr einzeln buchen.
                     </p>
                     <p style="margin:0 0 8px;color:#475569;font-size:14px;">
-                      <strong>Ferien sind schon abgezogen.</strong> In den
-                      Schulferien ist kein Unterricht, und du zahlst auch nichts
-                      dafür. Die Lektionszahl, die du siehst, ist die Zahl, die
+                      <strong>Ferien sind schon abgezogen.</strong> In meinen
+                      Ferien und Praktika ist kein Unterricht, und du zahlst
+                      auch nichts dafür. Die Lektionszahl, die du siehst, ist die Zahl, die
                       du bekommst.
                     </p>
                     <p style="margin:0;color:#475569;font-size:14px;">
@@ -2697,7 +2753,7 @@ export function renderEmail(
                     </p>
                   </div>
 
-                  <p>Was du wählst: <strong>Halbjahr oder Jahr</strong> und
+                  <p>Was du wählst: <strong>Semester oder Jahr</strong> und
                      <strong>jede Woche oder alle zwei Wochen</strong>. Im Portal
                      siehst du zu jeder Kombination sofort deine Lektionszahl,
                      deinen Monatsbeitrag und die Ferien, die darin schon

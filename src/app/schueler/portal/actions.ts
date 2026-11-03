@@ -1045,7 +1045,7 @@ export async function verfuegbarkeitSpeichern(params: {
   const istUmstellung = runde.art === "umstellung";
   if (istUmstellung) {
     if (params.aboVariante !== "halbjahr" && params.aboVariante !== "jahr") {
-      return { error: "Bitte wähle Halbjahres- oder Jahresabo." };
+      return { error: "Bitte wähle Semester- oder Jahresabo." };
     }
     if (
       params.aboRhythmus !== "woechentlich" &&
@@ -1465,6 +1465,7 @@ export async function aboAbschliessen(params: {
       monatsbetrag: vorschau.monatsbetrag,
       periode_start: periodeStart,
       periode_ende: vorschau.periodeEnde,
+      bindung_bis: vorschau.bindungBis,
     })
     .select("id, student_id, type, total_price, price_per_lesson, payment_method")
     .single();
@@ -1582,7 +1583,7 @@ export async function setAutoRenew(packageId: string, enabled: boolean) {
 
   const { data: pkg } = await supabase
     .from("packages")
-    .select("id, student_id, status, expires_at, auto_renew, type")
+    .select("id, student_id, status, expires_at, auto_renew, type, bindung_bis, periode_ende")
     .eq("id", packageId)
     .maybeSingle();
 
@@ -1591,6 +1592,23 @@ export async function setAutoRenew(packageId: string, enabled: boolean) {
   }
   if (pkg.status !== "active") {
     return { error: "Dieses Paket ist nicht mehr aktiv." };
+  }
+
+  // Jahresabo im ersten Semester: bis Ende des zweiten gebunden.
+  if (
+    !enabled &&
+    pkg.bindung_bis &&
+    pkg.periode_ende &&
+    String(pkg.bindung_bis) > String(pkg.periode_ende)
+  ) {
+    const bis = new Date(`${pkg.bindung_bis}T12:00:00Z`).toLocaleDateString("de-CH", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+    return {
+      error: `Dein Jahresabo läuft bis ${bis}. Kündigen kannst du im nächsten Semester, bis einen Monat vor diesem Datum.`,
+    };
   }
 
   // Kündigungsfrist prüfen, nur beim Abwählen relevant.

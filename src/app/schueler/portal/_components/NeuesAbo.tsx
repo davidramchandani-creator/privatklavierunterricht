@@ -16,7 +16,7 @@ import {
   CalendarRange,
 } from "lucide-react";
 import { formatCHF } from "@/lib/utils";
-import { ABO_LABELS, ABO_LAUFZEIT_MONATE, type AboVariante } from "@/lib/abo";
+import { ABO_LABELS, type AboVariante } from "@/lib/abo";
 import { FLEX_SURCHARGE_PERCENT, type BookingMode, type Rhythmus } from "@/lib/rhythmus";
 import type { AboVorschau } from "@/lib/abo-server";
 import { aboAbschliessen, aboVorschau } from "../actions";
@@ -335,7 +335,7 @@ export default function NeuesAbo({
               <div>
                 <p className="font-700 text-gray-900">{ABO_LABELS[v]}</p>
                 <p className="text-xs text-gray-500">
-                  {ABO_LAUFZEIT_MONATE[v]} Monate
+                  {v === "jahr" ? "zwei Semester" : "bis Semesterende"}
                 </p>
               </div>
             </div>
@@ -408,14 +408,14 @@ export default function NeuesAbo({
                     <Wahl
                       aktiv={rhythmus === "woechentlich"}
                       titel="Jede Woche"
-                      untertitel={`${ABO_LAUFZEIT_MONATE[variante]} Monate`}
+                      untertitel={variante === "jahr" ? "zwei Semester" : "bis Semesterende"}
                       erklaerung="Der übliche Rhythmus. Regelmässiges Üben zwischen den Stunden fällt damit am leichtesten."
                       onClick={() => setRhythmus("woechentlich")}
                     />
                     <Wahl
                       aktiv={rhythmus === "zweiwoechentlich"}
                       titel="Alle zwei Wochen"
-                      untertitel={`${ABO_LAUFZEIT_MONATE[variante]} Monate`}
+                      untertitel={variante === "jahr" ? "zwei Semester" : "bis Semesterende"}
                       erklaerung="Halb so viele Lektionen, halber Monatsbetrag. Sinnvoll, wenn wenig Zeit zum Üben bleibt."
                       onClick={() => setRhythmus("zweiwoechentlich")}
                     />

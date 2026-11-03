@@ -76,7 +76,7 @@ export function paketBezeichnung(
 ): string {
   if (!pkg) return "Kein Paket";
 
-  if (pkg.abo_variante === "halbjahr") return "Halbjahresabo";
+  if (pkg.abo_variante === "halbjahr") return "Semesterabo";
   if (pkg.abo_variante === "jahr") return "Jahresabo";
 
   return PACKAGE_LABELS[pkg.type] ?? pkg.name ?? pkg.type;

@@ -85,6 +85,6 @@ export function vergleiche(
 /** Die eigenen Angebote, in derselben Reihenfolge wie auf der Preisseite. */
 export const EIGENE_ANGEBOTE = [
   { bezeichnung: "Einzellektion", preis45: 85 },
-  { bezeichnung: "Halbjahresabo", preis45: 70 },
+  { bezeichnung: "Semesterabo", preis45: 70 },
   { bezeichnung: "Jahresabo", preis45: 65 },
 ];

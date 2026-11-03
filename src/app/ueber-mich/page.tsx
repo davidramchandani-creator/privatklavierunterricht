@@ -209,7 +209,7 @@ export default async function UeberMichPage() {
               "Moderne Songs, die du wirklich spielen willst",
               "Unterricht in meinem Studio in Neftenbach, auf einem Kawai ES120 mit gewichteten Tasten",
               "Lektionen à 45 Minuten, wöchentlich oder alle zwei Wochen",
-              "Halbjahres- oder Jahresabo mit festem Platz",
+              "Semester- oder Jahresabo mit festem Platz",
               "Individuell auf dein Tempo und deine Ziele abgestimmt",
               "Kostenlose, unverbindliche Probelektion",
             ].map((item) => (

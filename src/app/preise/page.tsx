@@ -19,42 +19,44 @@ export const metadata: Metadata = {
   alternates: { canonical: "/preise" },
   title: "Preise & Transparenz: Privatklavierunterricht David Ramchandani",
   description:
-    "Wie sich meine Unterrichtspreise zusammensetzen und warum sie fair und nachhaltig sind. Einzellektion CHF 85, Halbjahresabo CHF 70, Jahresabo CHF 65 pro Lektion.",
+    "Wie sich meine Unterrichtspreise zusammensetzen und warum sie fair und nachhaltig sind. Einzellektion CHF 85, Semesterabo CHF 70, Jahresabo CHF 65 pro Lektion.",
 };
 
 const vergleichszeilen = vergleiche(EIGENE_ANGEBOTE);
 
 const modelle = [
   { modell: "Einzellektion", preis: "CHF 85.–" },
-  { modell: "Halbjahresabo (6 Monate)", preis: "CHF 70.–" },
-  { modell: "Jahresabo (12 Monate)", preis: "CHF 65.–" },
+  { modell: "Semesterabo (bis Semesterende)", preis: "CHF 70.–" },
+  { modell: "Jahresabo (zwei Semester)", preis: "CHF 65.–" },
 ];
 
 /**
- * Beispielwerte für einen Dienstagstermin ab 01.10.2026. Die tatsächliche
- * Lektionszahl hängt von Wochentag und Ferienlage ab und wird beim Abschluss
- * exakt gerechnet, darum steht hier "ca." und keine Festzusage.
+ * Beispielwerte für einen Dienstagstermin über das ganze Semester von
+ * Februar bis September 2027 (7 Monatsraten, ohne Oster- und Sommerferien).
+ * Die tatsächliche Lektionszahl hängt von Wochentag, Einstieg und Ferienlage
+ * ab und wird beim Abschluss exakt gerechnet, darum steht hier "ca.".
+ * Das Jahresabo wird pro Semester abgerechnet, darum dieselbe Lektionszahl.
  */
 const abobeispiele = [
   {
-    abo: "Halbjahresabo, wöchentlich",
-    lektionen: "ca. 20 Lektionen",
-    monat: "CHF 233.35",
+    abo: "Semesterabo, wöchentlich",
+    lektionen: "ca. 25 Lektionen",
+    monat: "CHF 250.00",
   },
   {
-    abo: "Halbjahresabo, alle zwei Wochen",
-    lektionen: "ca. 10 Lektionen",
-    monat: "CHF 116.65",
+    abo: "Semesterabo, alle zwei Wochen",
+    lektionen: "ca. 13 Lektionen",
+    monat: "CHF 130.00",
   },
   {
     abo: "Jahresabo, wöchentlich",
-    lektionen: "ca. 39 Lektionen",
-    monat: "CHF 211.25",
+    lektionen: "ca. 25 Lektionen pro Semester",
+    monat: "CHF 232.15",
   },
   {
     abo: "Jahresabo, alle zwei Wochen",
-    lektionen: "ca. 20 Lektionen",
-    monat: "CHF 108.35",
+    lektionen: "ca. 13 Lektionen pro Semester",
+    monat: "CHF 120.70",
   },
 ];
 
@@ -168,8 +170,11 @@ export default function PreisePage() {
               </table>
             </div>
             <p className="text-sm text-gray-500 leading-relaxed">
-              In den Schulferien findet kein Unterricht statt, diese Termine sind
-              in der Lektionszahl bereits abgezogen und werden nicht verrechnet.
+              Abos laufen bis Semesterende, also bis Mitte Februar oder Mitte
+              September. Wer später einsteigt, bezahlt nur die verbleibenden
+              Lektionen. In meinen Ferien und Praktika findet kein Unterricht
+              statt, diese Termine sind in der Lektionszahl bereits abgezogen
+              und werden nicht verrechnet.
               Wie viele Lektionen dein Abo genau enthält, hängt von deinem
               Wochentag und der Ferienlage ab; du siehst die exakte Zahl mit allen
               Terminen, bevor du abschliesst. Bezahlt wird per TWINT oder

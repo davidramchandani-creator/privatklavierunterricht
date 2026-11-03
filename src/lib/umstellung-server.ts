@@ -273,6 +273,7 @@ export async function legeAboAn(
       monatsbetrag: zugesichert.monatsbetrag,
       periode_start: params.startDatum,
       periode_ende: zugesichert.periodeEnde,
+      bindung_bis: zugesichert.bindungBis,
     })
     .select("id")
     .single();

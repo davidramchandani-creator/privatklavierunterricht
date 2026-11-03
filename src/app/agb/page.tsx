@@ -31,9 +31,9 @@ const abschnitte: Abschnitt[] = [
   {
     titel: "3. Abo (Laufzeit & Umfang)",
     punkte: [
-      "Mit dem Abschluss eines Abos gehst du eine verbindliche Vereinbarung über eine feste Laufzeit ein: 6 Monate beim Halbjahresabo, 12 Monate beim Jahresabo.",
+      "Mit dem Abschluss eines Abos gehst du eine verbindliche Vereinbarung über eine feste Laufzeit ein: Das Semesterabo läuft bis zum Ende des laufenden Semesters, das Jahresabo bis zum Ende des darauffolgenden Semesters. Ein Semester endet Mitte Februar oder Mitte September. Wer später einsteigt, bezahlt nur die Lektionen bis Semesterende.",
       "Wie viele Lektionen dein Abo enthält, ergibt sich aus deinem gewählten Rhythmus (wöchentlich oder alle zwei Wochen), deinem Wochentag und der Ferienlage. Die genaue Zahl wird beim Abschluss für deinen Termin berechnet, dir vor der Bestätigung angezeigt und ist damit vertraglich zugesichert.",
-      "In den Schulferien findet kein Unterricht statt. Diese Termine sind in der zugesicherten Lektionszahl bereits abgezogen und werden nicht verrechnet, es besteht dafür weder Anspruch auf Ersatz noch auf Rückerstattung.",
+      "In meinen Ferien und während meiner Praktika findet kein Unterricht statt. Diese Termine sind in der zugesicherten Lektionszahl bereits abgezogen und werden nicht verrechnet, es besteht dafür weder Anspruch auf Ersatz noch auf Rückerstattung.",
       "Die zugesicherten Lektionen sind innerhalb der Laufzeit zu beziehen. Nicht bezogene Lektionen verfallen am Ende der Laufzeit.",
       "Beim Fixplatz sind alle Termine der Laufzeit von Beginn an eingetragen. Bei flexibler Buchung buchst du jede Lektion selbst; die Lektionszahl gilt dann als Richtwert für die Preisberechnung.",
       "Ein vorzeitiger Ausstieg ist nur in Ausnahmefällen und nach Absprache möglich. Angefangene Monate bleiben in jedem Fall vollständig geschuldet; die restlichen Monate entfallen.",
@@ -55,9 +55,9 @@ const abschnitte: Abschnitt[] = [
   {
     titel: "5. Automatische Verlängerung & Kündigung",
     punkte: [
-      "Ist die automatische Verlängerung aktiv, verlängert sich das Abo am Ende der Laufzeit um eine neue Periode derselben Dauer. Mit demselben Rhythmus, derselben Buchungsart und demselben festen Termin.",
-      "Die Lektionszahl und damit der Monatsbetrag werden für die neue Periode neu berechnet, weil in verschiedenen Halbjahren unterschiedlich viele Ferien liegen. Der Preis pro Lektion bleibt dabei unverändert, sofern die Preise nicht generell angepasst wurden.",
-      "Du kannst die Verlängerung jederzeit im Portal abschalten, spätestens jedoch 30 Tage vor Ablauf der laufenden Periode. Danach ist die Verlängerung ausgelöst und die neue Laufzeit verbindlich.",
+      "Ist die automatische Verlängerung aktiv, verlängert sich das Abo am Ende des Semesters um das nächste Semester, beim Jahresabo um ein weiteres Jahr. Rhythmus und Buchungsart bleiben gleich. Der feste Termin wird für jedes Semester neu festgelegt, weil sich mein Stundenplan jedes Semester ändert.",
+      "Die Lektionszahl und damit der Monatsbetrag werden für jedes Semester neu berechnet, weil in verschiedenen Semestern unterschiedlich viele Ferien liegen. Das Jahresabo wird ebenfalls pro Semester abgerechnet. Der Preis pro Lektion bleibt dabei unverändert, sofern die Preise nicht generell angepasst wurden.",
+      "Du kannst die Verlängerung jederzeit im Portal abschalten, spätestens jedoch 30 Tage vor Ablauf der laufenden Periode, beim Jahresabo frühestens auf das Ende des zweiten Semesters. Danach ist die Verlängerung ausgelöst und die neue Laufzeit verbindlich.",
       "Spätestens 30 Tage vor Ablauf erhältst du eine Erinnerung per E-Mail und Push, damit du rechtzeitig entscheiden kannst.",
       "Eine Kündigung wirkt auf das Ende der laufenden Periode. Bereits begonnene Perioden und offene Monatsbeträge bleiben geschuldet.",
       "Nicht bezogene Lektionen verfallen auch bei einer Verlängerung, sie werden nicht in die neue Periode übertragen.",

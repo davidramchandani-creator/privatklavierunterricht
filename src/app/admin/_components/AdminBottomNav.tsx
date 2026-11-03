@@ -48,7 +48,7 @@ const MORE_ITEMS = [
   { href: "/admin/anfragen", label: "Probelektionen", icon: Inbox },
   { href: "/admin/abwesenheiten", label: "Abwesenheiten", icon: CalendarOff },
   { href: "/admin/verfuegbarkeit", label: "Verfügbarkeit", icon: Clock },
-  { href: "/admin/schulferien", label: "Schulferien", icon: CalendarOff },
+  { href: "/admin/schulferien", label: "Semester & Ferien", icon: CalendarOff },
   { href: "/admin/planung", label: "Terminplanung", icon: CalendarCheck },
   { href: "/admin/routenplanung", label: "Routenplanung", icon: Route },
   { href: "/admin/gruppenkurse", label: "Gruppenkurse", icon: UsersRound },

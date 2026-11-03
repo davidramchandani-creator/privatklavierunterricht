@@ -87,6 +87,7 @@ const ZUORDNUNG: Record<string, MailKategorie> = {
   verfuegbarkeit_einzelanfrage: "abo",
   verfuegbarkeit_erinnerung: "abo",
   verfuegbarkeit_zuteilung: "abo",
+  semester_umstellung: "abo",
   umstellung_info: "abo",
   umstellung_erinnerung: "abo",
   umstellung_bestaetigung: "abo",

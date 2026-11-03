@@ -749,7 +749,7 @@ function PackageFormNew({
           >
             <p className="font-600 text-gray-900 text-sm">Abo</p>
             <p className="text-xs text-gray-500 leading-snug mt-1">
-              Halbjahr oder Jahr, fester Rhythmus, Zahlung in Monatsraten.
+              Semester oder Jahr, fester Rhythmus, Zahlung in Monatsraten bis Semesterende.
               Verlängert sich, wenn nicht gekündigt. Der Regelfall.
             </p>
           </button>
@@ -818,8 +818,8 @@ function PackageFormNew({
             }}
             className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <option value="halbjahr">Halbjahr (6 Monate)</option>
-            <option value="jahr">Jahr (12 Monate)</option>
+            <option value="halbjahr">Semester (bis Semesterende)</option>
+            <option value="jahr">Jahr (zwei Semester)</option>
           </select>
         </div>
         <div className="space-y-1">

@@ -91,6 +91,7 @@ type PackageJobRow = {
   monatsbetrag: number | string | null;
   periode_start: string | null;
   periode_ende: string | null;
+  bindung_bis: string | null;
 };
 
 type InstalmentJobRow = {
@@ -106,7 +107,7 @@ type InstalmentJobRow = {
 
 const PROFILE_FIELDS = "vorname, nachname, adresse, email, payment_method";
 const PACKAGE_FIELDS =
-  "id, student_id, type, total_price, price_per_lesson, payment_method, lessons_total, lessons_used, expires_at, auto_renew, billing_mode, term_months, instalment_count, renewal_notice_sent_at, status, rhythmus, booking_mode, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, fixplatz_time_ungerade, abo_variante, abo_lektionen, monatsbetrag, periode_start, periode_ende";
+  "id, student_id, type, total_price, price_per_lesson, payment_method, lessons_total, lessons_used, expires_at, auto_renew, billing_mode, term_months, instalment_count, renewal_notice_sent_at, status, rhythmus, booking_mode, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, fixplatz_time_ungerade, abo_variante, abo_lektionen, monatsbetrag, periode_start, periode_ende, bindung_bis";
 
 /** Outbox-Eintrag, idempotent über `dedupe_key`. */
 async function enqueueOnce(
@@ -454,6 +455,8 @@ async function verlaengereAbo(
     bookingMode,
     weekday: Number(rechenTag),
     periodeStart,
+    // Jahresabo im zweiten Semester: die Bindung läuft weiter.
+    bisherigeBindung: pkg.bindung_bis,
   });
 
   if (vorschau.lektionen < 1) {
@@ -494,6 +497,7 @@ async function verlaengereAbo(
       monatsbetrag: vorschau.monatsbetrag,
       periode_start: periodeStart,
       periode_ende: vorschau.periodeEnde,
+      bindung_bis: vorschau.bindungBis,
     })
     .select(PACKAGE_FIELDS)
     .maybeSingle<PackageJobRow>();
@@ -555,6 +559,7 @@ async function verlaengereAbo(
       laufzeit_monate: vorschau.laufzeitMonate,
       periode_start: periodeStart,
       periode_ende: vorschau.periodeEnde,
+      bindung_bis: vorschau.bindungBis,
       ferientage: vorschau.ferientage,
       vorher_lektionen: pkg.abo_lektionen,
       vorher_monatsbetrag: pkg.monatsbetrag,
@@ -574,6 +579,7 @@ async function verlaengereAbo(
       monatsbetrag: vorschau.monatsbetrag,
       periode_start: periodeStart,
       periode_ende: vorschau.periodeEnde,
+      bindung_bis: vorschau.bindungBis,
     },
     `abo_verlaengert_admin:${next.id}`
   );
@@ -656,7 +662,11 @@ async function processExpiredPackages(
       );
     }
 
-    if (!pkg.auto_renew) continue;
+    // Ein Jahresabo im ersten Semester geht in jedem Fall weiter: Es ist
+    // bis Ende des zweiten Semesters gebunden.
+    const gebunden =
+      !!pkg.bindung_bis && !!pkg.periode_ende && String(pkg.bindung_bis) > String(pkg.periode_ende);
+    if (!pkg.auto_renew && !gebunden) continue;
 
     // ── Verlängerung ──
     const type = pkg.type as SubscriptionType;

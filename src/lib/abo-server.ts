@@ -8,12 +8,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   ABO_LAUFZEIT_MONATE,
+  aboPeriode,
   baueAboAngebot,
   baueMonatsraten,
   lektionenMinimum,
   type AboAngebot,
   type AboVariante,
   type Ferienzeitraum,
+  type Semester,
 } from "./abo";
 import { priceWithBookingMode, type BookingMode, type Rhythmus } from "./rhythmus";
 
@@ -34,6 +36,19 @@ export async function ladeFerien(
     bezeichnung: f.bezeichnung as string,
     start: String(f.start_datum),
     ende: String(f.end_datum),
+  }));
+}
+
+/** Alle Semester, aufsteigend. */
+export async function ladeSemester(admin: SupabaseClient): Promise<Semester[]> {
+  const { data } = await admin
+    .from("semester")
+    .select("bezeichnung, beginn, ende")
+    .order("beginn");
+  return (data ?? []).map((s) => ({
+    bezeichnung: String(s.bezeichnung),
+    beginn: String(s.beginn),
+    ende: String(s.ende),
   }));
 }
 
@@ -101,11 +116,14 @@ export async function baueVorschau(
     bookingMode: BookingMode;
     weekday: number;
     periodeStart: string;
+    /** Bei Verlängerung: Bindung des bisherigen Abos. */
+    bisherigeBindung?: string | null;
   }
 ): Promise<AboVorschau> {
-  const [preise, ferien] = await Promise.all([
+  const [preise, ferien, semester] = await Promise.all([
     ladeAboPreise(admin, params.studentId),
     ladeFerien(admin, params.periodeStart),
+    ladeSemester(admin),
   ]);
 
   const angebot = baueAboAngebot({
@@ -115,6 +133,12 @@ export async function baueVorschau(
     periodeStart: params.periodeStart,
     preisProLektion: aboLektionspreis(preise, params.variante, params.bookingMode),
     ferien,
+    periode: aboPeriode({
+      variante: params.variante,
+      start: params.periodeStart,
+      semester,
+      bisherigeBindung: params.bisherigeBindung,
+    }),
   });
 
   return {
@@ -145,18 +169,25 @@ export async function baueVorschauOhneTermin(
     periodeStart: string;
   }
 ): Promise<AboVorschau> {
-  const [preise, ferien] = await Promise.all([
+  const [preise, ferien, semester] = await Promise.all([
     ladeAboPreise(admin, params.studentId),
     ladeFerien(admin, params.periodeStart),
+    ladeSemester(admin),
   ]);
 
-  const laufzeitMonate = ABO_LAUFZEIT_MONATE[params.variante];
+  const periode = aboPeriode({
+    variante: params.variante,
+    start: params.periodeStart,
+    semester,
+  });
+  const laufzeitMonate = periode?.laufzeitMonate ?? ABO_LAUFZEIT_MONATE[params.variante];
   const { lektionen, proTag } = lektionenMinimum({
     periodeStart: params.periodeStart,
     laufzeitMonate,
     moeglicheTage: params.moeglicheTage,
     rhythmus: params.rhythmus,
     ferien,
+    ende: periode?.ende,
   });
 
   // Der ungünstigste Tag bestimmt die zugesicherte Zahl, also mit genau dem
@@ -171,6 +202,7 @@ export async function baueVorschauOhneTermin(
     periodeStart: params.periodeStart,
     preisProLektion: aboLektionspreis(preise, params.variante, "fix"),
     ferien,
+    periode,
   });
 
   // Auf die zugesicherte Zahl kürzen, falls der gewählte Tag doch mehr hergibt.

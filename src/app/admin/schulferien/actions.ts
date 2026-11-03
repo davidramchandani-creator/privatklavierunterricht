@@ -61,3 +61,51 @@ export async function ferienLoeschen(
   revalidatePath("/admin/schulferien");
   return { success: true, error: undefined };
 }
+
+// ── Semester ───────────────────────────────────────────────
+
+export async function semesterAnlegen(
+  formData: FormData
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+
+  const bezeichnung = String(formData.get("bezeichnung") ?? "").trim();
+  const beginn = String(formData.get("beginn") ?? "");
+  const ende = String(formData.get("ende") ?? "");
+  if (!bezeichnung) return { error: "Bitte eine Bezeichnung angeben." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(beginn) || !/^\d{4}-\d{2}-\d{2}$/.test(ende)) {
+    return { error: "Bitte Beginn und Ende angeben." };
+  }
+  if (ende <= beginn) return { error: "Das Ende liegt vor dem Beginn." };
+
+  const admin = await createAdminClient();
+  // Semester dürfen sich nicht überschneiden, sonst ist unklar, wann ein
+  // Abo endet.
+  const { data: quer } = await admin
+    .from("semester")
+    .select("bezeichnung")
+    .lte("beginn", ende)
+    .gte("ende", beginn)
+    .limit(1);
+  if (quer && quer.length > 0) {
+    return { error: `Überschneidet sich mit ${quer[0].bezeichnung}.` };
+  }
+
+  const { error } = await admin.from("semester").insert({ bezeichnung, beginn, ende });
+  if (error) return { error: "Das Semester konnte nicht gespeichert werden." };
+  revalidatePath("/admin/schulferien");
+  return { success: true, error: undefined };
+}
+
+export async function semesterLoeschen(
+  id: string
+): Promise<{ success: true; error: undefined } | { error: string }> {
+  const verboten = await assertAdmin();
+  if (verboten) return verboten;
+  const admin = await createAdminClient();
+  const { error } = await admin.from("semester").delete().eq("id", id);
+  if (error) return { error: "Das Semester konnte nicht gelöscht werden." };
+  revalidatePath("/admin/schulferien");
+  return { success: true, error: undefined };
+}

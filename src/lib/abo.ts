@@ -29,9 +29,97 @@ export const ABO_LAUFZEIT_MONATE: Record<AboVariante, number> = {
 };
 
 export const ABO_LABELS: Record<AboVariante, string> = {
-  halbjahr: "Halbjahresabo",
+  // Seit November 2026 im Semesterrhythmus. Intern heisst die Variante
+  // weiter "halbjahr", damit bestehende Daten gültig bleiben.
+  halbjahr: "Semesterabo",
   jahr: "Jahresabo",
 };
+
+// ── Semester ───────────────────────────────────────────────
+
+/** Ein Semester von Davids Studium. Beide Grenzen zählen mit. */
+export type Semester = {
+  bezeichnung: string;
+  beginn: string; // YYYY-MM-DD
+  ende: string; // YYYY-MM-DD
+};
+
+export type AboPeriode = {
+  ende: string;
+  /** Anzahl Monatsraten: so viele, wie Fälligkeiten bis zum Ende passen. */
+  laufzeitMonate: number;
+  /** Jahresabo: gebunden bis hier. Semesterabo: Periodenende. */
+  bindungBis: string;
+  semester: Semester;
+};
+
+/**
+ * Laufzeit eines Abos nach Semestern (David, 3. November 2026).
+ *
+ *   Semesterabo  endet am Ende des Semesters, in dem es beginnt.
+ *   Jahresabo    wird ebenfalls pro Semester abgerechnet (endet als Paket am
+ *                Semesterende), ist aber bis zum Ende des **nächsten**
+ *                Semesters gebunden. Folgt es auf ein Jahresabo, dessen
+ *                Bindung noch läuft, gilt diese weiter.
+ *
+ * Wer später einsteigt, bekommt nur die verbleibende Zeit, und damit nur
+ * die verbleibenden Lektionen und Raten.
+ *
+ * `null`, wenn für den Beginn kein Semester hinterlegt ist. Der Aufrufer
+ * fällt dann auf die alte Laufzeit in Monaten zurück.
+ */
+export function aboPeriode(params: {
+  variante: AboVariante;
+  start: string;
+  semester: Semester[];
+  /** Bindung des vorherigen Abos, falls es verlängert wird. */
+  bisherigeBindung?: string | null;
+}): AboPeriode | null {
+  const sortiert = [...params.semester].sort((a, b) => a.beginn.localeCompare(b.beginn));
+  const idx = sortiert.findIndex((s) => params.start >= s.beginn && params.start <= s.ende);
+  if (idx < 0) return null;
+  const sem = sortiert[idx];
+  const ende = sem.ende;
+
+  let bindungBis = ende;
+  if (params.variante === "jahr") {
+    if (params.bisherigeBindung && params.bisherigeBindung > ende) {
+      bindungBis = params.bisherigeBindung;
+    } else {
+      bindungBis = sortiert[idx + 1]?.ende ?? ende;
+    }
+  }
+
+  return {
+    ende,
+    laufzeitMonate: anzahlMonatsraten(params.start, ende),
+    bindungBis,
+    semester: sem,
+  };
+}
+
+/**
+ * Wie viele Monatsraten zwischen Beginn und Ende passen.
+ *
+ * Fällig ist jeweils am Monatstag des Beginns. Gezählt wird jede
+ * Fälligkeit, die noch vor oder auf dem Ende liegt: 14.09. bis 21.02. gibt
+ * sechs Raten (14.09. … 14.02.), 22.02. bis 12.09. gibt sieben (22.02. …
+ * 22.08.), weil eine Rate am 22.09. nach dem Semester läge.
+ */
+export function anzahlMonatsraten(start: string, ende: string): number {
+  const [y, m, d] = start.split("-").map(Number);
+  let n = 0;
+  for (let i = 0; i < 24; i++) {
+    const gesamt = y * 12 + (m - 1) + i;
+    const zy = Math.floor(gesamt / 12);
+    const zm = (gesamt % 12) + 1;
+    const letzter = new Date(Date.UTC(zy, zm, 0)).getUTCDate();
+    const tag = `${zy}-${String(zm).padStart(2, "0")}-${String(Math.min(d, letzter)).padStart(2, "0")}`;
+    if (tag > ende) break;
+    n++;
+  }
+  return Math.max(1, n);
+}
 
 /**
  * Ein unterrichtsfreier Zeitraum (Schulferien, Feiertagswochen).
@@ -134,6 +222,8 @@ export type AboAngebot = {
   termine: string[];
   /** Was wegen Ferien ausfällt, bereits eingerechnet. */
   ferientage: { tag: string; grund: string }[];
+  /** Bis wann gebunden: Jahresabo zwei Semester, sonst Periodenende. */
+  bindungBis: string;
 };
 
 /**
@@ -152,9 +242,12 @@ export function baueAboAngebot(params: {
   periodeStart: string;
   preisProLektion: number;
   ferien: Ferienzeitraum[];
+  /** Laufzeit nach Semester; fehlt sie, gilt die alte Monatslaufzeit. */
+  periode?: AboPeriode | null;
 }): AboAngebot {
-  const laufzeitMonate = ABO_LAUFZEIT_MONATE[params.variante];
-  const ende = periodenEnde(params.periodeStart, laufzeitMonate);
+  const laufzeitMonate =
+    params.periode?.laufzeitMonate ?? ABO_LAUFZEIT_MONATE[params.variante];
+  const ende = params.periode?.ende ?? periodenEnde(params.periodeStart, laufzeitMonate);
 
   const { termine, ferientage, anzahl } = berechneAboTermine({
     start: params.periodeStart,
@@ -179,6 +272,7 @@ export function baueAboAngebot(params: {
     monatsbetrag,
     termine,
     ferientage,
+    bindungBis: params.periode?.bindungBis ?? ende,
   };
 }
 
@@ -206,8 +300,10 @@ export function lektionenMinimum(params: {
   moeglicheTage: number[];
   rhythmus: Rhythmus;
   ferien: Ferienzeitraum[];
+  /** Ende nach Semester; fehlt es, Start plus Laufzeit. */
+  ende?: string;
 }): { lektionen: number; proTag: Record<number, number> } {
-  const ende = periodenEnde(params.periodeStart, params.laufzeitMonate);
+  const ende = params.ende ?? periodenEnde(params.periodeStart, params.laufzeitMonate);
   const tage =
     params.moeglicheTage.length > 0 ? params.moeglicheTage : [1, 2, 3, 4, 5];
 

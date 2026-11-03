@@ -100,6 +100,7 @@ const GROUPS: { label: string; types: EmailType[] }[] = [
   {
     label: "Umstellung aufs Abo",
     types: [
+      { id: "semester_umstellung", label: "Abo aufs Semester umgestellt" },
       { id: "umstellung_info", label: "Umstellung angekündigt" },
       { id: "umstellung_erinnerung", label: "Erinnerung an die Abowahl" },
       { id: "umstellung_bestaetigung", label: "Abo bestätigt (Vertrag)" },

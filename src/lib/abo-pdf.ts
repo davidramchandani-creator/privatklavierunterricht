@@ -130,7 +130,7 @@ export async function erzeugeAboBestaetigungPdf(
   y += 22;
 
   const punkte = [
-    "In den Schulferien findet kein Unterricht statt. Diese Wochen sind in der Lektionszahl bereits abgezogen; sie werden weder verrechnet noch ersetzt.",
+    "In meinen Ferien und Praktika findet kein Unterricht statt. Diese Wochen sind in der Lektionszahl bereits abgezogen; sie werden weder verrechnet noch ersetzt.",
     "Der feste Termin gilt für die ganze Laufzeit. Alle Termine sind im Voraus eingetragen und im Portal einsehbar.",
     "Absagen bitte spätestens 24 Stunden vorher im Portal. Danach verfällt die Lektion. Bei rechtzeitiger Absage werden Ausweichtermine vorgeschlagen.",
     "Fällt der Unterricht von meiner Seite aus, gibt es in jedem Fall Ersatz, unabhängig von der Frist.",

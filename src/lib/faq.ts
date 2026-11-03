@@ -53,7 +53,7 @@ export const FAQ: FrageAntwort[] = [
     frage: "Was kostet der Unterricht?",
     quelle: "/preise, EIGENE_ANGEBOTE",
     antwort:
-      "Eine Einzellektion kostet CHF 85. Mit einem Halbjahresabo zahlst du CHF 70 pro Lektion, mit einem Jahresabo CHF 65. Alle Preise gelten für 45 Minuten.",
+      "Eine Einzellektion kostet CHF 85. Mit einem Semesterabo zahlst du CHF 70 pro Lektion, mit einem Jahresabo CHF 65. Alle Preise gelten für 45 Minuten.",
   },
   {
     frage: "Kommen Wegkosten dazu?",
@@ -71,7 +71,7 @@ export const FAQ: FrageAntwort[] = [
     frage: "Was ist der Unterschied zwischen Abo und Einzellektionen?",
     quelle: "AGB Ziffer 3 und 4",
     antwort:
-      "Beim Abo steht der Preis pro Lektion tiefer, dafür gehst du eine feste Laufzeit ein: 6 Monate beim Halbjahresabo, 12 Monate beim Jahresabo. Bezahlt wird monatlich in gleichbleibenden Beträgen. Einzellektionen sind teurer, binden dich aber nicht.",
+      "Beim Abo steht der Preis pro Lektion tiefer, dafür gehst du eine feste Laufzeit ein: Das Semesterabo läuft bis Semesterende (Mitte Februar oder Mitte September), das Jahresabo zwei Semester. Wer später einsteigt, bezahlt nur die verbleibenden Lektionen. Bezahlt wird monatlich in gleichbleibenden Beträgen. Einzellektionen sind teurer, binden dich aber nicht.",
   },
   {
     frage: "Kann ich eine Lektion absagen oder verschieben?",
@@ -80,10 +80,10 @@ export const FAQ: FrageAntwort[] = [
       "Ja, bis spätestens 24 Stunden vor Beginn, direkt über dein Portal auf der Website. Bei späterer Absage oder Nichterscheinen wird die Lektion verrechnet. Falle ich aus, bekommst du in jedem Fall Ersatz.",
   },
   {
-    frage: "Was passiert in den Schulferien?",
+    frage: "Was passiert in den Ferien?",
     quelle: "Abo-Bestaetigung, lib/abo-pdf",
     antwort:
-      "In den Schulferien findet kein Unterricht statt. Diese Wochen sind in der Lektionszahl deines Abos bereits abgezogen. Sie werden weder verrechnet noch nachgeholt.",
+      "In meinen Ferien und während meiner Praktika findet kein Unterricht statt. Diese Wochen sind in der Lektionszahl deines Abos bereits abgezogen. Sie werden weder verrechnet noch nachgeholt. In den Schulferien des Kantons ist sonst normal Unterricht.",
   },
   {
     frage: "Für wen ist der Unterricht?",

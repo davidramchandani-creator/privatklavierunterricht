@@ -57,7 +57,7 @@ export function unternehmenJsonLd() {
       },
       {
         "@type": "Offer",
-        name: "Halbjahresabo, Preis pro Lektion",
+        name: "Semesterabo, Preis pro Lektion",
         price: "70",
         priceCurrency: "CHF",
       },

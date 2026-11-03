@@ -270,7 +270,7 @@ export default function VerfuegbarkeitFormular({
             <div className="min-w-0 text-sm text-emerald-900 leading-snug space-y-1">
               {umstellung && (
                 <p className="font-600">
-                  {variante === "jahr" ? "Jahresabo" : "Halbjahresabo"},{" "}
+                  {variante === "jahr" ? "Jahresabo" : "Semesterabo"},{" "}
                   {rhythmus === "zweiwoechentlich"
                     ? "alle zwei Wochen"
                     : "jede Woche"}
@@ -310,13 +310,13 @@ export default function VerfuegbarkeitFormular({
                   [
                     {
                       wert: "halbjahr" as const,
-                      titel: "Halbjahr",
-                      dauer: "6 Monate",
+                      titel: "Semester",
+                      dauer: "bis Semesterende",
                     },
                     {
                       wert: "jahr" as const,
                       titel: "Jahr",
-                      dauer: "12 Monate",
+                      dauer: "zwei Semester",
                       hinweis: "günstiger pro Lektion",
                     },
                   ]

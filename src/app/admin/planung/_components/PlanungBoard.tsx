@@ -364,7 +364,7 @@ export default function PlanungBoard({
                   {s.geantwortet ? (
                     s.aboVariante && (
                       <span className="text-gray-600">
-                        {s.aboVariante === "jahr" ? "Jahresabo" : "Halbjahresabo"}
+                        {s.aboVariante === "jahr" ? "Jahresabo" : "Semesterabo"}
                         {" · "}
                         {s.aboRhythmus === "zweiwoechentlich"
                           ? "alle zwei Wochen"

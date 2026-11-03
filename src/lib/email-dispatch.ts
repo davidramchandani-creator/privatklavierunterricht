@@ -103,6 +103,7 @@ export const STUDENT_LOOKUP_TYPES = [
   "verfuegbarkeit_erinnerung",
   "verfuegbarkeit_zuteilung",
   // Umstellung aufs Abo
+  "semester_umstellung",
   "umstellung_info",
   "umstellung_erinnerung",
   "umstellung_bestaetigung",

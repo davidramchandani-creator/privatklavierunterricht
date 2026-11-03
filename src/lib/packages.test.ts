@@ -182,10 +182,10 @@ describe("computeCancellationSettlement, Ratenzahlung", () => {
  * Wer das liest, glaubt, er habe beim Anlegen danebengegriffen.
  */
 describe("paketBezeichnung", () => {
-  it("nennt ein Halbjahresabo beim Namen", () => {
+  it("nennt ein Semesterabo (früher Halbjahresabo) beim Namen", () => {
     expect(
       paketBezeichnung({ type: "10er", abo_variante: "halbjahr", name: null })
-    ).toBe("Halbjahresabo");
+    ).toBe("Semesterabo");
   });
 
   it("nennt ein Jahresabo beim Namen", () => {
@@ -211,7 +211,7 @@ describe("paketBezeichnung", () => {
         abo_variante: "halbjahr",
         name: "Irgendwas Altes",
       })
-    ).toBe("Halbjahresabo");
+    ).toBe("Semesterabo");
   });
 
   it("kommt mit fehlendem Paket zurecht", () => {
