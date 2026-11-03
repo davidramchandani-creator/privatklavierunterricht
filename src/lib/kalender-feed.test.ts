@@ -240,4 +240,8 @@ describe("Verdrahtung", () => {
     expect(portal).toContain("<KalenderAbo");
     expect(einstellungen).toContain("<KalenderAbo");
   });
+
+  it("Davids Kalender zeigt keine abgesagten Lektionen", () => {
+    expect(server).toMatch(/wer\.sicht === "admin" \? \["booked", "completed"\]/);
+  });
 });

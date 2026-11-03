@@ -124,9 +124,16 @@ export async function ladeFeedTermine(
     .select(
       "id, start_at, end_at, status, profiles!inner(vorname, nachname, adresse, hausbesuch, ist_test)"
     )
-    // Abgesagte bleiben drin und erscheinen durchgestrichen; siehe
-    // kalender-feed.ts. Nur was nie stattfand, fehlt.
-    .in("status", ["booked", "completed", "cancelled"])
+    // Im Schülerkalender bleiben Abgesagte drin und erscheinen
+    // durchgestrichen (siehe kalender-feed.ts), damit niemand rätselt, ob
+    // verschoben oder abgesagt. In Davids Kalender nicht: Dort stehen sie
+    // grau mit doppeltem „Abgesagt" mitten im Tag und machen ihn
+    // unübersichtlich (David, 3. November 2026). Fehlt ein Termin im Abo,
+    // entfernt ihn die Kalender-App beim nächsten Abruf.
+    .in(
+      "status",
+      wer.sicht === "admin" ? ["booked", "completed"] : ["booked", "completed", "cancelled"]
+    )
     .gte("start_at", von.toISOString())
     .lte("start_at", bis.toISOString())
     .order("start_at", { ascending: true })
