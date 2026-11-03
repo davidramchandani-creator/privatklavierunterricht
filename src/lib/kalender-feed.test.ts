@@ -241,7 +241,8 @@ describe("Verdrahtung", () => {
     expect(einstellungen).toContain("<KalenderAbo");
   });
 
-  it("Davids Kalender zeigt keine abgesagten Lektionen", () => {
-    expect(server).toMatch(/wer\.sicht === "admin" \? \["booked", "completed"\]/);
+  it("keine abgesagten Lektionen im Kalender, weder bei David noch bei Schülern", () => {
+    expect(server).toMatch(/\.in\("status", \["booked", "completed"\]\)/);
+    expect(server).not.toMatch(/"booked", "completed", "cancelled"/);
   });
 });
