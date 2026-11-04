@@ -33,6 +33,12 @@ export default function FlowkeyPage() {
           <span className="inline-block text-xs font-600 uppercase tracking-widest text-white/60 border border-white/20 rounded-full px-3 py-1">
             Partnerschaft · Werbung
           </span>
+          {FLOWKEY.logo && (
+            <div className="bg-white rounded-xl px-4 py-3 inline-block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={FLOWKEY.logo} alt="flowkey" className="h-8 w-auto" />
+            </div>
+          )}
           <h1 className="text-3xl sm:text-4xl font-800">Ich bin Partner von flowkey</h1>
           <p className="text-white/70 text-lg leading-relaxed">
             flowkey ist eine App zum Klavierlernen. Mit meinem Code bekommst du{" "}

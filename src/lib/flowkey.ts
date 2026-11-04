@@ -16,6 +16,8 @@
 // wird `aktiv` auf true gesetzt. Bis dahin gibt es die Seite nicht
 // (404), keinen Abschnitt auf der Startseite und keinen Link im Footer.
 //
+// Konto bei flowkey: david.privatklavierunterricht@gmail.com.
+//
 // Nur Angaben, die flowkey selbst macht oder die David bestätigt hat. Was
 // flowkey kann, steht hier so, wie es in der Mail von flowkey steht.
 // ============================================================
@@ -27,4 +29,12 @@ export const FLOWKEY = {
   code: "DAVID25",
   rabattProzent: 25,
   url: "https://www.flowkey.com",
-} as const;
+  /**
+   * Offizielles Logo von flowkey, sobald flowkey es geschickt hat (Vertrag
+   * 4.2: Markenmaterial nur aus den Brand Assets und nach den Brand
+   * Guidelines). Datei nach `public/partner/` legen und den Pfad hier
+   * eintragen, z. B. "/partner/flowkey-logo.svg". Solange `null`, steht
+   * nur Text da.
+   */
+  logo: null as string | null,
+};

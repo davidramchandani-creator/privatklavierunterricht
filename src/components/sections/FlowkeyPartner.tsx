@@ -9,8 +9,8 @@ import { FLOWKEY } from "@/lib/flowkey";
  * dass David eine Provision bekommt. Wer mehr wissen will, liest es auf
  * der Partnerseite.
  *
- * Ohne Logo: Logo und Markenmaterial darf David nur nach Absprache mit
- * flowkey verwenden (Vertrag 4.2). Ausgeschaltet, solange `FLOWKEY.aktiv`
+ * Das Logo erscheint, sobald flowkey die offiziellen Dateien geschickt hat
+ * und `FLOWKEY.logo` gesetzt ist (Vertrag 4.2: nur nach Absprache). Ausgeschaltet, solange `FLOWKEY.aktiv`
  * nicht gesetzt ist.
  */
 export default function FlowkeyPartner() {
@@ -20,7 +20,13 @@ export default function FlowkeyPartner() {
     <section className="py-12 md:py-16 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="rounded-2xl border border-[#EAECEF] bg-surface p-6 sm:p-8 flex flex-col md:flex-row md:items-center gap-6 justify-between transition-transform hover:-translate-y-0.5">
-          <div className="space-y-2 max-w-2xl">
+          {FLOWKEY.logo && (
+            <div className="flex-shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={FLOWKEY.logo} alt="flowkey" className="h-10 w-auto" />
+            </div>
+          )}
+          <div className="space-y-2 max-w-2xl md:flex-1">
             <span className="inline-block text-xs font-600 uppercase tracking-widest text-gray-500">
               Partnerschaft · Werbung
             </span>
