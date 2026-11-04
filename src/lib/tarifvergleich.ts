@@ -16,8 +16,8 @@
 //
 // ── Was dabei herauskommt ───────────────────────────────────
 //
-// Seit den neuen Preisen vom November 2026 entspricht das Semesterabo genau
-// der Empfehlung, das Jahresabo liegt darunter, die Einzellektion darüber. Der Satz
+// Mit den Preisen vom 4. November 2026 (95 / 80 / 75) liegen beide Abos
+// unter der Empfehlung, die Einzellektion darüber. Der Satz
 // dazu auf der Preisseite wird aus den Zahlen gebaut (`vergleichsSatz`),
 // damit er nach der nächsten Preisänderung nicht wieder falsch ist. Wer das
 // PDF öffnet, findet dieselben Zahlen.

@@ -143,11 +143,9 @@ describe("Mails der Warteliste", () => {
 });
 
 describe("Neue Preise", () => {
-  it("sind 97.50 / 82.50 / 77.50, das Semesterabo genau auf dem SMPV-Richtwert", () => {
-    expect(NEUPREISE).toEqual({ einzel: 97.5, semester: 82.5, jahr: 77.5 });
-    // 110 pro 60 Minuten = 82.50 pro 45 Minuten
-    expect((110 / 60) * 45).toBe(NEUPREISE.semester);
-    expect(rabattGegenueberEinzel(NEUPREISE.semester)).toBe(15);
+  it("sind 95 / 80 / 75", () => {
+    expect(NEUPREISE).toEqual({ einzel: 95, semester: 80, jahr: 75 });
+    expect(rabattGegenueberEinzel(NEUPREISE.semester)).toBe(16);
     expect(rabattGegenueberEinzel(NEUPREISE.jahr)).toBe(21);
   });
 
@@ -159,10 +157,10 @@ describe("Neue Preise", () => {
   });
 
   it("rechnen die Beispielraten auf 5 Rappen", () => {
-    // 25 × 82.50 = 2062.50 / 7 = 294.64 → 294.65
-    expect(beispielMonatsrate(25, 82.5, 7)).toBe(294.65);
-    // 13 × 77.50 = 1007.50 / 7 = 143.93 → 143.95
-    expect(beispielMonatsrate(13, 77.5, 7)).toBe(143.95);
+    // 25 × 80 = 2000 / 7 = 285.71 → 285.70
+    expect(beispielMonatsrate(25, 80, 7)).toBe(285.7);
+    // 13 × 75 = 975 / 7 = 139.29 → 139.30
+    expect(beispielMonatsrate(13, 75, 7)).toBe(139.3);
   });
 
   /**
@@ -172,7 +170,7 @@ describe("Neue Preise", () => {
    */
   it("stimmen mit den Vorgabewerten der Datenbank überein", () => {
     const sql = readFileSync(
-      join(process.cwd(), "supabase/migrations/069_neupreise_smpv.sql"),
+      join(process.cwd(), "supabase/migrations/070_neupreise_eine_stufe_tiefer.sql"),
       "utf8"
     );
     expect(sql).toContain(`price_single set default ${NEUPREISE.einzel.toFixed(2)}`);

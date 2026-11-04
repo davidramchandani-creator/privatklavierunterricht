@@ -5,10 +5,10 @@
 // darum ab sofort mehr, bestehende behalten ihren Preis, bis David ihn
 // im Admin pro Schüler ändert.
 //
-// Zuerst 100 / 85 / 80, noch am selben Tag auf 97.50 / 82.50 / 77.50: Das
-// Semesterabo entspricht so genau dem Richtwert des SMPV (CHF 110 pro
-// 60 Minuten, auf 45 Minuten umgerechnet 82.50). Die Abstände zwischen
-// den drei Preisen sind geblieben.
+// Zuerst 100 / 85 / 80, noch am selben Tag 97.50 / 82.50 / 77.50 (Semesterabo
+// genau auf dem SMPV-Richtwert), am 4. November 2026 eine Stufe tiefer auf
+// 95 / 80 / 75 (David). Damit liegen beide Abos unter dem Richtwert des SMPV
+// (CHF 110 pro 60 Minuten), nur die Einzellektion darüber.
 //
 // Diese Datei ist die einzige Stelle, an der die öffentlichen Preise
 // stehen. Webseite, FAQ, strukturierte Daten, Tarifvergleich und die
@@ -24,11 +24,11 @@ import { roundRappen } from "./subscription";
 
 export const NEUPREISE = {
   /** Einzellektion, 45 Minuten. */
-  einzel: 97.5,
-  /** Semesterabo, pro Lektion. Genau der SMPV-Richtwert auf 45 Minuten. */
-  semester: 82.5,
+  einzel: 95,
+  /** Semesterabo, pro Lektion. */
+  semester: 80,
   /** Jahresabo, pro Lektion. */
-  jahr: 77.5,
+  jahr: 75,
 } as const;
 
 /** Wie viel Prozent ein Abo gegenüber der Einzellektion spart, gerundet. */
