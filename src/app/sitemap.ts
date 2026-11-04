@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { FLOWKEY } from "@/lib/flowkey";
 import { BASIS_URL } from "@/lib/seo";
 
 /**
@@ -22,6 +23,7 @@ const SEITEN: { pfad: string; prioritaet: number; frequenz: MetadataRoute.Sitema
   { pfad: "/agb", prioritaet: 0.2, frequenz: "yearly" },
   { pfad: "/datenschutz", prioritaet: 0.2, frequenz: "yearly" },
   { pfad: "/impressum", prioritaet: 0.2, frequenz: "yearly" },
+  ...(FLOWKEY.aktiv ? [{ pfad: "/flowkey", prioritaet: 0.4, frequenz: "yearly" as const }] : []),
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

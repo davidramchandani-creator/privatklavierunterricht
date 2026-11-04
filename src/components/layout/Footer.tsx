@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Mail } from "lucide-react";
 import { useRef } from "react";
 import Logo from "./Logo";
+import { FLOWKEY } from "@/lib/flowkey";
 
 export default function Footer() {
   const adminClicks = useRef(0);
@@ -56,6 +57,8 @@ export default function Footer() {
                 { href: "/probelektion", label: "Probelektion" },
                 { href: "/faq", label: "Häufige Fragen" },
                 { href: "/kontakt", label: "Kontakt" },
+                // Partnerseite, erst nach Freigabe durch flowkey (lib/flowkey).
+                ...(FLOWKEY.aktiv ? [{ href: "/flowkey", label: "Partner: flowkey" }] : []),
               ].map((l) => (
                 <li key={l.href}>
                   <Link

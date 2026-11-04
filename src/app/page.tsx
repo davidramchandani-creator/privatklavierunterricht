@@ -7,6 +7,7 @@ import UeberMichTeaser from "@/components/sections/UeberMichTeaser";
 import ProbelektionCTA from "@/components/sections/ProbelektionCTA";
 import Reveal from "@/components/Reveal";
 import BuchungsLeiste from "@/components/BuchungsLeiste";
+import FlowkeyPartner from "@/components/sections/FlowkeyPartner";
 import { naechsterTerminText } from "@/lib/naechster-termin";
 import { HOERPROBEN } from "@/lib/hoerproben";
 
@@ -55,6 +56,8 @@ export default async function HomePage() {
       <Reveal>
         <Pakete />
       </Reveal>
+      {/* Partnerschaft mit flowkey, erst nach Freigabe sichtbar (lib/flowkey). */}
+      <FlowkeyPartner />
       {/* Der Schlussaufruf bleibt ohne Einblendung, er ist der Boden der
           Seite und soll da sein, sobald man ankommt. */}
       <ProbelektionCTA />
