@@ -16,6 +16,7 @@ import {
   type Package as Paket,
   type EffectiveStatus,
   paketBezeichnung,
+  jahresaboZusatz,
   computePackageState,
   formatRemainingTime,
 } from "@/lib/packages";
@@ -94,6 +95,11 @@ export default function PaketCard({
             <p className="font-700 text-gray-900">
               {paketBezeichnung(paket)}
             </p>
+            {jahresaboZusatz(paket) && (
+              <p className="text-xs font-600 text-navy-900 mt-0.5">
+                Läuft ein Jahr, {jahresaboZusatz(paket)}
+              </p>
+            )}
             <p className="text-sm text-gray-500 mt-0.5">
               {formatCHF(Number(paket.price_per_lesson))} pro Lektion
             </p>

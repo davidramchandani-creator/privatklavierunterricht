@@ -31,6 +31,8 @@ export type Package = {
   monatsbetrag?: number | string | null;
   periode_start?: string | null;
   periode_ende?: string | null;
+  /** Jahresabo: gebunden bis zu diesem Tag (Ende des zweiten Semesters). */
+  bindung_bis?: string | null;
   rhythmus?: string | null;
   booking_mode?: string | null;
   /** einmalig, raten oder pro_lektion. Bestimmt die Zahlungsweise-Anzeige. */
@@ -80,6 +82,47 @@ export function paketBezeichnung(
   if (pkg.abo_variante === "jahr") return "Jahresabo";
 
   return PACKAGE_LABELS[pkg.type] ?? pkg.name ?? pkg.type;
+}
+
+type JahresaboFelder = {
+  abo_variante?: string | null;
+  periode_ende?: string | null;
+  bindung_bis?: string | null;
+};
+
+function datumCH(iso: string): string {
+  const [j, m, d] = iso.slice(0, 10).split("-");
+  return `${d}.${m}.${j}`;
+}
+
+/**
+ * Was beim Jahresabo dazugehört, damit man sieht, dass es ein Jahr ist.
+ *
+ * David, 4. November 2026: Seit das Jahresabo pro Semester abgerechnet wird,
+ * sah es auf Rechnung und im Portal aus wie ein günstiges Semesterabo
+ * („Jahresabo, Rate 3/6“). Jetzt steht dabei, bis wann es läuft und in
+ * welchem der beiden Semester man ist: „bis 12.09.2027, 1. von 2 Semestern“.
+ *
+ * Das erste Semester endet vor der Bindung, das zweite an ihr. Ohne
+ * Bindungsdatum (alte Abos) kommt nichts dazu.
+ */
+export function jahresaboZusatz(pkg: JahresaboFelder | null | undefined): string | null {
+  if (!pkg || pkg.abo_variante !== "jahr" || !pkg.bindung_bis) return null;
+  const bindung = pkg.bindung_bis.slice(0, 10);
+  const semester = pkg.periode_ende && pkg.periode_ende.slice(0, 10) < bindung ? 1 : 2;
+  return `bis ${datumCH(bindung)}, ${semester}. von 2 Semestern`;
+}
+
+/** Wie `paketBezeichnung`, beim Jahresabo mit Laufzeit und Semester. */
+export function paketBezeichnungLang(
+  pkg:
+    | ({ type: string; name?: string | null } & JahresaboFelder)
+    | null
+    | undefined
+): string {
+  const basis = paketBezeichnung(pkg);
+  const zusatz = jahresaboZusatz(pkg);
+  return zusatz ? `${basis} ${zusatz}` : basis;
 }
 
 /** Ist das ein Abo (Laufzeit) und kein Lektionspaket (Stückzahl)? */

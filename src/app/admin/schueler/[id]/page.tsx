@@ -8,6 +8,7 @@ import {
   canCancelPackage,
   istAbo,
   paketBezeichnung,
+  paketBezeichnungLang,
   type Package,
 } from "@/lib/packages";
 import { ladeLektionsstand } from "@/lib/lektionsstand-server";
@@ -523,7 +524,7 @@ export default async function SchuelerDetailPage({
                 return (
                   <tr key={pkg.id}>
                     <td className="py-3 text-sm font-500 text-gray-900">
-                      {paketBezeichnung(pkg)}
+                      {paketBezeichnungLang(pkg)}
                       {artText && (
                         <span className="block text-xs font-400 text-gray-500 mt-0.5">
                           {artText}
@@ -676,7 +677,7 @@ export default async function SchuelerDetailPage({
           <RatenplanPanel
             key={pkg.id}
             plan={plaene.get(pkg.id)!}
-            packageLabel={paketBezeichnung(pkg)}
+            packageLabel={paketBezeichnungLang(pkg)}
             autoRenew={Boolean((pkg as { auto_renew?: boolean }).auto_renew)}
             expiresOn={
               pkg.expires_at ? todayInZurich(new Date(pkg.expires_at)) : null

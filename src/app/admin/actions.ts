@@ -499,7 +499,7 @@ export async function issueInstalmentNow(instalmentId: string) {
     // abo_variante muss mit: ohne sie stünde auf der Rechnung eines
     // Halbjahresabos „10er-Paket".
     .select(
-      "id, student_id, type, total_price, price_per_lesson, payment_method, instalment_count, status, abo_variante"
+      "id, student_id, type, total_price, price_per_lesson, payment_method, instalment_count, status, abo_variante, periode_ende, bindung_bis"
     )
     .eq("id", inst.package_id)
     .maybeSingle();

@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Users, Plus } from "lucide-react";
-import { computePackageState, istAbo, paketBezeichnung, type Package } from "@/lib/packages";
+import { computePackageState, istAbo, paketBezeichnungLang, type Package } from "@/lib/packages";
 import { ladeLektionsstand } from "@/lib/lektionsstand-server";
 import {
   ZeitfensterListe,
@@ -25,7 +25,7 @@ export default async function AdminSchuelerPage() {
   const { data: activePackages } = studentIds.length
     ? await admin
         .from("packages")
-        .select("id, student_id, type, name, lessons_total, lessons_used, status, paused, expires_at, starts_at, total_price, price_per_lesson, payment_method")
+        .select("id, student_id, type, name, lessons_total, lessons_used, status, paused, expires_at, starts_at, total_price, price_per_lesson, payment_method, abo_variante, periode_start, periode_ende, bindung_bis")
         .in("student_id", studentIds)
         .eq("status", "active")
     : { data: [] };
@@ -249,7 +249,7 @@ export default async function AdminSchuelerPage() {
                         {s.extern ? (
                           <span className="text-gray-400">läuft extern</span>
                         ) : pkg ? (
-                          paketBezeichnung(pkg)
+                          paketBezeichnungLang(pkg)
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}

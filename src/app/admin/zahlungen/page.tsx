@@ -8,7 +8,7 @@ import { ladeExterneLektionen } from "@/lib/externe-zahlungen";
 import { zahlungsartFuer } from "@/lib/zahlungsart";
 import type { Invoice } from "./_components/PaymentCard";
 import { buildPlanSummary, type InstalmentRow } from "@/lib/instalment-view";
-import { paketBezeichnung } from "@/lib/packages";
+import { paketBezeichnungLang } from "@/lib/packages";
 import { NEUPREISE } from "@/lib/neupreise";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +55,7 @@ export default async function ZahlungenPage() {
   const { data: instalments } = await admin
     .from("package_instalments")
     .select(
-      "id, package_id, student_id, sequence, kind, amount, due_date, status, invoice_id, paid_at, profiles(vorname, nachname), packages(type, name, abo_variante)"
+      "id, package_id, student_id, sequence, kind, amount, due_date, status, invoice_id, paid_at, profiles(vorname, nachname), packages(type, name, abo_variante, periode_ende, bindung_bis)"
     )
     .order("due_date", { ascending: true })
     .limit(500);
@@ -76,10 +76,16 @@ export default async function ZahlungenPage() {
     const first = rows[0];
     const p = nameOf(first.profiles);
     const pkg = nameOf(first.packages) as unknown as
-      | { type: string; name: string | null; abo_variante: string | null }
+      | {
+          type: string;
+          name: string | null;
+          abo_variante: string | null;
+          periode_ende: string | null;
+          bindung_bis: string | null;
+        }
       | null;
     const studentName = p ? `${p.vorname} ${p.nachname}`.trim() : "Unbekannt";
-    const packageLabel = pkg ? paketBezeichnung(pkg) : "Paket";
+    const packageLabel = pkg ? paketBezeichnungLang(pkg) : "Paket";
 
     for (const e of summary.entries) {
       if (e.state === "storniert") continue;

@@ -18,7 +18,7 @@ import PortalTabs from "./_components/PortalTabs";
 import PullToRefresh from "@/components/PullToRefresh";
 import RealtimeRefresh from "@/components/RealtimeRefresh";
 import { CalendarPlus, Lock } from "lucide-react";
-import { paketBezeichnung, canBuyNewPackage, type Package as Paket } from "@/lib/packages";
+import { paketBezeichnung, paketBezeichnungLang, canBuyNewPackage, type Package as Paket } from "@/lib/packages";
 import { buildLessonTwintLink, buildTwintLink } from "@/lib/twint";
 import {
   bookingLock,
@@ -416,7 +416,7 @@ export default async function SchuelerPortalPage() {
         <ZahlungsplanCard
           plan={plan}
           packageId={aktivesPackage.id}
-          packageLabel={paketBezeichnung(aktivesPackage)}
+          packageLabel={paketBezeichnungLang(aktivesPackage)}
           nextTwintLink={nextTwintLink}
           autoRenew={Boolean(
             (aktivesPackage as { auto_renew?: boolean }).auto_renew

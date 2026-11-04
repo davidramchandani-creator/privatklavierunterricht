@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { enqueueEmail } from "@/lib/emails-outbox";
-import { paketBezeichnung } from "@/lib/packages";
+import { paketBezeichnung, paketBezeichnungLang } from "@/lib/packages";
 import {
   buildInstalmentPlan,
   type InstalmentPlan,
@@ -25,6 +25,9 @@ type PackageRow = {
   /** Gesetzt bei Abos. Entscheidet über die Beschriftung der Rechnung. */
   abo_variante?: string | null;
   name?: string | null;
+  /** Jahresabo: für „bis …, 1. von 2 Semestern“ auf der Rechnung. */
+  periode_ende?: string | null;
+  bindung_bis?: string | null;
 };
 
 type ProfileRow = {
@@ -123,7 +126,7 @@ export async function createPackageInvoice(
   const amount = Number(pkg.total_price ?? Number(pkg.price_per_lesson ?? 0));
   // Auf der Rechnung muss stehen, was gekauft wurde. „10er-Paket" für ein
   // Halbjahresabo wäre nicht nur unschön, sondern sachlich falsch.
-  const description = paketBezeichnung(pkg);
+  const description = paketBezeichnungLang(pkg);
   const dueDate = new Date(
     Date.now() + PACKAGE_INVOICE_DUE_DAYS * 24 * 60 * 60 * 1000
   );
@@ -141,12 +144,15 @@ export function instalmentLabel(
   kind: string,
   sequence: number,
   instalmentCount: number,
-  aboVariante?: string | null
+  aboVariante?: string | null,
+  laufzeit?: { periode_ende?: string | null; bindung_bis?: string | null }
 ): string {
-  const base = paketBezeichnung({
+  const base = paketBezeichnungLang({
     type: packageType,
     abo_variante: aboVariante ?? null,
     name: null,
+    periode_ende: laufzeit?.periode_ende ?? null,
+    bindung_bis: laufzeit?.bindung_bis ?? null,
   });
   return kind === "anzahlung"
     ? `${base}, Anzahlung`
@@ -222,7 +228,8 @@ export async function createInstalmentSchedule(
       "anzahlung",
       0,
       plan.instalmentCount,
-      pkg.abo_variante
+      pkg.abo_variante,
+      pkg
     ),
     dueDate: instalmentDueDate(deposit.due_date as string),
     instalmentId: deposit.id,
@@ -275,7 +282,8 @@ export async function issueInstalmentInvoice(
       instalment.kind,
       instalment.sequence,
       ratenGesamt ?? pkg.instalment_count ?? 0,
-      pkg.abo_variante
+      pkg.abo_variante,
+      pkg
     ),
     dueDate: instalmentDueDate(instalment.due_date),
     instalmentId: instalment.id,
