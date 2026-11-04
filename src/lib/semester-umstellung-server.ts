@@ -420,6 +420,11 @@ export async function fuehreUmstellungAus(
       monatsbetrag: zeile.rateNeu,
       bindung_bis: zeile.bindungBis,
       term_months: zeile.ratenAnzahl,
+      // Auch Anzahl und Betrag der Raten nachführen. Vorher blieb hier die
+      // alte Zahl stehen (Hugo: 6 statt 4), und die nächste Rechnung hiess
+      // „Rate 2/6“, obwohl es nur noch 4 Raten gibt.
+      instalment_count: zeile.ratenAnzahl,
+      instalment_amount: zeile.rateNeu,
     })
     .eq("id", pkg.id);
 

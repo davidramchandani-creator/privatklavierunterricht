@@ -257,13 +257,24 @@ export async function issueInstalmentInvoice(
 ): Promise<{ invoiceId: string } | { skipped: true } | { error: string }> {
   if (instalment.invoice_id) return { skipped: true };
 
+  // Die Gesamtzahl kommt aus den Raten selbst, nicht aus
+  // `packages.instalment_count`. Dieses Feld wird beim Anlegen gesetzt und
+  // stimmte nach einer Umstellung nicht mehr (Hugo, 4. November 2026:
+  // „es steht 1/6, obwohl es nur 4 wären“). Die Raten sind das, was der
+  // Schüler wirklich bezahlt, und das Portal zählt sie genauso.
+  const { count: ratenGesamt } = await admin
+    .from("package_instalments")
+    .select("id", { count: "exact", head: true })
+    .eq("package_id", pkg.id)
+    .neq("kind", "anzahlung");
+
   const result = await insertPackageInvoice(admin, pkg, profile, {
     amount: Number(instalment.amount),
     description: instalmentLabel(
       pkg.type,
       instalment.kind,
       instalment.sequence,
-      pkg.instalment_count ?? 0,
+      ratenGesamt ?? pkg.instalment_count ?? 0,
       pkg.abo_variante
     ),
     dueDate: instalmentDueDate(instalment.due_date),
