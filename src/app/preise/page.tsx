@@ -13,6 +13,7 @@ import {
   vergleichsSatz,
 } from "@/lib/tarifvergleich";
 import { NEUPREISE, beispielMonatsrate, betrag, chf } from "@/lib/neupreise";
+import { GRUPPENUNTERRICHT, GRUPPE_ABWESENHEIT, gruppenTotal } from "@/lib/gruppenunterricht";
 
 // Die Erfahrung rechnet sich aus dem Datum, darum täglich neu.
 export const revalidate = 86400;
@@ -134,6 +135,47 @@ export default function PreisePage() {
             <p className="text-sm text-gray-500 mt-4 leading-relaxed">
               Die Pakete sind rabattiert, weil sie Verbindlichkeit schaffen und mir
               ermöglichen, den Unterricht verlässlich zu planen.
+            </p>
+          </div>
+
+          {/* Gruppenunterricht, Zahlen aus lib/gruppenunterricht */}
+          <div className="space-y-4">
+            <h2 className="text-2xl font-800 text-navy-900">Zu zweit oder zu dritt</h2>
+            <p className="text-gray-600 leading-relaxed">
+              Feste Gruppen im Semester- oder Jahresabo, mit festem Wochentag und fester Zeit. Eine Lektion
+              dauert 60 Minuten. Jede Person hat ihr eigenes Abo und zahlt ihren Anteil.
+            </p>
+            <div className="bg-white rounded-2xl border border-[#EAECEF] overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-surface text-left">
+                    <th className="px-5 py-3 text-xs font-600 text-gray-500 uppercase tracking-wide">Gruppe</th>
+                    <th className="px-5 py-3 text-xs font-600 text-gray-500 uppercase tracking-wide text-right">Semesterabo</th>
+                    <th className="px-5 py-3 text-xs font-600 text-gray-500 uppercase tracking-wide text-right">Jahresabo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {([2, 3] as const).map((g, i) => (
+                    <tr key={g} className={i > 0 ? "border-t border-[#EAECEF]" : ""}>
+                      <td className="px-5 py-4 text-sm text-gray-700">
+                        {GRUPPENUNTERRICHT[g].label}, {GRUPPENUNTERRICHT[g].minuten} Minuten
+                        <span className="block text-xs text-gray-400 mt-0.5">
+                          zusammen {chf(gruppenTotal(g, "semester"))} pro Lektion
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-sm font-700 text-navy-900 text-right">
+                        {chf(GRUPPENUNTERRICHT[g].semester)}
+                      </td>
+                      <td className="px-5 py-4 text-sm font-700 text-navy-900 text-right">
+                        {chf(GRUPPENUNTERRICHT[g].jahr)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Preise pro Person und Lektion. {GRUPPE_ABWESENHEIT}
             </p>
           </div>
 

@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { GRUPPE_ABWESENHEIT } from "@/lib/gruppenunterricht";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/agb" },
@@ -37,6 +38,7 @@ const abschnitte: Abschnitt[] = [
       "Die zugesicherten Lektionen sind innerhalb der Laufzeit zu beziehen. Nicht bezogene Lektionen verfallen am Ende der Laufzeit.",
       "Beim Fixplatz sind alle Termine der Laufzeit von Beginn an eingetragen. Bei flexibler Buchung buchst du jede Lektion selbst; die Lektionszahl gilt dann als Richtwert für die Preisberechnung.",
       "Ein vorzeitiger Ausstieg ist nur in Ausnahmefällen und nach Absprache möglich. Angefangene Monate bleiben in jedem Fall vollständig geschuldet; die restlichen Monate entfallen.",
+      `Gruppenunterricht (zu zweit oder zu dritt): Jede Person schliesst ein eigenes Abo ab und schuldet ihren Anteil selbst. ${GRUPPE_ABWESENHEIT}`,
     ],
   },
   {

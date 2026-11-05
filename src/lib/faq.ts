@@ -24,6 +24,7 @@
 // ============================================================
 
 import { NEUPREISE, betrag } from "./neupreise";
+import { GRUPPENUNTERRICHT, GRUPPE_ABWESENHEIT } from "./gruppenunterricht";
 
 export type FrageAntwort = {
   frage: string;
@@ -56,6 +57,11 @@ export const FAQ: FrageAntwort[] = [
     quelle: "/preise, EIGENE_ANGEBOTE",
     antwort:
       `Eine Einzellektion kostet CHF ${betrag(NEUPREISE.einzel)}. Mit einem Semesterabo zahlst du CHF ${betrag(NEUPREISE.semester)} pro Lektion, mit einem Jahresabo CHF ${betrag(NEUPREISE.jahr)}. Alle Preise gelten für 45 Minuten.`,
+  },
+  {
+    frage: "Gibt es Unterricht zu zweit oder zu dritt?",
+    quelle: "/preise Abschnitt Zu zweit oder zu dritt, lib/gruppenunterricht",
+    antwort: `Ja, als feste Gruppe im Semester- oder Jahresabo. Eine Lektion dauert ${GRUPPENUNTERRICHT[2].minuten} Minuten. Zu zweit zahlt jede Person CHF ${GRUPPENUNTERRICHT[2].semester} pro Lektion (Jahresabo CHF ${GRUPPENUNTERRICHT[2].jahr}), zu dritt CHF ${GRUPPENUNTERRICHT[3].semester} (Jahresabo CHF ${GRUPPENUNTERRICHT[3].jahr}). ${GRUPPE_ABWESENHEIT}`,
   },
   {
     frage: "Kommen Wegkosten dazu?",

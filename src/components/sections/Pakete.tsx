@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import AbschnittsKopf from "@/components/AbschnittsKopf";
 import { NEUPREISE, betrag, rabattGegenueberEinzel } from "@/lib/neupreise";
 import PlatzHinweis from "@/components/PlatzHinweis";
+import { GRUPPENUNTERRICHT, GRUPPE_ABWESENHEIT } from "@/lib/gruppenunterricht";
 
 const pakete = [
   {
@@ -189,6 +190,45 @@ export default function Pakete() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/*
+          Gruppenunterricht (David, 5. November 2026): feste Gruppen im Abo,
+          zu zweit oder zu dritt. Zahlen aus lib/gruppenunterricht.
+        */}
+        <div className="mt-8 rounded-2xl border border-gray-100 bg-surface p-6 sm:p-8">
+          <div className="grid md:grid-cols-[1fr_auto_auto] gap-6 md:items-center">
+            <div className="space-y-2">
+              <h3 className="font-700 text-navy-900 text-lg">Zusammen lernen: zu zweit oder zu dritt</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Mit Freunden, Geschwistern oder als Paar: fester Wochentag zur festen Zeit, im Semester- oder
+                Jahresabo. Jede Person hat ihr eigenes Abo und zahlt ihren Anteil.
+              </p>
+              <p className="text-xs text-gray-400">* {GRUPPE_ABWESENHEIT}</p>
+            </div>
+            {([2, 3] as const).map((g) => (
+              <div
+                key={g}
+                className="bg-white rounded-xl border border-gray-100 px-5 py-4 min-w-[180px] transition-transform hover:-translate-y-0.5"
+              >
+                <p className="text-sm font-600 text-gray-500">
+                  {GRUPPENUNTERRICHT[g].label} · {GRUPPENUNTERRICHT[g].minuten} Min.
+                </p>
+                <p className="mt-1">
+                  <span className="text-3xl font-800 text-navy-900">{GRUPPENUNTERRICHT[g].semester}</span>
+                  <span className="text-gray-500 text-sm"> CHF / Person</span>
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Jahresabo {GRUPPENUNTERRICHT[g].jahr} CHF
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5">
+            <Link href="/kontakt">
+              <Button variant="outline" size="sm">Als Gruppe anfragen</Button>
+            </Link>
+          </div>
         </div>
 
         {/*

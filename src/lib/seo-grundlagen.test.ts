@@ -1,3 +1,4 @@
+import { GRUPPENUNTERRICHT } from "./gruppenunterricht";
 import { NEUPREISE } from "./neupreise";
 import { describe, expect, it } from "vitest";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
@@ -171,6 +172,14 @@ describe("Strukturierte Daten", () => {
         // Die Preisseite rechnet ihre Preise aus `NEUPREISE`, im Quelltext
         // steht darum keine Zahl. Gerendert steht dort „CHF 100.–“ usw.
         Object.values(NEUPREISE).map((p) => `CHF ${Number.isInteger(p) ? p : p.toFixed(2)}`)
+      )
+      .concat(
+        // Ebenso die Gruppenpreise und die Dauer aus lib/gruppenunterricht.
+        Object.values(GRUPPENUNTERRICHT).flatMap((g) => [
+          `CHF ${g.semester}`,
+          `CHF ${g.jahr}`,
+          `${g.minuten} Minuten`,
+        ])
       )
       .join("\n");
 
