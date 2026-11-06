@@ -8,6 +8,7 @@ import ProbelektionCTA from "@/components/sections/ProbelektionCTA";
 import Reveal from "@/components/Reveal";
 import BuchungsLeiste from "@/components/BuchungsLeiste";
 import FlowkeyPartner from "@/components/sections/FlowkeyPartner";
+import Lehrpersonen from "@/components/sections/Lehrpersonen";
 import { naechsterTerminText } from "@/lib/naechster-termin";
 import { HOERPROBEN } from "@/lib/hoerproben";
 
@@ -45,6 +46,8 @@ export default async function HomePage() {
       <Reveal>
         <UeberMichTeaser />
       </Reveal>
+      {/* Erst ab zwei öffentlichen Lehrpersonen sichtbar. */}
+      <Lehrpersonen />
       <Reveal>
         <Bewertungen />
       </Reveal>

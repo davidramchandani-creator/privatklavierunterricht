@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Bell,
+  BookOpen,
+  GraduationCap,
   Calendar,
   CalendarCheck,
   CalendarClock,
@@ -50,6 +52,8 @@ const MORE_ITEMS = [
   { href: "/admin/terminanfragen", label: "Terminanfragen", icon: CalendarClock },
   { href: "/admin/anfragen", label: "Probelektionen", icon: Inbox },
   { href: "/admin/warteliste", label: "Warteliste", icon: ListOrdered },
+  { href: "/admin/lehrpersonen", label: "Lehrpersonen", icon: GraduationCap },
+  { href: "/admin/leitbild", label: "Leitbild", icon: BookOpen },
   { href: "/admin/abwesenheiten", label: "Abwesenheiten", icon: CalendarOff },
   { href: "/admin/verfuegbarkeit", label: "Verfügbarkeit", icon: Clock },
   { href: "/admin/schulferien", label: "Semester & Ferien", icon: CalendarOff },

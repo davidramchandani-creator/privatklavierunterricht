@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Bell,
+  BookOpen,
+  GraduationCap,
   Calendar,
   CalendarCheck,
   CalendarClock,
@@ -49,6 +51,8 @@ export const navEntries: NavEntry[] = [
   { href: "/admin/anfragen", label: "Probelektionen", icon: Inbox },
   { href: "/admin/warteliste", label: "Warteliste", icon: ListOrdered },
   { href: "/admin/schueler", label: "Schüler", icon: Users },
+  { href: "/admin/lehrpersonen", label: "Lehrpersonen", icon: GraduationCap },
+  { href: "/admin/leitbild", label: "Leitbild", icon: BookOpen },
   { href: "/admin/lektionen", label: "Was lief?", icon: NotebookPen },
   {
     group: true,
