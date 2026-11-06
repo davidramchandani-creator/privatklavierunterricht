@@ -102,15 +102,20 @@ Jeder Schritt endet mit grünem Build, Tests und einer Testliste. Davids heutige
 
 ---
 
-## 5. Offene Fragen an David
+## 5. Entscheide von David (6. November 2026)
 
-1. **Preiserhöhung „ab Januar 2027 +5 CHF auf alle Abos“:** Bisher abgemacht war: Bestandsschüler ab Semester 2 (22.02.2027) 90 / 75 / 70, Neue seit 4.11. schon 95 / 80 / 75. Gilt +5 ab 1. Januar oder ab 22. Februar? Für Bestand, für Neue (dann 100 / 85 / 80) oder beide? Und die Jahresabos von Angela und Marina sind bis 12.09.2027 zu 65 gebunden: ausnehmen?
-2. **Zahlen Kunden bei einer Lehrperson dieselben Preise wie bei dir?**
-3. **Lohn bei Ausfällen:** Bekommt die Lehrperson Lohn, wenn ein Schüler nicht erscheint oder kurzfristig absagt (Lektion findet laut Abo statt und wird bezahlt)? Und wenn die Lehrperson selbst ausfällt?
-4. **Ferienentschädigung:** 8.33 % entspricht 4 Wochen Ferien. Ist die Lehrperson unter 20, sind es gesetzlich 5 Wochen (10.64 %). Wie alt ist sie?
-5. **Unterrichtsort „bei der Lehrperson zu Hause“:** Bekommt der Kunde nach der Zuteilung ihre Wohnadresse? Das ist der einzige Weg, wie er hinfindet, aber eine private Adresse.
-6. **Gruppenunterricht:** Schritt 2 und 3 (feste Gruppen im Abo) sind noch offen. Ich würde sie nach Schritt 1a bauen, damit Gruppen gleich eine Lehrperson haben. Einverstanden?
-7. **Apple-Kalender:** Nur für dich, oder sollen Lehrpersonen auch einen privaten Kalender einbinden, damit ihre privaten Termine Lektionen sperren?
+1. **Preise:** Neue Schüler zahlen die Preise auf der Webseite (95 / 80 / 75). Bestandsschüler zahlen ihren bisherigen Preis + CHF 5, auch Angela und Marina (Jahresabo). Ab wann genau: noch offen (1. Januar oder 22. Februar 2027).
+2. **Preise bei Lehrpersonen:** gleich wie bei David.
+3. **Lohn:** nur für durchgeführte Lektionen. Sagt der Schüler weniger als 24 Stunden vorher ab, wird die Lektion trotzdem bezahlt. Fällt die Lehrperson aus, organisiert sie selbst Ersatz, sonst kein Lohn.
+4. **Lohn pro Lektion:** CHF 50 inklusive Ferienentschädigung. Bei 8.33 % (4 Wochen Ferien) sind das CHF 46.15 Grundlohn und CHF 3.85 Ferienentschädigung, auf jeder Abrechnung getrennt ausgewiesen. Ist die Lehrperson unter 20, gelten 5 Wochen (10.64 %): CHF 45.19 und CHF 4.81. Alter: noch offen.
+5. **Unterricht bei der Lehrperson zu Hause:** Der Kunde bekommt nach der Zuteilung ihre Adresse.
+6. **Gruppenunterricht:** nach Schritt 1a, sobald David eine Gruppe wirklich anbietet.
+7. **Apple-Kalender:** nur David.
+
+### Noch offen
+- Datum der Preiserhöhung für Bestandsschüler.
+- Alter der Lehrperson (Satz der Ferienentschädigung).
+- Zählt „nicht erschienen“ für den Lohn wie eine kurzfristige Absage?
 
 ## 6. Hinweise ausserhalb des Systems (keine Rechtsberatung)
 
