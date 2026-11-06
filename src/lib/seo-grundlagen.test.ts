@@ -33,6 +33,7 @@ function oeffentlicheSeiten(): string[] {
         "api",
         "auth",
         "schueler",
+        "lehrperson",
         "bewerten",
         "offline",
         "benachrichtigungen",

@@ -25,6 +25,7 @@ export const config = {
   matcher: [
     "/admin/:path*",
     "/schueler/:path*",
+    "/lehrperson/:path*",
     "/auth/login",
     "/benachrichtigungen",
   ],

@@ -19,6 +19,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
   const isApp =
     gehoertZu(pathname, "/admin") ||
     gehoertZu(pathname, "/schueler") ||
+    gehoertZu(pathname, "/lehrperson") ||
     gehoertZu(pathname, "/auth") ||
     gehoertZu(pathname, "/probelektion");
 

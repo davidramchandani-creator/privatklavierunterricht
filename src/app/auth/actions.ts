@@ -31,6 +31,9 @@ export async function login(formData: FormData) {
   if (profile?.role === "admin") {
     redirect("/admin");
   }
+  if (profile?.role === "lehrperson") {
+    redirect("/lehrperson");
+  }
   redirect("/schueler/portal");
 }
 

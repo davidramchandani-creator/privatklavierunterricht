@@ -14,6 +14,7 @@ import {
   CreditCard,
   Wallet,
   FlaskConical,
+  History,
   Inbox,
   LineChart,
   ListOrdered,
@@ -70,6 +71,7 @@ export const navEntries: NavEntry[] = [
   { href: "/admin/bewertungen", label: "Bewertungen", icon: Star },
   { href: "/benachrichtigungen", label: "Benachrichtigungen", icon: Bell },
   { href: "/admin/einstellungen", label: "Einstellungen", icon: Settings },
+  { href: "/admin/protokoll", label: "Protokoll", icon: History },
   { href: "/admin/testmodus", label: "Testmodus", icon: FlaskConical },
 ];
 

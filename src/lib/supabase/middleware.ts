@@ -46,6 +46,7 @@ export async function updateSession(request: NextRequest) {
     user &&
     (gehoertZu(pathname, "/admin") ||
       gehoertZu(pathname, "/schueler") ||
+      gehoertZu(pathname, "/lehrperson") ||
       gehoertZu(pathname, "/auth/login") ||
       gehoertZu(pathname, "/auth/register"))
   ) {
@@ -64,12 +65,26 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // Schülerportal: nur eingeloggte Schüler, Admins gehören ins Admin-Panel
+  // Schülerportal: nur eingeloggte Schüler, Admins gehören ins Admin-Panel,
+  // Lehrpersonen in ihr eigenes Portal.
   if (gehoertZu(pathname, "/schueler")) {
     if (!user)
       return NextResponse.redirect(new URL("/auth/login", request.url));
     if (role === "admin")
       return NextResponse.redirect(new URL("/admin", request.url));
+    if (role === "lehrperson")
+      return NextResponse.redirect(new URL("/lehrperson", request.url));
+  }
+
+  // Lehrpersonen-Portal: nur Lehrpersonen. Die Daten schützt RLS, diese
+  // Weiche sorgt nur dafür, dass niemand auf der falschen Seite landet.
+  if (gehoertZu(pathname, "/lehrperson")) {
+    if (!user)
+      return NextResponse.redirect(new URL("/auth/login", request.url));
+    if (role === "admin")
+      return NextResponse.redirect(new URL("/admin", request.url));
+    if (role !== "lehrperson")
+      return NextResponse.redirect(new URL("/schueler/portal", request.url));
   }
 
   // Bereits eingeloggt? Login/Register überspringen und passend weiterleiten.
@@ -79,7 +94,10 @@ export async function updateSession(request: NextRequest) {
     user
   ) {
     return NextResponse.redirect(
-      new URL(role === "admin" ? "/admin" : "/schueler/portal", request.url)
+      new URL(
+        role === "admin" ? "/admin" : role === "lehrperson" ? "/lehrperson" : "/schueler/portal",
+        request.url
+      )
     );
   }
 

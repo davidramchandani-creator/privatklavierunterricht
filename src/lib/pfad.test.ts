@@ -100,6 +100,8 @@ describe("Middleware greift nur bei geschützten Bereichen", () => {
     "/admin",
     "/admin/schueler/abc",
     "/schueler/portal",
+    "/lehrperson",
+    "/lehrperson/termine",
     "/auth/login",
     "/benachrichtigungen",
   ];

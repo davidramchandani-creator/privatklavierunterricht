@@ -58,7 +58,10 @@ Betroffen sind vor allem `booking-server.ts`, `booking-gap.ts`, `fixplatz-*.ts`,
 
 Jeder Schritt endet mit grünem Build, Tests und einer Testliste. Davids heutige Abläufe müssen nach jedem Schritt unverändert funktionieren.
 
-### 1a Fundament (ca. 2 Wochen)
+### 1a Fundament (ca. 2 Wochen) — erledigt am 6. November 2026
+Umgesetzt: Sicherungskopie `backup_20261106` (45 Tabellen, 893 Zeilen), Migration 071 (Rolle `lehrperson`, Tabelle `teachers` mit David als Inhaber, `teacher_id` auf 12 Tabellen und bei Schülern, Vorgabe David, Audit-Log mit Trigger auf 23 Tabellen, Arbeitszeiten und Sperren nicht mehr öffentlich, Admin-Prüfung einheitlich über `is_admin()`), Middleware mit `/lehrperson`, Platzhalter-Portal, Admin-Seite „Protokoll“, RLS-Test `supabase/tests/rls_lehrpersonen.sql`.
+Bekannte Grenze: Änderungen über den Service-Schlüssel (Admin-Aktionen, Jobs) stehen im Protokoll als „Server“, ohne Person. Aktionen aus dem Lehrpersonen-Portal tragen die Person.
+
 - Rollen vereinheitlichen, neue Rolle `lehrperson`, Hilfsfunktionen `is_lehrperson()`, `own_teacher_id()`.
 - Tabelle `teachers`, David anlegen, `teacher_id` überall ergänzen und auf David setzen.
 - Audit-Log mit Trigger.
@@ -113,9 +116,9 @@ Jeder Schritt endet mit grünem Build, Tests und einer Testliste. Davids heutige
 7. **Apple-Kalender:** nur David.
 
 ### Noch offen
-- Datum der Preiserhöhung für Bestandsschüler.
-- Alter der Lehrperson (Satz der Ferienentschädigung).
-- Zählt „nicht erschienen“ für den Lohn wie eine kurzfristige Absage?
+- Preiserhöhung Bestandsschüler: ab 1. Januar 2027 (David). Raten Januar und Februar werden neu gerechnet.
+- Ferienentschädigung: pro Lehrperson einstellbar (`teachers.ferien_prozent`, Vorgabe 8.33 %), Alter noch unbekannt.
+- „Nicht erschienen“ zählt für den Lohn wie eine kurzfristige Absage (Vorschlag, als Einstellung mit Vorgabe „ja“).
 
 ## 6. Hinweise ausserhalb des Systems (keine Rechtsberatung)
 
