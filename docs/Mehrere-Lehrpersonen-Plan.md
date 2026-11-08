@@ -26,7 +26,7 @@ Noch nichts ist umgesetzt. Dieser Plan wartet auf Davids Freigabe und die Antwor
 | Startpunkt Routen/Distanz | `app_settings.routenplanung_zuhause` | pro Lehrperson (intern) |
 | Studio-Adresse und Pause 10 Min | David | nur David; Hausbesuch mit Fahrzeit |
 | Google- und Apple-Kalender-Feed | Davids Kalender | David sieht alles, Lehrperson nur ihre Termine |
-| Freie Plätze, Warteliste, Platzhinweis | Davids Zeiten | David; Region Winterthur separat |
+| Freie Plätze, Warteliste, Platzhinweis | Davids Zeiten | David; Region Winterthur und Zürich separat |
 | Terminplanung/Zuteilung, Vorrücken, Freigaben | David | pro Lehrperson |
 | Probelektion mit freien Slots | Davids Slots öffentlich | bleibt nur David (Kunden sehen nie Zeiten von Lehrpersonen) |
 
@@ -81,7 +81,7 @@ Bekannte Grenze: Änderungen über den Service-Schlüssel (Admin-Aktionen, Jobs)
 - Kalender: Davids Feed zeigt alles (mit Name der Lehrperson), jede Lehrperson bekommt einen eigenen Feed nur mit ihren Terminen.
 
 ### 1d Anfragen, Zuteilung, Fahrpauschale (ca. 2 Wochen)
-- Anmeldeformular und Probelektion: Auswahl „Studio Neftenbach (bei David)“ oder „Hausbesuch / bei einer Lehrperson in der Region Winterthur“, dazu Tage, Zeiten, Alter, Niveau. Alles landet bei David.
+- Anmeldeformular und Probelektion: Auswahl „Studio Neftenbach (bei David)“ oder „Hausbesuch / bei einer Lehrperson in der Region Winterthur und Zürich“, dazu Tage, Zeiten, Alter, Niveau. Alles landet bei David.
 - Admin: Anfrage an eine oder mehrere Lehrpersonen schicken (Vorname, Alter, Niveau, Quartier, Zeiten, Distanz), Antworten sehen, per Klick zuteilen. Erst dann sieht die Lehrperson die Adresse, Schüler, Abo und Termine werden mit ihrer `teacher_id` angelegt, der Kunde bekommt die Bestätigung mit Lehrperson, Ort und Termin, die anderen „Anfrage vergeben“.
 - Fahrpauschale: erste 5 km gratis, danach CHF 5 pro angefangene 5 km pro Lektion, aus der Distanz Startpunkt der Lehrperson zur Schüleradresse. Separat auf der Rechnung, pro Schüler überschreibbar, für den Lohn separat als Spesen erfasst. TWINT- und QR-Logik bleibt, die Pauschale ist eine eigene Rechnungszeile bzw. ein eigener Betrag.
 

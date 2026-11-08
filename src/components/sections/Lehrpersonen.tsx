@@ -20,7 +20,7 @@ export default async function Lehrpersonen() {
         <AbschnittsKopf
           kicker="Lehrpersonen"
           titel="Wer unterrichtet dich?"
-          text="Im Studio in Neftenbach oder in der Region Winterthur. Du meldest dich bei mir, und ich schaue, wer am besten zu dir passt."
+          text="Im Studio in Neftenbach oder in der Region Winterthur und Zürich. Du meldest dich bei mir, und ich schaue, wer am besten zu dir passt."
           className="mb-10"
         />
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">

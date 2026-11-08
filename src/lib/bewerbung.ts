@@ -5,7 +5,7 @@
 // Lektion inklusive Ferienentschädigung), damit nur ernsthafte Bewerbungen
 // kommen. Voraussetzungen: gute Spielerfahrung (kein Diplom nötig),
 // Unterrichtserfahrung erwünscht, Studium Musik oder PH willkommen, mobil
-// in der Region Winterthur.
+// in der Region Winterthur und Zürich.
 // ============================================================
 
 export const ANGEBOT = {
@@ -13,7 +13,7 @@ export const ANGEBOT = {
   lektionMinuten: 45,
   start: "2027-02-22",
   startText: "Februar 2027",
-  region: "Winterthur",
+  region: "Winterthur und Zürich",
 } as const;
 
 export const TAGE = [

@@ -5,8 +5,8 @@ import BewerbungSchritte from "./BewerbungSchritte";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/lehrperson-werden" },
-  title: "Lehrperson werden: Klavier unterrichten in der Region Winterthur",
-  description: `Unterrichte Klavier mit mir in der Region Winterthur. CHF ${ANGEBOT.lohn} pro Lektion inklusive Ferienentschädigung, die Schüler vermittle ich dir. Bewerbung in 5 Minuten.`,
+  title: "Lehrperson werden: Klavier unterrichten in der Region Winterthur und Zürich",
+  description: `Unterrichte Klavier mit mir in der Region Winterthur und Zürich. CHF ${ANGEBOT.lohn} pro Lektion inklusive Ferienentschädigung, die Schüler vermittle ich dir. Bewerbung in 5 Minuten.`,
 };
 
 const VORTEILE = [

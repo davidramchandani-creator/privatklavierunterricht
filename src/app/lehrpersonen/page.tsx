@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/lehrpersonen" },
   title: "Wer unterrichtet dich? Lehrpersonen bei Privatklavierunterricht",
   description:
-    "Die Lehrpersonen von privatklavierunterricht.ch: im Studio in Neftenbach oder in der Region Winterthur. Anmeldung und Kontakt laufen über David.",
+    "Die Lehrpersonen von privatklavierunterricht.ch: im Studio in Neftenbach oder in der Region Winterthur und Zürich. Anmeldung und Kontakt laufen über David.",
 };
 
 /**
@@ -29,7 +29,7 @@ export default async function LehrpersonenPage() {
         <div className="max-w-3xl mx-auto text-white space-y-4">
           <h1 className="text-3xl sm:text-4xl font-800">Wer unterrichtet dich?</h1>
           <p className="text-white/70 text-lg leading-relaxed">
-            Im Studio in Neftenbach oder in der Region Winterthur. Du meldest dich bei mir, und ich schaue,
+            Im Studio in Neftenbach oder in der Region Winterthur und Zürich. Du meldest dich bei mir, und ich schaue,
             wer am besten zu dir passt.
           </p>
         </div>
@@ -51,7 +51,7 @@ export default async function LehrpersonenPage() {
             <h2 className="text-xl font-800 text-navy-900">So kommst du zum Unterricht</h2>
             <p className="text-gray-600 max-w-xl mx-auto leading-relaxed">
               Schreib mir, wann du Zeit hast und ob du ins Studio kommst oder Unterricht in der Region
-              Winterthur möchtest. Ich kläre ab, wer passt, und melde mich mit Lehrperson, Ort und Termin.
+              Winterthur und Zürich möchtest. Ich kläre ab, wer passt, und melde mich mit Lehrperson, Ort und Termin.
             </p>
             <div className="flex flex-wrap justify-center gap-3 pt-2">
               <Link href="/probelektion">
