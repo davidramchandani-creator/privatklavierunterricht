@@ -1,8 +1,29 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import LehrpersonFormular from "../_components/LehrpersonFormular";
+import LehrpersonFormular, { type FormWerte } from "../_components/LehrpersonFormular";
+import type { Altersgruppe, Unterrichtsort } from "@/lib/lehrpersonen";
 
-export default function NeueLehrpersonPage() {
+/**
+ * Aus einer Bewerbung kommend („Als Lehrperson anlegen“) stehen die
+ * Angaben in der Adresse und werden vorausgefüllt.
+ */
+export default async function NeueLehrpersonPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  const q = await searchParams;
+  const liste = (v?: string) => (v ? v.split(",").filter(Boolean) : []);
+  const vorab: Partial<FormWerte> = {
+    ...(q.vorname ? { vorname: q.vorname } : {}),
+    ...(q.nachname ? { nachname: q.nachname } : {}),
+    ...(q.email ? { email: q.email } : {}),
+    ...(q.telefon ? { telefon: q.telefon } : {}),
+    ...(q.orte ? { unterrichtsorte: liste(q.orte) as Unterrichtsort[] } : {}),
+    ...(q.alter ? { altersgruppen: liste(q.alter) as Altersgruppe[] } : {}),
+    ...(q.ferien ? { ferien_prozent: Number(q.ferien) } : {}),
+    ...(q.start ? { startdatum: q.start } : {}),
+  };
   return (
     <div className="space-y-6 max-w-3xl">
       <Link href="/admin/lehrpersonen" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#1C244B]">
@@ -15,7 +36,7 @@ export default function NeueLehrpersonPage() {
           Webseite erscheint sie erst, wenn ein Profiltext veröffentlicht ist.
         </p>
       </div>
-      <LehrpersonFormular />
+      <LehrpersonFormular werte={vorab as FormWerte} />
     </div>
   );
 }

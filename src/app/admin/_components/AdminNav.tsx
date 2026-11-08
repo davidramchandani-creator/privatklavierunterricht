@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Bell,
+  FileUser,
   BookOpen,
   GraduationCap,
   Calendar,
@@ -52,6 +53,7 @@ export const navEntries: NavEntry[] = [
   { href: "/admin/warteliste", label: "Warteliste", icon: ListOrdered },
   { href: "/admin/schueler", label: "Schüler", icon: Users },
   { href: "/admin/lehrpersonen", label: "Lehrpersonen", icon: GraduationCap },
+  { href: "/admin/bewerbungen", label: "Bewerbungen", icon: FileUser },
   { href: "/admin/leitbild", label: "Leitbild", icon: BookOpen },
   { href: "/admin/lektionen", label: "Was lief?", icon: NotebookPen },
   {

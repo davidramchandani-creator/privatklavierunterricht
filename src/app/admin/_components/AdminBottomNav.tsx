@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Bell,
+  FileUser,
   BookOpen,
   GraduationCap,
   Calendar,
@@ -53,6 +54,7 @@ const MORE_ITEMS = [
   { href: "/admin/anfragen", label: "Probelektionen", icon: Inbox },
   { href: "/admin/warteliste", label: "Warteliste", icon: ListOrdered },
   { href: "/admin/lehrpersonen", label: "Lehrpersonen", icon: GraduationCap },
+  { href: "/admin/bewerbungen", label: "Bewerbungen", icon: FileUser },
   { href: "/admin/leitbild", label: "Leitbild", icon: BookOpen },
   { href: "/admin/abwesenheiten", label: "Abwesenheiten", icon: CalendarOff },
   { href: "/admin/verfuegbarkeit", label: "Verfügbarkeit", icon: Clock },

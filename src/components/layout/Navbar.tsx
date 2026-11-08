@@ -64,6 +64,7 @@ export default function Navbar() {
         { href: "/#angebote", label: "Angebote" },
         { href: "/preise", label: "Preise" },
         { href: "/kontakt", label: "Kontakt" },
+        { href: "/lehrperson-werden", label: "Lehrperson werden" },
       ];
 
   return (

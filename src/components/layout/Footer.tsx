@@ -57,6 +57,8 @@ export default function Footer() {
                 { href: "/probelektion", label: "Probelektion" },
                 { href: "/faq", label: "Häufige Fragen" },
                 { href: "/kontakt", label: "Kontakt" },
+                { href: "/lehrpersonen", label: "Unsere Lehrpersonen" },
+                { href: "/lehrperson-werden", label: "Lehrperson werden" },
                 // Partnerseite, erst nach Freigabe durch flowkey (lib/flowkey).
                 ...(FLOWKEY.aktiv ? [{ href: "/flowkey", label: "Partner: flowkey" }] : []),
               ].map((l) => (

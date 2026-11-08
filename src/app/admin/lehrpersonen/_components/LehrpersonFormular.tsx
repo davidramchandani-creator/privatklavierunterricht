@@ -22,6 +22,9 @@ export type FormWerte = {
   ferien_prozent: number;
   sortierung: number;
   ist_inhaber?: boolean;
+  /** Nur beim Anlegen, z. B. aus einer Bewerbung übernommen. */
+  email?: string;
+  telefon?: string;
 };
 
 const LEER: FormWerte = {
@@ -49,7 +52,7 @@ function Feld({ label, hinweis, children }: { label: string; hinweis?: string; c
 }
 
 export default function LehrpersonFormular({ id, werte }: { id?: string; werte?: FormWerte }) {
-  const w = werte ?? LEER;
+  const w = { ...LEER, ...(werte ?? {}) };
   const neu = !id;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -99,10 +102,10 @@ export default function LehrpersonFormular({ id, werte }: { id?: string; werte?:
       {neu && (
         <div className="grid sm:grid-cols-2 gap-4">
           <Feld label="E-Mail für das Login *" hinweis="Sie bekommt eine Einladung und setzt ihr Passwort selbst. Nie öffentlich.">
-            <Input name="email" type="email" required />
+            <Input name="email" type="email" required defaultValue={w.email ?? ""} />
           </Feld>
           <Feld label="Telefon" hinweis="Nur für dich, nie öffentlich.">
-            <Input name="telefon" type="tel" />
+            <Input name="telefon" type="tel" defaultValue={w.telefon ?? ""} />
           </Feld>
         </div>
       )}

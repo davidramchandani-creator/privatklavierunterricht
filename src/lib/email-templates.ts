@@ -1425,6 +1425,56 @@ export function renderEmail(
       return { subject, html: baseWrapper(content) };
     }
 
+    // ── Bewerbungen als Lehrperson (8. November 2026) ────────
+    case "bewerbung_bestaetigung": {
+      const vorname = escWl(payload.vorname);
+      const subject = "Danke für deine Bewerbung";
+      const content = `
+        <p style="margin:0 0 16px;">Hallo ${vorname}</p>
+        <p style="margin:0 0 16px;">
+          danke für deine Bewerbung als Lehrperson bei privatklavierunterricht.ch! Ich habe sie erhalten und schaue sie mir in Ruhe an.
+        </p>
+        <p style="margin:0 0 16px;">
+          Ich melde mich innert einer Woche bei dir. Passt es, lernen wir uns zuerst in einem kurzen Gespräch kennen.
+        </p>
+        <p style="margin:0 0 24px;">Bis bald und liebe Grüsse</p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          David Ramchandani<br/>
+          <a href="${APP_URL}" style="color:#6b7280;">privatklavierunterricht.ch</a>
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "bewerbung_admin": {
+      const name = `${escWl(payload.vorname)} ${escWl(payload.nachname)}`;
+      const subject = `Neue Bewerbung als Lehrperson: ${String(payload.vorname ?? "")} ${String(payload.nachname ?? "")}`;
+      const gut = Array.isArray(payload.gut) ? (payload.gut as string[]).map(escWl) : [];
+      const offen = Array.isArray(payload.offen) ? (payload.offen as string[]).map(escWl) : [];
+      const content = `
+        <p style="margin:0 0 16px;"><strong>${name}</strong> hat sich als Lehrperson beworben.</p>
+        ${gut.length ? `<p style="margin:0 0 8px;color:#065f46;font-size:14px;">✓ ${gut.join(" · ")}</p>` : ""}
+        ${offen.length ? `<p style="margin:0 0 16px;color:#92400e;font-size:14px;">? ${offen.join(" · ")}</p>` : ""}
+        <p style="margin:16px 0 24px;">
+          <a href="${APP_URL}/admin/bewerbungen"
+             style="display:inline-block;background-color:#1C244B;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;">
+            Bewerbung ansehen
+          </a>
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
+    case "bewerbung_freitext": {
+      // Davids eigener Text (aus der Vorlage bearbeitet). Maskiert, Zeilen-
+      // umbrüche werden zu Absätzen.
+      const absaetze = String(payload.text ?? "")
+        .split(/\n{2,}/)
+        .map((a) => `<p style="margin:0 0 16px;">${escWl(a).replace(/\n/g, "<br/>")}</p>`)
+        .join("");
+      return { subject: String(payload.betreff ?? "Deine Bewerbung"), html: baseWrapper(absaetze) };
+    }
+
     case "warteliste_antwort_admin": {
       const name = `${escWl(payload.vorname)} ${escWl(payload.nachname)}`;
       const zugesagt = payload.zugesagt === true;
