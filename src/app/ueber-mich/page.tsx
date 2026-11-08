@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/ueber-mich" },
   title: "Über mich: David Ramchandani | Privatklavierunterricht",
   description:
-    "Erfahre mehr über David Ramchandani, Klavierunterricht in Neftenbach. Ohne Noten, individuell und praxisnah.",
+    "Erfahre mehr über David Ramchandani, Klavierunterricht in Neftenbach. Ohne Notenzwang, individuell und praxisnah.",
 };
 
 const stationen = [
@@ -53,8 +53,8 @@ const stationen = [
 const werte = [
   {
     icon: <Music className="w-5 h-5" />,
-    title: "Ohne Noten",
-    desc: "Wir spielen nach Akkorden, Gehör und Gefühl. Keine trockene Theorie.",
+    title: "Noten ohne Zwang",
+    desc: "Wir spielen nach Akkorden, Gehör und Mustern. Noten setzen wir gezielt ein, mit guten Medien und Apps.",
   },
   {
     icon: <Users className="w-5 h-5" />,
@@ -98,7 +98,7 @@ export default async function UeberMichPage() {
               Hallo, ich bin <span className="italic">David</span>.
             </h1>
             <p className="text-white/70 text-lg leading-relaxed">
-              Ich unterrichte Klavier mit Leidenschaft, nicht nach Noten, sondern nach Gefühl. Ob du Anfänger bist oder wieder einsteigen möchtest, bei mir zählt nicht die Perfektion, sondern der Spass am Spielen.
+              Ich unterrichte Klavier mit Leidenschaft, nicht stur nach Noten, sondern mit Gefühl. Ob du Anfänger bist oder wieder einsteigen möchtest, bei mir zählt nicht die Perfektion, sondern der Spass am Spielen.
             </p>
             <div className="flex flex-wrap gap-4 pt-2">
               <Link href="/probelektion">
@@ -172,7 +172,8 @@ export default async function UeberMichPage() {
                 eine klassische Ausbildung genossen, aber früh gemerkt: Wirklich
                 berühren kann Musik nur, wenn man sie lebt und nicht nur liest. Deshalb
                 unterrichte ich heute nach einem spielerischen und praxisnahen
-                Konzept, ganz ohne Notenlesen.
+                Konzept. Noten setze ich dort ein, wo sie dir helfen, mit guten
+                Medien und Apps, aber nie als Pflicht.
               </p>
               <p>
                 Mein Ansatz kombiniert Spass am Musizieren mit echtem Lernerfolg. Du
@@ -205,7 +206,7 @@ export default async function UeberMichPage() {
           <div className="grid sm:grid-cols-2 gap-3">
             {[
               "Klavierunterricht für Anfängerinnen und Fortgeschrittene",
-              "Spielen nach Akkorden, Gehör und Gefühl. Ohne Notenlesen",
+              "Spielen nach Akkorden, Gehör und Mustern. Noten ohne Zwang",
               "Moderne Songs, die du wirklich spielen willst",
               "Unterricht in meinem Studio in Neftenbach, auf einem Kawai ES120 mit gewichteten Tasten",
               "Lektionen à 45 Minuten, wöchentlich oder alle zwei Wochen",

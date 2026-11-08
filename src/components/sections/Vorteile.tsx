@@ -4,8 +4,8 @@ import AbschnittsKopf from "@/components/AbschnittsKopf";
 const vorteile = [
   {
     icon: BookOpen,
-    titel: "Unterricht ohne Noten",
-    text: "Du lernst intuitiv mit Akkorden und Melodien, ohne Theorieballast.",
+    titel: "Noten ohne Zwang",
+    text: "Du lernst intuitiv mit Akkorden, Melodien und Mustern. Noten kommen dazu, wo sie dir helfen.",
   },
   {
     icon: User,

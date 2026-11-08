@@ -27,7 +27,7 @@ export function unternehmenJsonLd() {
     "@id": `${BASIS_URL}/#unternehmen`,
     name: "Privatklavierunterricht David Ramchandani",
     description:
-      "Individueller Klavierunterricht im Studio in Neftenbach. Ohne Noten, ohne Schema F, mit Gefühl und Verstand.",
+      "Individueller Klavierunterricht im Studio in Neftenbach. Ohne Notenzwang, ohne Schema F, mit Gefühl und Verstand.",
     url: BASIS_URL,
     email: KONTAKT_MAIL,
     image: `${BASIS_URL}/opengraph-image`,

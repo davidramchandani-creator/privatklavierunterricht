@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     template: "%s | David, Klavierunterricht",
   },
   description:
-    "Individueller Klavierunterricht mit David in Neftenbach. Ohne Noten, ohne Schema F. Mit Gefühl und Verstand. Probelektion buchen.",
+    "Individueller Klavierunterricht mit David in Neftenbach. Ohne Notenzwang, ohne Schema F. Mit Gefühl und Verstand. Probelektion buchen.",
   keywords: ["Klavierunterricht", "Neftenbach", "Winterthur", "Klavier", "Privatunterricht"],
   manifest: "/manifest.json",
   appleWebApp: {

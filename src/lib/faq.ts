@@ -44,7 +44,7 @@ export const FAQ: FrageAntwort[] = [
     frage: "Muss ich Noten lesen können?",
     quelle: "AGB Ziffer 1, /ueber-mich",
     antwort:
-      "Nein. Ich unterrichte praxisorientiert mit Fokus auf Spielen nach Gehör, nach Mustern und nach Auge. Noten kommen dazu, wenn sie dir helfen. Voraussetzung sind sie nicht.",
+      "Nein. Ich unterrichte praxisorientiert mit Fokus auf Spielen nach Gehör, nach Mustern und nach Auge. Noten kommen dazu, wenn sie dir helfen, mit guten Medien und Apps. Voraussetzung sind sie nicht.",
   },
   {
     frage: "Wie lange dauert eine Lektion?",
