@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { zerlege } from "@/components/EinfacherText";
+
 import {
   OEFFENTLICHE_FELDER,
   istOeffentlich,
@@ -61,5 +63,16 @@ describe("Lehrpersonen 1b", () => {
 
   it("Text wird ohne HTML dargestellt", () => {
     expect(lies("src/components/EinfacherText.tsx")).not.toMatch(/dangerouslySetInnerHTML\s*=/);
+  });
+});
+
+
+describe("Formatierung für Leitbild und Profiltexte", () => {
+  it("erkennt eine Überschrift direkt über einer Aufzählung", () => {
+    expect(zerlege("## Haltung\n- eins\n- zwei\n\nText\nweiter")).toEqual([
+      { art: "titel", text: "Haltung" },
+      { art: "liste", punkte: ["eins", "zwei"] },
+      { art: "absatz", zeilen: ["Text", "weiter"] },
+    ]);
   });
 });
