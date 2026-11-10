@@ -18,6 +18,7 @@ import {
   type AvailabilityWindows,
 } from "./booking";
 import { loadAvailabilityContext } from "./booking-server";
+import { lehrpersonFuer, OFFENE_FENSTER } from "./lehrperson-kontext";
 import {
   firstSeriesStart,
   fixplatzSeriesStarts,
@@ -112,23 +113,30 @@ export async function findeFixplaetze(
   const now = params.now ?? new Date();
   const mindestQuote = params.mindestQuote ?? 0.75;
 
+  // Gesucht wird bei der Lehrperson des Schülers (ohne Schüler: David).
+  const lp = await lehrpersonFuer(admin, params.studentId || null);
+  let verfQuery = admin
+    .from("admin_verfuegbarkeit")
+    .select("wochentag, beginn_zeit, ende_zeit, aktiv")
+    .eq("aktiv", true);
+  if (lp.teacherId) verfQuery = verfQuery.eq("teacher_id", lp.teacherId);
+
   const [{ data: profil }, { data: verfuegbarkeit }] = await Promise.all([
     admin
       .from("profiles")
       .select("buffer_time_minutes")
       .eq("id", params.studentId)
       .single(),
-    admin
-      .from("admin_verfuegbarkeit")
-      .select("wochentag, beginn_zeit, ende_zeit, aktiv")
-      .eq("aktiv", true),
+    verfQuery,
   ]);
 
   const bufferMin = profil?.buffer_time_minutes ?? DEFAULT_BUFFER_MIN;
   const fenster =
     verfuegbarkeit && verfuegbarkeit.length > 0
       ? fensterAusDb(verfuegbarkeit)
-      : AVAILABILITY;
+      : lp.istInhaber
+        ? AVAILABILITY
+        : OFFENE_FENSTER;
 
   const tage = Object.keys(fenster)
     .map(Number)
@@ -156,7 +164,7 @@ export async function findeFixplaetze(
     now,
     bis,
     now,
-    { skipLeadTime: false }
+    { skipLeadTime: false, teacherId: lp.teacherId }
   );
   const ctxMitFenster = { ...ctx, availabilityWindows: fenster };
 

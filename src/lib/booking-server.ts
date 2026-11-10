@@ -19,6 +19,7 @@ import {
   SOFORT,
   stelleAppleKalenderSicher,
 } from "./apple-kalender";
+import { lehrpersonFuer, OFFENE_FENSTER } from "./lehrperson-kontext";
 
 /**
  * Lädt alle für die Slot-Berechnung nötigen Daten (Termine, Abwesenheiten,
@@ -51,8 +52,17 @@ export async function loadAvailabilityContext(
      * eine Minute Verzug egal, beim Buchen entsteht der Schaden.
      */
     kalenderJetzt?: boolean;
+    /**
+     * Für welche Lehrperson gerechnet wird. Ohne Angabe: die Lehrperson
+     * des Schülers, ohne Schüler David (Probelektion, freie Plätze).
+     */
+    teacherId?: string | null;
   } = {}
 ): Promise<AvailabilityContext> {
+  // Mehrere Lehrpersonen (Schritt 1c): Belegt ist nur, was dieselbe
+  // Lehrperson betrifft. Für David ändert sich nichts, weil bis heute alle
+  // Einträge ihm gehören.
+  const lp = await lehrpersonFuer(admin, studentId || null, opts.teacherId);
   // Apple-Kalender frisch halten — aber nur dort warten, wo es zählt.
   //
   // Diese eine Stelle deckt alles ab: Slot-Listen, Serienprüfung,
@@ -100,6 +110,7 @@ export async function loadAvailabilityContext(
     .in("status", ["booked", "pending"])
     .gte("start_at", apptFrom)
     .lte("start_at", apptTo);
+  if (lp.teacherId) apptQuery = apptQuery.eq("teacher_id", lp.teacherId);
   if (opts.excludeAppointmentId) {
     apptQuery = apptQuery.neq("id", opts.excludeAppointmentId);
   }
@@ -111,31 +122,45 @@ export async function loadAvailabilityContext(
     );
   }
 
+  // Nur Einträge dieser Lehrperson. Gibt es (noch) keine Lehrpersonen,
+  // bleiben die Abfragen wie vor dem Umbau.
+  let absQuery = admin
+    .from("absences")
+    .select("scope, student_id, start_date, end_date")
+    .lte("start_date", toDate)
+    .gte("end_date", fromDate);
+  let blockQuery = admin
+    .from("time_blocks")
+    .select("date, start_time, end_time, quelle")
+    .gte("date", fromDate)
+    .lte("date", toDate);
+  let ruleQuery = admin.from("time_block_rules").select("start_date, start_time, end_time, interval_days");
+  let availQuery = admin
+    .from("admin_verfuegbarkeit")
+    .select("wochentag, beginn_zeit, ende_zeit, aktiv, lesson_minutes, min_buffer_minutes, packing");
+  if (lp.teacherId) {
+    absQuery = absQuery.eq("teacher_id", lp.teacherId);
+    blockQuery = blockQuery.eq("teacher_id", lp.teacherId);
+    ruleQuery = ruleQuery.eq("teacher_id", lp.teacherId);
+    availQuery = availQuery.eq("teacher_id", lp.teacherId);
+  }
+
   const [apptRes, absRes, blockRes, ruleRes, availRes, groupSessionRes, ichRes] = await Promise.all([
     apptQuery,
-    admin
-      .from("absences")
-      .select("scope, student_id, start_date, end_date")
-      .lte("start_date", toDate)
-      .gte("end_date", fromDate),
-    admin
-      .from("time_blocks")
-      .select("date, start_time, end_time, quelle")
-      .gte("date", fromDate)
-      .lte("date", toDate),
-    admin
-      .from("time_block_rules")
-      .select("start_date, start_time, end_time, interval_days"),
-    admin
-      .from("admin_verfuegbarkeit")
-      .select("wochentag, beginn_zeit, ende_zeit, aktiv, lesson_minutes, min_buffer_minutes, packing"),
-    // Admin-geplante Gruppensessions blockieren Zeitslots auch ohne Teilnehmer.
-    admin
-      .from("group_sessions")
-      .select("start_at, end_at")
-      .in("status", ["open", "full"])
-      .gte("start_at", apptFrom)
-      .lte("start_at", apptTo),
+    absQuery,
+    blockQuery,
+    ruleQuery,
+    availQuery,
+    // Admin-geplante Gruppensessions blockieren Zeitslots auch ohne
+    // Teilnehmer. Gruppenkurse gibt David, darum nur bei ihm.
+    lp.istInhaber
+      ? admin
+          .from("group_sessions")
+          .select("start_at, end_at")
+          .in("status", ["open", "full"])
+          .gte("start_at", apptFrom)
+          .lte("start_at", apptTo)
+      : Promise.resolve({ data: [] }),
     // Kommt dieser Schüler ins Studio? Dann gilt für ihn die kurze Pause.
     studentId
       ? admin.from("profiles").select("hausbesuch").eq("id", studentId).maybeSingle()
@@ -144,7 +169,10 @@ export async function loadAvailabilityContext(
 
   // Vom Admin gepflegte Verfügbarkeit → Fenster-Map (nur aktive Tage).
   // Ohne Einträge bleibt das Feld leer und die Engine nutzt den AVAILABILITY-Default.
-  let availabilityWindows: AvailabilityWindows | undefined;
+  // Eine andere Lehrperson ohne eigene Zeiten bekommt offene Fenster: Bei
+  // ihr zählt nur die Kollision, nicht Davids Arbeitszeiten.
+  let availabilityWindows: AvailabilityWindows | undefined =
+    lp.istInhaber ? undefined : OFFENE_FENSTER;
   let blockSettings: BlockSettings = DEFAULT_BLOCK_SETTINGS;
   if (availRes.data && availRes.data.length > 0) {
     availabilityWindows = {};

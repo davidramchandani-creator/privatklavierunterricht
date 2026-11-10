@@ -74,11 +74,16 @@ Bekannte Grenze: Änderungen über den Service-Schlüssel (Admin-Aktionen, Jobs)
 - Webseite: Seite „Wer unterrichtet dich?“ und Abschnitt auf der Startseite, nur aktive Lehrpersonen, nur freigegebene Texte, keine Kontaktdaten.
 - Leitbild: Admin-Seite mit Versionen, Bestätigung durch Lehrpersonen, Übersicht wer was bestätigt hat.
 
-### 1c Buchungslogik pro Lehrperson (ca. 2 bis 3 Wochen, der heikelste Teil)
+### 1c Buchungslogik pro Lehrperson — erledigt am 10. November 2026
+Umgesetzt: Lehrpersonen buchen nie selbst; die Logik rechnet nur richtig, wenn David zuteilt. Datenbank-Trigger (Migration 074): neue Termine, Abos, Anfragen, Vorschläge, Verschiebungen, Ausfälle, Notizen und Schüler-Abwesenheiten übernehmen die Lehrperson des Schülers. Kontext (`booking-server.ts`) filtert Termine, Abwesenheiten, Zeitblöcke, Regeln und Arbeitszeiten nach Lehrperson; ohne Schüler ist es David (Probelektion, freie Plätze). Andere Lehrpersonen ohne eigene Zeiten: Mo bis Sa 08 bis 21 Uhr offen, nur Kollisionen zählen. Platzsuche, Vorrücken, Überschneidungsprüfung ebenso. Davids Verfügbarkeitsseite, Routen, Kalender-Abo und Google-Kalender zeigen nur seine eigenen Lektionen (Entscheid: sein Kalender ist sein Stundenplan, die Übersicht über alle hat er im Admin). Admin-Abwesenheit verlängert nur die Abos der betreffenden Lehrperson.
+Geprüft: alle 242 Termine, 24 Zeitblöcke, 6 Verfügbarkeiten, 15 Abos und 12 Schüler gehören David, also bleibt für ihn alles gleich; Trigger-Test mit Testlehrperson (zurückgerollt) ok.
+Offen für 1e: Unterrichtsort bei der Lehrperson zu Hause in Kalender und Mails.
+
+#### Ursprünglicher Plan 1c
 - Arbeitszeiten, Sperren, Abwesenheiten, Kollisionen und Lücken-Logik pro Lehrperson.
 - Hausbesuch mit Fahrzeit als Puffer (aus `travel_times`), Studio-Pause nur bei David.
 - Semester-Umstellung, Verlängerung, Vorrücken, Freigaben berücksichtigen die Lehrperson.
-- Kalender: Davids Feed zeigt alles (mit Name der Lehrperson), jede Lehrperson bekommt einen eigenen Feed nur mit ihren Terminen.
+- Kalender: Davids Feed zeigt nur seine Lektionen (geändert, siehe oben), jede Lehrperson bekommt einen eigenen Feed nur mit ihren Terminen.
 
 ### 1d Anfragen, Zuteilung, Fahrpauschale (ca. 2 Wochen)
 - Anmeldeformular und Probelektion: Auswahl „Studio Neftenbach (bei David)“ oder „Hausbesuch / bei einer Lehrperson in der Region Winterthur und Zürich“, dazu Tage, Zeiten, Alter, Niveau. Alles landet bei David.

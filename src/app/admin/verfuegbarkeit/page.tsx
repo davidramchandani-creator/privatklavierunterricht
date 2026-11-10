@@ -58,7 +58,9 @@ export default function VerfuegbarkeitPage() {
     const supabase = createClient();
     supabase
       .from("admin_verfuegbarkeit")
-      .select("*")
+      // Nur Davids Zeiten (Lehrperson mit ist_inhaber).
+      .select("*, teachers!inner(ist_inhaber)")
+      .eq("teachers.ist_inhaber", true)
       .then(({ data }) => {
         if (data && data.length > 0) {
           const map: Record<number, SlotState> = Object.fromEntries(

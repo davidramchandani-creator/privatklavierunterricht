@@ -17,6 +17,7 @@
 // *absagenden* Schüler Ersatz sucht — hier geht es um den *nächsten*.
 // ============================================================
 
+import { lehrpersonFuer } from "./lehrperson-kontext";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   isAtLeast24hAway,
@@ -69,12 +70,17 @@ export async function bieteFrueherenSlotAn(
     return { angeboten: false, grund: "zu kurzfristig" };
   }
 
-  // Der nächste gebuchte Termin am selben Zürcher Kalendertag.
+  // Der nächste gebuchte Termin am selben Zürcher Kalendertag, und zwar
+  // bei derselben Lehrperson: In Annas Lücke kann nicht Davids Schüler
+  // vorrücken.
   const tag = zuercherTag(abgesagt.start_at);
-  const { data: kandidaten } = await admin
+  const lp = await lehrpersonFuer(admin, abgesagt.student_id);
+  let kandidatenQuery = admin
     .from("appointments")
     .select("id, start_at, end_at, student_id")
-    .eq("status", "booked")
+    .eq("status", "booked");
+  if (lp.teacherId) kandidatenQuery = kandidatenQuery.eq("teacher_id", lp.teacherId);
+  const { data: kandidaten } = await kandidatenQuery
     .gt("start_at", abgesagt.start_at)
     // Grosszügig bis Tagesende +2h UTC laden, dann exakt nach Zürcher Tag
     // filtern. Ein reiner UTC-Vergleich kippt an der Sommerzeit.

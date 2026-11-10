@@ -1,3 +1,4 @@
+import { lehrpersonFuer } from "./lehrperson-kontext";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   DEFAULT_BUFFER_MIN,
@@ -119,12 +120,16 @@ export async function bookSeriesForStudent(
   if (opts?.adminOverride) {
     // Nur die Überschneidung prüfen, sonst nichts.
     const slots = slotsFromStarts(starts);
-    const { data: bestehende } = await admin
+    // Nur Termine derselben Lehrperson zählen als Überschneidung.
+    const lp = await lehrpersonFuer(admin, studentUserId);
+    let bestehendeQuery = admin
       .from("appointments")
       .select("id, start_at, end_at")
       .eq("status", "booked")
       .lt("start_at", seriesEnd.toISOString())
       .gt("end_at", desiredStart.toISOString());
+    if (lp.teacherId) bestehendeQuery = bestehendeQuery.eq("teacher_id", lp.teacherId);
+    const { data: bestehende } = await bestehendeQuery;
     for (const s of slots) {
       const konflikt = (bestehende ?? []).find(
         (b) => new Date(b.start_at) < s.end && new Date(b.end_at) > s.start

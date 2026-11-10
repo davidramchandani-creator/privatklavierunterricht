@@ -128,12 +128,14 @@ export async function setzePaarDistanz(
 export async function ladeFenster(
   admin: SupabaseClient
 ): Promise<Tagesfenster[]> {
+  // Davids Routen: nur seine Zeiten (Lehrperson mit ist_inhaber).
   const { data } = await admin
     .from("admin_verfuegbarkeit")
     .select(
-      "wochentag, beginn_zeit, ende_zeit, aktiv, start_adresse, start_lat, start_lng"
+      "wochentag, beginn_zeit, ende_zeit, aktiv, start_adresse, start_lat, start_lng, teachers!inner(ist_inhaber)"
     )
     .eq("aktiv", true)
+    .eq("teachers.ist_inhaber", true)
     .order("wochentag");
 
   if (data && data.length > 0) {

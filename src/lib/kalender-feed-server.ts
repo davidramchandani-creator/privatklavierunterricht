@@ -2,6 +2,7 @@
 // Abonnierbarer Kalender: Token verwalten, Termine holen
 // ============================================================
 
+import { inhaberTeacherId } from "./lehrperson-kontext";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ladeStudioAdresse, unterrichtsort } from "./studio";
 import {
@@ -139,8 +140,12 @@ export async function ladeFeedTermine(
   if (wer.sicht === "schueler") {
     abfrage = abfrage.eq("student_id", wer.studentId);
   } else {
-    // Der Testschüler gehört nicht in Davids echten Kalender.
+    // Der Testschüler gehört nicht in Davids echten Kalender. Ebenso wenig
+    // die Lektionen anderer Lehrpersonen: Davids Kalender ist sein eigener
+    // Stundenplan, die Übersicht über alle hat er im Admin.
     abfrage = abfrage.eq("profiles.ist_test", false);
+    const inhaber = await inhaberTeacherId(admin);
+    if (inhaber) abfrage = abfrage.eq("teacher_id", inhaber);
   }
 
   const [{ data }, studioAdresse] = await Promise.all([

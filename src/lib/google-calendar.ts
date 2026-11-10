@@ -126,6 +126,8 @@ type AppointmentForSync = {
   } | null;
   /** Volle Studioadresse, für Schüler, die zu David kommen. */
   studioAdresse: string;
+  /** Davids eigener Termin? Nur diese landen in seinem Google-Kalender. */
+  vonDavid: boolean;
 };
 
 // Farben je Status (Google colorId 1–11)
@@ -174,15 +176,22 @@ async function fetchAppointment(
   const { data } = await admin
     .from("appointments")
     .select(
-      "id, start_at, end_at, status, notes, google_event_id, student:profiles!student_id(vorname, nachname, email, adresse, hausbesuch)"
+      "id, start_at, end_at, status, notes, google_event_id, student:profiles!student_id(vorname, nachname, email, adresse, hausbesuch), lehrperson:teachers!teacher_id(ist_inhaber)"
     )
     .eq("id", appointmentId)
     .maybeSingle();
   if (!data) return null;
   // student kann als Array oder Objekt kommen, normalisieren
   const student = Array.isArray(data.student) ? data.student[0] : data.student;
+  const lehrperson = Array.isArray(data.lehrperson) ? data.lehrperson[0] : data.lehrperson;
   const studioAdresse = await ladeStudioAdresse(admin);
-  return { ...data, student: student ?? null, studioAdresse } as AppointmentForSync;
+  return {
+    ...data,
+    student: student ?? null,
+    studioAdresse,
+    // Ohne Lehrperson (alte Daten) gilt der Termin als Davids.
+    vonDavid: lehrperson ? lehrperson.ist_inhaber === true : true,
+  } as AppointmentForSync;
 }
 
 const CAL_BASE = "https://www.googleapis.com/calendar/v3/calendars";
@@ -202,8 +211,10 @@ export async function syncAppointmentToCalendar(
     const appt = await fetchAppointment(admin, appointmentId);
     if (!appt) return;
 
-    // Stornierte/no-show Termine: Event löschen statt anlegen
-    if (appt.status === "cancelled" || appt.status === "no_show") {
+    // Stornierte/no-show Termine: Event löschen statt anlegen. Ebenso
+    // Termine einer anderen Lehrperson: Davids Google-Kalender zeigt nur
+    // seine eigenen Lektionen. Die Übersicht über alle hat er im Admin.
+    if (appt.status === "cancelled" || appt.status === "no_show" || !appt.vonDavid) {
       await deleteCalendarEvent(admin, appointmentId);
       return;
     }
@@ -344,8 +355,9 @@ export async function fullSyncFutureAppointments(
 ): Promise<{ synced: number; failed: number }> {
   const { data: appts } = await admin
     .from("appointments")
-    .select("id")
+    .select("id, teachers!inner(ist_inhaber)")
     .eq("status", "booked")
+    .eq("teachers.ist_inhaber", true)
     .gte("start_at", new Date().toISOString());
 
   let synced = 0;

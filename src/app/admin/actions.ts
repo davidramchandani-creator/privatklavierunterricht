@@ -90,6 +90,7 @@ import {
   fullSyncFutureAppointments,
 } from "@/lib/google-calendar";
 import { NEUPREISE } from "@/lib/neupreise";
+import { inhaberTeacherId } from "@/lib/lehrperson-kontext";
 
 // ── Schüler ──────────────────────────────────────────────────────────────────
 
@@ -564,9 +565,15 @@ export async function updateVerfuegbarkeit(slots: VerfuegbarkeitSlot[]) {
   // gesetzt und ginge beim nächsten Speichern der Zeiten verloren. Ohne
   // Meldung: Die Adresse verschwände, der Planer rechnete wieder ab
   // zuhause, und die Route sähe weiterhin plausibel aus.
-  const { data: bisher } = await supabase
+  // Nur Davids eigene Zeiten. Seit es mehrere Lehrpersonen gibt, stehen
+  // in derselben Tabelle auch deren Zeiten; die dürfen hier weder gelesen
+  // noch gelöscht werden.
+  const inhaber = await inhaberTeacherId(supabase);
+  let bisherQuery = supabase
     .from("admin_verfuegbarkeit")
     .select("wochentag, start_adresse, start_lat, start_lng");
+  if (inhaber) bisherQuery = bisherQuery.eq("teacher_id", inhaber);
+  const { data: bisher } = await bisherQuery;
 
   const startVon = new Map(
     (bisher ?? []).map((r) => [
@@ -580,10 +587,9 @@ export async function updateVerfuegbarkeit(slots: VerfuegbarkeitSlot[]) {
   );
 
   // Delete all existing
-  const { error: deleteError } = await supabase
-    .from("admin_verfuegbarkeit")
-    .delete()
-    .gte("wochentag", 0);
+  let loeschen = supabase.from("admin_verfuegbarkeit").delete().gte("wochentag", 0);
+  if (inhaber) loeschen = loeschen.eq("teacher_id", inhaber);
+  const { error: deleteError } = await loeschen;
 
   if (deleteError) return { error: deleteError.message };
 
@@ -2365,7 +2371,7 @@ export async function createAbsence(formData: FormData) {
       end_date: endDate,
       auto_extend: autoExtend,
     })
-    .select("id")
+    .select("id, teacher_id")
     .single();
 
   if (error || !absence) return { error: "Abwesenheit konnte nicht erstellt werden." };
@@ -2377,6 +2383,9 @@ export async function createAbsence(formData: FormData) {
       .select("id, student_id, expires_at, paused, pause_remaining_seconds")
       .eq("status", "active");
     if (scope === "student") query = query.eq("student_id", studentUserId);
+    // Eine Abwesenheit einer Lehrperson verlängert nur die Abos ihrer
+    // eigenen Schüler, nicht die aller.
+    else query = query.eq("teacher_id", absence.teacher_id);
 
     const { data: pkgs } = await query;
     for (const pkg of (pkgs as ExtendablePackage[] | null) ?? []) {
@@ -4429,10 +4438,13 @@ export async function startpunktSetzen(
   const sauber = adresse.trim();
 
   if (!sauber) {
-    await admin
+    const inhaberLeer = await inhaberTeacherId(admin);
+    let leeren = admin
       .from("admin_verfuegbarkeit")
       .update({ start_adresse: null, start_lat: null, start_lng: null })
       .eq("wochentag", wochentag);
+    if (inhaberLeer) leeren = leeren.eq("teacher_id", inhaberLeer);
+    await leeren;
 
     revalidatePath("/admin/verfuegbarkeit");
     revalidatePath("/admin/routenplanung");
@@ -4451,7 +4463,8 @@ export async function startpunktSetzen(
     };
   }
 
-  const { error } = await admin
+  const inhaberStart = await inhaberTeacherId(admin);
+  let setzen = admin
     .from("admin_verfuegbarkeit")
     .update({
       start_adresse: sauber,
@@ -4459,6 +4472,8 @@ export async function startpunktSetzen(
       start_lng: treffer.lng,
     })
     .eq("wochentag", wochentag);
+  if (inhaberStart) setzen = setzen.eq("teacher_id", inhaberStart);
+  const { error } = await setzen;
 
   if (error) return { error: "Der Startpunkt liess sich nicht speichern." };
 
