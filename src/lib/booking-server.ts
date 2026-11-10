@@ -145,7 +145,16 @@ export async function loadAvailabilityContext(
     availQuery = availQuery.eq("teacher_id", lp.teacherId);
   }
 
-  const [apptRes, absRes, blockRes, ruleRes, availRes, groupSessionRes, ichRes] = await Promise.all([
+  // Von David eingetragene Probelektionen (Person ohne Konto, im Studio).
+  let probeQuery = admin
+    .from("probelektionen")
+    .select("start_at, end_at")
+    .eq("status", "geplant")
+    .gte("start_at", apptFrom)
+    .lte("start_at", apptTo);
+  if (lp.teacherId) probeQuery = probeQuery.eq("teacher_id", lp.teacherId);
+
+  const [apptRes, absRes, blockRes, ruleRes, availRes, groupSessionRes, ichRes, probeRes] = await Promise.all([
     apptQuery,
     absQuery,
     blockQuery,
@@ -165,6 +174,7 @@ export async function loadAvailabilityContext(
     studentId
       ? admin.from("profiles").select("hausbesuch").eq("id", studentId).maybeSingle()
       : Promise.resolve({ data: null }),
+    probeQuery,
   ]);
 
   // Vom Admin gepflegte Verfügbarkeit → Fenster-Map (nur aktive Tage).
@@ -219,6 +229,12 @@ export async function loadAvailabilityContext(
       start_at: s.start_at as string,
       end_at: s.end_at as string,
       bufferMinutes: DEFAULT_BUFFER_MIN,
+    })),
+    // Probelektionen finden im Studio statt: 10 Minuten Pause.
+    ...((probeRes.data ?? []) as Array<{ start_at: string; end_at: string }>).map((p) => ({
+      start_at: p.start_at,
+      end_at: p.end_at,
+      bufferMinutes: STUDIO_PAUSE_MIN,
     })),
   ];
 

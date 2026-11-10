@@ -372,3 +372,113 @@ export async function fullSyncFutureAppointments(
   }
   return { synced, failed };
 }
+
+// ── Probelektionen (von David eingetragen, Person ohne Konto) ────────────────
+
+/**
+ * Legt das Google-Event einer Probelektion an oder aktualisiert es. Abgesagte
+ * Probelektionen werden gelöscht. Nur Davids eigene landen in seinem Kalender.
+ * Schluckt Fehler: Der Eintrag im Admin darf daran nicht scheitern.
+ */
+export async function syncProbelektionToCalendar(
+  admin: SupabaseClient,
+  probelektionId: string
+): Promise<void> {
+  try {
+    const token = await getAccessToken();
+    if (!token) return;
+
+    const { data: p } = await admin
+      .from("probelektionen")
+      .select(
+        "id, vorname, nachname, email, telefon, start_at, end_at, status, notiz, google_event_id, lehrperson:teachers!teacher_id(ist_inhaber)"
+      )
+      .eq("id", probelektionId)
+      .maybeSingle();
+    if (!p) return;
+    const lehrperson = Array.isArray(p.lehrperson) ? p.lehrperson[0] : p.lehrperson;
+    const vonDavid = lehrperson ? lehrperson.ist_inhaber === true : true;
+
+    if (p.status !== "geplant" || !vonDavid) {
+      await deleteProbelektionEvent(admin, probelektionId);
+      return;
+    }
+
+    const name = `${p.vorname ?? ""} ${p.nachname ?? ""}`.trim();
+    const body = {
+      summary: `Probelektion, ${name}`,
+      location: await ladeStudioAdresse(admin),
+      description: [
+        `Probelektion: ${name}`,
+        p.email ? `E-Mail: ${p.email}` : null,
+        p.telefon ? `Telefon: ${p.telefon}` : null,
+        p.notiz ? `Notiz: ${p.notiz}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      start: { dateTime: p.start_at, timeZone: "Europe/Zurich" },
+      end: { dateTime: p.end_at, timeZone: "Europe/Zurich" },
+      colorId: "6", // Mandarine
+      reminders: { useDefault: false, overrides: [{ method: "popup", minutes: 30 }] },
+    };
+    const calId = encodeURIComponent(CALENDAR_ID);
+
+    if (p.google_event_id) {
+      const res = await fetch(`${CAL_BASE}/${calId}/events/${p.google_event_id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) return;
+      if (res.status !== 404 && res.status !== 410) {
+        console.error("Google Probelektion update failed:", res.status);
+        return;
+      }
+    }
+
+    const res = await fetch(`${CAL_BASE}/${calId}/events`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      console.error("Google Probelektion create failed:", res.status);
+      return;
+    }
+    const data = (await res.json()) as { id?: string };
+    if (data.id) {
+      await admin.from("probelektionen").update({ google_event_id: data.id }).eq("id", probelektionId);
+    }
+  } catch (err) {
+    console.error("syncProbelektionToCalendar error:", err);
+  }
+}
+
+/** Löscht das Google-Event einer Probelektion. */
+export async function deleteProbelektionEvent(
+  admin: SupabaseClient,
+  probelektionId: string
+): Promise<void> {
+  try {
+    const token = await getAccessToken();
+    if (!token) return;
+    const { data: p } = await admin
+      .from("probelektionen")
+      .select("google_event_id")
+      .eq("id", probelektionId)
+      .maybeSingle();
+    if (!p?.google_event_id) return;
+    const calId = encodeURIComponent(CALENDAR_ID);
+    const res = await fetch(`${CAL_BASE}/${calId}/events/${p.google_event_id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok || res.status === 410 || res.status === 404) {
+      await admin.from("probelektionen").update({ google_event_id: null }).eq("id", probelektionId);
+    } else {
+      console.error("Google Probelektion delete failed:", res.status);
+    }
+  } catch (err) {
+    console.error("deleteProbelektionEvent error:", err);
+  }
+}

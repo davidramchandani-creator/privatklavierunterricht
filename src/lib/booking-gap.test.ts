@@ -200,3 +200,43 @@ describe("Mindestpuffer 0 (der echte Produktionsfall vom 20.8.2026)", () => {
     expect(zeiten).toContain("17:30");
   });
 });
+
+describe("Belegung genau am Fensterrand", () => {
+  // November 2026: Probelektion 12:30 bis 13:30 im Kalender, Fenster ab
+  // 13:30. Angeboten wurde 13:30, also ohne Pause.
+  const rand: BlockSettings = { lessonMinutes: 45, minBufferMinutes: 0, packing: "maximal" };
+  const fenster = { 1: [{ start: "13:30", end: "17:00" }] };
+
+  it("bietet direkt nach einem Eintrag, der zu Fensterbeginn endet, erst nach der Pause an", () => {
+    const zeiten = times(
+      gapAwareDaySlots(
+        DAY,
+        ctx({
+          bufferMin: 10,
+          availabilityWindows: fenster,
+          timeBlocks: [{ date: "2026-08-10", start_time: "12:30:00", end_time: "13:30:00" }],
+        }),
+        rand,
+        fenster
+      )
+    );
+    expect(zeiten).not.toContain("13:30");
+    expect(zeiten).toContain("13:40");
+  });
+
+  it("lässt vor einem Eintrag, der zu Fensterende beginnt, die Pause frei", () => {
+    const zeiten = times(
+      gapAwareDaySlots(
+        DAY,
+        ctx({
+          bufferMin: 10,
+          availabilityWindows: fenster,
+          timeBlocks: [{ date: "2026-08-10", start_time: "17:00:00", end_time: "18:00:00" }],
+        }),
+        rand,
+        fenster
+      )
+    );
+    expect(zeiten).not.toContain("16:15");
+  });
+});

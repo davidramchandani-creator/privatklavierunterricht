@@ -27,7 +27,9 @@ function statusClasses(status: string): string {
     ? "bg-emerald-100 text-emerald-800"
     : status === "angefragt"
       ? "bg-amber-100 text-amber-800"
-      : "bg-[#1C244B]/10 text-[#1C244B]";
+      : status === "probelektion"
+        ? "bg-sky-100 text-sky-800"
+        : "bg-[#1C244B]/10 text-[#1C244B]";
 }
 
 function statusDot(status: string): string {
@@ -35,12 +37,16 @@ function statusDot(status: string): string {
     ? "bg-emerald-500"
     : status === "angefragt"
       ? "bg-amber-500"
-      : "bg-[#1C244B]";
+      : status === "probelektion"
+        ? "bg-sky-500"
+        : "bg-[#1C244B]";
 }
 
 function statusLabel(status: string): string {
   return status === "angefragt"
     ? "Anfrage"
+    : status === "probelektion"
+      ? "Probelektion"
     : status === "completed"
       ? "Abgehalten"
       : "Gebucht";

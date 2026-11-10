@@ -1393,6 +1393,35 @@ export function renderEmail(
       return { subject, html: baseWrapper(content) };
     }
 
+    case "probelektion_bestaetigt": {
+      // Von David im Admin eingetragen, Mail nur auf Wunsch (November 2026).
+      const vorname = escWl(payload.vorname);
+      const wann = payload.start_at ? fmtDateTime(String(payload.start_at)) : "";
+      const minuten = Number(payload.minuten ?? 45);
+      const ort = escWl(payload.ort);
+      const subject = "Deine Probelektion ist eingetragen";
+      const content = `
+        <p style="margin:0 0 16px;">Hallo ${vorname},</p>
+        <p style="margin:0 0 16px;">ich habe deine Probelektion eingetragen und freue mich auf dich.</p>
+        <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:20px;background:#f8f9fa;border-radius:8px;">
+          <tr>
+            <td style="padding:14px 18px;">
+              <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Wann</p>
+              <p style="margin:0 0 12px;font-size:15px;color:#1C244B;font-weight:600;">${wann} (${minuten} Minuten)</p>
+              ${ort ? `<p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Wo</p>
+              <p style="margin:0;font-size:15px;color:#1C244B;font-weight:600;">${ort}</p>` : ""}
+            </td>
+          </tr>
+        </table>
+        <p style="margin:0 0 24px;">Falls etwas dazwischenkommt, gib mir bitte kurz Bescheid.</p>
+        <p style="margin:0;color:#6b7280;font-size:13px;">
+          Liebe Grüsse<br/>David Ramchandani<br/>
+          <a href="${APP_URL}" style="color:#6b7280;">privatklavierunterricht.ch</a>
+        </p>
+      `;
+      return { subject, html: baseWrapper(content) };
+    }
+
     case "warteliste_angebot": {
       const vorname = escWl(payload.vorname);
       const angebot = escWl(payload.angebot_text);

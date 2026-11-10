@@ -148,11 +148,39 @@ export async function ladeFeedTermine(
     if (inhaber) abfrage = abfrage.eq("teacher_id", inhaber);
   }
 
-  const [{ data }, studioAdresse] = await Promise.all([
+  // Von David eingetragene Probelektionen gehören in seinen Kalender.
+  const probeAbfrage =
+    wer.sicht === "admin"
+      ? (async () => {
+          const inhaber = await inhaberTeacherId(admin);
+          let q = admin
+            .from("probelektionen")
+            .select("id, vorname, nachname, start_at, end_at")
+            .eq("status", "geplant")
+            .gte("start_at", von.toISOString())
+            .lte("start_at", bis.toISOString());
+          if (inhaber) q = q.eq("teacher_id", inhaber);
+          return q;
+        })()
+      : Promise.resolve({ data: [] });
+
+  const [{ data }, studioAdresse, { data: probe }] = await Promise.all([
     abfrage,
     ladeStudioAdresse(admin),
+    probeAbfrage,
   ]);
-  return ((data ?? []) as unknown as Zeile[]).map((z) => ({
+  const probelektionen: FeedTermin[] = (
+    (probe ?? []) as Array<{ id: string; vorname: string; nachname: string; start_at: string; end_at: string }>
+  ).map((p) => ({
+    id: p.id,
+    beginn: p.start_at,
+    ende: p.end_at,
+    status: "booked",
+    name: `Probelektion ${p.vorname} ${p.nachname}`.trim(),
+    adresse: studioAdresse,
+    hausbesuch: false,
+  }));
+  const lektionen: FeedTermin[] = ((data ?? []) as unknown as Zeile[]).map((z) => ({
     id: z.id,
     beginn: z.start_at,
     ende: z.end_at,
@@ -162,4 +190,5 @@ export async function ladeFeedTermine(
     adresse: z.profiles ? unterrichtsort(z.profiles, studioAdresse) : null,
     hausbesuch: z.profiles?.hausbesuch ?? true,
   }));
+  return [...lektionen, ...probelektionen].sort((a, b) => a.beginn.localeCompare(b.beginn));
 }

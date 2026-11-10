@@ -213,9 +213,8 @@ export function remainingCapacity(
 ): number {
   const { lessonMinutes, block } = cfg;
   const bufferMinutes = assumedBuffer ?? cfg.bufferMinutes;
-  const busy = normalize(occupied).filter(
-    (b) => b.end > block.start && b.start < block.end
-  );
+  const alle = normalize(occupied);
+  const busy = alle.filter((b) => b.end > block.start && b.start < block.end);
 
   // Freie Abschnitte zwischen den Belegungen ermitteln.
   const free: Interval[] = [];
@@ -228,20 +227,18 @@ export function remainingCapacity(
 
   let total = 0;
   for (const seg of free) {
-    // Grenzt der Abschnitt an eine Belegung, geht dort Puffer verloren.
-    // An den Blockrändern ist kein Puffer nötig.
-    // An eine Belegung angrenzend gilt der grössere der beiden Puffer.
-    const leftNeighbour = busy.filter((b) => b.end === seg.start).pop();
-    const rightNeighbour = busy.find((b) => b.start === seg.end);
-    const bufferLeft =
-      seg.start > block.start
-        ? gapBetween(leftNeighbour?.bufferMinutes, bufferMinutes, bufferMinutes)
-        : 0;
-    const bufferRight =
-      seg.end < block.end
-        ? gapBetween(rightNeighbour?.bufferMinutes, bufferMinutes, bufferMinutes)
-        : 0;
-    const usable = seg.end - seg.start - bufferLeft - bufferRight;
+    // Grenzt der Abschnitt an eine Belegung, geht dort Puffer verloren, und
+    // zwar der grössere der beiden Puffer. An den Blockrändern ist kein
+    // Puffer nötig, ausser eine Belegung liegt knapp ausserhalb des Blocks
+    // (Eintrag bis 13:30, Block ab 13:30): Dann gilt auch dort ihr Abstand.
+    let von = seg.start;
+    let bis = seg.end;
+    for (const b of alle) {
+      const abstand = gapBetween(b.bufferMinutes, bufferMinutes, bufferMinutes);
+      if (b.end <= seg.start) von = Math.max(von, b.end + abstand);
+      if (b.start >= seg.end) bis = Math.min(bis, b.start - abstand);
+    }
+    const usable = bis - von;
     if (usable < lessonMinutes) continue;
     // n Lektionen belegen n*L + (n-1)*B
     total += Math.floor((usable + bufferMinutes) / (lessonMinutes + bufferMinutes));

@@ -140,10 +140,14 @@ export function gapAwareDaySlots(
       packing: settings.packing,
     };
 
-    // Nur Belegungen berücksichtigen, die diesen Block überhaupt berühren.
-    const busy = busyAll.filter(
-      (b) => b.end > cfg.block.start && b.start < cfg.block.end
-    );
+    // Nur Belegungen berücksichtigen, die diesen Block berühren, und zwar
+    // inklusive ihres Abstands. Vorher fielen Einträge heraus, die genau zu
+    // Fensterbeginn enden: Nach einer Probelektion 12:30 bis 13:30 wurde bei
+    // einem Fenster ab 13:30 sofort 13:30 angeboten, ohne Pause (November 2026).
+    const busy = busyAll.filter((b) => {
+      const abstand = Math.max(b.bufferMinutes ?? myBuffer, myBuffer);
+      return b.end + abstand > cfg.block.start && b.start - abstand < cfg.block.end;
+    });
 
     // Viertelstunden-Raster plus die Zeiten, die bündig an einen Termin
     // anschliessen (17:25 nach einer Studio-Lektion bis 17:15). Nur so

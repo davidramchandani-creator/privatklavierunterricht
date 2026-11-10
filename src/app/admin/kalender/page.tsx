@@ -29,7 +29,7 @@ export default async function AdminKalenderPage({
   const supabase = await createClient();
 
   // Bestätigte Termine + offene Terminanfragen für den sichtbaren Gitter-Bereich.
-  const [{ data: appointments }, { data: requests }] = await Promise.all([
+  const [{ data: appointments }, { data: requests }, { data: probelektionen }] = await Promise.all([
     supabase
       .from("appointments")
       .select("id, start_at, end_at, status, profiles(vorname, nachname)")
@@ -43,6 +43,12 @@ export default async function AdminKalenderPage({
       .eq("status", "open")
       .gte("desired_start", gridStart.toISOString())
       .lte("desired_start", gridEnd.toISOString()),
+    supabase
+      .from("probelektionen")
+      .select("id, start_at, end_at, vorname, nachname")
+      .eq("status", "geplant")
+      .gte("start_at", gridStart.toISOString())
+      .lte("start_at", gridEnd.toISOString()),
   ]);
 
   type Eintrag = {
@@ -67,6 +73,13 @@ export default async function AdminKalenderPage({
       ende: new Date(new Date(r.desired_start).getTime() + 45 * 60000).toISOString(),
       status: "angefragt",
       schueler: (r.profiles as unknown) as { vorname: string; nachname: string } | null,
+    }))),
+    ...((probelektionen ?? []).map((p) => ({
+      id: p.id,
+      beginn: p.start_at,
+      ende: p.end_at,
+      status: "probelektion",
+      schueler: { vorname: p.vorname, nachname: p.nachname },
     }))),
   ];
 
