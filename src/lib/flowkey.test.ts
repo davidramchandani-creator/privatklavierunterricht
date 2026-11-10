@@ -11,11 +11,11 @@ describe("Partnerschaft mit flowkey", () => {
    * vorher frei. Bis dahin ist die Seite nur für die Freigabe erreichbar.
    * Wer den Schalter umlegt, passt diesen Test bewusst an.
    */
-  it("bleibt aus, bis flowkey freigegeben hat", () => {
-    expect(FLOWKEY.aktiv).toBe(false);
+  it("ist eingeschaltet, seit flowkey freigegeben hat (10. November 2026)", () => {
+    expect(FLOWKEY.aktiv).toBe(true);
   });
 
-  it("solange aus: Seite nicht in Suchmaschinen, nicht verlinkt, kein Abschnitt", () => {
+  it("hängt überall am Schalter: Suchmaschinen, Abschnitt, Footer, Sitemap", () => {
     expect(lies("src/app/flowkey/page.tsx")).toContain("robots: FLOWKEY.aktiv ? undefined : { index: false, follow: false }");
     expect(lies("src/components/sections/FlowkeyPartner.tsx")).toContain("if (!FLOWKEY.aktiv) return null");
     expect(lies("src/components/layout/Footer.tsx")).toContain("FLOWKEY.aktiv ?");
@@ -31,6 +31,10 @@ describe("Partnerschaft mit flowkey", () => {
     expect(logo).toContain("Math.round(hoehe / 3)");
     expect(logo).toContain("FLOWKEY.logo.verhaeltnis");
     expect(logo).not.toMatch(/opacity|rotate|filter/);
+    // Kein Element um ein Logo herum darf gedreht sein.
+    for (const d of ["src/app/flowkey/page.tsx", "src/components/sections/FlowkeyPartner.tsx"]) {
+      expect(lies(d), d).not.toMatch(/\brotate-(1|2|3|6|12)\b[^"]*"[^>]*>\s*<FlowkeyLogo/);
+    }
   });
 
   it("sagt offen, dass David eine Provision bekommt, und kennzeichnet es als Werbung", () => {

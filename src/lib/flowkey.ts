@@ -31,8 +31,8 @@
 // ============================================================
 
 export const FLOWKEY = {
-  /** Erst nach Freigabe durch flowkey einschalten (Vertrag 4.2). */
-  aktiv: false,
+  /** Von flowkey freigegeben am 10. November 2026 (Vertrag 4.2). */
+  aktiv: true,
   /** Beantragt am 4. November 2026. */
   code: "DAVID25",
   rabattProzent: 25,
