@@ -36,7 +36,8 @@ export const FLOWKEY = {
   /** Beantragt am 4. November 2026. */
   code: "DAVID25",
   rabattProzent: 25,
-  url: "https://www.flowkey.com",
+  /** Seite, auf der man den Code einlöst (David, 10. November 2026). */
+  url: "https://app.flowkey.com/code",
   /** Offizielle Dateien aus dem Brandfolder von flowkey. */
   logo: {
     orange: "/partner/flowkey-logo-orange.svg",

@@ -67,10 +67,10 @@ export default function FlowkeyPage() {
                 className="press inline-flex items-center gap-2 rounded-xl px-6 py-4 font-700 text-white shadow-lg transition-transform hover:-translate-y-0.5"
                 style={{ background: FLOWKEY.orange, boxShadow: "0 10px 30px -10px rgba(239,125,0,.6)" }}
               >
-                Zu flowkey <ExternalLink className="w-4 h-4" />
+                Code einlösen <ExternalLink className="w-4 h-4" />
               </a>
             </div>
-            <p className="text-xs text-gray-400">Code antippen zum Kopieren, dann beim Kauf bei flowkey einfügen.</p>
+            <p className="text-xs text-gray-400">Code antippen zum Kopieren, dann auf „Code einlösen“ und bei flowkey einfügen.</p>
           </div>
 
           <div className="flex justify-center md:justify-end">
@@ -206,7 +206,7 @@ export default function FlowkeyPage() {
               className="press inline-flex items-center gap-2 rounded-xl px-5 py-3 font-700 text-white transition-transform hover:-translate-y-0.5"
               style={{ background: FLOWKEY.orange }}
             >
-              Zu flowkey <ExternalLink className="w-4 h-4" />
+              Code einlösen <ExternalLink className="w-4 h-4" />
             </a>
           </div>
           <p className="text-sm text-gray-500">
