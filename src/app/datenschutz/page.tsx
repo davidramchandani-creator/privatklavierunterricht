@@ -2,7 +2,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/datenschutz" },
-  title: "Datenschutzerklärung: Privatklavierunterricht David Ramchandani",
+  title: "Datenschutzerklärung",
   description:
     "Wie ich mit deinen Daten umgehe: Erhebung, Verwendung, Speicherung und deine Rechte.",
 };

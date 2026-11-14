@@ -185,22 +185,22 @@ export const MAILVORLAGEN: Partial<Record<BewerbungStatus, { betreff: string; te
   gespraech: {
     betreff: "Deine Bewerbung: Lass uns kurz sprechen",
     text:
-      "Hallo {vorname}\n\nDanke für deine Bewerbung, sie hat mir gefallen! Ich würde dich gerne kennenlernen, in einem lockeren Gespräch von etwa 20 Minuten, per Telefon oder Video.\n\nWann passt es dir in den nächsten Tagen? Schick mir zwei, drei Möglichkeiten, dann melde ich mich.\n\nLiebe Grüsse\nDavid Ramchandani",
+      "Hallo {vorname}\n\nDanke für deine Bewerbung, sie hat mir gefallen! Ich würde dich gerne kennenlernen, in einem lockeren Gespräch von etwa 20 Minuten, per Telefon oder Video.\n\nWann passt es dir in den nächsten Tagen? Schick mir zwei, drei Möglichkeiten, dann melde ich mich.\n\nLiebe Grüsse\nDavid Ramchandani\nClavis Klavierschule",
   },
   probelektion: {
     betreff: "Nächster Schritt: eine Probelektion",
     text:
-      "Hallo {vorname}\n\nDanke für das gute Gespräch! Als nächsten Schritt möchte ich gerne sehen, wie du unterrichtest. Wir machen dazu eine kurze Probelektion zusammen, du unterrichtest mich oder eine Testperson etwa 20 Minuten lang, ganz entspannt.\n\nWann hättest du Zeit? Ich melde mich dann mit Ort und Zeit.\n\nLiebe Grüsse\nDavid Ramchandani",
+      "Hallo {vorname}\n\nDanke für das gute Gespräch! Als nächsten Schritt möchte ich gerne sehen, wie du unterrichtest. Wir machen dazu eine kurze Probelektion zusammen, du unterrichtest mich oder eine Testperson etwa 20 Minuten lang, ganz entspannt.\n\nWann hättest du Zeit? Ich melde mich dann mit Ort und Zeit.\n\nLiebe Grüsse\nDavid Ramchandani\nClavis Klavierschule",
   },
   zusage: {
     betreff: "Willkommen im Team!",
     text:
-      "Hallo {vorname}\n\nIch freue mich sehr: Ich möchte gerne mit dir zusammenarbeiten! In den nächsten Tagen schicke ich dir den Arbeitsvertrag und eine Einladung für dein Portal. Dort findest du auch unser Leitbild.\n\nBei Fragen melde dich jederzeit.\n\nLiebe Grüsse\nDavid Ramchandani",
+      "Hallo {vorname}\n\nIch freue mich sehr: Ich möchte gerne mit dir zusammenarbeiten! In den nächsten Tagen schicke ich dir den Arbeitsvertrag und eine Einladung für dein Portal. Dort findest du auch unser Leitbild.\n\nBei Fragen melde dich jederzeit.\n\nLiebe Grüsse\nDavid Ramchandani\nClavis Klavierschule",
   },
   absage: {
     betreff: "Deine Bewerbung",
     text:
-      "Hallo {vorname}\n\nVielen Dank für deine Bewerbung und dein Interesse. Ich habe mich nach reiflicher Überlegung entschieden, im Moment nicht mit dir zusammenzuarbeiten. Das hat nichts mit deinem Können am Klavier zu tun, sondern damit, was ich gerade brauche.\n\nIch wünsche dir alles Gute und viel Freude mit der Musik.\n\nLiebe Grüsse\nDavid Ramchandani",
+      "Hallo {vorname}\n\nVielen Dank für deine Bewerbung und dein Interesse. Ich habe mich nach reiflicher Überlegung entschieden, im Moment nicht mit dir zusammenzuarbeiten. Das hat nichts mit deinem Können am Klavier zu tun, sondern damit, was ich gerade brauche.\n\nIch wünsche dir alles Gute und viel Freude mit der Musik.\n\nLiebe Grüsse\nDavid Ramchandani\nClavis Klavierschule",
   },
 };
 

@@ -6,7 +6,7 @@ import nodemailer from "nodemailer";
  */
 function fromAddress(): string {
   const name =
-    process.env.SMTP_FROM_NAME ?? "Klavierunterricht David Ramchandani";
+    process.env.SMTP_FROM_NAME ?? "Clavis Klavierschule";
   const email =
     process.env.EMAIL_FROM ??
     process.env.SMTP_FROM ??

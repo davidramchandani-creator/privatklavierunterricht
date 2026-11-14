@@ -1,4 +1,7 @@
 import { ImageResponse } from "next/og";
+import { BILDMARKE_PFAD, LOGO } from "@/lib/marke";
+
+const hoeheLogo = LOGO.untenMit - LOGO.oben;
 
 /**
  * Das Vorschaubild für geteilte Links.
@@ -18,7 +21,7 @@ import { ImageResponse } from "next/og";
  * robuster und in den kleinen Vorschauen ohnehin besser lesbar.
  */
 
-export const alt = "Klavierunterricht mit David in Neftenbach";
+export const alt = "Clavis Klavierschule: Klavierunterricht mit David in Neftenbach";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -38,19 +41,22 @@ export default async function Image() {
         }}
       >
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div
-            style={{
-              fontSize: 26,
-              color: "#C9A84C",
-              letterSpacing: 1,
-              marginBottom: 28,
-            }}
+          {/* Das Logo als Umrisse: Es braucht keine geladene Schrift. Weiss auf Navy, kein Gold. */}
+          <svg
+            width={Math.round((LOGO.breite / hoeheLogo) * 150)}
+            height={150}
+            viewBox={`0 ${LOGO.oben} ${LOGO.breite} ${hoeheLogo}`}
+            style={{ marginBottom: 44 }}
           >
-            Privatklavierunterricht
-          </div>
+            <path d={LOGO.wortmarke} fill="#ffffff" />
+            <g transform={LOGO.bildmarkeTransform}>
+              <path d={BILDMARKE_PFAD} fill="#ffffff" fillRule="evenodd" />
+            </g>
+            <path d={LOGO.zusatz} fill="#ffffff" />
+          </svg>
           <div
             style={{
-              fontSize: 78,
+              fontSize: 70,
               fontWeight: 800,
               color: "#ffffff",
               lineHeight: 1.1,
@@ -61,7 +67,7 @@ export default async function Image() {
           </div>
           <div
             style={{
-              fontSize: 78,
+              fontSize: 70,
               fontWeight: 800,
               color: "#878fc7",
               lineHeight: 1.1,

@@ -16,6 +16,7 @@
 // ============================================================
 
 import { BASIS_URL } from "./seo";
+import { MARKE } from "./marke";
 import { NEUPREISE, betrag } from "./neupreise";
 
 export const KONTAKT_MAIL = "david.privatklavierunterricht@gmail.com";
@@ -25,7 +26,8 @@ export function unternehmenJsonLd() {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
     "@id": `${BASIS_URL}/#unternehmen`,
-    name: "Privatklavierunterricht David Ramchandani",
+    name: MARKE.voll,
+    alternateName: ["clavis", "Privatklavierunterricht David Ramchandani"],
     description:
       "Individueller Klavierunterricht im Studio in Neftenbach. Ohne Notenzwang, ohne Schema F, mit Gefühl und Verstand.",
     url: BASIS_URL,

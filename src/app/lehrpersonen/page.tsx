@@ -8,7 +8,7 @@ export const revalidate = 3600;
 
 export const metadata: Metadata = {
   alternates: { canonical: "/lehrpersonen" },
-  title: "Wer unterrichtet dich? Lehrpersonen bei Privatklavierunterricht",
+  title: "Wer unterrichtet dich? Unsere Lehrpersonen",
   description:
     "Die Lehrpersonen von privatklavierunterricht.ch: im Studio in Neftenbach oder in der Region Winterthur und Zürich. Anmeldung und Kontakt laufen über David.",
 };

@@ -83,7 +83,9 @@ export default function Navbar() {
           onClick={handleAdminSecret}
           aria-label="Startseite"
         >
-          <Logo className="h-9 w-auto" withText textClassName="hidden sm:inline text-base" />
+          {/* Am Handy ohne Zusatz: Er wäre dort zu klein zum Lesen. */}
+          <Logo className="h-7 w-auto sm:hidden" />
+          <Logo withTagline className="hidden sm:block h-10 w-auto" />
         </Link>
 
         {/* Desktop Links */}

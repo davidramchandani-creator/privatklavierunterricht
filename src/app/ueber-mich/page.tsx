@@ -12,7 +12,7 @@ export const revalidate = 86400;
 
 export const metadata: Metadata = {
   alternates: { canonical: "/ueber-mich" },
-  title: "Über mich: David Ramchandani | Privatklavierunterricht",
+  title: "Über mich: David Ramchandani",
   description:
     "Erfahre mehr über David Ramchandani, Klavierunterricht in Neftenbach. Ohne Notenzwang, individuell und praxisnah.",
 };

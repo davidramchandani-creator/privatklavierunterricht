@@ -17,8 +17,8 @@ export const metadata: Metadata = {
 function Rahmen({ children }: { children: React.ReactNode }) {
   return (
     <main className="min-h-screen bg-[#F3F5F8] flex flex-col items-center px-4 py-12">
-      <Link href="/" className="mb-8">
-        <Logo />
+      <Link href="/" className="mb-8 text-navy-900">
+        <Logo withTagline className="h-12 w-auto" />
       </Link>
       <div className="w-full max-w-lg bg-white rounded-2xl border border-[#EAECEF] shadow-sm p-6 sm:p-8">
         {children}

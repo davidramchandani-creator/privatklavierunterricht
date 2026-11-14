@@ -5,6 +5,7 @@ import SiteChrome from "@/components/layout/SiteChrome";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import { unternehmenJsonLd } from "@/lib/schema-org";
+import { MARKE } from "@/lib/marke";
 
 const jakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -26,17 +27,18 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "Klavierunterricht mit David in Neftenbach",
-    template: "%s | David, Klavierunterricht",
+    default: `Klavierunterricht mit David in Neftenbach | ${MARKE.voll}`,
+    template: `%s | ${MARKE.voll}`,
   },
   description:
     "Individueller Klavierunterricht mit David in Neftenbach. Ohne Notenzwang, ohne Schema F. Mit Gefühl und Verstand. Probelektion buchen.",
   keywords: ["Klavierunterricht", "Neftenbach", "Winterthur", "Klavier", "Privatunterricht"],
+  applicationName: MARKE.voll,
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Klavierunterricht",
+    title: MARKE.name,
   },
   icons: {
     icon: [
@@ -51,6 +53,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Spiel, was du fühlst. Ich zeig dir wie.",
     description: "Individueller Klavierunterricht mit David, ganz ohne Schema F.",
+    siteName: MARKE.voll,
     locale: "de_CH",
     type: "website",
     url: "https://privatklavierunterricht.ch",

@@ -68,7 +68,7 @@ export async function erzeugeAboBestaetigungPdf(
   doc
     .fontSize(10)
     .fillColor(GRAU)
-    .text("Klavierunterricht David Ramchandani", 50, 80);
+    .text("Clavis Klavierschule, David Ramchandani", 50, 80);
 
   doc
     .fontSize(9)

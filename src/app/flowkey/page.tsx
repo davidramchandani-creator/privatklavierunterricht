@@ -17,7 +17,7 @@ import { FLOWKEY, FLOWKEY_FUNKTIONEN } from "@/lib/flowkey";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/flowkey" },
-  title: "flowkey mit 25 % Rabatt: Partnerschaft | Privatklavierunterricht David Ramchandani",
+  title: "flowkey mit 25 % Rabatt: Partnerschaft",
   description: `Ich bin Partner von flowkey. Mit dem Code ${FLOWKEY.code} bekommst du ${FLOWKEY.rabattProzent} % Rabatt auf jedes flowkey-Abo. Hier steht offen, was ich davon habe.`,
   robots: FLOWKEY.aktiv ? undefined : { index: false, follow: false },
 };

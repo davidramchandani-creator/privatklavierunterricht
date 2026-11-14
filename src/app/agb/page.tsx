@@ -3,7 +3,7 @@ import { GRUPPE_ABWESENHEIT } from "@/lib/gruppenunterricht";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/agb" },
-  title: "Allgemeine Geschäftsbedingungen (AGB): Privatklavierunterricht",
+  title: "Allgemeine Geschäftsbedingungen (AGB)",
   description:
     "Allgemeine Geschäftsbedingungen für den Klavierunterricht von David Ramchandani.",
 };
