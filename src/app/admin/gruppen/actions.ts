@@ -38,6 +38,8 @@ export type GruppeFormular = {
   time: string;
   parity: 0 | 1 | null;
   periodeStart: string;
+  /** Preis pro Person und Lektion in Franken, vorbelegt mit dem Standard. */
+  preis: number;
   mailsSenden: boolean;
   notiz: string;
 };
@@ -60,6 +62,12 @@ export async function gruppeAnlegen(
   }
   if (!/^\d{2}:\d{2}$/.test(f.time)) {
     return { ok: false, fehler: "Bitte eine Uhrzeit wählen." };
+  }
+
+  // Auf 5 Rappen runden wie alle Beträge.
+  const preis = Math.round(Number(f.preis) * 20) / 20;
+  if (!Number.isFinite(preis) || preis <= 0 || preis > 500) {
+    return { ok: false, fehler: "Bitte einen Preis zwischen 0 und 500 Franken angeben." };
   }
 
   const heute = todayInZurich();
@@ -87,6 +95,7 @@ export async function gruppeAnlegen(
     time: f.time,
     parity: f.rhythmus === "zweiwoechentlich" ? f.parity : null,
     periodeStart: f.periodeStart,
+    preisProLektion: preis,
     // Die Verlängerung einer Gruppe kommt in Schritt 3. Bis dahin endet das
     // Abo mit der Periode, und die Mitglieder werden vorher informiert.
     autoRenew: false,

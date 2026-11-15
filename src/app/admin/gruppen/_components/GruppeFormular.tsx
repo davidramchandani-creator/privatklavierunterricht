@@ -40,7 +40,7 @@ export default function GruppeFormular({
 }) {
   const [offen, setOffen] = useState(false);
   const [mitglieder, setMitglieder] = useState<string[]>(["", ""]);
-  const [f, setF] = useState<Omit<Formular, "mitglieder">>({
+  const [f, setF] = useState<Omit<Formular, "mitglieder" | "preis">>({
     name: "",
     variante: "halbjahr",
     rhythmus: "woechentlich",
@@ -51,6 +51,8 @@ export default function GruppeFormular({
     mailsSenden: true,
     notiz: "",
   });
+  // Eigener Preis, solange David ihn nicht anfasst, folgt er dem Standard.
+  const [eigenerPreis, setEigenerPreis] = useState<string | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [erfolg, setErfolg] = useState<string | null>(null);
   const [laeuft, starte] = useTransition();
@@ -62,7 +64,8 @@ export default function GruppeFormular({
 
   const gewaehlt = mitglieder.filter(Boolean);
   const groesse = (gewaehlt.length === 3 ? 3 : 2) as Gruppengroesse;
-  const preis = gruppenLektionspreis(groesse, f.variante);
+  const standardPreis = gruppenLektionspreis(groesse, f.variante);
+  const preis = eigenerPreis === null ? standardPreis : Number(eigenerPreis);
   const namensVorschlag = useMemo(
     () =>
       gruppenNameAus(
@@ -73,7 +76,7 @@ export default function GruppeFormular({
 
   function speichern() {
     starte(async () => {
-      const r = await gruppeAnlegen({ ...f, mitglieder: gewaehlt });
+      const r = await gruppeAnlegen({ ...f, preis, mitglieder: gewaehlt });
       if (!r.ok) {
         setFehler(r.fehler);
         return;
@@ -81,6 +84,7 @@ export default function GruppeFormular({
       setErfolg(`Gruppe angelegt, ${r.lektionen} Lektionen pro Person gebucht.`);
       setOffen(false);
       setMitglieder(["", ""]);
+      setEigenerPreis(null);
     });
   }
 
@@ -255,10 +259,39 @@ export default function GruppeFormular({
         </label>
       </div>
 
-      <div className="rounded-xl bg-[#F3F5F8] px-4 py-3 text-sm text-[#1C244B]">
-        {GRUPPENUNTERRICHT[groesse].label}, {GRUPPENUNTERRICHT[groesse].minuten} Minuten:{" "}
-        <strong>CHF {preis}</strong> pro Person und Lektion. Lektionszahl und Monatsbetrag
-        werden wie beim Einzelabo aus Periode und Ferien gerechnet.
+      <div className="rounded-xl bg-[#F3F5F8] px-4 py-3 space-y-2">
+        <label className="flex items-center gap-3 flex-wrap text-sm text-[#1C244B]">
+          <span className="font-600">Preis pro Person und Lektion</span>
+          <span className="inline-flex items-center gap-1">
+            CHF
+            <input
+              type="number"
+              min={1}
+              max={500}
+              step={0.05}
+              className="w-24 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C244B]/20"
+              value={eigenerPreis ?? String(standardPreis)}
+              onChange={(e) => {
+                setEigenerPreis(e.target.value);
+                setFehler(null);
+              }}
+            />
+          </span>
+          {eigenerPreis !== null && Number(eigenerPreis) !== standardPreis && (
+            <button
+              type="button"
+              onClick={() => setEigenerPreis(null)}
+              className="text-xs font-600 text-[#1C244B] hover:underline"
+            >
+              Standard CHF {standardPreis}
+            </button>
+          )}
+        </label>
+        <p className="text-xs text-gray-500">
+          {GRUPPENUNTERRICHT[groesse].label}, {GRUPPENUNTERRICHT[groesse].minuten} Minuten. Der
+          Preis gilt für alle Mitglieder. Lektionszahl und Monatsbetrag werden wie beim
+          Einzelabo aus Periode und Ferien gerechnet.
+        </p>
       </div>
 
       <label className="flex items-center gap-2 text-sm text-gray-700">

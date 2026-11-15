@@ -41,6 +41,11 @@ export type GruppenEingabe = {
   time: string;
   parity: 0 | 1 | null;
   periodeStart: string;
+  /**
+   * Lektionspreis pro Person, wenn David vom Standard abweicht. Ohne Angabe
+   * gilt der Gruppenpreis aus lib/gruppenunterricht.
+   */
+  preisProLektion?: number | null;
   autoRenew: boolean;
   mailsSenden: boolean;
   notiz?: string | null;
@@ -181,7 +186,10 @@ export async function legeGruppeAn(
 
   // ── Rechnen ───────────────────────────────────────────────
   const minuten = gruppenMinuten(groesse);
-  const preis = gruppenLektionspreis(groesse, e.variante);
+  const preis = e.preisProLektion ?? gruppenLektionspreis(groesse, e.variante);
+  if (!Number.isFinite(preis) || preis <= 0) {
+    return { error: "Bitte einen Preis über 0 Franken angeben." };
+  }
 
   const vorschau = await baueVorschau(admin, {
     studentId: ids[0],

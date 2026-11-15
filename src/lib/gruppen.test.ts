@@ -80,6 +80,9 @@ describe("Feste Gruppen: eingebaut", () => {
     expect(s).toContain("plan.belegt.length > 0");
     expect(s).toContain("gruppe_id: gruppe.id");
     expect(s).toContain("await rueckbau()");
+    // Preis anpassbar, Standard aus lib/gruppenunterricht.
+    expect(s).toContain("e.preisProLektion ?? gruppenLektionspreis(groesse, e.variante)");
+    expect(lies("src/app/admin/gruppen/actions.ts")).toContain("preisProLektion: preis");
     // Abwesenheiten einzelner Schüler sperren die Gruppe nicht.
     expect(s).toContain('a.scope === "admin"');
   });

@@ -965,7 +965,7 @@ Stand 15. November 2026. Admin → Gruppen → „Neue Gruppe".
 
 Du wählst zwei oder drei Schüler, Semester- oder Jahresabo, Rhythmus,
 Wochentag, Uhrzeit und Start. Jedes Mitglied bekommt ein **eigenes Abo** zum
-Gruppenpreis (zu zweit 65/60, zu dritt 55/50, aus `lib/gruppenunterricht`)
+Gruppenpreis (Standard zu zweit 65/60, zu dritt 55/50, aus `lib/gruppenunterricht`, im Formular für alle Mitglieder anpassbar)
 mit eigenen Monatsraten und eigenen Terminen. Alle Termine dauern 60 Minuten
 und liegen gleichzeitig.
 
