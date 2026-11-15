@@ -85,6 +85,8 @@ describe("Feste Gruppen: eingebaut", () => {
     expect(lies("src/app/admin/gruppen/actions.ts")).toContain("preisProLektion: preis");
     // Abwesenheiten einzelner Schüler sperren die Gruppe nicht.
     expect(s).toContain('a.scope === "admin"');
+    // Arbeitszeiten sperren nicht, David wählt die Zeit selbst.
+    expect(s).toContain("ctx.availabilityWindows = GANZER_TAG");
   });
 
   it("Absage, Vorrücken, Anhängen und Verschieben kennen Gruppen", () => {

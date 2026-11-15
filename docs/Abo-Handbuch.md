@@ -973,7 +973,9 @@ und liegen gleichzeitig.
 gesperrt, wird nichts angelegt und keine Mail verschickt. Ausweichen wie beim
 Einzelabo gibt es nicht, weil ein Ersatzplatz für alle passen müsste.
 Abwesenheiten einzelner Schüler sperren nichts, die Lektion findet für die
-anderen statt.
+anderen statt. Deine Arbeitszeiten sperren ebenfalls nichts: Die Zeit wählst du
+selbst, es zählen nur echte Kollisionen (Termine, Sperren, Abwesenheiten,
+Probelektionen).
 
 **Wer schon ein Abo hat**, kann nicht in eine Gruppe. Erst beenden.
 

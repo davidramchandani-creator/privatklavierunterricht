@@ -15,6 +15,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ABO_LABELS, type AboVariante } from "./abo";
 import { baueVorschau, legeMonatsratenAn } from "./abo-server";
+import type { AvailabilityContext } from "./booking";
 import { loadAvailabilityContext } from "./booking-server";
 import { sendEmailNow } from "./emails-outbox";
 import {
@@ -52,6 +53,11 @@ export type GruppenEingabe = {
   /** Erster möglicher Termin: der Tag vor dem Periodenstart (wie beim Abo). */
   now: Date;
 };
+
+/** Jeder Tag, rund um die Uhr: Für Gruppen zählen keine Arbeitszeiten. */
+const GANZER_TAG = Object.fromEntries(
+  [0, 1, 2, 3, 4, 5, 6].map((t) => [t, [{ start: "00:00", end: "23:59" }]])
+) as NonNullable<AvailabilityContext["availabilityWindows"]>;
 
 type Mitglied = { id: string; vorname: string; nachname: string; payment_method: string | null };
 
@@ -112,6 +118,12 @@ export async function planeGruppenSerie(
   ctx.bufferMin = 0;
   ctx.appointments = ctx.appointments.map((t) => ({ ...t, bufferMinutes: 0 }));
   ctx.absences = ctx.absences.filter((a) => a.scope === "admin");
+  // Die Zeit wählt David selbst. Seine Arbeitszeiten (admin_verfuegbarkeit)
+  // sind eine Vorgabe für Buchungen von Schülern, keine Sperre für ihn.
+  // Am 15. November 2026 wurde Donnerstag 12:30 als „belegt" abgewiesen,
+  // nur weil die Arbeitszeit am Donnerstag erst um 13:30 beginnt. Es zählen
+  // nur echte Kollisionen: Termine, Sperren, Abwesenheiten, Probelektionen.
+  ctx.availabilityWindows = GANZER_TAG;
 
   const pruefung = pruefeFixplatzSerie(wunsch, ersterStart, ctx, minuten, ferien);
   return {
