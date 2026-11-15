@@ -51,9 +51,9 @@ function baseWrapper(contentHtml: string): string {
           <!-- Header -->
           <tr>
             <td style="background-color:#1C244B;padding:28px 32px;text-align:center;">
-              <span style="color:#ffffff;font-size:20px;font-weight:bold;letter-spacing:0.5px;">
-                Klavierunterricht David Ramchandani
-              </span>
+              <!-- Wortmarke als Text: Bilder und SVG werden in vielen Mailprogrammen blockiert -->
+              <span style="display:block;color:#ffffff;font-size:28px;font-weight:800;letter-spacing:-0.8px;line-height:1;">clavis</span>
+              <span style="display:block;color:#ffffff;font-size:10px;font-weight:700;letter-spacing:2.6px;line-height:1;margin-top:7px;">KLAVIERSCHULE</span>
             </td>
           </tr>
           <!-- Content -->
@@ -189,7 +189,7 @@ export function renderEmail(
               so bald wie möglich bei dir.</p>
            ${payload.betreff ? `<p><strong>Betreff:</strong> ${payload.betreff}</p>` : ""}
            <p style="background:#f9fafb;border-left:3px solid #1C244B;padding:12px 16px;color:#4b5563;white-space:pre-wrap;">${String(payload.nachricht ?? "")}</p>
-           <p>Liebe Grüsse<br/>David Ramchandani</p>`
+           <p>Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule</p>`
         ),
       };
     }
@@ -698,7 +698,7 @@ export function renderEmail(
           Bei Fragen melde dich jederzeit bei David.
         </p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Liebe Grüsse<br/>David Ramchandani
+          Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule
         </p>
       `;
       return { subject, html: baseWrapper(content) };
@@ -772,7 +772,7 @@ export function renderEmail(
           </a>
         </p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Liebe Grüsse<br/>David Ramchandani
+          Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule
         </p>
       `;
       return { subject, html: baseWrapper(content) };
@@ -799,7 +799,7 @@ export function renderEmail(
           nach der Lektion.
         </p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Liebe Grüsse<br/>David Ramchandani
+          Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule
         </p>
       `;
       return { subject, html: baseWrapper(content) };
@@ -824,7 +824,7 @@ export function renderEmail(
           Den Betrag (abhängig von der Teilnehmerzahl) erhältst du erst nach der Lektion.
         </p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Liebe Grüsse<br/>David Ramchandani
+          Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule
         </p>
       `;
       return { subject, html: baseWrapper(content) };
@@ -840,7 +840,7 @@ export function renderEmail(
           Es entstehen dir dafür keine Kosten.
         </p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Liebe Grüsse<br/>David Ramchandani
+          Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule
         </p>
       `;
       return { subject, html: baseWrapper(content) };
@@ -939,7 +939,7 @@ export function renderEmail(
           </a>
         </p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Liebe Grüsse<br/>David Ramchandani
+          Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule
         </p>
       `;
       return { subject, html: baseWrapper(content) };
@@ -998,7 +998,7 @@ export function renderEmail(
           <a href="${APP_URL}/schueler/portal#termine" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Termine buchen</a>
         </p>` : ""}
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Liebe Grüsse<br/>David Ramchandani
+          Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule
         </p>
       `;
       return { subject, html: baseWrapper(content) };
@@ -1057,7 +1057,7 @@ export function renderEmail(
           </a>
         </p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Liebe Grüsse<br/>David Ramchandani
+          Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule
         </p>
       `;
       return { subject, html: baseWrapper(content) };
@@ -1084,7 +1084,7 @@ export function renderEmail(
           einen neuen Termin anfragen.
         </p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Liebe Grüsse<br/>David Ramchandani
+          Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule
         </p>
       `;
       return { subject, html: baseWrapper(content) };
@@ -1120,7 +1120,7 @@ export function renderEmail(
           einen Ersatztermin.
         </p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Liebe Grüsse<br/>David Ramchandani
+          Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule
         </p>
       `;
       return { subject, html: baseWrapper(content) };
@@ -1186,7 +1186,7 @@ export function renderEmail(
           </a>
         </p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Liebe Grüsse<br/>David Ramchandani
+          Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule
         </p>
       `;
       return { subject, html: baseWrapper(content) };
@@ -1227,7 +1227,7 @@ export function renderEmail(
           ist bei mir eingegangen. Damit ist die Stornierung vollständig abgeschlossen.
         </p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Liebe Grüsse<br/>David Ramchandani
+          Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule
         </p>
       `;
       return { subject, html: baseWrapper(content) };
@@ -1253,7 +1253,7 @@ export function renderEmail(
           Der Link ist <strong>60 Minuten</strong> gültig. Falls du keine Zurücksetzung
           angefragt hast, kannst du diese E-Mail ignorieren. Dein Passwort bleibt unverändert.
         </p>
-        <p style="margin:0;">Liebe Grüsse<br/>David Ramchandani</p>
+        <p style="margin:0;">Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule</p>
       `;
       return { subject, html: baseWrapper(content) };
     }
@@ -1282,7 +1282,7 @@ export function renderEmail(
           Ich freue mich darauf, dich kennenzulernen!
         </p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Liebe Grüsse<br/>David Ramchandani<br/>
+          Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule<br/>
           <a href="${APP_URL}" style="color:#6b7280;">privatklavierunterricht.ch</a>
         </p>
       `;
@@ -1360,7 +1360,7 @@ export function renderEmail(
           Möchtest du nicht mehr warten oder haben sich deine Zeiten geändert? Antworte einfach auf dieses Mail.
         </p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Liebe Grüsse<br/>David Ramchandani<br/>
+          Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule<br/>
           <a href="${APP_URL}" style="color:#6b7280;">privatklavierunterricht.ch</a>
         </p>
       `;
@@ -1415,7 +1415,7 @@ export function renderEmail(
         </table>
         <p style="margin:0 0 24px;">Falls etwas dazwischenkommt, gib mir bitte kurz Bescheid.</p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Liebe Grüsse<br/>David Ramchandani<br/>
+          Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule<br/>
           <a href="${APP_URL}" style="color:#6b7280;">privatklavierunterricht.ch</a>
         </p>
       `;
@@ -1447,7 +1447,7 @@ export function renderEmail(
         </p>
         <p style="margin:0 0 24px;">Passt es dir nicht? Kein Problem, sag kurz ab, dann bleibst du auf Wunsch auf der Warteliste.</p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          Liebe Grüsse<br/>David Ramchandani<br/>
+          Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule<br/>
           <a href="${APP_URL}" style="color:#6b7280;">privatklavierunterricht.ch</a>
         </p>
       `;
@@ -1468,7 +1468,7 @@ export function renderEmail(
         </p>
         <p style="margin:0 0 24px;">Bis bald und liebe Grüsse</p>
         <p style="margin:0;color:#6b7280;font-size:13px;">
-          David Ramchandani<br/>
+          David Ramchandani<br/>Clavis Klavierschule<br/>
           <a href="${APP_URL}" style="color:#6b7280;">privatklavierunterricht.ch</a>
         </p>
       `;
@@ -2438,7 +2438,7 @@ export function renderEmail(
            <p style="text-align:center;margin:28px 0;">
              <a href="${APP_URL}/schueler/portal" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Deine Termine im Portal</a>
            </p>
-           <p>Liebe Grüsse<br/>David Ramchandani</p>`
+           <p>Liebe Grüsse<br/>David Ramchandani<br/>Clavis Klavierschule</p>`
         ),
       };
     }
@@ -3104,7 +3104,7 @@ export function renderEmail(
              Auf den Unterricht hat das keinen Einfluss.
            </p>
            <p style="margin:0;color:#6b7280;font-size:13px;">
-             Liebe Gruesse<br/>David Ramchandani<br/>
+             Liebe Gruesse<br/>David Ramchandani<br/>Clavis Klavierschule<br/>
              <a href="${APP_URL}" style="color:#6b7280;">privatklavierunterricht.ch</a>
            </p>`
         ),

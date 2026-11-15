@@ -28,7 +28,7 @@ export default function PasswortVergessenPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center text-navy-900 hover:opacity-80 transition-opacity">
-            <Logo className="h-9 w-auto" withText textClassName="text-lg" />
+            <Logo withTagline className="h-12 w-auto" />
           </Link>
           <h1 className="mt-6 text-2xl font-800 text-navy-900 tracking-tight">Passwort zurücksetzen</h1>
           <p className="text-gray-500 text-sm mt-1">Wir schicken dir einen Link per E-Mail</p>

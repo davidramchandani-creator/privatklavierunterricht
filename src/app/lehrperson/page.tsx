@@ -48,7 +48,7 @@ export default async function LehrpersonPortal() {
     <div className="min-h-screen bg-surface">
       <header className="bg-white border-b border-[#EAECEF]">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Logo className="h-6 w-auto" />
+          <span className="text-navy-900"><Logo className="h-6 w-auto" /></span>
           <form action={logout}>
             <button type="submit" className="text-sm text-gray-500 hover:text-navy-900">
               Abmelden

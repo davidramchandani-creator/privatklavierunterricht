@@ -20,7 +20,7 @@ export const revalidate = 86400;
 
 export const metadata: Metadata = {
   alternates: { canonical: "/preise" },
-  title: "Preise & Transparenz: Privatklavierunterricht David Ramchandani",
+  title: "Preise & Transparenz",
   description:
     `Wie sich meine Unterrichtspreise zusammensetzen und warum sie fair und nachhaltig sind. Einzellektion CHF ${betrag(NEUPREISE.einzel)}, Semesterabo CHF ${betrag(NEUPREISE.semester)}, Jahresabo CHF ${betrag(NEUPREISE.jahr)} pro Lektion.`,
 };

@@ -3,8 +3,8 @@ import { Mail, MapPin } from "lucide-react";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/impressum" },
-  title: "Impressum: Privatklavierunterricht David Ramchandani",
-  description: "Impressum und Kontaktangaben von David Ramchandani, Klavierunterricht in Neftenbach.",
+  title: "Impressum",
+  description: "Impressum und Kontaktangaben der Clavis Klavierschule, David Ramchandani, Klavierunterricht in Neftenbach.",
 };
 
 export default function ImpressumPage() {
@@ -23,7 +23,7 @@ export default function ImpressumPage() {
             <h2 className="text-xl font-800 text-navy-900">Verantwortlich für den Inhalt</h2>
             <div className="bg-surface rounded-2xl p-6 border border-[#EAECEF] space-y-3">
               <p className="font-700 text-navy-900">David Ramchandani</p>
-              <p className="text-gray-600 text-sm">Klavierunterricht</p>
+              <p className="text-gray-600 text-sm">Clavis Klavierschule</p>
               <div className="flex items-start gap-3 text-sm text-gray-600 pt-2">
                 <MapPin className="w-4 h-4 mt-0.5 text-navy-600 flex-shrink-0" />
                 <span>

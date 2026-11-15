@@ -28,8 +28,8 @@ export default function Footer() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
           <div className="col-span-full lg:col-span-1">
-            <div className="flex items-center mb-4">
-              <Logo invert className="h-7 w-auto" />
+            <div className="flex items-center mb-4 text-white">
+              <Logo withTagline className="h-11 w-auto" />
             </div>
             <p className="text-white/50 text-sm leading-relaxed">
               Individueller Klavierunterricht in meinem Studio in Neftenbach.

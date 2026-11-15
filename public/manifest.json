@@ -1,7 +1,7 @@
 {
-  "name": "Privatklavierunterricht David Ramchandani",
-  "short_name": "Klavierunterricht",
-  "description": "Schülerportal & Admin – Privatklavierunterricht David Ramchandani",
+  "name": "Clavis Klavierschule",
+  "short_name": "clavis",
+  "description": "Schülerportal und Admin der Clavis Klavierschule",
   "start_url": "/schueler/portal",
   "scope": "/",
   "display": "standalone",
@@ -17,19 +17,13 @@
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/icons/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -39,12 +33,22 @@
     {
       "name": "Schülerportal",
       "url": "/schueler/portal",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Admin",
       "url": "/admin",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

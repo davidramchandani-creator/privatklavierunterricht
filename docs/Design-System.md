@@ -10,6 +10,28 @@ Zum Mitnehmen in ein anderes Projekt reicht der Block ganz unten
 
 ---
 
+## Marke
+
+Die Schule heisst **clavis** (immer klein), ausgeschrieben «Clavis Klavierschule».
+Lateinisch für Schlüssel, davon kommt das Wort Klavier. Die Domain
+privatklavierunterricht.ch und alle Mail-Adressen bleiben.
+
+- **Logo:** `components/layout/Logo.tsx`. Das a in «clavis» ist ein Flügel von
+  oben. Mit `withTagline` steht «KLAVIERSCHULE» darunter; auf kleinen Flächen
+  (Handy-Navbar, Admin, Portal) ohne. Nur den Flügel gibt `Bildmarke`.
+- **Farbe:** nur Navy auf hell, nur Weiss auf Navy, immer über `currentColor`.
+  Kein Gold, kein Filter.
+- **Keine Schrift nötig:** Alle Buchstaben sind Umrisse aus Plus Jakarta Sans
+  und liegen in `lib/marke.ts`. Darum sieht das Logo auch im Vorschaubild, im
+  App-Icon und in Mails gleich aus.
+- **Dateien:** `public/logo-clavis.svg` (Flügel), `public/logo-clavis-voll.svg`
+  (ganzes Logo), `public/icons/` (App-Icons, eins davon randlos für «maskable»).
+- **In Mails** steht die Wortmarke als Text im Kopf, weil Mailprogramme Bilder
+  und SVG oft blockieren. Unterschrieben wird mit «David Ramchandani / Clavis
+  Klavierschule».
+
+---
+
 ## Grundhaltung
 
 Schlicht, modern, ruhig. Nicht überladen. Bewegung ist dezent und kurz und

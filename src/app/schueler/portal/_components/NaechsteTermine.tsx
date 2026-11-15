@@ -542,7 +542,7 @@ function TerminRow({
     const ics = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//Privatklavierunterricht//DE",
+      "PRODID:-//Clavis Klavierschule//DE",
       "BEGIN:VEVENT",
       `DTSTART:${fmt(beginn)}`,
       `DTEND:${fmt(ende)}`,
