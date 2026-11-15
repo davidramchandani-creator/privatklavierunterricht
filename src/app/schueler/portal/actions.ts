@@ -352,7 +352,7 @@ export async function cancelAppointment(appointmentId: string) {
 
   const { data: appt } = await supabase
     .from("appointments")
-    .select("id, start_at, student_id, status, package_id")
+    .select("id, start_at, student_id, status, package_id, gruppe_id")
     .eq("id", appointmentId)
     .single();
 
@@ -381,8 +381,10 @@ export async function cancelAppointment(appointmentId: string) {
     .eq("id", appointmentId);
   if (error) return { error: "Termin konnte nicht storniert werden." };
 
-  // Google Calendar: Event löschen
+  // Google Calendar: Event löschen. In einer Gruppe trägt danach ein
+  // anderes Mitglied das Event, die Lektion findet ja statt.
   await deleteCalendarEvent(admin, appointmentId);
+  if (appt.gruppe_id) await syncAppointmentToCalendar(admin, appointmentId);
 
   // Geplante Termin-Erinnerungen abbrechen.
   await cancelLessonReminders(admin, appointmentId);
@@ -488,6 +490,24 @@ export async function offeneAusfaelle(): Promise<{
 
   if (!rows || rows.length === 0) return { ausfaelle: [] };
 
+  // Gruppenlektionen nie zur Selbstbuchung anbieten: Ein Ersatz allein
+  // wäre eine Einzellektion zum Gruppenpreis. Den Ersatz plant David.
+  const { data: gruppenTermine } = await supabase
+    .from("appointments")
+    .select("id")
+    .in(
+      "id",
+      rows.map((r) => r.appointment_id as string)
+    )
+    .not("gruppe_id", "is", null);
+  const inGruppe = new Set((gruppenTermine ?? []).map((t) => t.id as string));
+  rows.splice(
+    0,
+    rows.length,
+    ...rows.filter((r) => !inGruppe.has(r.appointment_id as string))
+  );
+  if (rows.length === 0) return { ausfaelle: [] };
+
   // Zweites Schloss neben dem Aufräumen beim Storno: Ein Ausfall wird nur
   // gezeigt, wenn sein Paket noch läuft. Wer hier einen Ausweichtermin
   // wählte, buchte sonst eine Lektion auf ein Paket, das es nicht mehr gibt.
@@ -575,6 +595,15 @@ export async function ausweichterminWaehlen(
   }
 
   const admin = await createAdminClient();
+
+  const { data: urTermin } = await admin
+    .from("appointments")
+    .select("gruppe_id")
+    .eq("id", ausfall.appointment_id as string)
+    .maybeSingle();
+  if (urTermin?.gruppe_id) {
+    return { error: "Gruppenlektionen plant David selbst nach. Melde dich bei ihm." };
+  }
   const gewuenscht = new Date(startIso);
 
   // Ist der Slot noch frei? Der Vorschlag kann alt sein.
@@ -668,7 +697,7 @@ export async function requestReschedule(
 
   const { data: appt } = await supabase
     .from("appointments")
-    .select("id, start_at, end_at, student_id, status")
+    .select("id, start_at, end_at, student_id, status, gruppe_id")
     .eq("id", appointmentId)
     .single();
 
@@ -677,6 +706,14 @@ export async function requestReschedule(
   }
   if (appt.status !== "booked") {
     return { error: "Nur bestätigte Termine können verschoben werden." };
+  }
+  // Gruppenlektionen haben einen festen Platz für alle (AGB). Wer nicht
+  // kann, sagt ab, die Lektion findet für die anderen statt.
+  if (appt.gruppe_id) {
+    return {
+      error:
+        "Das ist eine Gruppenlektion mit festem Platz, sie lässt sich nicht einzeln verschieben. Wenn du nicht kannst, sag sie ab.",
+    };
   }
 
   const now = new Date();

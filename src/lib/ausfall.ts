@@ -28,6 +28,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { BOOKING_LEAD_HOURS } from "./booking";
 import { findeAusweichtermine, haengeLektionAn } from "./fixplatz-server";
 import { sendEmailNow } from "./emails-outbox";
+import { gruppenBehandlung } from "./gruppen";
 
 export type Verursacher = "schueler" | "admin";
 
@@ -158,6 +159,16 @@ export async function meldeAusfall(
     params.verursacher === "schueler" &&
     istKurzfristig(params.originalStart, now);
 
+  // Gruppenlektion? Dann gilt die Gruppenregel statt der Kaskade.
+  const { data: termin } = await admin
+    .from("appointments")
+    .select("gruppe_id")
+    .eq("id", params.appointmentId)
+    .maybeSingle();
+  if (termin?.gruppe_id) {
+    return meldeGruppenAusfall(admin, { ...params, now, kurzfristig });
+  }
+
   const behandlung = bestimmeBehandlung({
     verursacher: params.verursacher,
     kurzfristig,
@@ -236,6 +247,97 @@ export async function meldeAusfall(
   });
 
   return { ausfallId: ausfall.id, behandlung, vorschlaege };
+}
+
+/**
+ * Absage in einer festen Gruppe (lib/gruppen.ts, `gruppenBehandlung`).
+ *
+ * Schüler: Die Lektion findet für die anderen statt, und alle zahlen. Kein
+ * Ersatz, keine Gutschrift, auch bei früher Absage.
+ *
+ * David: Die Lektion bleibt als offen erfasst, aber nichts wird automatisch
+ * gebucht und dem Schüler wird nichts zur Selbstbuchung angeboten
+ * (`offeneAusfaelle` blendet Gruppen aus). Den Ersatz plant David.
+ */
+async function meldeGruppenAusfall(
+  admin: SupabaseClient,
+  params: {
+    appointmentId: string;
+    studentId: string;
+    packageId: string | null;
+    verursacher: Verursacher;
+    originalStart: Date;
+    grund?: string | null;
+    now: Date;
+    kurzfristig: boolean;
+  }
+): Promise<AusfallErgebnis | { error: string }> {
+  const regel = gruppenBehandlung(params.verursacher);
+
+  const { data: ausfall, error } = await admin
+    .from("lesson_ausfaelle")
+    .insert({
+      appointment_id: params.appointmentId,
+      student_id: params.studentId,
+      package_id: params.packageId,
+      verursacher: params.verursacher,
+      original_start: params.originalStart.toISOString(),
+      grund: params.grund ?? null,
+      kurzfristig: params.kurzfristig,
+      status: regel.lektionErhalten ? "offen" : "verfallen",
+      erledigt_am: regel.lektionErhalten ? null : params.now.toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (error || !ausfall) {
+    if (error?.code === "23505") {
+      return { error: "Dieser Termin ist bereits als Ausfall erfasst." };
+    }
+    return { error: "Der Ausfall konnte nicht erfasst werden." };
+  }
+
+  const { data: profil } = await admin
+    .from("profiles")
+    .select("vorname, nachname")
+    .eq("id", params.studentId)
+    .maybeSingle();
+  const name = `${profil?.vorname ?? ""} ${profil?.nachname ?? ""}`.trim();
+
+  // Bei Davids Absage bekommt der Schüler bereits
+  // `appointment_cancelled_by_admin` vom Aufrufer. Bei der eigenen Absage
+  // die Bestätigung mit dem Gruppenhinweis.
+  if (params.verursacher === "schueler") {
+    await sendEmailNow(admin, "ausfall_kurzfristig", {
+      student_id: params.studentId,
+      student_name: name || undefined,
+      original_datum: params.originalStart.toISOString(),
+      gruppe: true,
+    });
+  }
+
+  await sendEmailNow(admin, "ausfall_admin", {
+    student_id: params.studentId,
+    student_name: name || undefined,
+    original_datum: params.originalStart.toISOString(),
+    grund: params.grund ?? undefined,
+    kurzfristig: params.kurzfristig,
+    gruppe: true,
+    gruppe_von_dir: params.verursacher === "admin",
+  });
+
+  return {
+    ausfallId: ausfall.id,
+    behandlung: {
+      lektionErhalten: regel.lektionErhalten,
+      ersatzSuchen: false,
+      mailTyp: "ausfall_kurzfristig",
+      begruendung: regel.lektionErhalten
+        ? "Gruppenlektion, von dir abgesagt: Ersatz planst du selbst."
+        : "Gruppenlektion: Sie findet für die anderen statt, alle zahlen.",
+    },
+    vorschlaege: [],
+  };
 }
 
 /**

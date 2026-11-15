@@ -6,6 +6,7 @@
  */
 
 import { createSign } from "crypto";
+import { leitTermin } from "./gruppen";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ladeStudioAdresse, unterrichtsort } from "./studio";
 
@@ -117,6 +118,8 @@ type AppointmentForSync = {
   status: string;
   notes: string | null;
   google_event_id: string | null;
+  /** Feste Gruppe, falls der Termin zu einer gehört. */
+  gruppe_id: string | null;
   student: {
     vorname: string | null;
     nachname: string | null;
@@ -139,7 +142,11 @@ const COLOR_BY_STATUS: Record<string, string> = {
   cancelled: "8", // Graphit
 };
 
-function buildEventBody(appt: AppointmentForSync) {
+function buildEventBody(
+  appt: AppointmentForSync,
+  /** Gruppenlektion: ein Event für alle, die kommen. */
+  gruppe?: { name: string; mitglieder: string[] }
+) {
   const name = appt.student
     ? `${appt.student.vorname ?? ""} ${appt.student.nachname ?? ""}`.trim()
     : "Schüler";
@@ -149,14 +156,14 @@ function buildEventBody(appt: AppointmentForSync) {
     `Hausbesuch, ${name}`;
 
   const descriptionParts = [
-    `Schüler/in: ${name}`,
+    gruppe ? `Gruppe: ${gruppe.mitglieder.join(", ")}` : `Schüler/in: ${name}`,
     appt.student?.email ? `E-Mail: ${appt.student.email}` : null,
     `Status: ${appt.status}`,
     appt.notes ? `Notiz: ${appt.notes}` : null,
   ].filter(Boolean);
 
   return {
-    summary: `Klavierunterricht, ${name}`,
+    summary: gruppe ? `Gruppenunterricht, ${gruppe.name}` : `Klavierunterricht, ${name}`,
     location,
     description: descriptionParts.join("\n"),
     start: { dateTime: appt.start_at, timeZone: "Europe/Zurich" },
@@ -176,7 +183,7 @@ async function fetchAppointment(
   const { data } = await admin
     .from("appointments")
     .select(
-      "id, start_at, end_at, status, notes, google_event_id, student:profiles!student_id(vorname, nachname, email, adresse, hausbesuch), lehrperson:teachers!teacher_id(ist_inhaber)"
+      "id, start_at, end_at, status, notes, google_event_id, gruppe_id, student:profiles!student_id(vorname, nachname, email, adresse, hausbesuch), lehrperson:teachers!teacher_id(ist_inhaber)"
     )
     .eq("id", appointmentId)
     .maybeSingle();
@@ -211,6 +218,12 @@ export async function syncAppointmentToCalendar(
     const appt = await fetchAppointment(admin, appointmentId);
     if (!appt) return;
 
+    // Gruppenlektion: ein Event für alle, getragen vom Leit-Termin.
+    if (appt.gruppe_id) {
+      await syncGruppenlektion(admin, appt, token);
+      return;
+    }
+
     // Stornierte/no-show Termine: Event löschen statt anlegen. Ebenso
     // Termine einer anderen Lehrperson: Davids Google-Kalender zeigt nur
     // seine eigenen Lektionen. Die Übersicht über alle hat er im Admin.
@@ -219,34 +232,92 @@ export async function syncAppointmentToCalendar(
       return;
     }
 
-    const body = buildEventBody(appt);
-    const calId = encodeURIComponent(CALENDAR_ID);
-
-    if (appt.google_event_id) {
-      // Update
-      const res = await fetch(
-        `${CAL_BASE}/${calId}/events/${appt.google_event_id}`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        }
-      );
-      if (res.status === 404) {
-        // Event existiert nicht mehr → neu anlegen
-        await createEvent(admin, appointmentId, calId, token, body);
-      } else if (!res.ok) {
-        console.error("Google event update failed:", res.status, await res.text().catch(() => ""));
-      }
-    } else {
-      await createEvent(admin, appointmentId, calId, token, body);
-    }
+    await schreibeEvent(admin, appt, token, buildEventBody(appt));
   } catch (err) {
     console.error("syncAppointmentToCalendar error:", err);
   }
+}
+
+/** Legt das Event eines Termins an oder aktualisiert es. */
+async function schreibeEvent(
+  admin: SupabaseClient,
+  appt: { id: string; google_event_id: string | null },
+  token: string,
+  body: object
+): Promise<void> {
+  const calId = encodeURIComponent(CALENDAR_ID);
+  if (appt.google_event_id) {
+    const res = await fetch(
+      `${CAL_BASE}/${calId}/events/${appt.google_event_id}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+    if (res.status === 404) {
+      // Event existiert nicht mehr → neu anlegen
+      await createEvent(admin, appt.id, calId, token, body);
+    } else if (!res.ok) {
+      console.error("Google event update failed:", res.status, await res.text().catch(() => ""));
+    }
+  } else {
+    await createEvent(admin, appt.id, calId, token, body);
+  }
+}
+
+/**
+ * Eine Gruppenlektion steht einmal im Kalender, nicht pro Mitglied.
+ *
+ * Jedes Mitglied hat einen eigenen Termin. Der Leit-Termin (lib/gruppen,
+ * `leitTermin`) trägt das Event, die Events aller anderen werden gelöscht.
+ * Sagt das Leit-Mitglied ab, rückt das nächste nach. Sagen alle ab, gibt es
+ * kein Event mehr.
+ */
+async function syncGruppenlektion(
+  admin: SupabaseClient,
+  appt: AppointmentForSync,
+  token: string
+): Promise<void> {
+  const [{ data: alle }, { data: gruppe }] = await Promise.all([
+    admin
+      .from("appointments")
+      .select("id, status, google_event_id, student:profiles!student_id(vorname, nachname)")
+      .eq("gruppe_id", appt.gruppe_id)
+      .eq("start_at", appt.start_at),
+    admin.from("gruppen").select("name").eq("id", appt.gruppe_id).maybeSingle(),
+  ]);
+  const termine = (alle ?? []) as Array<{
+    id: string;
+    status: string;
+    google_event_id: string | null;
+    student: { vorname: string | null; nachname: string | null } | { vorname: string | null; nachname: string | null }[] | null;
+  }>;
+  const leit = appt.vonDavid ? leitTermin(termine) : null;
+
+  for (const t of termine) {
+    if (t.id !== leit?.id && t.google_event_id) await deleteCalendarEvent(admin, t.id);
+  }
+  if (!leit) return;
+
+  const traeger = leit.id === appt.id ? appt : await fetchAppointment(admin, leit.id);
+  if (!traeger) return;
+  const mitglieder = termine
+    .filter((t) => t.status === "booked")
+    .map((t) => {
+      const s = Array.isArray(t.student) ? t.student[0] : t.student;
+      return `${s?.vorname ?? ""} ${s?.nachname ?? ""}`.trim();
+    })
+    .filter(Boolean);
+  await schreibeEvent(
+    admin,
+    traeger,
+    token,
+    buildEventBody(traeger, { name: String(gruppe?.name ?? "Gruppe"), mitglieder })
+  );
 }
 
 async function createEvent(

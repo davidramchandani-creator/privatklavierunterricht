@@ -119,6 +119,11 @@ export async function baueVorschau(
     periodeStart: string;
     /** Bei Verlängerung: Bindung des bisherigen Abos. */
     bisherigeBindung?: string | null;
+    /**
+     * Fester Lektionspreis statt der Preise des Schülers. Für Gruppen: Dort
+     * gilt der Gruppenpreis aus lib/gruppenunterricht, ohne Wegaufschlag.
+     */
+    preisProLektion?: number;
   }
 ): Promise<AboVorschau> {
   const [preise, ferien, semester] = await Promise.all([
@@ -132,7 +137,9 @@ export async function baueVorschau(
     rhythmus: params.rhythmus,
     weekday: params.weekday,
     periodeStart: params.periodeStart,
-    preisProLektion: aboLektionspreis(preise, params.variante, params.bookingMode),
+    preisProLektion:
+      params.preisProLektion ??
+      aboLektionspreis(preise, params.variante, params.bookingMode),
     ferien,
     periode: aboPeriode({
       variante: params.variante,

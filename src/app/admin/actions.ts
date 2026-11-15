@@ -2111,12 +2111,19 @@ export async function moveAppointment(
 
   const { data: appt } = await admin
     .from("appointments")
-    .select("id, status, start_at, student_id")
+    .select("id, status, start_at, student_id, gruppe_id")
     .eq("id", id)
     .maybeSingle();
   if (!appt) return { error: "Termin nicht gefunden." };
   if (appt.status !== "booked") {
     return { error: "Nur gebuchte Termine lassen sich verschieben." };
+  }
+  // Einzeln verschoben, sässe ein Mitglied allein zu einer anderen Zeit.
+  if (appt.gruppe_id) {
+    return {
+      error:
+        "Das ist eine Gruppenlektion. Einzeln verschieben geht nicht, sonst kommt ein Mitglied allein. Verschieben für die ganze Gruppe folgt.",
+    };
   }
 
   const { data: profile } = await admin
@@ -2187,7 +2194,7 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
   // Termin laden (für Schüler-Benachrichtigung und Ausfall-Kaskade).
   const { data: appt } = await admin
     .from("appointments")
-    .select("start_at, student_id, status, package_id")
+    .select("start_at, student_id, status, package_id, gruppe_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -2201,8 +2208,10 @@ export async function cancelAppointmentNew(id: string, schuelerId: string) {
     .eq("id", id);
   if (error) return { error: error.message };
 
-  // Google Calendar: Event löschen
+  // Google Calendar: Event löschen. In einer Gruppe übernimmt ein anderes
+  // Mitglied das Event, solange noch jemand kommt.
   await deleteCalendarEvent(admin, id);
+  if (appt?.gruppe_id) await syncAppointmentToCalendar(admin, id);
 
   // Geplante Termin-Erinnerungen abbrechen.
   await cancelLessonReminders(admin, id);

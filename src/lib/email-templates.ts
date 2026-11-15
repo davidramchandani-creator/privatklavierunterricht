@@ -2295,9 +2295,15 @@ export function renderEmail(
 
            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:0 0 24px;">
              <p style="margin:0;color:#92400e;font-size:14px;">
-               Weil die Absage weniger als 24 Stunden vorher kam, gilt die Lektion
-               als gehalten, die Zeit war für dich reserviert und liess sich nicht
-               mehr anderweitig vergeben.
+               ${
+                 payload.gruppe
+                   ? `Du bist in einer Gruppe: Die Lektion findet für die anderen
+                      statt, und dein Anteil bleibt geschuldet. Eine verpasste
+                      Gruppenlektion wird weder ersetzt noch zurückerstattet.`
+                   : `Weil die Absage weniger als 24 Stunden vorher kam, gilt die Lektion
+                      als gehalten, die Zeit war für dich reserviert und liess sich nicht
+                      mehr anderweitig vergeben.`
+               }
              </p>
            </div>
 
@@ -2320,9 +2326,13 @@ export function renderEmail(
               <strong>${payload.original_datum ? fmtDateTime(String(payload.original_datum)) : ""}</strong>
               abgesagt${payload.grund ? `: „${payload.grund}“` : "."}</p>
            <p>${
-             payload.kurzfristig
-               ? "Kurzfristig (unter 24 Stunden), die Lektion gilt als gehalten."
-               : "Rechtzeitig abgesagt, der Schüler hat Ausweichtermine vorgeschlagen bekommen."
+             payload.gruppe
+               ? payload.gruppe_von_dir
+                 ? "Gruppenlektion, von dir abgesagt. Die Lektion ist als offen erfasst, ein Ersatz wird nicht automatisch gebucht. Den planst du selbst."
+                 : "Gruppenlektion: Sie findet für die anderen statt, der Anteil bleibt geschuldet. Kein Ersatz."
+               : payload.kurzfristig
+                 ? "Kurzfristig (unter 24 Stunden), die Lektion gilt als gehalten."
+                 : "Rechtzeitig abgesagt, der Schüler hat Ausweichtermine vorgeschlagen bekommen."
            }</p>
            <p style="text-align:center;margin:28px 0;">
              <a href="${APP_URL}/admin/kalender" style="display:inline-block;background:#1C244B;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;">Kalender öffnen</a>

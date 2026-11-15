@@ -92,6 +92,7 @@ type PackageJobRow = {
   periode_start: string | null;
   periode_ende: string | null;
   bindung_bis: string | null;
+  gruppe_id?: string | null;
 };
 
 type InstalmentJobRow = {
@@ -107,7 +108,7 @@ type InstalmentJobRow = {
 
 const PROFILE_FIELDS = "vorname, nachname, adresse, email, payment_method";
 const PACKAGE_FIELDS =
-  "id, student_id, type, total_price, price_per_lesson, payment_method, lessons_total, lessons_used, expires_at, auto_renew, billing_mode, term_months, instalment_count, renewal_notice_sent_at, status, rhythmus, booking_mode, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, fixplatz_time_ungerade, abo_variante, abo_lektionen, monatsbetrag, periode_start, periode_ende, bindung_bis";
+  "id, student_id, type, total_price, price_per_lesson, payment_method, lessons_total, lessons_used, expires_at, auto_renew, billing_mode, term_months, instalment_count, renewal_notice_sent_at, status, rhythmus, booking_mode, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, fixplatz_time_ungerade, abo_variante, abo_lektionen, monatsbetrag, periode_start, periode_ende, bindung_bis, gruppe_id";
 
 /** Outbox-Eintrag, idempotent über `dedupe_key`. */
 async function enqueueOnce(
@@ -667,6 +668,15 @@ async function processExpiredPackages(
     const gebunden =
       !!pkg.bindung_bis && !!pkg.periode_ende && String(pkg.bindung_bis) > String(pkg.periode_ende);
     if (!pkg.auto_renew && !gebunden) continue;
+
+    // Gruppen-Abos verlängert der Cron (noch) nicht: Er würde jedes Mitglied
+    // einzeln mit 45 Minuten und seinem Einzelpreis weiterführen. Die
+    // Verlängerung einer Gruppe ist Schritt 3, bis dahin auf der
+    // Gruppenseite von Hand.
+    if (pkg.gruppe_id) {
+      console.warn("[abo] Gruppen-Abo nicht automatisch verlängert:", pkg.id);
+      continue;
+    }
 
     // ── Verlängerung ──
     const type = pkg.type as SubscriptionType;

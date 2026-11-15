@@ -109,6 +109,7 @@ const GROUPS: { label: string; types: EmailType[] }[] = [
   {
     label: "Ausfälle",
     types: [
+      { id: "ausfall_kurzfristig", label: "Absage bestätigt (kurzfristig oder Gruppe)" },
       { id: "ausfall_nachgeholt", label: "Lektion wird nachgeholt" },
       { id: "ausfall_gutschrift", label: "Gutschrift nach Ausfall" },
       { id: "ausfall_admin", label: "Ausfall gemeldet (an mich)" },
