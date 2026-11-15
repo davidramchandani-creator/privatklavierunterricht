@@ -70,6 +70,25 @@ export async function bieteFrueherenSlotAn(
     return { angeboten: false, grund: "zu kurzfristig" };
   }
 
+  // Gruppenlektion: Fehlt nur ein Mitglied, findet die Lektion statt und es
+  // gibt keine Lücke. Erst wenn niemand mehr kommt, ist der Platz frei.
+  const { data: ab } = await admin
+    .from("appointments")
+    .select("gruppe_id")
+    .eq("id", abgesagt.id)
+    .maybeSingle();
+  if (ab?.gruppe_id) {
+    const { count } = await admin
+      .from("appointments")
+      .select("id", { count: "exact", head: true })
+      .eq("gruppe_id", ab.gruppe_id)
+      .eq("start_at", abgesagt.start_at)
+      .eq("status", "booked");
+    if ((count ?? 0) > 0) {
+      return { angeboten: false, grund: "Gruppenlektion findet statt" };
+    }
+  }
+
   // Der nächste gebuchte Termin am selben Zürcher Kalendertag, und zwar
   // bei derselben Lehrperson: In Annas Lücke kann nicht Davids Schüler
   // vorrücken.
@@ -77,7 +96,7 @@ export async function bieteFrueherenSlotAn(
   const lp = await lehrpersonFuer(admin, abgesagt.student_id);
   let kandidatenQuery = admin
     .from("appointments")
-    .select("id, start_at, end_at, student_id")
+    .select("id, start_at, end_at, student_id, gruppe_id")
     .eq("status", "booked");
   if (lp.teacherId) kandidatenQuery = kandidatenQuery.eq("teacher_id", lp.teacherId);
   const { data: kandidaten } = await kandidatenQuery
@@ -96,6 +115,9 @@ export async function bieteFrueherenSlotAn(
       zuercherTag(a.start_at) === tag && a.student_id !== abgesagt.student_id
   );
   if (!naechster) return { angeboten: false, grund: "kein späterer Termin" };
+  // Eine Gruppe rückt nicht vor: Das müssten zwei oder drei Personen
+  // zugleich annehmen, und das Angebot geht an eine.
+  if (naechster.gruppe_id) return { angeboten: false, grund: "nächster Termin ist eine Gruppe" };
 
   const { data: profil } = await admin
     .from("profiles")

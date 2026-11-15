@@ -355,10 +355,14 @@ export async function haengeLektionAn(
   const { data: pkg } = await admin
     .from("packages")
     .select(
-      "id, booking_mode, rhythmus, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, fixplatz_time_ungerade"
+      "id, booking_mode, rhythmus, fixplatz_weekday, fixplatz_time, fixplatz_week_parity, fixplatz_time_ungerade, gruppe_id"
     )
     .eq("id", params.packageId)
     .maybeSingle();
+
+  // Gruppen-Abos nie einzeln anhängen: Das wäre eine 45-Minuten-Lektion für
+  // eine Person zum Gruppenpreis. Gruppenausfälle plant David selbst.
+  if (pkg?.gruppe_id) return null;
 
   if (
     !pkg ||

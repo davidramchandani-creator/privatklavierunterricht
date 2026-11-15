@@ -70,6 +70,7 @@ export const navEntries: NavEntry[] = [
       { href: "/admin/routenplanung", label: "Routenplanung", icon: Route },
     ],
   },
+  { href: "/admin/gruppen", label: "Gruppen", icon: UsersRound, exact: true },
   { href: "/admin/gruppenkurse", label: "Gruppenkurse", icon: UsersRound },
   { href: "/admin/zahlungen", label: "Zahlungen", icon: CreditCard },
   { href: "/admin/abrechnung", label: "Abrechnung", icon: Wallet },

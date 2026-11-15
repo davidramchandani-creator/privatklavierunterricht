@@ -959,6 +959,42 @@ ein Paket haben. Das Anlegen weist ab, solange noch etwas läuft.
 
 ---
 
+## 9k. Feste Gruppen (zu zweit, zu dritt)
+
+Stand 15. November 2026. Admin → Gruppen → „Neue Gruppe".
+
+Du wählst zwei oder drei Schüler, Semester- oder Jahresabo, Rhythmus,
+Wochentag, Uhrzeit und Start. Jedes Mitglied bekommt ein **eigenes Abo** zum
+Gruppenpreis (zu zweit 65/60, zu dritt 55/50, aus `lib/gruppenunterricht`)
+mit eigenen Monatsraten und eigenen Terminen. Alle Termine dauern 60 Minuten
+und liegen gleichzeitig.
+
+**Alles oder nichts.** Ist auch nur ein Termin der Serie belegt oder
+gesperrt, wird nichts angelegt und keine Mail verschickt. Ausweichen wie beim
+Einzelabo gibt es nicht, weil ein Ersatzplatz für alle passen müsste.
+Abwesenheiten einzelner Schüler sperren nichts, die Lektion findet für die
+anderen statt.
+
+**Wer schon ein Abo hat**, kann nicht in eine Gruppe. Erst beenden.
+
+**Absagen:**
+
+| Wer | Was passiert |
+|---|---|
+| Ein Mitglied | Lektion findet für die anderen statt, Anteil bleibt geschuldet, kein Ersatz, keine Gutschrift. Kein Vorrück-Angebot an andere. |
+| Du, für alle | Gruppenseite → „Für alle absagen". Jeder bekommt die Absage, der Ausfall steht als offen. **Ersatz planst du selbst**, nichts wird automatisch gebucht. |
+
+Einzelne Gruppentermine lassen sich nicht verschieben (weder im Admin noch
+im Portal), sonst sässe jemand allein da. Im Google-Kalender steht jede
+Gruppenlektion einmal, als „Gruppenunterricht, Name".
+
+**Noch nicht drin (Schritt 3):** automatische Verlängerung (Gruppen-Abos
+enden mit der Periode, der Cron verlängert sie nicht), Semester-Umstellung,
+Verschieben für die ganze Gruppe, Admin-Kalender und Kalender-Abo zeigen
+die Gruppe noch pro Mitglied.
+
+---
+
 ## 10. Was du im Admin tust
 
 **Abo oder Paket anlegen** (Schülerdetail): Variante, Rhythmus,
