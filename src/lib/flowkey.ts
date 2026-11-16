@@ -33,6 +33,14 @@
 export const FLOWKEY = {
   /** Von flowkey freigegeben am 10. November 2026 (Vertrag 4.2). */
   aktiv: true,
+  /**
+   * Logo mit „Offizieller Partner von" oben im Startbereich (David,
+   * 16. November 2026). Neues, prominentes Werbematerial, darum braucht es
+   * nach Vertrag 4.2 wieder die Freigabe von flowkey. Bis dahin `false`:
+   * Das Logo erscheint nur in der Vorschau (Vercel Preview, lokal), nicht
+   * auf der Live-Seite. Nach der Freigabe auf `true` setzen.
+   */
+  heroFreigegeben: false,
   /** Beantragt am 4. November 2026. */
   code: "DAVID25",
   rabattProzent: 25,
@@ -71,3 +79,15 @@ export const FLOWKEY_FUNKTIONEN = [
     text: "Vom ersten Ton über das Spielen mit beiden Händen bis zu Notenlesen, Tonleitern, Akkorden und Improvisation, Schritt für Schritt.",
   },
 ] as const;
+
+/**
+ * Zeigt der Startbereich das Partner-Logo? Live erst nach der Freigabe,
+ * in der Vorschau immer, damit David Screenshots an flowkey schicken kann.
+ */
+export function zeigeHeroLogo(
+  umgebung: string | undefined = process.env.VERCEL_ENV ?? process.env.NODE_ENV
+): boolean {
+  if (!FLOWKEY.aktiv) return false;
+  if (FLOWKEY.heroFreigegeben) return true;
+  return umgebung === "preview" || umgebung === "development";
+}

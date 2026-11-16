@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Mail } from "lucide-react";
 import { useRef } from "react";
 import Logo from "./Logo";
-import { FLOWKEY } from "@/lib/flowkey";
+import { FOOTER_NAVIGATION } from "@/lib/navigation";
 
 export default function Footer() {
   const adminClicks = useRef(0);
@@ -50,18 +50,8 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-600 text-sm mb-4">Navigation</h4>
             <ul className="space-y-2.5">
-              {[
-                { href: "/ueber-mich", label: "Über mich" },
-                { href: "/#angebote", label: "Angebote" },
-                { href: "/preise", label: "Preise" },
-                { href: "/probelektion", label: "Probelektion" },
-                { href: "/faq", label: "Häufige Fragen" },
-                { href: "/kontakt", label: "Kontakt" },
-                { href: "/lehrpersonen", label: "Unsere Lehrpersonen" },
-                { href: "/lehrperson-werden", label: "Lehrperson werden" },
-                // Partnerseite, erst nach Freigabe durch flowkey (lib/flowkey).
-                ...(FLOWKEY.aktiv ? [{ href: "/flowkey", label: "Partner: flowkey" }] : []),
-              ].map((l) => (
+              {/* Aus lib/navigation, dieselbe Quelle wie der Header. */}
+              {FOOTER_NAVIGATION.map((l) => (
                 <li key={l.href}>
                   <Link
                     href={l.href}

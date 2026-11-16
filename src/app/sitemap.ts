@@ -16,6 +16,8 @@ const SEITEN: { pfad: string; prioritaet: number; frequenz: MetadataRoute.Sitema
   { pfad: "/", prioritaet: 1.0, frequenz: "monthly" },
   { pfad: "/probelektion", prioritaet: 0.9, frequenz: "monthly" },
   { pfad: "/warteliste", prioritaet: 0.5, frequenz: "weekly" },
+  { pfad: "/unterricht", prioritaet: 0.8, frequenz: "monthly" },
+  { pfad: "/einblicke", prioritaet: 0.7, frequenz: "monthly" },
   { pfad: "/preise", prioritaet: 0.8, frequenz: "monthly" },
   { pfad: "/ueber-mich", prioritaet: 0.7, frequenz: "yearly" },
   { pfad: "/lehrpersonen", prioritaet: 0.6, frequenz: "monthly" },

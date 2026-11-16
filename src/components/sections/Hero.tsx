@@ -6,6 +6,8 @@ import { ladeBewertungen } from "@/lib/bewertungen";
 import { jahreKlaviererfahrung } from "@/lib/ueber-david";
 import { ladePlatzstatus } from "@/lib/platzstatus-server";
 import PlatzHinweis from "@/components/PlatzHinweis";
+import FlowkeyLogo from "@/components/FlowkeyLogo";
+import { zeigeHeroLogo } from "@/lib/flowkey";
 
 
 export default async function Hero() {
@@ -79,6 +81,30 @@ export default async function Hero() {
               <Pill icon={<Clock className="w-3.5 h-3.5 text-navy-900" />} text={`${jahreKlaviererfahrung()} Jahre Klaviererfahrung`} />
               <Pill icon={<GraduationCap className="w-3.5 h-3.5 text-navy-900" />} text="Studium an der PH Zürich" />
             </div>
+
+            {/*
+              Partnerschaft mit flowkey (David, 16. November 2026): gibt
+              Vertrauen, wenn man gleich oben sieht, dass flowkey mit mir
+              zusammenarbeitet. Der Link führt auf meine Partnerseite, nicht
+              direkt zum Code: Wer hier ankommt, kennt den Code noch nicht,
+              und die Seite erklärt Rabatt und Einlösen. Logo nach den Brand
+              Guidelines (FlowkeyLogo: Original, Freiraum, orange auf hell).
+              Live erst nach Freigabe durch flowkey (lib/flowkey).
+            */}
+            {zeigeHeroLogo() && (
+              <Link
+                href="/flowkey"
+                className="group inline-flex items-center gap-1 rounded-2xl border border-[#F5DCC0] bg-white pl-4 pr-1 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all opacity-0 animate-fade-in delay-300"
+                aria-label="Offizieller Partner von flowkey, mehr erfahren"
+              >
+                <span className="text-xs font-600 text-gray-500 leading-tight">
+                  Offizieller
+                  <br />
+                  Partner von
+                </span>
+                <FlowkeyLogo hoehe={22} />
+              </Link>
+            )}
           </div>
 
           {/* Right: Visual panel */}

@@ -21,7 +21,7 @@ export default function Schuelervideos() {
   if (SCHUELERVIDEOS.length === 0) return null;
 
   return (
-    <div className="mt-14">
+    <div id="videos" className="mt-14 scroll-mt-24">
       <p className="text-sm font-600 text-gray-400 uppercase tracking-widest mb-3">
         Aus dem Unterricht
       </p>

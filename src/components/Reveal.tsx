@@ -64,9 +64,17 @@ export default function Reveal({
           }
         }
       },
-      // 15 % statt 0: Der Abschnitt soll sichtbar angekommen sein, bevor er
-      // sich bewegt, sonst ist die Animation vorbei, ehe man hinschaut.
-      { threshold: 0.15, rootMargin: "0px 0px -40px 0px" }
+      // Ausgelöst wird, sobald die Oberkante 12 % in den Bildschirm gerückt
+      // ist, nicht bei einem Anteil des Abschnitts.
+      //
+      // Vorher stand hier `threshold: 0.15`: Es mussten 15 % der Fläche des
+      // Abschnitts gleichzeitig sichtbar sein. Am Handy ist der Abschnitt mit
+      // den Bewertungen und sieben Videos über sechsmal so hoch wie der
+      // Bildschirm, 15 % davon passen nie gleichzeitig hinein. Er blieb
+      // unsichtbar, samt Videos (David, 16. November 2026). Der Rand unten
+      // sorgt weiterhin dafür, dass der Abschnitt angekommen ist, bevor er
+      // sich bewegt.
+      { threshold: 0, rootMargin: "0px 0px -12% 0px" }
     );
 
     beobachter.observe(el);

@@ -30,7 +30,7 @@ export default async function Bewertungen() {
   if (anzahl === 0) return null;
 
   return (
-    <section className="py-16 md:py-24 bg-surface">
+    <section id="stimmen" className="py-16 md:py-24 bg-surface scroll-mt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <AbschnittsKopf kicker="Stimmen" titel="Was Schüler sagen" className="mb-6" />

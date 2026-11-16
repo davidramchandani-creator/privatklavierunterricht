@@ -69,9 +69,11 @@ describe("Bewerbung als Lehrperson", () => {
     expect(trifft("/lehrperson")).toBe(true);
   });
 
-  it("steht in Navbar, Footer und Sitemap", () => {
-    expect(lies("src/components/layout/Navbar.tsx")).toContain("/lehrperson-werden");
-    expect(lies("src/components/layout/Footer.tsx")).toContain("/lehrperson-werden");
+  // Seit dem 16. November 2026 nur noch im Footer: Der Header gehört den
+  // Leuten, die Unterricht suchen (lib/navigation).
+  it("steht im Footer und in der Sitemap", () => {
+    expect(lies("src/components/layout/Footer.tsx")).toContain("FOOTER_NAVIGATION");
+    expect(lies("src/lib/navigation.ts")).toContain('{ href: "/lehrperson-werden"');
     expect(lies("src/app/sitemap.ts")).toContain("/lehrperson-werden");
   });
 });
