@@ -74,18 +74,11 @@ export default async function Hero() {
               </Link>
             </div>
 
-            {/* Social proof pills */}
-            <div className="flex flex-wrap gap-3 pt-2 opacity-0 animate-fade-in delay-300">
-              <Pill icon={<Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />} text={`${schnitt} aus ${anzahl} Bewertungen`} />
-              <Pill icon={<Users className="w-3.5 h-3.5 text-navy-900" />} text="Im Studio in Neftenbach" />
-              <Pill icon={<Clock className="w-3.5 h-3.5 text-navy-900" />} text={`${jahreKlaviererfahrung()} Jahre Klaviererfahrung`} />
-              <Pill icon={<GraduationCap className="w-3.5 h-3.5 text-navy-900" />} text="Studium an der PH Zürich" />
-            </div>
-
             {/*
-              Partnerschaft mit flowkey (David, 16. November 2026): gibt
-              Vertrauen, wenn man gleich oben sieht, dass flowkey mit mir
-              zusammenarbeitet. Der Link führt auf meine Partnerseite, nicht
+              Partnerschaft mit flowkey (David, 16. November 2026), direkt
+              unter den Knöpfen, damit es auch am Handy im ersten Bild steht.
+              Gibt Vertrauen, wenn man gleich oben sieht, dass flowkey mit
+              mir zusammenarbeitet. Der Link führt auf meine Partnerseite, nicht
               direkt zum Code: Wer hier ankommt, kennt den Code noch nicht,
               und die Seite erklärt Rabatt und Einlösen. Logo nach den Brand
               Guidelines (FlowkeyLogo: Original, Freiraum, orange auf hell).
@@ -94,17 +87,26 @@ export default async function Hero() {
             {zeigeHeroLogo() && (
               <Link
                 href="/flowkey"
-                className="group inline-flex items-center gap-1 rounded-2xl border border-[#F5DCC0] bg-white pl-4 pr-1 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all opacity-0 animate-fade-in delay-300"
+                className="group inline-flex items-center gap-1 rounded-2xl border border-[#F5DCC0] bg-white pl-4 pr-1 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all opacity-0 animate-fade-in delay-200"
                 aria-label="Offizieller Partner von flowkey, mehr erfahren"
               >
-                <span className="text-xs font-600 text-gray-500 leading-tight">
+                <span className="text-sm font-600 text-gray-500 leading-tight">
                   Offizieller
                   <br />
                   Partner von
                 </span>
-                <FlowkeyLogo hoehe={22} />
+                <FlowkeyLogo hoehe={30} />
               </Link>
             )}
+
+            {/* Social proof pills */}
+            <div className="flex flex-wrap gap-3 pt-2 opacity-0 animate-fade-in delay-300">
+              <Pill icon={<Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />} text={`${schnitt} aus ${anzahl} Bewertungen`} />
+              <Pill icon={<Users className="w-3.5 h-3.5 text-navy-900" />} text="Im Studio in Neftenbach" />
+              <Pill icon={<Clock className="w-3.5 h-3.5 text-navy-900" />} text={`${jahreKlaviererfahrung()} Jahre Klaviererfahrung`} />
+              <Pill icon={<GraduationCap className="w-3.5 h-3.5 text-navy-900" />} text="Studium an der PH Zürich" />
+            </div>
+
           </div>
 
           {/* Right: Visual panel */}

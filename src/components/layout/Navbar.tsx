@@ -149,7 +149,11 @@ export default function Navbar() {
                   className={linkKlasse}
                   aria-expanded={istOffen}
                   aria-haspopup="true"
-                  onClick={() => setOffen(istOffen ? null : b.label)}
+                  // Nur öffnen, nicht umschalten: Mit der Maus ist das Menü
+                  // beim Klick schon durchs Darüberfahren offen, ein
+                  // Umschalten hätte es gleich wieder geschlossen.
+                  // Geschlossen wird durch Wegfahren, Escape oder Klick daneben.
+                  onClick={() => setOffen(b.label)}
                 >
                   {b.label}
                   <ChevronDown
