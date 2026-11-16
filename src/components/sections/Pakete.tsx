@@ -81,7 +81,7 @@ const pakete = [
 
 export default function Pakete() {
   return (
-    <section id="angebote" className="py-16 md:py-24 bg-white">
+    <section id="angebote" className="py-16 md:py-24 bg-white scroll-mt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <AbschnittsKopf
@@ -196,7 +196,7 @@ export default function Pakete() {
           Gruppenunterricht (David, 5. November 2026): feste Gruppen im Abo,
           zu zweit oder zu dritt. Zahlen aus lib/gruppenunterricht.
         */}
-        <div className="mt-8 rounded-2xl border border-gray-100 bg-surface p-6 sm:p-8">
+        <div id="gruppen" className="mt-8 rounded-2xl border border-gray-100 bg-surface p-6 sm:p-8 scroll-mt-24">
           <div className="grid md:grid-cols-[1fr_auto_auto] gap-6 md:items-center">
             <div className="space-y-2">
               <h3 className="font-700 text-navy-900 text-lg">Zusammen lernen: zu zweit oder zu dritt</h3>

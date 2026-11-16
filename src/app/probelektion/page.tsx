@@ -19,6 +19,7 @@ import Logo from "@/components/layout/Logo";
 import { getPublicSlots, submitAnfrage, type PublicSlot } from "./actions";
 import { HoerprobeEinzeln } from "@/components/sections/Hoerproben";
 import { HOERPROBEN } from "@/lib/hoerproben";
+import { ERSTE_SCHRITTE } from "@/lib/ablauf";
 import { holePlatzstatus } from "@/app/warteliste/actions";
 import { platzText, type Platzstatus } from "@/lib/platzstatus";
 
@@ -158,19 +159,11 @@ export default function ProbelektionPage() {
             <div className="bg-white rounded-2xl border border-[#EAECEF] shadow-sm p-6">
               <h2 className="font-700 text-navy-900 mb-4">So läuft es ab</h2>
               <ol className="space-y-3">
-                <Schritt nr={1} titel="Du schickst die Anfrage">
-                  Wunschtermin ist freiwillig, wenn dir keiner passt, finden
-                  wir zusammen einen.
-                </Schritt>
-                <Schritt nr={2} titel="Ich melde mich">
-                  Meist noch am selben Tag, spätestens innert 24 Stunden. Erst
-                  dann steht der Termin.
-                </Schritt>
-                <Schritt nr={3} titel="Wir spielen zusammen">
-                  45 Minuten in meinem Studio in Neftenbach, auf einem
-                  Kawai ES120 mit gewichteten Tasten. Danach entscheidest du
-                  in Ruhe, ob du weitermachen willst.
-                </Schritt>
+                {ERSTE_SCHRITTE.map((sch, i) => (
+                  <Schritt key={sch.titel} nr={i + 1} titel={sch.titel}>
+                    {sch.text}
+                  </Schritt>
+                ))}
               </ol>
             </div>
 

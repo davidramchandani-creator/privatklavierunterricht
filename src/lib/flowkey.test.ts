@@ -18,7 +18,7 @@ describe("Partnerschaft mit flowkey", () => {
   it("hängt überall am Schalter: Suchmaschinen, Abschnitt, Footer, Sitemap", () => {
     expect(lies("src/app/flowkey/page.tsx")).toContain("robots: FLOWKEY.aktiv ? undefined : { index: false, follow: false }");
     expect(lies("src/components/sections/FlowkeyPartner.tsx")).toContain("if (!FLOWKEY.aktiv) return null");
-    expect(lies("src/components/layout/Footer.tsx")).toContain("FLOWKEY.aktiv ?");
+    expect(lies("src/lib/navigation.ts")).toContain("FLOWKEY.aktiv ?");
     expect(lies("src/app/sitemap.ts")).toContain("FLOWKEY.aktiv ?");
   });
 
