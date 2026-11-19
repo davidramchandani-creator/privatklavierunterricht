@@ -3055,7 +3055,19 @@ export async function archiveInvoice(invoiceId: string) {
   return { success: true, error: undefined };
 }
 
-/** Admin sendet die Zahlungsmail für eine Rechnung erneut (sofort). */
+/**
+ * Admin sendet die Zahlungsmail für eine Rechnung erneut (sofort).
+ *
+ * Die Zahlungsart kommt aus dem Profil, nicht aus der Rechnung (lib/
+ * zahlungsart). Iris und Zeynep standen beim Erstellen ihrer ersten Rate auf
+ * QR und wurden danach auf TWINT umgestellt; „Erinnern" hätte ihnen wieder
+ * eine QR-Rechnung geschickt (David, 19. November 2026). Weicht die
+ * Rechnung ab, wird sie mit umgestellt, damit Portal und Zahlungsliste
+ * dasselbe zeigen wie die Mail.
+ *
+ * Beschreibung, Fälligkeit und Paket gehen mit, wie beim ersten Versand.
+ * Sonst stand bei einer Abo-Rate in der Erinnerung nicht, wofür sie ist.
+ */
 export async function resendPaymentEmail(invoiceId: string) {
   const verboten = await assertAdmin();
   if (verboten) return verboten;
@@ -3071,35 +3083,40 @@ export async function resendPaymentEmail(invoiceId: string) {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("email, vorname, nachname")
+    .select("email, vorname, nachname, payment_method")
     .eq("id", inv.student_id)
     .maybeSingle();
   if (!profile?.email) return { error: "Schüler-E-Mail nicht gefunden." };
 
   const studentName = `${profile.vorname} ${profile.nachname}`;
+  const methode = zahlungsartFuer(profile, { payment_method: inv.method });
 
-  if (inv.method === "qr") {
-    await sendEmailNow(admin, "qr_invoice", {
-      to: profile.email,
-      student_name: studentName,
-      student_id: inv.student_id,
-      lesson_date: inv.lesson_date,
-      amount: inv.amount,
-      invoice_number: inv.invoice_number,
-      invoice_id: invoiceId,
-    });
-  } else {
-    // twint_link wird beim Versand aus Betrag + Lektionsdatum gebaut.
-    await sendEmailNow(admin, "twint_payment_request", {
-      to: profile.email,
-      student_name: studentName,
-      student_id: inv.student_id,
-      lesson_date: inv.lesson_date,
-      amount: inv.amount,
-      invoice_number: inv.invoice_number,
-      invoice_id: invoiceId,
-    });
+  if (methode !== inv.method) {
+    await admin.from("invoices").update({ method: methode }).eq("id", invoiceId);
+    if (inv.package_id) {
+      await admin
+        .from("packages")
+        .update({ payment_method: methode })
+        .eq("id", inv.package_id)
+        .eq("status", "active");
+    }
   }
+
+  const payload = {
+    to: profile.email,
+    student_name: studentName,
+    student_id: inv.student_id,
+    lesson_date: inv.lesson_date,
+    amount: inv.amount,
+    invoice_number: inv.invoice_number,
+    invoice_id: invoiceId,
+    package_id: inv.package_id ?? undefined,
+    description: inv.description ?? undefined,
+    due_date: inv.due_date ?? undefined,
+  };
+
+  // twint_link wird beim Versand aus Betrag und Verwendungszweck gebaut.
+  await sendEmailNow(admin, methode === "qr" ? "qr_invoice" : "twint_payment_request", payload);
 
   revalidatePath("/admin/zahlungen");
   return { success: true, error: undefined };

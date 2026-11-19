@@ -33,3 +33,17 @@ describe("zahlungsartFuer", () => {
     expect(zahlungsartFuer({ payment_method: "" }, null)).toBe("twint");
   });
 });
+
+describe("Erinnern nimmt die aktuelle Zahlungsart (19. November 2026)", () => {
+  it("resendPaymentEmail fragt das Profil und stellt die Rechnung mit um", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const quelle = readFileSync(join(process.cwd(), "src/app/admin/actions.ts"), "utf8");
+    const teil = quelle.slice(quelle.indexOf("export async function resendPaymentEmail"));
+    const fn = teil.slice(0, teil.indexOf("\n}\n"));
+    expect(fn).toContain("zahlungsartFuer(profile, { payment_method: inv.method })");
+    expect(fn).toContain('.update({ method: methode })');
+    expect(fn).toContain("description: inv.description");
+    expect(fn).not.toContain('inv.method === "qr"');
+  });
+});
