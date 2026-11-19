@@ -39,8 +39,11 @@ export const FLOWKEY = {
    * nach Vertrag 4.2 wieder die Freigabe von flowkey. Bis dahin `false`:
    * Das Logo erscheint nur in der Vorschau (Vercel Preview, lokal), nicht
    * auf der Live-Seite. Nach der Freigabe auf `true` setzen.
+   *
+   * Freigegeben von Pauline (flowkey) am 19. November 2026, nach den
+   * Screenshots von Startseite und Partnerseite, Desktop und Handy.
    */
-  heroFreigegeben: false,
+  heroFreigegeben: true,
   /** Beantragt am 4. November 2026. */
   code: "DAVID25",
   rabattProzent: 25,

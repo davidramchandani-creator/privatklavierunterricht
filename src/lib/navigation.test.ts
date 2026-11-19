@@ -70,9 +70,9 @@ describe("Lange Abschnitte blenden sich auch am Handy ein", () => {
 });
 
 describe("flowkey-Logo im Startbereich", () => {
-  it("live erst nach Freigabe, in der Vorschau immer", () => {
-    expect(FLOWKEY.heroFreigegeben).toBe(false);
-    expect(zeigeHeroLogo("production")).toBe(false);
+  it("von flowkey freigegeben (19. November 2026), überall sichtbar", () => {
+    expect(FLOWKEY.heroFreigegeben).toBe(true);
+    expect(zeigeHeroLogo("production")).toBe(true);
     expect(zeigeHeroLogo("preview")).toBe(true);
     expect(zeigeHeroLogo("development")).toBe(true);
   });
